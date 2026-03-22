@@ -1,0 +1,22 @@
+# Visual Studio build artifacts
+bin/
+obj/
+*.user
+*.suo
+*.sln.docstates
+
+# Settings and Keys (CRITICAL: Private data)
+settings.json
+nexus_key.txt
+mod_id_map.json
+mod_manager_log.txt
+
+# Application Data folders
+downloads/
+backups/
+profiles/
+Setup/
+
+# OS generated files
+.DS_Store
+Thumbs.db

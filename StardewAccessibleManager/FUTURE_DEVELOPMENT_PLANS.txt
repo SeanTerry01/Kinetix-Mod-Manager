@@ -1,0 +1,46 @@
+# Stardew Valley Accessible Mod Manager: Future Development Roadmap
+
+This document tracks potential improvements, architectural refinements, and new features to enhance the accessibility and power of the manager.
+
+---
+
+## 1. Codebase Health & Refinement
+*   **Refactor Form1.cs**: Move logic into dedicated service classes (e.g., `NexusService.cs`, `ModFileSystem.cs`, `SoundEngine.cs`) to keep the UI code manageable.
+*   **Enhanced Error Handling**: Replace silent catch blocks with spoken error messages that explain *why* an action failed (e.g., "Disk Full" or "Access Denied").
+*   **Unit Testing**: Implement basic tests for core logic like version comparison and manifest parsing to prevent regressions.
+
+---
+
+## 2. Immediate Fixes & UX Improvements
+*   **API Rate Limit Awareness**: Add a "Credits Remaining" display for non-premium Nexus users so they know if they are approaching their daily/hourly limits.
+*   **Visual Accessibility (Low Vision)**: Implement "High Contrast" and "Large Text" modes that adjust the UI colors and font sizes globally.
+*   **Dependency Tree View**: A more detailed view showing which mods depend on the currently selected mod before allowing a deletion.
+
+---
+
+## 3. New Feature Ideas
+
+### A. Dependency "One-Click" Resolver
+*   Automatically find and queue all missing required mods for a newly installed mod.
+
+### B. Mod Conflict Detection
+*   Scan mod folders for overlapping file changes and warn the user of potential conflicts between active mods.
+
+### C. Profile Sharing & Portability
+*   Export/Import profiles as a single package (JSON + Mod List) so users can easily share their setups with friends.
+
+### D. Integrated Mod Notes
+*   Allow users to attach personal voice or text notes to specific mods (e.g., "Keep disabled until Year 2"). The manager will read the note when the mod is selected.
+
+### E. "Broken Mod" Detection
+*   Integrate with community-maintained compatibility lists to warn users about mods known to be broken in the latest game version, even if no update is available on Nexus.
+
+### F. Multi-Game Support?
+*   While built for Stardew Valley, the core engine could potentially be adapted for other accessible modding communities (e.g., Slay the Spire or Minecraft).
+
+---
+
+## 4. Discussion & Feedback Points
+*   Prioritize "High Contrast" mode for low-vision users.
+*   Evaluate if users prefer automated conflict detection or manual troubleshooting via the SMAPI log.
+*   Consider the impact of refactoring on current development speed.
