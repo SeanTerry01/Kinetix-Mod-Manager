@@ -33,14 +33,14 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 ; The Single-File EXE
-Source: "bin\Release\net10.0-windows\publish\StardewAccessibleManager.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "bin\Release\net10.0-windows\win-x64\publish\StardewAccessibleManager.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; Native DLLs (Tolk, NVDA Controller, etc.)
-Source: "bin\Release\net10.0-windows\publish\*.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "bin\Release\net10.0-windows\win-x64\publish\*.dll"; DestDir: "{app}"; Flags: ignoreversion
 ; Manual for help menu
-Source: "bin\Release\net10.0-windows\publish\MANUAL.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "bin\Release\net10.0-windows\win-x64\publish\MANUAL.md"; DestDir: "{app}"; Flags: ignoreversion
 ; Sound themes and initial folders - using skipifsourcedoesntexist to allow empty folders
-Source: "bin\Release\net10.0-windows\publish\sounds\*"; DestDir: "{app}\sounds"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-Source: "bin\Release\net10.0-windows\publish\profiles\*"; DestDir: "{app}\profiles"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "bin\Release\net10.0-windows\win-x64\publish\sounds\*"; DestDir: "{app}\sounds"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "bin\Release\net10.0-windows\win-x64\publish\profiles\*"; DestDir: "{app}\profiles"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 [Dirs]
 ; Ensure these directories exist even if they are empty in the installer
