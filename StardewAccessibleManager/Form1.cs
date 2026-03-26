@@ -37,11 +37,13 @@ public class Form1 : Form
 
 	private AppSettings _settings;
 
-	private string downloadsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "downloads");
+	private static string dataBasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AudiVentureGames", "StardewAccessibleManager");
 
-	private string backupsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backups");
+	private string downloadsPath = Path.Combine(dataBasePath, "downloads");
 
-	private string profilesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "profiles");
+	private string backupsPath = Path.Combine(dataBasePath, "backups");
+
+	private string profilesPath = Path.Combine(dataBasePath, "profiles");
 
 	private string themesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sounds");
 
@@ -371,9 +373,9 @@ public class Form1 : Form
 		});
 		toolStripMenuItem3.DropDownItems.Add("Open Error Log (" + GetShortcutString("OpenErrorLog") + ")", null, delegate
 		{
-			if (File.Exists("mod_manager_log.txt"))
+			if (File.Exists(errorLogPath))
 			{
-				Process.Start(new ProcessStartInfo("notepad.exe", "mod_manager_log.txt")
+				Process.Start(new ProcessStartInfo("notepad.exe", errorLogPath)
 				{
 					UseShellExecute = true
 				});
@@ -809,13 +811,24 @@ public class Form1 : Form
 			_searchBuffer = "";
 		};
 		listWikiResults.SelectedIndexChanged += Wiki_SelectedIndexChanged;
+		listWikiResults.DoubleClick += async delegate(object? s, EventArgs e)
+		{
+			if (listWikiResults.SelectedItem is WikiResult res)
+			{
+				if (res.IsCategory) await LoadWikiCategory(res.Title);
+				else LoadWikiPage(res.Title);
+			}
+		};
 	}
 
 	private async void InitializeWebView()
 	{
 		try
 		{
-			await webViewWiki.EnsureCoreWebView2Async(null);
+			string webViewDataPath = Path.Combine(dataBasePath, "WebView2Data");
+			if (!Directory.Exists(webViewDataPath)) Directory.CreateDirectory(webViewDataPath);
+			var env = await CoreWebView2Environment.CreateAsync(null, webViewDataPath);
+			await webViewWiki.EnsureCoreWebView2Async(env);
 		}
 		catch (Exception ex)
 		{
@@ -2415,11 +2428,13 @@ public class Form1 : Form
 		}
 	}
 
+	private string errorLogPath => Path.Combine(dataBasePath, "mod_manager_log.txt");
+
 	private void LogError(string mod, string msg)
 	{
 		try
 		{
-			File.AppendAllText("mod_manager_log.txt", $"[{DateTime.Now:HH:mm:ss}] {mod}: {msg}\n");
+			File.AppendAllText(errorLogPath, $"[{DateTime.Now:HH:mm:ss}] {mod}: {msg}\n");
 		}
 		catch
 		{
