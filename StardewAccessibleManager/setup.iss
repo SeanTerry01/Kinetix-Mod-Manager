@@ -35,6 +35,9 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 ; The Single-File EXE
 Source: "bin\Release\net10.0-windows\win-x64\publish\StardewAccessibleManager.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; Native DLLs (Tolk, NVDA Controller, etc.)
+Source: "lib\Tolk.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "lib\nvdaControllerClient.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "lib\nvdaControllerClient64.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "bin\Release\net10.0-windows\win-x64\publish\*.dll"; DestDir: "{app}"; Flags: ignoreversion
 ; Manual for help menu
 Source: "bin\Release\net10.0-windows\win-x64\publish\MANUAL.md"; DestDir: "{app}"; Flags: ignoreversion
