@@ -1,87 +1,69 @@
-using System.IO.Pipes;
+using System;
 using System.IO;
+using System.IO.Pipes;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
-using System;
 using System.Windows.Forms;
-using System.Reflection;
 
-namespace StardewAccessibleManager
+namespace StardewAccessibleManager;
+
+internal static class Program
 {
-    internal static class Program
-    {
-        private const string AppGuid = "StardewAccessibleManager-Nexus-Handler";
+	private const string AppGuid = "StardewAccessibleManager-Nexus-Handler";
 
-        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern bool SetDllDirectory(string lpPathName);
+	[DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+	private static extern bool SetDllDirectory(string lpPathName);
 
-        static Program()
-        {
-            // 1. Set path for Native DLLs (like Tolk.dll) if the lib folder exists
-            string libPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "lib");
-            if (Directory.Exists(libPath))
-            {
-                SetDllDirectory(libPath);
-            }
+	static Program()
+	{
+		string libPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "lib");
+		if (Directory.Exists(libPath))
+		{
+			SetDllDirectory(libPath);
+		}
+		AppDomain.CurrentDomain.AssemblyResolve += delegate(object? sender, ResolveEventArgs args)
+		{
+			if (!Directory.Exists(libPath))
+			{
+				return (Assembly?)null;
+			}
+			string path = new AssemblyName(args.Name).Name + ".dll";
+			string text = Path.Combine(libPath, path);
+			return File.Exists(text) ? Assembly.LoadFrom(text) : null;
+		};
+	}
 
-            // 2. Set path for Managed DLLs (like NAudio, Newtonsoft) ONLY if the lib folder exists
-            // When publishing as a single file, these are already bundled inside the EXE.
-            AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
-            {
-                if (!Directory.Exists(libPath)) return null;
-
-                string assemblyName = new AssemblyName(args.Name).Name + ".dll";
-                string fullPath = Path.Combine(libPath, assemblyName);
-                if (File.Exists(fullPath))
-                {
-                    return Assembly.LoadFrom(fullPath);
-                }
-                return null;
-            };
-        }
-
-        [STAThread]
-        static void Main(string[] args)
-        {
-            using (Mutex mutex = new Mutex(false, "Global\\" + AppGuid))
-            {
-                if (!mutex.WaitOne(0, false))
-                {
-                    if (args.Length > 0 && args[0].StartsWith("nxm://", StringComparison.OrdinalIgnoreCase))
-                    {
-                        try
-                        {
-                            using (var client = new NamedPipeClientStream(".", AppGuid, PipeDirection.Out))
-                            {
-                                client.Connect(1000);
-                                using (var writer = new StreamWriter(client))
-                                {
-                                    writer.WriteLine(args[0]);
-                                    writer.Flush();
-                                }
-                            }
-                        }
-                        catch { }
-                    }
-                    return;
-                }
-
-                ApplicationConfiguration.Initialize();
-
-                var settings = AppSettings.Load();
-
-                // 1. Show Splash Screen (if enabled)
-                if (settings.ShowSplashScreen)
-                {
-                    using (var splash = new SplashScreen())
-                    {
-                        splash.ShowDialog();
-                    }
-                }
-
-                // 2. Launch Main Application
-                Application.Run(new Form1(args));
-            }
-        }
-    }
+	[STAThread]
+	private static void Main(string[] args)
+	{
+		using Mutex mutex = new Mutex(initiallyOwned: false, "Global\\StardewAccessibleManager-Nexus-Handler");
+		if (!mutex.WaitOne(0, exitContext: false))
+		{
+			if (args.Length == 0 || !args[0].StartsWith("nxm://", StringComparison.OrdinalIgnoreCase))
+			{
+				return;
+			}
+			try
+			{
+				using NamedPipeClientStream namedPipeClientStream = new NamedPipeClientStream(".", "StardewAccessibleManager-Nexus-Handler", PipeDirection.Out);
+				namedPipeClientStream.Connect(1000);
+				using StreamWriter streamWriter = new StreamWriter(namedPipeClientStream);
+				streamWriter.WriteLine(args[0]);
+				streamWriter.Flush();
+				return;
+			}
+			catch
+			{
+				return;
+			}
+		}
+		ApplicationConfiguration.Initialize();
+		if (AppSettings.Load().ShowSplashScreen)
+		{
+			using SplashScreen splashScreen = new SplashScreen();
+			splashScreen.ShowDialog();
+		}
+		Application.Run(new Form1(args));
+	}
 }

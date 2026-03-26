@@ -1,73 +1,80 @@
-using System;
 using System.Collections.Generic;
 
-namespace StardewAccessibleManager
+namespace StardewAccessibleManager;
+
+public class StardewMod
 {
-    public class ModDependency
-    {
-        public string UniqueId { get; set; } = null!;
-        public string? MinimumVersion { get; set; }
-        public bool IsRequired { get; set; } = true;
-        public bool IsPresent { get; set; } = false;
-        public bool IsNewEnough { get; set; } = true;
-        public bool IsEnabled { get; set; } = true;
-    }
+	public bool IsGroup { get; set; }
 
-    public class StardewMod
-    {
-        // Hierarchical Grouping
-        public bool IsGroup { get; set; } = false;
-        public bool IsExpanded { get; set; } = false;
-        public string GroupName { get; set; } = "";
-        public List<StardewMod> SubMods { get; set; } = new List<StardewMod>();
-        public bool IsSubMod { get; set; } = false;
+	public bool IsExpanded { get; set; }
 
-        // Basic info from the manifest.json
-        public string Name { get; set; } = null!;
-        public string Author { get; set; } = null!;
-        public string Version { get; set; } = null!;
-        public string Description { get; set; } = null!;
-        public string UniqueId { get; set; } = null!;
-        public string? NexusID { get; set; }
-        public string FolderPath { get; set; } = null!;
-        public List<ModDependency> Dependencies { get; set; } = new List<ModDependency>();
+	public string GroupName { get; set; } = "";
 
-        // New Category property
-        public string Category { get; set; } = "Uncategorized";
+	public List<StardewMod> SubMods { get; set; } = new List<StardewMod>();
 
-        // Info we will get from the Nexus API later
-        public string? LatestVersion { get; set; }
-        public bool IsEnabled { get; set; } = true;
+	public bool IsSubMod { get; set; }
 
-        // This tells the Screen Reader what to say when highlighting the mod in a list
-        public override string ToString()
-        {
-            if (IsGroup)
-            {
-                string state = IsExpanded ? "Expanded" : "Collapsed";
-                return $"Mod Group: {GroupName}. Contains {SubMods.Count} mods. {state}. Press Right or Plus to expand, Left or Minus to collapse.";
-            }
+	public string Name { get; set; }
 
-            string prefix = IsSubMod ? "Sub-mod: " : "";
-            string status = IsEnabled ? "Enabled" : "Disabled";
-            string depStatus = "";
-            
-            bool hasMissingRequired = false;
-            foreach(var dep in Dependencies)
-            {
-                if (dep.IsRequired && (!dep.IsPresent || !dep.IsEnabled))
-                {
-                    hasMissingRequired = true;
-                    break;
-                }
-            }
+	public string Author { get; set; }
 
-            if (hasMissingRequired)
-            {
-                depStatus = " Warning: Missing required dependencies.";
-            }
+	public string Version { get; set; }
 
-            return $"{prefix}{Name} by {Author}, version {Version}. Category: {Category}. {status}.{depStatus}";
-        }
-    }
+	public string Description { get; set; }
+
+	public string UniqueId { get; set; }
+
+	public string? NexusID { get; set; }
+
+	public string FolderPath { get; set; }
+
+	public List<ModDependency> Dependencies { get; set; } = new List<ModDependency>();
+
+	public string Category { get; set; } = "Uncategorized";
+
+	public string? LatestVersion { get; set; }
+
+	public bool IsEnabled { get; set; } = true;
+
+	public bool IsSearchResult { get; set; }
+
+	public bool IsUpdateResult { get; set; }
+
+	public override string ToString()
+	{
+		if (IsGroup)
+		{
+			string value = (IsExpanded ? "Expanded" : "Collapsed");
+			return $"Mod Group: {GroupName}. Contains {SubMods.Count} mods. {value}. Press Right or Plus to expand, Left or Minus to collapse.";
+		}
+		string value2 = (IsSubMod ? "Sub-mod: " : "");
+		string value3 = "";
+		if (!IsSearchResult && !IsUpdateResult)
+		{
+			value3 = (IsEnabled ? "Enabled" : "Disabled") + ". ";
+		}
+		string value4 = "";
+		bool flag = false;
+		foreach (ModDependency dependency in Dependencies)
+		{
+			if (dependency.IsRequired && (!dependency.IsPresent || !dependency.IsEnabled))
+			{
+				flag = true;
+				break;
+			}
+		}
+		if (flag)
+		{
+			value4 = " Warning: Missing required dependencies.";
+		}
+		if (IsUpdateResult)
+		{
+			return $"{Name} by {Author}. Current: {Version}. Latest: {LatestVersion}.{value4}";
+		}
+		if (IsSearchResult)
+		{
+			return $"{Name} (ID: {NexusID}). {Description}";
+		}
+		return $"{value2}{Name} by {Author}, version {Version}. Category: {Category}. {value3}{value4}";
+	}
 }

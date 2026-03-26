@@ -96,6 +96,26 @@ Once you are logged in to the website:
 *   **Ctrl + U**: **Update All** mods (Premium only).
 *   **Ctrl + R**: Read the mod's summary.
 
+### Stardew Wiki Tab Shortcuts
+*   **Enter (in Search bar)**: Search the Stardew Valley Wiki for the entered text.
+*   **Enter (on a Result)**: 
+    *   If it's a **Page**: Load the content into the Web View.
+    *   If it's a **Category**: Drill down into that category to see its members.
+*   **Backspace (on a Result)**: Go back up to the previous category level or search results.
+*   **Tab**: Move focus between the Search box, Categories dropdown, Results list, and the Web View.
+
+---
+
+## Stardew Valley Wiki Integration
+The **Stardew Wiki** tab provides a built-in, accessible way to browse the official game wiki.
+1.  **Search**: Type any item, villager, or mechanic into the search box and press **Enter**.
+2.  **Browse by Category**: Use the **Categories** dropdown to quickly find lists of Crops, Fish, Villagers, and more.
+3.  **Navigation**: The results list shows pages and sub-categories. You can "drill down" into categories by pressing **Enter** and go back up by pressing **Backspace**.
+4.  **Accessible Reading**: When you press **Enter** on a page, it loads in the integrated **Web View**. This view is fully compatible with screen readers, allowing you to use standard web navigation commands:
+    *   **H**: Jump between Headings.
+    *   **T**: Navigate Tables (great for checking crop growth or gift tastes).
+    *   **L**: List links on the page.
+
 ---
 
 ## Mod Discovery (Find New Mods)

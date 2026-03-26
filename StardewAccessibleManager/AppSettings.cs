@@ -4,96 +4,198 @@ using System.IO;
 using System.Windows.Forms;
 using Newtonsoft.Json;
 
-namespace StardewAccessibleManager
+namespace StardewAccessibleManager;
+
+public class AppSettings
 {
-    public class AppSettings
-    {
-        public string ModsPath { get; set; } = "";
-        public string ApiKey { get; set; } = "";
-        public bool ShowSplashScreen { get; set; } = true;
-        public bool RandomLogoStartup { get; set; } = true;
-        public string SelectedLogoFile { get; set; } = "";
-        public bool CheckForUpdatesAtStartup { get; set; } = true;
-        public int SoundVolume { get; set; } = 80; // 0 to 100
-        public int MaxBackupsPerMod { get; set; } = 5;
-        public string CurrentTheme { get; set; } = "Default";
-        
-        // Key: Mod UniqueID, Value: Version string to ignore
-        public Dictionary<string, string> IgnoredVersions { get; set; } = new Dictionary<string, string>();
+	public string ModsPath { get; set; } = "";
 
-        // Key: Mod UniqueID, Value: Category Name
-        public Dictionary<string, string> ModCategories { get; set; } = new Dictionary<string, string>();
+	public string ApiKey { get; set; } = "";
 
-        // Action Name -> Keys (includes modifiers)
-        public Dictionary<string, Keys> Shortcuts { get; set; } = new Dictionary<string, Keys>();
+	public bool ShowSplashScreen { get; set; } = true;
 
-        private static readonly string SettingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+	public bool RandomLogoStartup { get; set; } = true;
 
-        public static AppSettings Load()
-        {
-            try
-            {
-                if (File.Exists(SettingsPath))
-                {
-                    string json = File.ReadAllText(SettingsPath);
-                    var settings = JsonConvert.DeserializeObject<AppSettings>(json) ?? new AppSettings();
-                    settings.InitializeDefaults();
-                    return settings;
-                }
-            }
-            catch { }
-            var s = new AppSettings();
-            s.InitializeDefaults();
-            return s;
-        }
+	public string SelectedLogoFile { get; set; } = "";
 
-        public void InitializeDefaults()
-        {
-            var defaults = new Dictionary<string, Keys>
-            {
-                { "Manual", Keys.F1 },
-                { "ContextHelp", Keys.F1 | Keys.Shift },
-                { "LaunchGame", Keys.F5 },
-                { "OpenLogFile", Keys.F4 },
-                { "Settings", Keys.Control | Keys.P },
-                { "Login", Keys.Control | Keys.L },
-                { "InstallZip", Keys.Control | Keys.I },
-                { "OpenModPage", Keys.Control | Keys.G },
-                { "OpenDownloads", Keys.Control | Keys.D },
-                { "OpenBackups", Keys.Control | Keys.B },
-                { "ManualID", Keys.Control | Keys.K },
-                { "ChangeCategory", Keys.Control | Keys.J },
-                { "BatchCategory", Keys.Control | Keys.Shift | Keys.J },
-                { "ShowDependencies", Keys.Control | Keys.Y },
-                { "QuickFix", Keys.Control | Keys.Q },
-                { "Search", Keys.Control | Keys.F },
-                { "UpdateAll", Keys.Control | Keys.U },
-                { "SaveProfile", Keys.Control | Keys.S },
-                { "ReadDescription", Keys.Control | Keys.R },
-                { "PruneBackups", Keys.Control | Keys.Shift | Keys.B },
-                { "OpenErrorLog", Keys.Control | Keys.Shift | Keys.L },
-                { "RefreshAll", Keys.None },
-                { "RefreshInstalled", Keys.None }
-            };
+	public bool CheckForUpdatesAtStartup { get; set; } = true;
 
-            foreach (var d in defaults)
-            {
-                if (!Shortcuts.ContainsKey(d.Key))
-                    Shortcuts[d.Key] = d.Value;
-            }
-        }
+	public int SoundVolume { get; set; } = 80;
 
-        public void Save()
-        {
-            try
-            {
-                string json = JsonConvert.SerializeObject(this, Formatting.Indented);
-                File.WriteAllText(SettingsPath, json);
-            }
-            catch (Exception ex)
-            {
-                try { File.AppendAllText("mod_manager_log.txt", $"[{DateTime.Now:HH:mm:ss}] Settings Save Error: {ex.Message}\n"); } catch { }
-            }
-        }
-    }
+	public int MaxBackupsPerMod { get; set; } = 5;
+
+	public string CurrentTheme { get; set; } = "Default";
+
+	public Dictionary<string, string> IgnoredVersions { get; set; } = new Dictionary<string, string>();
+
+	public Dictionary<string, string> ModCategories { get; set; } = new Dictionary<string, string>();
+
+	public Dictionary<string, Keys> Shortcuts { get; set; } = new Dictionary<string, Keys>();
+
+	private static string SettingsPath
+	{
+		get
+		{
+			string text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AudiVentureGames", "StardewAccessibleManager");
+			if (!Directory.Exists(text))
+			{
+				Directory.CreateDirectory(text);
+			}
+			return Path.Combine(text, "settings.json");
+		}
+	}
+
+	public static AppSettings Load()
+	{
+		try
+		{
+			string text = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+			if (File.Exists(text) && !File.Exists(SettingsPath))
+			{
+				try
+				{
+					File.Copy(text, SettingsPath, overwrite: true);
+				}
+				catch
+				{
+				}
+			}
+			if (File.Exists(SettingsPath))
+			{
+				AppSettings? obj2 = JsonConvert.DeserializeObject<AppSettings>(File.ReadAllText(SettingsPath)) ?? new AppSettings();
+				obj2.InitializeDefaults();
+				return obj2;
+			}
+		}
+		catch
+		{
+		}
+		AppSettings appSettings = new AppSettings();
+		appSettings.InitializeDefaults();
+		return appSettings;
+	}
+
+	public void InitializeDefaults()
+	{
+		foreach (KeyValuePair<string, Keys> item in new Dictionary<string, Keys>
+		{
+			{
+				"Manual",
+				Keys.F1
+			},
+			{
+				"ContextHelp",
+				Keys.F1 | Keys.Shift
+			},
+			{
+				"LaunchGame",
+				Keys.F5
+			},
+			{
+				"OpenLogFile",
+				Keys.F4
+			},
+			{
+				"Settings",
+				Keys.P | Keys.Control
+			},
+			{
+				"Login",
+				Keys.L | Keys.Control
+			},
+			{
+				"InstallZip",
+				Keys.I | Keys.Control
+			},
+			{
+				"OpenModPage",
+				Keys.G | Keys.Control
+			},
+			{
+				"OpenDownloads",
+				Keys.D | Keys.Control
+			},
+			{
+				"OpenBackups",
+				Keys.B | Keys.Control
+			},
+			{
+				"ManualID",
+				Keys.K | Keys.Control
+			},
+			{
+				"ChangeCategory",
+				Keys.J | Keys.Control
+			},
+			{
+				"BatchCategory",
+				Keys.J | Keys.Shift | Keys.Control
+			},
+			{
+				"ShowDependencies",
+				Keys.Y | Keys.Control
+			},
+			{
+				"QuickFix",
+				Keys.Q | Keys.Control
+			},
+			{
+				"Search",
+				Keys.F | Keys.Control
+			},
+			{
+				"UpdateAll",
+				Keys.U | Keys.Control
+			},
+			{
+				"SaveProfile",
+				Keys.S | Keys.Control
+			},
+			{
+				"ReadDescription",
+				Keys.R | Keys.Control
+			},
+			{
+				"PruneBackups",
+				Keys.B | Keys.Shift | Keys.Control
+			},
+			{
+				"OpenErrorLog",
+				Keys.L | Keys.Shift | Keys.Control
+			},
+			{
+				"RefreshAll",
+				Keys.None
+			},
+			{
+				"RefreshInstalled",
+				Keys.None
+			}
+		})
+		{
+			if (!Shortcuts.ContainsKey(item.Key))
+			{
+				Shortcuts[item.Key] = item.Value;
+			}
+		}
+	}
+
+	public void Save()
+	{
+		try
+		{
+			string contents = JsonConvert.SerializeObject(this, Formatting.Indented);
+			File.WriteAllText(SettingsPath, contents);
+		}
+		catch (Exception ex)
+		{
+			try
+			{
+				File.AppendAllText("mod_manager_log.txt", $"[{DateTime.Now:HH:mm:ss}] Settings Save Error: {ex.Message}\n");
+			}
+			catch
+			{
+			}
+		}
+	}
 }

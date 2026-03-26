@@ -3,122 +3,141 @@ using System.Drawing;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using NAudio.Wave;
 using NAudio.Vorbis;
-using System.Linq;
+using NAudio.Wave;
 
-namespace StardewAccessibleManager
+namespace StardewAccessibleManager;
+
+public class SplashScreen : Form
 {
-    public class SplashScreen : Form
-    {
-        private WaveOutEvent? _outputDevice;
-        private VorbisWaveReader? _audioFile;
-        private bool _isClosing = false;
-        private AppSettings _settings;
+	private WaveOutEvent? _outputDevice;
 
-        public SplashScreen()
-        {
-            _settings = AppSettings.Load();
-            this.Text = "Stardew Valley Accessible Mod Manager";
-            this.FormBorderStyle = FormBorderStyle.None;
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.Size = new Size(600, 400);
-            this.BackColor = Color.Black;
-            this.KeyPreview = true;
+	private VorbisWaveReader? _audioFile;
 
-            Label lbl = new Label
-            {
-                Text = "Starting Manager...\nPress Enter to Skip",
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 18, FontStyle.Bold),
-                TextAlign = ContentAlignment.MiddleCenter,
-                Dock = DockStyle.Fill
-            };
-            this.Controls.Add(lbl);
+	private bool _isClosing;
 
-            this.Load += async (s, e) => await PlayLogo();
-            this.KeyDown += async (s, e) => {
-                if (e.KeyCode == Keys.Enter) await CloseWithFade();
-            };
-        }
+	private AppSettings _settings;
 
-        private async Task PlayLogo()
-        {
-            try
-            {
-                string theme = _settings.CurrentTheme ?? "Default";
-                string soundPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sounds", theme, "logo");
-                
-                if (!Directory.Exists(soundPath) || Directory.GetFiles(soundPath, "*.ogg").Length == 0)
-                {
-                    soundPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sounds", "Default", "logo");
-                }
+	public SplashScreen()
+	{
+		_settings = AppSettings.Load();
+		Text = "Stardew Valley Accessible Mod Manager";
+		base.FormBorderStyle = FormBorderStyle.None;
+		base.StartPosition = FormStartPosition.CenterScreen;
+		base.Size = new Size(600, 400);
+		BackColor = Color.Black;
+		base.KeyPreview = true;
+		Label value = new Label
+		{
+			Text = "Starting Manager...\nPress Enter to Skip",
+			ForeColor = Color.White,
+			Font = new Font("Segoe UI", 18f, FontStyle.Bold),
+			TextAlign = ContentAlignment.MiddleCenter,
+			Dock = DockStyle.Fill
+		};
+		base.Controls.Add(value);
+		base.Load += async delegate
+		{
+			await PlayLogo();
+		};
+		base.KeyDown += async delegate(object? s, KeyEventArgs e)
+		{
+			if (e.KeyCode == Keys.Return)
+			{
+				await CloseWithFade();
+			}
+		};
+	}
 
-                if (Directory.Exists(soundPath))
-                {
-                    string[] files = Directory.GetFiles(soundPath, "*.ogg");
-                    if (files.Length > 0)
-                    {
-                        string fileToPlay = files[0];
+	private async Task PlayLogo()
+	{
+		try
+		{
+			string path = _settings.CurrentTheme ?? "Default";
+			string text = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sounds", path, "logo");
+			if (!Directory.Exists(text) || Directory.GetFiles(text, "*.ogg").Length == 0)
+			{
+				text = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sounds", "Default", "logo");
+			}
+			if (Directory.Exists(text))
+			{
+				string[] files = Directory.GetFiles(text, "*.ogg");
+				if (files.Length != 0)
+				{
+					string fileName = files[0];
+					if (_settings.RandomLogoStartup)
+					{
+						Random random = new Random();
+						fileName = files[random.Next(files.Length)];
+					}
+					else if (!string.IsNullOrEmpty(_settings.SelectedLogoFile))
+					{
+						string text2 = Path.Combine(text, _settings.SelectedLogoFile);
+						if (File.Exists(text2))
+						{
+							fileName = text2;
+						}
+					}
+					_audioFile = new VorbisWaveReader(fileName);
+					_outputDevice = new WaveOutEvent();
+					_outputDevice.Volume = (float)_settings.SoundVolume / 100f;
+					_outputDevice.Init(_audioFile);
+					_outputDevice.Play();
+					while (_outputDevice.PlaybackState == PlaybackState.Playing && !_isClosing)
+					{
+						await Task.Delay(100);
+					}
+					if (!_isClosing)
+					{
+						Invoke(delegate
+						{
+							Close();
+						});
+					}
+				}
+				else
+				{
+					Close();
+				}
+			}
+			else
+			{
+				Close();
+			}
+		}
+		catch
+		{
+			Close();
+		}
+	}
 
-                        if (_settings.RandomLogoStartup)
-                        {
-                            var rnd = new Random();
-                            fileToPlay = files[rnd.Next(files.Length)];
-                        }
-                        else if (!string.IsNullOrEmpty(_settings.SelectedLogoFile))
-                        {
-                            // Try to find the specific file selected in settings
-                            string target = Path.Combine(soundPath, _settings.SelectedLogoFile);
-                            if (File.Exists(target)) fileToPlay = target;
-                        }
+	private async Task CloseWithFade()
+	{
+		if (_isClosing)
+		{
+			return;
+		}
+		_isClosing = true;
+		if (_outputDevice != null)
+		{
+			float volume = _outputDevice.Volume;
+			for (float v = volume; v > 0f; v -= 0.1f)
+			{
+				_outputDevice.Volume = Math.Max(0f, v);
+				await Task.Delay(50);
+			}
+			_outputDevice.Stop();
+		}
+		Close();
+	}
 
-                        _audioFile = new VorbisWaveReader(fileToPlay);
-                        _outputDevice = new WaveOutEvent();
-                        _outputDevice.Volume = _settings.SoundVolume / 100f;
-                        _outputDevice.Init(_audioFile);
-                        _outputDevice.Play();
-
-                        while (_outputDevice.PlaybackState == PlaybackState.Playing && !_isClosing)
-                        {
-                            await Task.Delay(100);
-                        }
-
-                        if (!_isClosing) this.Invoke(new Action(() => this.Close()));
-                    }
-                    else this.Close();
-                }
-                else this.Close();
-            }
-            catch { this.Close(); }
-        }
-
-        private async Task CloseWithFade()
-        {
-            if (_isClosing) return;
-            _isClosing = true;
-
-            if (_outputDevice != null)
-            {
-                float startVol = _outputDevice.Volume;
-                for (float v = startVol; v > 0; v -= 0.1f)
-                {
-                    _outputDevice.Volume = Math.Max(0, v);
-                    await Task.Delay(50);
-                }
-                _outputDevice.Stop();
-            }
-            this.Close();
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                _outputDevice?.Dispose();
-                _audioFile?.Dispose();
-            }
-            base.Dispose(disposing);
-        }
-    }
+	protected override void Dispose(bool disposing)
+	{
+		if (disposing)
+		{
+			_outputDevice?.Dispose();
+			_audioFile?.Dispose();
+		}
+		base.Dispose(disposing);
+	}
 }
