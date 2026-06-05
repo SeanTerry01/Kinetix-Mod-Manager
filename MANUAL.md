@@ -48,12 +48,14 @@ Once you are logged in to the website:
 *   **F1**: Open this User Manual (Internal Window).
 *   **Shift + F1**: **Context Help** - Speaks the shortcuts for your current tab.
 *   **F5**: Launch Stardew Valley (via SMAPI).
+*   **F6**: **Cycle Focus** - Jump between the tab headers and the primary list in each tab (and the web view in the Wiki tab).
 *   **Alt**: Access the Menu Bar.
 *   **Ctrl + P**: Open the **Settings Dashboard**.
 *   **Ctrl + L**: Change/Login with Nexus API Key.
 *   **Ctrl + D**: Open your `downloads` folder.
 *   **Ctrl + B**: Open your `backups` folder.
 *   **Ctrl + Shift + L**: Open the error log.
+*   **Ctrl + H**: Open the **Accessibility Controls** guide for the selected game.
 *   **Escape**: Close the Manual, Settings, or Sound Demo windows.
 
 ### Mod List Shortcuts (Installed Mods Tab)
@@ -102,19 +104,42 @@ Once you are logged in to the website:
     *   If it's a **Page**: Load the content into the Web View.
     *   If it's a **Category**: Drill down into that category to see its members.
 *   **Backspace (on a Result)**: Go back up to the previous category level or search results.
+*   **F6**: Quickly jump from the Results list to the Web View content, then back to the Tab headers.
 *   **Tab**: Move focus between the Search box, Categories dropdown, Results list, and the Web View.
 
 ---
 
-## Stardew Valley Wiki Integration
-The **Stardew Wiki** tab provides a built-in, accessible way to browse the official game wiki.
-1.  **Search**: Type any item, villager, or mechanic into the search box and press **Enter**.
-2.  **Browse by Category**: Use the **Categories** dropdown to quickly find lists of Crops, Fish, Villagers, and more.
+## Navigation Cycle (F6)
+The **F6** key is a powerful tool for quickly moving your focus between major areas of the application without having to press Tab many times.
+
+1.  **From Tab Headers**: If you are sitting on a tab name (like "Installed Mods"), press **F6** to jump directly into the list of mods.
+2.  **From a List**: If you are browsing a list, press **F6** to jump back up to the Tab headers. This is the fastest way to switch tabs after you've finished managing your mods.
+3.  **Wiki & Walkthroughs Special Cycle**: In the **Wiki** and **Walkthroughs** tabs, F6 follows a three-step cycle:
+    *   Press **F6** from the tab name to jump to the **Results / Guides List**.
+    *   Press **F6** again to jump into the **Web View** (where the actual page/guide content is).
+    *   Press **F6** one more time to jump back to the **Tab Headers**.
+
+This shortcut is especially useful when a page is very long, as it allows you to escape the web content and get back to your results/guides list or other tabs instantly.
+
+---
+
+## Wiki Integration
+The Wiki tab (e.g. **Stardew Wiki**, **Skyrim Wiki**, or **Fallout 4 Wiki**) provides a built-in, accessible way to browse the official game wiki.
+1.  **Search**: Type any item, quest, villager, or mechanic into the search box and press **Enter**.
+2.  **Browse by Category**: Use the **Categories** dropdown to quickly find lists of Crops, Fish, Quests, Skills, and more.
 3.  **Navigation**: The results list shows pages and sub-categories. You can "drill down" into categories by pressing **Enter** and go back up by pressing **Backspace**.
 4.  **Accessible Reading**: When you press **Enter** on a page, it loads in the integrated **Web View**. This view is fully compatible with screen readers, allowing you to use standard web navigation commands:
     *   **H**: Jump between Headings.
-    *   **T**: Navigate Tables (great for checking crop growth or gift tastes).
+    *   **T**: Navigate Tables.
     *   **L**: List links on the page.
+
+---
+
+## Walkthroughs & Guides Integration
+The Walkthroughs tab (e.g. **Stardew Walkthroughs**, **Skyrim Walkthroughs**, or **Fallout 4 Walkthroughs**) lists high-quality, text-only walkthroughs and community guides for the selected game.
+1.  **Guides List**: Select a guide from the list using the Up/Down arrow keys. The guide content automatically loads in the Web View on selection.
+2.  **Accessible Reading**: Press **F6** or **Tab** to enter the **Web View** pane. Since these walkthroughs are text-based guides, screen reader browse-mode commands (like **H** to jump between headings and **T** for tables) work seamlessly to make navigation easy for blind players.
+3.  **Exit Content**: Press **F6** at any time to escape the web view and return to the main tab headers.
 
 ---
 

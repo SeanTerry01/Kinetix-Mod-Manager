@@ -49,14 +49,7 @@ This file tracks the "Pro-Level" features being integrated into the manager to m
 *   **Features**: Automatic category detection, manual override (Ctrl+J), and real-time category filtering.
 *   **Status**: Completed.
 
----
-
-## 🚀 Future Stretch Goals
-
-### 12. Custom Keyboard Mapping
-*   **Plan**: Allow users to remap any of the application's shortcuts to different keys.
-
-### 13. Batch Category Management
+### 12. Batch Category Management
 *   **Description**: Enable or disable all mods in a specific category at once.
 *   **Features**: One-click category toggle (Ctrl+Shift+J) with confirmation and total count audio feedback.
 *   **Status**: Completed.
@@ -65,5 +58,5 @@ This file tracks the "Pro-Level" features being integrated into the manager to m
 
 ## 🚀 Future Stretch Goals
 
-### 14. Shortcut Customization
+### 13. Shortcut Customization
 *   **Plan**: Allow users to remap any of the application's shortcuts to different keys.

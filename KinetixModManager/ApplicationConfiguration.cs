@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 
-namespace StardewAccessibleManager;
+namespace KinetixModManager;
 
 [CompilerGenerated]
 internal static class ApplicationConfiguration

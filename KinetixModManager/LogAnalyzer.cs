@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
-namespace StardewAccessibleManager;
+namespace KinetixModManager;
 
 public static class LogAnalyzer
 {

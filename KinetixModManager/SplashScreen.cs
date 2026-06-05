@@ -6,7 +6,7 @@ using System.Windows.Forms;
 using NAudio.Vorbis;
 using NAudio.Wave;
 
-namespace StardewAccessibleManager;
+namespace KinetixModManager;
 
 public class SplashScreen : Form
 {
@@ -21,7 +21,7 @@ public class SplashScreen : Form
 	public SplashScreen()
 	{
 		_settings = AppSettings.Load();
-		Text = "Stardew Valley Accessible Mod Manager";
+		Text = "Kinetix Mod Manager";
 		base.FormBorderStyle = FormBorderStyle.None;
 		base.StartPosition = FormStartPosition.CenterScreen;
 		base.Size = new Size(600, 400);

@@ -1,4 +1,4 @@
-namespace StardewAccessibleManager;
+namespace KinetixModManager;
 
 public class LogEntry
 {

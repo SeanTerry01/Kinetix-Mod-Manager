@@ -5,7 +5,8 @@ This document tracks potential improvements, architectural refinements, and new 
 ---
 
 ## 1. Codebase Health & Refinement
-*   **Refactor Form1.cs**: Move logic into dedicated service classes (e.g., `NexusService.cs`, `ModFileSystem.cs`, `SoundEngine.cs`) to keep the UI code manageable.
+*   ~~**Refactor Form1.cs**: Move logic into dedicated service classes~~ — **Done.** `SoundEngine.cs`, `NexusService.cs`, and `ModFileSystem.cs` have been extracted. `Form1.cs` is now a UI orchestration layer only.
+*   ~~**API Key Security**: Store the Nexus API key encrypted at rest~~ — **Done.** Windows DPAPI (`ProtectedData.Protect`) is used; the key is never written as plain text.
 *   **Enhanced Error Handling**: Replace silent catch blocks with spoken error messages that explain *why* an action failed (e.g., "Disk Full" or "Access Denied").
 *   **Unit Testing**: Implement basic tests for core logic like version comparison and manifest parsing to prevent regressions.
 

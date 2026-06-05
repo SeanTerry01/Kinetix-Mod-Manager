@@ -1,0 +1,938 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+namespace KinetixModManager;
+
+/// <summary>
+/// Static helpers for all mod-related file I/O: scanning mods, parsing manifests,
+/// creating and pruning backups, extracting archives, and deploying/syncing files.
+/// </summary>
+public static class ModFileSystem
+{
+	[DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+	private static extern bool CreateHardLink(string lpFileName, string lpExistingFileName, IntPtr lpSecurityAttributes);
+
+	public static bool TryCreateHardLink(string newFilePath, string existingFilePath)
+	{
+		try
+		{
+			return CreateHardLink(newFilePath, existingFilePath, IntPtr.Zero);
+		}
+		catch
+		{
+			return false;
+		}
+	}
+
+	// -------------------------------------------------------------------------
+	// Manifest scanning
+	// -------------------------------------------------------------------------
+
+	/// <summary>
+	/// Scans the mods directory for installed mods depending on the active game.
+	/// </summary>
+	public static List<GameMod> ScanMods(
+		string modsPath,
+		JObject nexusIdMap,
+		AppSettings settings,
+		string activeGame,
+		Action<string, string> logError)
+	{
+		var mods = new List<GameMod>();
+		if (!Directory.Exists(modsPath)) return mods;
+
+		if (activeGame == "StardewValley")
+		{
+			foreach (string manifestPath in Directory.GetFiles(modsPath, "manifest.json", SearchOption.AllDirectories))
+			{
+				try
+				{
+					JObject manifest = JObject.Parse(File.ReadAllText(manifestPath));
+					string uid = ((string?)manifest["UniqueID"]) ?? Guid.NewGuid().ToString();
+
+					var mod = new GameMod
+					{
+						Name        = ((string?)manifest["Name"])        ?? "Unknown",
+						Version     = ((string?)manifest["Version"])     ?? "0",
+						Author      = ((string?)manifest["Author"])      ?? "User",
+						UniqueId    = uid,
+						Description = ((string?)manifest["Description"]) ?? "",
+						NexusID     = ParseNexusId(manifest["UpdateKeys"]),
+						GitHubRepo  = ParseGitHubRepo(manifest["UpdateKeys"]),
+						FolderPath  = Path.GetDirectoryName(manifestPath) ?? "",
+						IsEnabled   = !Path.GetFileName(Path.GetDirectoryName(manifestPath) ?? "").StartsWith(".")
+					};
+
+					if (nexusIdMap.TryGetValue(uid, out JToken? mappedId))
+						mod.NexusID = mappedId?.ToString();
+
+					mod.Category = settings.ModCategories.TryGetValue(uid, out string? cat) ? cat
+						: DetectCategory(mod.Name, mod.Description);
+
+					if (manifest["Dependencies"] is JArray deps)
+					{
+						foreach (JToken dep in deps)
+						{
+							if (dep == null) continue;
+							mod.Dependencies.Add(new ModDependency
+							{
+								UniqueId       = ((string?)dep["UniqueID"])       ?? "Unknown",
+								MinimumVersion = (string?)dep["MinimumVersion"],
+								IsRequired     = ((bool?)dep["IsRequired"]) ?? true
+							});
+						}
+					}
+
+					mods.Add(mod);
+				}
+				catch (Exception ex)
+				{
+					logError(manifestPath, "Parse Error: " + ex.Message);
+				}
+			}
+		}
+		else
+		{
+			// Skyrim / Fallout 4: scan direct subdirectories of modsPath
+			foreach (string dir in Directory.GetDirectories(modsPath))
+			{
+				string folderName = Path.GetFileName(dir);
+				if (folderName.Equals("bin", StringComparison.OrdinalIgnoreCase) || 
+					folderName.Equals("obj", StringComparison.OrdinalIgnoreCase))
+					continue;
+
+				string manifestPath = Path.Combine(dir, ".manager_manifest.json");
+				GameMod mod;
+
+				try
+				{
+					if (File.Exists(manifestPath))
+					{
+						JObject manifest = JObject.Parse(File.ReadAllText(manifestPath));
+						string uid = ((string?)manifest["UniqueID"]) ?? folderName;
+						string? nexusId = (string?)manifest["NexusID"];
+
+						// Auto-extract NexusID from folderName if not present
+						if (string.IsNullOrEmpty(nexusId) && activeGame != "StardewValley")
+						{
+							var match = System.Text.RegularExpressions.Regex.Match(folderName, @"-(\d{3,9})-");
+							if (match.Success)
+							{
+								nexusId = match.Groups[1].Value;
+								try
+								{
+									manifest["NexusID"] = nexusId;
+									File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
+								}
+								catch {}
+							}
+						}
+
+						mod = new GameMod
+						{
+							Name        = ((string?)manifest["Name"])        ?? folderName,
+							Version     = ((string?)manifest["Version"])     ?? "1.0.0",
+							Author      = ((string?)manifest["Author"])      ?? "Unknown",
+							UniqueId    = uid,
+							Description = ((string?)manifest["Description"]) ?? "",
+							NexusID     = nexusId,
+							GitHubRepo  = ((string?)manifest["GitHubRepo"]),
+							FolderPath  = dir,
+							IsEnabled   = !folderName.StartsWith(".")
+						};
+					}
+					else
+					{
+						// Create automatic manifest
+						string cleanName = folderName.StartsWith(".") ? folderName.Substring(1) : folderName;
+						string? extractedNexusId = null;
+						if (activeGame != "StardewValley")
+						{
+							var match = System.Text.RegularExpressions.Regex.Match(folderName, @"-(\d{3,9})-");
+							if (match.Success)
+							{
+								extractedNexusId = match.Groups[1].Value;
+							}
+						}
+
+						string guessedVersion = ExtractVersionFromFileName(folderName, extractedNexusId) ?? "1.0.0";
+
+						mod = new GameMod
+						{
+							Name        = cleanName,
+							Version     = guessedVersion,
+							Author      = "Unknown",
+							UniqueId    = cleanName,
+							Description = "Installed local mod.",
+							FolderPath  = dir,
+							IsEnabled   = !folderName.StartsWith("."),
+							NexusID     = extractedNexusId
+						};
+						
+						var newManifest = new JObject
+						{
+							["Name"] = mod.Name,
+							["Version"] = mod.Version,
+							["Author"] = mod.Author,
+							["UniqueID"] = mod.UniqueId,
+							["Description"] = mod.Description,
+							["NexusID"] = mod.NexusID,
+							["GitHubRepo"] = mod.GitHubRepo
+						};
+						File.WriteAllText(manifestPath, newManifest.ToString(Formatting.Indented));
+					}
+
+					if (nexusIdMap.TryGetValue(mod.UniqueId, out JToken? mappedId))
+						mod.NexusID = mappedId?.ToString();
+
+					mod.Category = settings.ModCategories.TryGetValue(mod.UniqueId, out string? cat) ? cat
+						: DetectCategory(mod.Name, mod.Description);
+
+					mods.Add(mod);
+				}
+				catch (Exception ex)
+				{
+					logError(manifestPath, "Parse Error: " + ex.Message);
+				}
+			}
+		}
+
+		if (activeGame != "StardewValley" && mods.Count > 1)
+		{
+			var duplicateGroups = mods
+				.GroupBy(m => !string.IsNullOrEmpty(m.NexusID) ? ("id_" + m.NexusID) : ("name_" + m.Name.ToLowerInvariant()))
+				.Where(g => g.Count() > 1)
+				.ToList();
+
+			foreach (var group in duplicateGroups)
+			{
+				GameMod bestMod = group.First();
+				foreach (var m in group.Skip(1))
+				{
+					if (CompareVersionsNewer(bestMod.Version, m.Version))
+					{
+						bestMod = m;
+					}
+				}
+
+				foreach (var m in group)
+				{
+					if (m != bestMod)
+					{
+						mods.Remove(m);
+						if (Directory.Exists(m.FolderPath))
+						{
+							try
+							{
+								string gameData = Path.Combine(settings.CurrentGamePath, "Data");
+								DeployModFiles(m.FolderPath, gameData, false, logError);
+								SyncPluginsFile(m.FolderPath, activeGame, false, logError);
+
+								string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+								string backupsPath = Path.Combine(appData, "AudiVentureGames", "KinetixModManager", "backups", activeGame);
+								if (!Directory.Exists(backupsPath))
+								{
+									Directory.CreateDirectory(backupsPath);
+								}
+								CreateBackup(m.FolderPath, Path.GetFileName(m.FolderPath), backupsPath);
+								Directory.Delete(m.FolderPath, true);
+							}
+							catch (Exception ex)
+							{
+								logError(m.Name, "Failed to remove duplicate: " + ex.Message);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		return mods;
+	}
+
+	/// <summary>
+	/// Resolves dependencies by cross-referencing with other mods.
+	/// </summary>
+	public static void ResolveDependencies(
+		List<GameMod> mods,
+		Func<string?, string?, bool> isNewerVersion)
+	{
+		foreach (var mod in mods)
+		{
+			foreach (var dep in mod.Dependencies)
+			{
+				var found = mods.FirstOrDefault(m => m.UniqueId == dep.UniqueId);
+				if (found != null)
+				{
+					dep.IsPresent  = true;
+					dep.IsEnabled  = found.IsEnabled;
+					dep.IsNewEnough = isNewerVersion(dep.MinimumVersion, found.Version)
+					               || dep.MinimumVersion == found.Version;
+				}
+			}
+		}
+	}
+
+	// -------------------------------------------------------------------------
+	// Backup management
+	// -------------------------------------------------------------------------
+
+	/// <summary>
+	/// Creates a timestamped <c>.zip</c> backup of a mod folder.
+	/// </summary>
+	public static void CreateBackup(string folderPath, string modName, string backupsPath)
+	{
+		if (!Directory.Exists(folderPath)) return;
+		string dest = Path.Combine(backupsPath, $"{modName}_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+		ZipFile.CreateFromDirectory(folderPath, dest);
+	}
+
+	/// <summary>
+	/// Deletes oldest backups.
+	/// </summary>
+	public static void PruneBackups(string modName, string backupsPath, int maxCount)
+	{
+		if (!Directory.Exists(backupsPath)) return;
+		var files = Directory.GetFiles(backupsPath, modName + "_*.zip")
+			.Select(p => new FileInfo(p))
+			.OrderByDescending(f => f.CreationTime)
+			.ToList();
+
+		for (int i = maxCount; i < files.Count; i++)
+		{
+			try { files[i].Delete(); } catch { }
+		}
+	}
+
+	// -------------------------------------------------------------------------
+	// File deployment (Skyrim / Fallout 4)
+	// -------------------------------------------------------------------------
+
+	/// <summary>
+	/// Hardlinks or copies files from a mod storage folder to the game's Data folder.
+	/// </summary>
+	public static void DeployModFiles(string modFolderPath, string gameDataPath, bool isDeploy, Action<string, string> logError)
+	{
+		if (!Directory.Exists(modFolderPath)) return;
+		if (!Directory.Exists(gameDataPath))
+		{
+			try { Directory.CreateDirectory(gameDataPath); }
+			catch (Exception ex)
+			{
+				logError("Deploy", $"Failed to create Data folder: {ex.Message}");
+				return;
+			}
+		}
+
+		string canonicalModFolder = Path.GetFullPath(modFolderPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+		string gameRoot = Path.GetDirectoryName(gameDataPath) ?? gameDataPath;
+
+		foreach (string sourceFile in Directory.GetFiles(modFolderPath, "*.*", SearchOption.AllDirectories))
+		{
+			if (Path.GetFileName(sourceFile).Equals(".manager_manifest.json", StringComparison.OrdinalIgnoreCase))
+				continue;
+
+			string relativePath = Path.GetFullPath(sourceFile).Substring(canonicalModFolder.Length);
+			bool isRootFile = relativePath.StartsWith("Root" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+			                  relativePath.StartsWith("Root" + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+
+			string destFile;
+			if (isRootFile)
+			{
+				string subPath = relativePath.Substring(5); // Remove "Root\" (5 chars)
+				destFile = Path.Combine(gameRoot, subPath);
+			}
+			else
+			{
+				destFile = Path.Combine(gameDataPath, relativePath);
+			}
+
+			if (isDeploy)
+			{
+				try
+				{
+					string? destDir = Path.GetDirectoryName(destFile);
+					if (destDir != null && !Directory.Exists(destDir))
+					{
+						Directory.CreateDirectory(destDir);
+					}
+
+					if (File.Exists(destFile))
+					{
+						File.Delete(destFile);
+					}
+
+					bool linkCreated = TryCreateHardLink(destFile, sourceFile);
+					if (!linkCreated)
+					{
+						File.Copy(sourceFile, destFile, true);
+					}
+				}
+				catch (Exception ex)
+				{
+					logError(sourceFile, $"Deployment failed: {ex.Message}");
+				}
+			}
+			else
+			{
+				try
+				{
+					if (File.Exists(destFile))
+					{
+						File.Delete(destFile);
+					}
+
+					string? parentDir = Path.GetDirectoryName(destFile);
+					string limitPath = isRootFile ? gameRoot : gameDataPath;
+					while (parentDir != null && parentDir.Length > limitPath.Length)
+					{
+						if (Directory.Exists(parentDir) && !Directory.EnumerateFileSystemEntries(parentDir).Any())
+						{
+							Directory.Delete(parentDir);
+							parentDir = Path.GetDirectoryName(parentDir);
+						}
+						else
+						{
+							break;
+						}
+					}
+				}
+				catch (Exception ex)
+				{
+					logError(destFile, $"Undeployment failed: {ex.Message}");
+				}
+			}
+		}
+	}
+
+	/// <summary>
+	/// Scans mod folder for plugins and adds/removes them in the game's plugins.txt.
+	/// </summary>
+	public static void SyncPluginsFile(string modFolderPath, string activeGame, bool isDeploy, Action<string, string> logError)
+	{
+		if (activeGame != "SkyrimSE" && activeGame != "Fallout4") return;
+
+		string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+		string folderName = activeGame == "SkyrimSE" ? "Skyrim Special Edition" : "Fallout4";
+		string pluginsFilePath = Path.Combine(localAppData, folderName, "plugins.txt");
+
+		var plugins = Directory.GetFiles(modFolderPath, "*.*", SearchOption.AllDirectories)
+			.Select(p => Path.GetFileName(p))
+			.Where(name => !string.IsNullOrEmpty(name))
+			.Select(name => name!)
+			.Where(name =>
+			{
+				string ext = Path.GetExtension(name).ToLower();
+				return ext == ".esp" || ext == ".esm" || ext == ".esl";
+			})
+			.Distinct()
+			.ToList();
+
+		if (plugins.Count == 0) return;
+
+		try
+		{
+			string? dir = Path.GetDirectoryName(pluginsFilePath);
+			if (dir != null && !Directory.Exists(dir))
+			{
+				Directory.CreateDirectory(dir);
+			}
+
+			List<string> lines = new List<string>();
+			if (File.Exists(pluginsFilePath))
+			{
+				lines = File.ReadAllLines(pluginsFilePath).ToList();
+			}
+
+			bool changed = false;
+			foreach (string plugin in plugins)
+			{
+				string entry = "*" + plugin;
+				if (isDeploy)
+				{
+					if (!lines.Any(l => l.Trim().Equals(entry, StringComparison.OrdinalIgnoreCase) || 
+										l.Trim().Equals(plugin, StringComparison.OrdinalIgnoreCase)))
+					{
+						lines.Add(entry);
+						changed = true;
+					}
+				}
+				else
+				{
+					int removed = lines.RemoveAll(l => l.Trim().Equals(entry, StringComparison.OrdinalIgnoreCase) || 
+													   l.Trim().Equals(plugin, StringComparison.OrdinalIgnoreCase));
+					if (removed > 0) changed = true;
+				}
+			}
+
+			if (changed)
+			{
+				File.WriteAllLines(pluginsFilePath, lines);
+			}
+		}
+		catch (Exception ex)
+		{
+			logError(pluginsFilePath, $"Failed to update plugins.txt: {ex.Message}");
+		}
+	}
+
+	// -------------------------------------------------------------------------
+	// Mod installation
+	// -------------------------------------------------------------------------
+
+	/// <summary>
+	/// Finds the deepest common directory containing game files or plugins.
+	/// </summary>
+	public static string FindEffectiveModRoot(string tempDir)
+	{
+		var targets = Directory.GetFileSystemEntries(tempDir, "*", SearchOption.AllDirectories)
+			.Where(p =>
+			{
+				string name = Path.GetFileName(p).ToLower();
+				string ext = Path.GetExtension(p).ToLower();
+				return ext == ".esp" || ext == ".esm" || ext == ".esl" ||
+					   name == "interface" || name == "scripts" || name == "textures" ||
+					   name == "meshes" || name == "music" || name == "sound" ||
+					   name == "strings" || name == "skse" || name == "f4se";
+			}).ToList();
+
+		if (targets.Count == 0) return tempDir;
+
+		string best = targets.OrderBy(p => p.Split(Path.DirectorySeparatorChar).Length).First();
+		if (Directory.Exists(best))
+		{
+			return Path.GetDirectoryName(best) ?? tempDir;
+		}
+		else
+		{
+			return Path.GetDirectoryName(best) ?? tempDir;
+		}
+	}
+
+	/// <summary>
+	/// Extracts a .zip archive, backs up older version, and creates manifests for non-Stardew games.
+	/// </summary>
+	public static async Task<string> ExtractModAsync(
+		string zipPath,
+		string modsPath,
+		List<GameMod> installedMods,
+		string backupsPath,
+		int maxBackups,
+		string activeGame,
+		Action<string, string> logError,
+		string? nexusId = null,
+		NexusService? nexusService = null,
+		string? gitHubRepo = null,
+		string? currentGamePath = null)
+	{
+		string tempDir = Path.Combine(Path.GetTempPath(), "Extract_" + Path.GetRandomFileName());
+		try
+		{
+			await Task.Run(async () =>
+			{
+				Directory.CreateDirectory(tempDir);
+				string ext = Path.GetExtension(zipPath).ToLower();
+				if (ext == ".7z")
+				{
+					string dataBasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AudiVentureGames", "KinetixModManager");
+					string exePath = await Ensure7ZipCommandLineTool(dataBasePath, nexusService);
+					Run7ZipExtract(exePath, zipPath, tempDir);
+				}
+				else
+				{
+					ZipFile.ExtractToDirectory(zipPath, tempDir);
+				}
+			});
+
+			string canonicalTemp = Path.GetFullPath(tempDir).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+			foreach (string entry in Directory.GetFileSystemEntries(tempDir, "*", SearchOption.AllDirectories))
+			{
+				if (!Path.GetFullPath(entry).StartsWith(canonicalTemp, StringComparison.OrdinalIgnoreCase))
+					throw new InvalidOperationException($"Unsafe archive: entry escapes the extraction directory ({entry}).");
+			}
+
+			if (activeGame != "StardewValley")
+			{
+				string targetFolderName = Path.GetFileNameWithoutExtension(zipPath);
+				string sourceFolder = FindEffectiveModRoot(tempDir);
+				string destModFolder = Path.Combine(modsPath, targetFolderName);
+
+				// Backup and remove old version
+				GameMod? existing = null;
+				if (!string.IsNullOrEmpty(nexusId))
+				{
+					existing = installedMods.FirstOrDefault(m => m.NexusID == nexusId);
+				}
+				if (existing == null)
+				{
+					existing = installedMods.FirstOrDefault(m => m.Name.Equals(targetFolderName, StringComparison.OrdinalIgnoreCase) ||
+																	  m.UniqueId.Equals(targetFolderName, StringComparison.OrdinalIgnoreCase));
+				}
+
+				if (existing != null && Directory.Exists(existing.FolderPath))
+				{
+					if (activeGame != "StardewValley" && !string.IsNullOrEmpty(currentGamePath))
+					{
+						string gameData = Path.Combine(currentGamePath, "Data");
+						DeployModFiles(existing.FolderPath, gameData, false, logError);
+						SyncPluginsFile(existing.FolderPath, activeGame, false, logError);
+					}
+
+					CreateBackup(existing.FolderPath, targetFolderName, backupsPath);
+					PruneBackups(targetFolderName, backupsPath, maxBackups);
+					Directory.Delete(existing.FolderPath, recursive: true);
+				}
+
+				if (Directory.Exists(destModFolder))
+					Directory.Delete(destModFolder, recursive: true);
+
+				Directory.CreateDirectory(destModFolder);
+				bool treatAsRoot = false;
+				string[] rootDLLs = { "d3dx9_42.dll", "tbb.dll", "tbbmalloc.dll", "binkw64.dll" };
+				foreach (string dll in rootDLLs)
+				{
+					if (File.Exists(Path.Combine(sourceFolder, dll)))
+					{
+						treatAsRoot = true;
+						break;
+					}
+				}
+
+				if (treatAsRoot && !Directory.Exists(Path.Combine(sourceFolder, "Root")))
+				{
+					string rootDest = Path.Combine(destModFolder, "Root");
+					Directory.CreateDirectory(rootDest);
+					foreach (string dir in Directory.GetDirectories(sourceFolder, "*", SearchOption.AllDirectories))
+						Directory.CreateDirectory(dir.Replace(sourceFolder, rootDest));
+					foreach (string file in Directory.GetFiles(sourceFolder, "*.*", SearchOption.AllDirectories))
+						File.Copy(file, file.Replace(sourceFolder, rootDest), overwrite: true);
+				}
+				else
+				{
+					foreach (string dir in Directory.GetDirectories(sourceFolder, "*", SearchOption.AllDirectories))
+						Directory.CreateDirectory(dir.Replace(sourceFolder, destModFolder));
+					foreach (string file in Directory.GetFiles(sourceFolder, "*.*", SearchOption.AllDirectories))
+						File.Copy(file, file.Replace(sourceFolder, destModFolder), overwrite: true);
+				}
+
+				// Generate manifest
+				string manifestPath = Path.Combine(destModFolder, ".manager_manifest.json");
+				string mName = targetFolderName;
+				string mVersion = ExtractVersionFromFileName(zipPath, nexusId) ?? "1.0.0";
+				string mAuthor = "Unknown";
+				string mDesc = "Installed local mod.";
+
+				if (!string.IsNullOrEmpty(nexusId) && nexusService != null)
+				{
+					try
+					{
+						var details = await nexusService.GetModDetailsAsync(nexusId);
+						if (details != null)
+						{
+							mName = details["name"]?.ToString() ?? mName;
+							mVersion = details["version"]?.ToString() ?? mVersion;
+							mAuthor = details["author"]?.ToString() ?? mAuthor;
+							mDesc = details["summary"]?.ToString() ?? mDesc;
+						}
+					}
+					catch { }
+				}
+
+				var manifest = new JObject
+				{
+					["Name"] = mName,
+					["Version"] = mVersion,
+					["Author"] = mAuthor,
+					["UniqueID"] = targetFolderName,
+					["Description"] = mDesc,
+					["NexusID"] = nexusId,
+					["GitHubRepo"] = gitHubRepo
+				};
+				File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
+
+				return targetFolderName;
+			}
+
+			// Stardew Valley Manifest logic
+			string[] manifests = Directory.GetFiles(tempDir, "manifest.json", SearchOption.AllDirectories);
+			if (manifests.Length == 0)
+				throw new Exception("No manifest.json found.");
+
+			foreach (string mPath in manifests)
+			{
+				try
+				{
+					JObject manifest = JObject.Parse(File.ReadAllText(mPath));
+					string uid   = ((string?)manifest["UniqueID"]) ?? "";
+					string mName = ((string?)manifest["Name"])     ?? "Unknown";
+					var existing = installedMods.FirstOrDefault(m => m.UniqueId == uid);
+					if (existing != null && Directory.Exists(existing.FolderPath))
+					{
+						CreateBackup(existing.FolderPath, mName, backupsPath);
+						PruneBackups(mName, backupsPath, maxBackups);
+						Directory.Delete(existing.FolderPath, recursive: true);
+					}
+				}
+				catch (Exception ex) { logError(mPath, "Pre-install backup error: " + ex.Message); }
+			}
+
+			bool isGroup = manifests.Length > 1;
+			string sourceFolderStardew, targetFolderNameStardew;
+
+			if (isGroup)
+			{
+				string commonPath = Path.GetDirectoryName(manifests[0]) ?? tempDir;
+				foreach (string m in manifests)
+				{
+					string dir = Path.GetDirectoryName(m) ?? tempDir;
+					while (!dir.StartsWith(commonPath))
+						commonPath = Path.GetDirectoryName(commonPath) ?? tempDir;
+				}
+				sourceFolderStardew    = commonPath;
+				targetFolderNameStardew = Path.GetFileName(sourceFolderStardew);
+				if (sourceFolderStardew.TrimEnd('\\') == tempDir.TrimEnd('\\'))
+					targetFolderNameStardew = Path.GetFileNameWithoutExtension(zipPath);
+			}
+			else
+			{
+				sourceFolderStardew = Path.GetDirectoryName(manifests[0]) ?? tempDir;
+				JObject manifest = JObject.Parse(File.ReadAllText(manifests[0]));
+				string mName     = ((string?)manifest["Name"]) ?? "Unknown";
+				targetFolderNameStardew = Path.GetFileName(sourceFolderStardew);
+				if (sourceFolderStardew.TrimEnd('\\') == tempDir.TrimEnd('\\'))
+					targetFolderNameStardew = mName.Replace(" ", "");
+			}
+
+			string destModFolderStardew = Path.Combine(modsPath, targetFolderNameStardew);
+			if (Directory.Exists(destModFolderStardew))
+				Directory.Delete(destModFolderStardew, recursive: true);
+
+			Directory.CreateDirectory(destModFolderStardew);
+			foreach (string dir in Directory.GetDirectories(sourceFolderStardew, "*", SearchOption.AllDirectories))
+				Directory.CreateDirectory(dir.Replace(sourceFolderStardew, destModFolderStardew));
+			foreach (string file in Directory.GetFiles(sourceFolderStardew, "*.*", SearchOption.AllDirectories))
+				File.Copy(file, file.Replace(sourceFolderStardew, destModFolderStardew), overwrite: true);
+
+			return (isGroup ? "Mod Group " : "") + targetFolderNameStardew;
+		}
+		finally
+		{
+			try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, recursive: true); } catch { }
+		}
+	}
+
+	// -------------------------------------------------------------------------
+	// Helpers
+	// -------------------------------------------------------------------------
+
+	public static string? ParseNexusId(JToken? keys)
+	{
+		if (keys == null) return null;
+
+		IEnumerable<JToken> tokens = keys.Type == JTokenType.Array
+			? keys.Children()
+			: keys.Type == JTokenType.String ? new List<JToken> { keys } : Enumerable.Empty<JToken>();
+
+		foreach (JToken token in tokens)
+		{
+			string text = token.ToString();
+			if (!text.Contains("Nexus:", StringComparison.OrdinalIgnoreCase)) continue;
+
+			string[] parts = text.Split(':');
+			if (parts.Length < 2) continue;
+
+			string id = parts[1].Trim();
+			if (id.Contains('@')) id = id.Split('@')[0].Trim();
+			if (long.TryParse(id, out _)) return id;
+		}
+		return null;
+	}
+
+	public static string? ParseGitHubRepo(JToken? keys)
+	{
+		if (keys == null) return null;
+
+		IEnumerable<JToken> tokens = keys.Type == JTokenType.Array
+			? keys.Children()
+			: keys.Type == JTokenType.String ? new List<JToken> { keys } : Enumerable.Empty<JToken>();
+
+		foreach (JToken token in tokens)
+		{
+			string text = token.ToString();
+			if (!text.Contains("GitHub:", StringComparison.OrdinalIgnoreCase)) continue;
+
+			string[] parts = text.Split(':');
+			if (parts.Length < 2) continue;
+
+			string repo = parts[1].Trim();
+			if (repo.Contains('@')) repo = repo.Split('@')[0].Trim();
+			return repo;
+		}
+		return null;
+	}
+
+	public static string DetectCategory(string name, string desc)
+	{
+		string combined = (name + " " + desc).ToLower();
+		if (combined.Contains("expansion") || combined.Contains("content pack"))                    return "Expansion";
+		if (combined.Contains("npc") || combined.Contains("character"))                             return "NPC";
+		if (combined.Contains("portrait") || combined.Contains("sprite"))                           return "Portrait";
+		if (combined.Contains("farm") || combined.Contains("map") || combined.Contains("location")) return "Map";
+		if (combined.Contains("craft") || combined.Contains("machine") || combined.Contains("item")) return "Crafting";
+		if (combined.Contains("audio") || combined.Contains("music") || combined.Contains("sound")) return "Audio";
+		if (combined.Contains("visual") || combined.Contains("recolor") || combined.Contains("texture")) return "Visual";
+		return "General";
+	}
+
+	private static async Task<string> Ensure7ZipCommandLineTool(string dataBasePath, NexusService? nexusService)
+	{
+		string toolDir = Path.Combine(dataBasePath, "tools");
+		if (!Directory.Exists(toolDir))
+		{
+			Directory.CreateDirectory(toolDir);
+		}
+		string exePath = Path.Combine(toolDir, "7za.exe");
+		if (File.Exists(exePath))
+		{
+			return exePath;
+		}
+
+		string zipPath = Path.Combine(toolDir, "7za920.zip");
+		string url = "https://www.7-zip.org/a/7za920.zip";
+		
+		byte[] zipBytes;
+		if (nexusService != null)
+		{
+			zipBytes = await nexusService.DownloadBytesAsync(url);
+		}
+		else
+		{
+			using var client = new System.Net.Http.HttpClient();
+			zipBytes = await client.GetByteArrayAsync(url);
+		}
+
+		File.WriteAllBytes(zipPath, zipBytes);
+		
+		using (ZipArchive archive = ZipFile.OpenRead(zipPath))
+		{
+			ZipArchiveEntry? entry = archive.GetEntry("7za.exe");
+			if (entry != null)
+			{
+				entry.ExtractToFile(exePath, overwrite: true);
+			}
+		}
+
+		try { File.Delete(zipPath); } catch {}
+
+		return exePath;
+	}
+
+	private static void Run7ZipExtract(string exePath, string archivePath, string outputDir)
+	{
+		using var process = new System.Diagnostics.Process();
+		process.StartInfo.FileName = exePath;
+		process.StartInfo.Arguments = $"x \"{archivePath}\" -o\"{outputDir}\" -y";
+		process.StartInfo.CreateNoWindow = true;
+		process.StartInfo.UseShellExecute = false;
+		process.StartInfo.RedirectStandardOutput = false;
+		process.StartInfo.RedirectStandardError = false;
+		
+		process.Start();
+		process.WaitForExit();
+		
+		if (process.ExitCode != 0)
+		{
+			throw new Exception($"7-Zip extraction failed with exit code {process.ExitCode}.");
+		}
+	}
+
+	public static async Task InstallScriptExtenderAsync(string archivePath, string gamePath, string activeGame, Action<string, string> logError, NexusService? nexusService = null)
+	{
+		string tempDir = Path.Combine(Path.GetTempPath(), "Extender_" + Path.GetRandomFileName());
+		try
+		{
+			Directory.CreateDirectory(tempDir);
+			string ext = Path.GetExtension(archivePath).ToLower();
+			if (ext == ".7z")
+			{
+				string dataBasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AudiVentureGames", "KinetixModManager");
+				string exePath = await Ensure7ZipCommandLineTool(dataBasePath, nexusService);
+				await Task.Run(() => Run7ZipExtract(exePath, archivePath, tempDir));
+			}
+			else
+			{
+				await Task.Run(() => ZipFile.ExtractToDirectory(archivePath, tempDir));
+			}
+
+			string loaderExePattern = activeGame == "SkyrimSE" ? "skse64_loader.exe" : "f4se_loader.exe";
+			string[] matches = Directory.GetFiles(tempDir, loaderExePattern, SearchOption.AllDirectories);
+			if (matches.Length == 0)
+			{
+				throw new Exception($"Could not find {loaderExePattern} inside the downloaded archive.");
+			}
+
+			string sourceDir = Path.GetDirectoryName(matches[0]) ?? tempDir;
+			await Task.Run(() => CopyDirectoryRecursively(sourceDir, gamePath));
+		}
+		finally
+		{
+			try { Directory.Delete(tempDir, true); } catch {}
+		}
+	}
+
+	public static string? ExtractVersionFromFileName(string fileName, string? modId)
+	{
+		if (string.IsNullOrEmpty(modId)) return null;
+
+		string nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+		string target = "-" + modId + "-";
+		int index = nameWithoutExt.IndexOf(target, StringComparison.OrdinalIgnoreCase);
+		if (index == -1) return null;
+
+		string suffix = nameWithoutExt.Substring(index + target.Length);
+		int lastDash = suffix.LastIndexOf('-');
+		string versionPart = lastDash == -1 ? suffix : suffix.Substring(0, lastDash);
+
+		return versionPart.Replace('-', '.');
+	}
+
+	public static bool CompareVersionsNewer(string? current, string? target)
+	{
+		if (string.IsNullOrEmpty(target)) return false;
+		if (string.IsNullOrEmpty(current)) return true;
+
+		string[] parts1 = current.Split('.');
+		string[] parts2 = target.Split('.');
+		for (int i = 0; i < Math.Max(parts1.Length, parts2.Length); i++)
+		{
+			int v1 = (i < parts1.Length && int.TryParse(parts1[i], out int r1)) ? r1 : 0;
+			int v2 = (i < parts2.Length && int.TryParse(parts2[i], out int r2)) ? r2 : 0;
+			if (v2 > v1) return true;
+			if (v1 > v2) return false;
+		}
+		return false;
+	}
+
+	private static void CopyDirectoryRecursively(string sourceDir, string targetDir)
+	{
+		Directory.CreateDirectory(targetDir);
+		foreach (string file in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories))
+		{
+			string relativePath = file.Substring(sourceDir.Length).TrimStart(Path.DirectorySeparatorChar);
+			string destFile = Path.Combine(targetDir, relativePath);
+			string? destDir = Path.GetDirectoryName(destFile);
+			if (destDir != null)
+			{
+				Directory.CreateDirectory(destDir);
+			}
+			File.Copy(file, destFile, true);
+		}
+	}
+}

@@ -1,0 +1,470 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Drawing;
+using System.IO;
+using System.IO.Pipes;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Reflection;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using Microsoft.Web.WebView2.WinForms;
+using Microsoft.Web.WebView2.Core;
+using DavyKager;
+using Microsoft.VisualBasic;
+using Microsoft.Win32;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using StardewMod = KinetixModManager.GameMod;
+
+namespace KinetixModManager;
+
+/// <summary>The Settings dialog for Form1.</summary>
+public partial class Form1
+{
+	/// <summary>
+	/// Opens the Settings dialog (Ctrl+P) where the user can set the Mods path, API key,
+	/// audio theme, volume, and other preferences. Changes are validated before saving.
+	/// </summary>
+	private void ShowSettings()
+	{
+		if (_isSettingsOpen)
+		{
+			return;
+		}
+		_isSettingsOpen = true;
+		Form f = new Form
+		{
+			Text = "Settings - Escape to Cancel",
+			Size = new Size(500, 800),
+			StartPosition = FormStartPosition.CenterScreen,
+			KeyPreview = true
+		};
+		TableLayoutPanel tableLayoutPanel = new TableLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			Padding = new Padding(15),
+			RowCount = 14
+		};
+
+		tableLayoutPanel.Controls.Add(new Label
+		{
+			Text = "Configure Paths for Game:",
+			AutoSize = true
+		}, 0, 0);
+
+		ComboBox cmbSettingsGame = new ComboBox
+		{
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			Width = 350,
+			Font = new Font("Segoe UI", 10f),
+			AccessibleName = "Configure Paths for Game"
+		};
+		cmbSettingsGame.Items.AddRange(new string[] { "Stardew Valley", "Skyrim Special Edition", "Fallout 4" });
+		cmbSettingsGame.SelectedItem = _settings.ActiveGame switch
+		{
+			"SkyrimSE" => "Skyrim Special Edition",
+			"Fallout4" => "Fallout 4",
+			_ => "Stardew Valley"
+		};
+		tableLayoutPanel.Controls.Add(cmbSettingsGame, 0, 1);
+
+		tableLayoutPanel.Controls.Add(new Label
+		{
+			Text = "Mods Folder Path:",
+			AutoSize = true,
+			Padding = new Padding(0, 10, 0, 0)
+		}, 0, 2);
+
+		Panel panelMods = new Panel
+		{
+			Dock = DockStyle.Fill,
+			Height = 35
+		};
+		TextBox tPath = new TextBox
+		{
+			Width = 350,
+			Font = new Font("Segoe UI", 10f),
+			AccessibleName = "Mods Folder Path"
+		};
+		Button btnBrowseMods = new Button
+		{
+			Text = "Browse",
+			Left = 360,
+			Width = 80
+		};
+		btnBrowseMods.Click += delegate
+		{
+			using FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog();
+			if (folderBrowserDialog.ShowDialog() == DialogResult.OK)
+			{
+				tPath.Text = folderBrowserDialog.SelectedPath;
+			}
+		};
+		panelMods.Controls.AddRange(tPath, btnBrowseMods);
+		tableLayoutPanel.Controls.Add(panelMods, 0, 3);
+
+		Label lblGamePath = new Label
+		{
+			Text = "Game Install Directory:",
+			AutoSize = true,
+			Padding = new Padding(0, 10, 0, 0)
+		};
+		tableLayoutPanel.Controls.Add(lblGamePath, 0, 4);
+
+		Panel panelGame = new Panel
+		{
+			Dock = DockStyle.Fill,
+			Height = 35
+		};
+		TextBox tGamePath = new TextBox
+		{
+			Width = 350,
+			Font = new Font("Segoe UI", 10f),
+			AccessibleName = "Game Install Directory"
+		};
+		Button btnBrowseGame = new Button
+		{
+			Text = "Browse",
+			Left = 360,
+			Width = 80
+		};
+		btnBrowseGame.Click += delegate
+		{
+			using FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog();
+			if (folderBrowserDialog.ShowDialog() == DialogResult.OK)
+			{
+				tGamePath.Text = folderBrowserDialog.SelectedPath;
+			}
+		};
+		panelGame.Controls.AddRange(tGamePath, btnBrowseGame);
+		tableLayoutPanel.Controls.Add(panelGame, 0, 5);
+
+		var tempModsPaths = new Dictionary<string, string>(_settings.GameModsPaths);
+		var tempGamePaths = new Dictionary<string, string>(_settings.GamePaths);
+		string currentEditingGame = _settings.ActiveGame;
+
+		tPath.Text = _settings.CurrentModsPath;
+		tGamePath.Text = _settings.CurrentGamePath;
+
+		Action updateVisibility = () =>
+		{
+			bool isStardew = (cmbSettingsGame.SelectedIndex == 0);
+			lblGamePath.Visible = !isStardew;
+			panelGame.Visible = !isStardew;
+		};
+		updateVisibility();
+
+		cmbSettingsGame.SelectedIndexChanged += delegate
+		{
+			string lastGameKey = currentEditingGame;
+			tempModsPaths[lastGameKey] = tPath.Text.Trim();
+			tempGamePaths[lastGameKey] = tGamePath.Text.Trim();
+
+			string newGameKey = cmbSettingsGame.SelectedIndex switch
+			{
+				1 => "SkyrimSE",
+				2 => "Fallout4",
+				_ => "StardewValley"
+			};
+
+			currentEditingGame = newGameKey;
+			tPath.Text = tempModsPaths.TryGetValue(newGameKey, out string? p) ? p : "";
+			tGamePath.Text = tempGamePaths.TryGetValue(newGameKey, out string? gp) ? gp : "";
+			
+			updateVisibility();
+			Speak($"Editing paths for {cmbSettingsGame.SelectedItem}");
+		};
+
+		tableLayoutPanel.Controls.Add(new Label
+		{
+			Text = "Nexus API Key:",
+			AutoSize = true,
+			Padding = new Padding(0, 10, 0, 0)
+		}, 0, 6);
+		TextBox tKey = new TextBox
+		{
+			Text = _settings.ApiKey,
+			Dock = DockStyle.Fill,
+			Font = new Font("Segoe UI", 10f),
+			AccessibleName = "Nexus API Key"
+		};
+		tableLayoutPanel.Controls.Add(tKey, 0, 7);
+
+		FlowLayoutPanel flowLayoutPanel = new FlowLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			FlowDirection = FlowDirection.LeftToRight,
+			Padding = new Padding(0, 10, 0, 0),
+			AutoSize = true
+		};
+		CheckBox cSplash = new CheckBox
+		{
+			Text = "Show Splash Screen on Startup",
+			Checked = _settings.ShowSplashScreen,
+			AutoSize = true,
+			AccessibleName = "Show Splash Screen"
+		};
+		CheckBox cRandomLogo = new CheckBox
+		{
+			Text = "Random Logo at Startup",
+			Checked = _settings.RandomLogoStartup,
+			AutoSize = true,
+			AccessibleName = "Random Logo Startup",
+			Visible = _settings.ShowSplashScreen
+		};
+		CheckBox cUpdates = new CheckBox
+		{
+			Text = "Check for Mod Updates at Startup",
+			Checked = _settings.CheckForUpdatesAtStartup,
+			AutoSize = true,
+			AccessibleName = "Check Updates at Startup"
+		};
+		cSplash.CheckedChanged += delegate
+		{
+			Speak(cSplash.Checked ? "Splash Screen Enabled" : "Splash Screen Disabled");
+			cRandomLogo.Visible = cSplash.Checked;
+		};
+		cRandomLogo.CheckedChanged += delegate
+		{
+			Speak(cRandomLogo.Checked ? "Random Logo Enabled" : "Random Logo Disabled");
+		};
+		cUpdates.CheckedChanged += delegate
+		{
+			Speak(cUpdates.Checked ? "Auto-updates Enabled" : "Auto-updates Disabled");
+		};
+		flowLayoutPanel.Controls.AddRange(cSplash, cRandomLogo, cUpdates);
+		tableLayoutPanel.Controls.Add(flowLayoutPanel, 0, 8);
+
+		tableLayoutPanel.Controls.Add(new Label
+		{
+			Text = "Select Specific Logo:",
+			AutoSize = true,
+			Padding = new Padding(0, 5, 0, 0)
+		}, 0, 9);
+		ComboBox cmbLogo = new ComboBox
+		{
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			Width = 300,
+			AccessibleName = "Select Specific Logo"
+		};
+		cmbLogo.SelectedIndexChanged += delegate
+		{
+			if (f.Visible)
+			{
+				PreviewLogo();
+			}
+		};
+		cmbLogo.KeyDown += delegate(object? s, KeyEventArgs pe)
+		{
+			if (pe.KeyCode == Keys.Space && cmbLogo.SelectedItem != null)
+			{
+				pe.Handled = true;
+				pe.SuppressKeyPress = true;
+				PreviewLogo();
+			}
+		};
+		tableLayoutPanel.Controls.Add(cmbLogo, 0, 10);
+
+		FlowLayoutPanel flowLayoutPanel2 = new FlowLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			FlowDirection = FlowDirection.LeftToRight
+		};
+		flowLayoutPanel2.Controls.Add(new Label
+		{
+			Text = "Sound Volume (0-100):",
+			AutoSize = true,
+			Padding = new Padding(0, 5, 0, 0)
+		});
+		NumericUpDown nVol = new NumericUpDown
+		{
+			Value = _settings.SoundVolume,
+			Minimum = 0m,
+			Maximum = 100m,
+			Width = 60
+		};
+		flowLayoutPanel2.Controls.Add(nVol);
+		tableLayoutPanel.Controls.Add(flowLayoutPanel2, 0, 11);
+
+		FlowLayoutPanel flowLayoutPanel3 = new FlowLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			FlowDirection = FlowDirection.LeftToRight
+		};
+		flowLayoutPanel3.Controls.Add(new Label
+		{
+			Text = "Max Backups per Mod:",
+			AutoSize = true,
+			Padding = new Padding(0, 5, 0, 0)
+		});
+		NumericUpDown nPrune = new NumericUpDown
+		{
+			Value = _settings.MaxBackupsPerMod,
+			Minimum = 1m,
+			Maximum = 50m,
+			Width = 60
+		};
+		flowLayoutPanel3.Controls.Add(nPrune);
+		tableLayoutPanel.Controls.Add(flowLayoutPanel3, 0, 12);
+
+		FlowLayoutPanel flowLayoutPanel4 = new FlowLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			FlowDirection = FlowDirection.LeftToRight
+		};
+		flowLayoutPanel4.Controls.Add(new Label
+		{
+			Text = "Current Audio Theme:",
+			AutoSize = true,
+			Padding = new Padding(0, 5, 0, 0)
+		});
+		ComboBox cTheme = new ComboBox
+		{
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			Width = 150
+		};
+		cTheme.Items.AddRange(Directory.GetDirectories(themesPath).Select(Path.GetFileName).Cast<object>()
+			.ToArray());
+		cTheme.SelectedItem = _settings.CurrentTheme;
+		cTheme.SelectedIndexChanged += delegate
+		{
+			RefreshLogoList(cTheme.SelectedItem?.ToString() ?? "Default");
+		};
+		flowLayoutPanel4.Controls.Add(cTheme);
+		tableLayoutPanel.Controls.Add(flowLayoutPanel4, 0, 13);
+		RefreshLogoList(_settings.CurrentTheme);
+
+		FlowLayoutPanel flowLayoutPanel5 = new FlowLayoutPanel
+		{
+			Dock = DockStyle.Bottom,
+			FlowDirection = FlowDirection.RightToLeft,
+			Height = 45
+		};
+		Button button3 = new Button
+		{
+			Text = "Save Settings",
+			Width = 120,
+			Height = 35
+		};
+		button3.Click += delegate
+		{
+			tempModsPaths[currentEditingGame] = tPath.Text.Trim();
+			tempGamePaths[currentEditingGame] = tGamePath.Text.Trim();
+
+			if (_settings.ActiveGame != "None")
+			{
+				string activeMods = tempModsPaths[_settings.ActiveGame];
+				if (!string.IsNullOrEmpty(activeMods) && !Directory.Exists(activeMods))
+				{
+					Speak("Error: Active game mods folder path is invalid.");
+					MessageBox.Show("The active game mods path does not exist.");
+					return;
+				}
+
+				string activeGamePath = tempGamePaths[_settings.ActiveGame];
+				if (_settings.ActiveGame != "StardewValley" && !string.IsNullOrEmpty(activeGamePath) && !Directory.Exists(activeGamePath))
+				{
+					Speak("Error: Active game install directory is invalid.");
+					MessageBox.Show("The active game install directory does not exist.");
+					return;
+				}
+			}
+
+			string text2 = tKey.Text.Trim();
+			if (string.IsNullOrEmpty(text2))
+			{
+				Speak("Error: API Key is required.");
+				MessageBox.Show("Please enter your Nexus API Key.");
+			}
+			else
+			{
+				_settings.GameModsPaths = tempModsPaths;
+				_settings.GamePaths = tempGamePaths;
+				if (tempModsPaths.TryGetValue("StardewValley", out string? sdPath))
+				{
+					_settings.ModsPath = sdPath;
+				}
+
+				_settings.ApiKey = text2;
+				_settings.ShowSplashScreen = cSplash.Checked;
+				_settings.RandomLogoStartup = cRandomLogo.Checked;
+				_settings.SelectedLogoFile = cmbLogo.SelectedItem?.ToString() ?? "";
+				_settings.CheckForUpdatesAtStartup = cUpdates.Checked;
+				_settings.SoundVolume = (int)nVol.Value;
+				_settings.MaxBackupsPerMod = (int)nPrune.Value;
+				_settings.CurrentTheme = cTheme.SelectedItem?.ToString() ?? "Default";
+				_settings.Save();
+				UpdateGamesMenu();
+				f.Close();
+				Task.Delay(100).ContinueWith(delegate
+				{
+					Invoke(delegate
+					{
+						_ = RefreshModList(checkUpdates: false);
+					});
+				});
+				Speak("Settings saved.");
+			}
+		};
+		Button button4 = new Button
+		{
+			Text = "Cancel",
+			Width = 100,
+			Height = 35
+		};
+		button4.Click += delegate
+		{
+			Speak("Changes cancelled.");
+			f.Close();
+		};
+		flowLayoutPanel5.Controls.AddRange(button3, button4);
+		f.FormClosing += delegate
+		{
+			_isSettingsOpen = false;
+		};
+		f.Controls.Add(flowLayoutPanel5);
+		f.Controls.Add(tableLayoutPanel);
+		f.KeyDown += delegate(object? s, KeyEventArgs pe)
+		{
+			if (pe.KeyCode == Keys.Escape)
+			{
+				Speak("Changes cancelled.");
+				f.Close();
+			}
+		};
+		f.ShowDialog();
+		void PreviewLogo()
+		{
+			if (cmbLogo.SelectedItem != null)
+			{
+				_soundEngine.PlayLogoSound(_settings.CurrentTheme, cmbLogo.SelectedItem.ToString() ?? "");
+			}
+		}
+		void RefreshLogoList(string theme)
+		{
+			cmbLogo.Items.Clear();
+			string path = Path.Combine(themesPath, theme, "logo");
+			if (Directory.Exists(path))
+			{
+				object[] items = Directory.GetFiles(path, "*.ogg").Select(Path.GetFileName).Cast<object>()
+					.ToArray();
+				cmbLogo.Items.AddRange(items);
+				if (!string.IsNullOrEmpty(_settings.SelectedLogoFile) && cmbLogo.Items.Contains(_settings.SelectedLogoFile))
+				{
+					cmbLogo.SelectedItem = _settings.SelectedLogoFile;
+				}
+				else if (cmbLogo.Items.Count > 0)
+				{
+					cmbLogo.SelectedIndex = 0;
+				}
+			}
+		}
+	}
+}

@@ -1,23 +1,23 @@
-; Inno Setup Script for Stardew Valley Accessible Manager
+; Inno Setup Script for Kinetix Mod Manager
 ; Compatible with Single-File .NET 10 Publishing
 
 [Setup]
 AppId={{D37D0B2E-6D3F-4B1C-BD03-9A1D2E3F4B5C}
-AppName=Stardew Valley Accessible Manager
-AppVersion=1.0.1
+AppName=Kinetix Mod Manager
+AppVersion=1.1.0
 AppPublisher=Audi Venture Games
 AppPublisherURL=https://www.nexusmods.com/stardewvalley/mods/32385
 AppSupportURL=https://www.nexusmods.com/stardewvalley/mods/32385
 AppUpdatesURL=https://www.nexusmods.com/stardewvalley/mods/32385
-DefaultDirName={autopf}\StardewAccessibleManager
-DefaultGroupName=Stardew Accessible Manager
+DefaultDirName={autopf}\KinetixModManager
+DefaultGroupName=Kinetix Mod Manager
 AllowNoIcons=yes
 ; Targets x64 exclusively
 ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 ; Output configuration
 OutputDir=Setup
-OutputBaseFilename=StardewAccessibleManager_Setup
+OutputBaseFilename=KinetixModManager_Setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -33,7 +33,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 ; The Single-File EXE
-Source: "bin\Release\net10.0-windows\win-x64\publish\StardewAccessibleManager.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "bin\Release\net10.0-windows\win-x64\publish\KinetixModManager.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; Native DLLs (Tolk, NVDA Controller, etc.)
 Source: "lib\Tolk.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "lib\nvdaControllerClient.dll"; DestDir: "{app}"; Flags: ignoreversion
@@ -53,15 +53,53 @@ Name: "{app}\downloads"
 Name: "{app}\backups"
 
 [Icons]
-Name: "{group}\Stardew Valley Accessible Manager"; Filename: "{app}\StardewAccessibleManager.exe"
-Name: "{autodesktop}\Stardew Valley Accessible Manager"; Filename: "{app}\StardewAccessibleManager.exe"; Tasks: desktopicon
+Name: "{group}\Kinetix Mod Manager"; Filename: "{app}\KinetixModManager.exe"
+Name: "{autodesktop}\Kinetix Mod Manager"; Filename: "{app}\KinetixModManager.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\StardewAccessibleManager.exe"; Description: "{cm:LaunchProgram,Stardew Valley Accessible Manager}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\KinetixModManager.exe"; Description: "{cm:LaunchProgram,Kinetix Mod Manager}"; Flags: nowait postinstall skipifsilent
 
 [Registry]
 ; Register nxm:// protocol for Nexus Mods downloads
 Root: HKCU; Subkey: "Software\Classes\nxm"; ValueType: string; ValueName: ""; ValueData: "URL:Nexus Mod Manager Protocol"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Classes\nxm"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Flags: uninsdeletekey
-Root: HKCU; Subkey: "Software\Classes\nxm\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\StardewAccessibleManager.exe,0"
-Root: HKCU; Subkey: "Software\Classes\nxm\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\StardewAccessibleManager.exe"" ""%1"""
+Root: HKCU; Subkey: "Software\Classes\nxm\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\KinetixModManager.exe,0"
+Root: HKCU; Subkey: "Software\Classes\nxm\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\KinetixModManager.exe"" ""%1"""
+
+[Code]
+function GetUninstallString(): String;
+var
+  sUninstPath: String;
+  sUninstString: String;
+begin
+  sUninstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{D37D0B2E-6D3F-4B1C-BD03-9A1D2E3F4B5C}_is1';
+  sUninstString := '';
+  if not RegQueryStringValue(HKLM, sUninstPath, 'UninstallString', sUninstString) then
+    RegQueryStringValue(HKCU, sUninstPath, 'UninstallString', sUninstString);
+  Result := sUninstString;
+end;
+
+function InitializeSetup(): Boolean;
+var
+  V: Integer;
+  sUninstString: String;
+  sUninstDir: String;
+begin
+  Result := True;
+  sUninstString := GetUninstallString();
+  if sUninstString <> '' then
+  begin
+    sUninstDir := RemoveQuotes(sUninstString);
+    sUninstDir := ExtractFilePath(sUninstDir);
+    
+    // Check if the old path contains the old folder name
+    if Pos('StardewAccessibleManager', sUninstDir) > 0 then
+    begin
+      if MsgBox('The installer has detected a previous installation of Stardew Valley Accessible Manager in a different folder. Would you like to automatically uninstall it before installing Kinetix Mod Manager?', mbInformation, MB_YESNO) = IDYES then
+      begin
+        // Run uninstaller silently
+        Exec(RemoveQuotes(sUninstString), '/SILENT /NORESTART', '', SW_SHOW, ewWaitUntilTerminated, V);
+      end;
+    end;
+  end;
+end;
