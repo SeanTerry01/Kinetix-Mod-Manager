@@ -132,6 +132,10 @@ The Wiki tab (e.g. **Stardew Wiki**, **Skyrim Wiki**, or **Fallout 4 Wiki**) pro
     *   **H**: Jump between Headings.
     *   **T**: Navigate Tables.
     *   **L**: List links on the page.
+5.  **Moving In and Out of the Page**: While focus is inside the Web View:
+    *   **Ctrl+Home** jumps to the top of the page (and the heading), **Ctrl+End** to the bottom — and your **Tab** order continues from there.
+    *   **Shift+Tab** at the top of the page returns to the Results list; **Tab** at the bottom moves to the tab headers.
+    *   **F6** leaves the Web View and returns to the tab headers from anywhere.
 
 ---
 
