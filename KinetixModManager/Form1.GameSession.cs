@@ -31,7 +31,16 @@ public partial class Form1
 	private void SwitchActiveGame(string game)
 	{
 		if (_settings.ActiveGame == game) return;
+		// Capture the closing session's sound theme before it is swapped out below, so the
+		// disconnect cue can play in the theme of the game being closed rather than the new one.
+		string closingTheme = _settings.CurrentTheme;
 		_settings.ActiveGame = game;
+		// Switch the sound theme to match the newly loaded game (None -> Default), unless the
+		// user has opted into manual theme selection, in which case their choice is preserved.
+		if (!_settings.AllowManualTheme)
+		{
+			_settings.CurrentTheme = AppSettings.ThemeForGame(game);
+		}
 		_settings.Save();
 
 		string gameName = game switch
@@ -78,6 +87,12 @@ public partial class Form1
 
 		if (noGame)
 		{
+			// Closing the session ends the Nexus connection for the game that was loaded.
+			// Tear that state down (and play the disconnect cue) here, so a later program
+			// exit with no game loaded does not replay a disconnect for an already-closed
+			// session. See the FormClosing handler in Form1.cs.
+			_nexusService.Disconnect();
+			_soundEngine.Play("disconnect", closingTheme);
 			if (_lstGames != null) _lstGames.Focus();
 			Speak("Game session closed. Returned to game selection screen.");
 			return;

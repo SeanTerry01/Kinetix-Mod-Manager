@@ -39,19 +39,28 @@ public partial class Form1
 			{
 				new WalkthroughGuide { Title = "Stardew Valley Wiki Getting Started Guide", Url = "https://stardewvalleywiki.com/Getting_Started" },
 				new WalkthroughGuide { Title = "Stardew Valley Wiki Quests Guide", Url = "https://stardewvalleywiki.com/Quests" },
+				new WalkthroughGuide { Title = "Stardew Valley Wiki Community Center Guide", Url = "https://stardewvalleywiki.com/Community_Center" },
+				new WalkthroughGuide { Title = "Stardew Valley Wiki Controls Guide", Url = "https://stardewvalleywiki.com/Controls" },
+				new WalkthroughGuide { Title = "Stardew Valley Wiki Secrets Guide", Url = "https://stardewvalleywiki.com/Secrets" },
 				new WalkthroughGuide { Title = "Stardew Access Mod & Keyboard Guide", Url = "https://github.com/khanshoaib3/stardew-access/blob/master/README.md" }
 			},
 			"SkyrimSE" => new[]
 			{
 				new WalkthroughGuide { Title = "UESP Skyrim First-Time Players Guide", Url = "https://en.uesp.net/wiki/Skyrim:First_Time_Players" },
 				new WalkthroughGuide { Title = "UESP Skyrim Main Quest Walkthrough", Url = "https://en.uesp.net/wiki/Skyrim:Main_Quest" },
-				new WalkthroughGuide { Title = "UESP Skyrim Quests Index & Guides", Url = "https://en.uesp.net/wiki/Skyrim:Quests" }
+				new WalkthroughGuide { Title = "UESP Skyrim Quests Index & Guides", Url = "https://en.uesp.net/wiki/Skyrim:Quests" },
+				new WalkthroughGuide { Title = "UESP Skyrim Factions & Guilds Guide", Url = "https://en.uesp.net/wiki/Skyrim:Factions" },
+				new WalkthroughGuide { Title = "UESP Skyrim Player Houses Guide", Url = "https://en.uesp.net/wiki/Skyrim:Houses" },
+				new WalkthroughGuide { Title = "UESP Skyrim Standing Stones Guide", Url = "https://en.uesp.net/wiki/Skyrim:Standing_Stones" }
 			},
 			"Fallout4" => new[]
 			{
 				new WalkthroughGuide { Title = "Fallout 4 Wiki Quests Guide", Url = "https://fallout.fandom.com/wiki/Fallout_4_quests" },
 				new WalkthroughGuide { Title = "StrategyWiki Fallout 4 Complete Walkthrough", Url = "https://strategywiki.org/wiki/Fallout_4/Walkthrough" },
-				new WalkthroughGuide { Title = "StrategyWiki Fallout 4 Getting Started Guide", Url = "https://strategywiki.org/wiki/Fallout_4" }
+				new WalkthroughGuide { Title = "StrategyWiki Fallout 4 Getting Started Guide", Url = "https://strategywiki.org/wiki/Fallout_4" },
+				new WalkthroughGuide { Title = "Fallout 4 Wiki Perks Guide", Url = "https://fallout.fandom.com/wiki/Fallout_4_perks" },
+				new WalkthroughGuide { Title = "Fallout 4 Wiki Settlements Guide", Url = "https://fallout.fandom.com/wiki/Fallout_4_settlements" },
+				new WalkthroughGuide { Title = "Fallout 4 Wiki Endings Guide", Url = "https://fallout.fandom.com/wiki/Fallout_4_endings" }
 			},
 			_ => Array.Empty<WalkthroughGuide>()
 		};

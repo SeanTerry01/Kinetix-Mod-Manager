@@ -193,16 +193,20 @@ public partial class Form1
 	/// </summary>
 	private void HandleCycleFocus()
 	{
-		Control? current = this.ActiveControl;
-		
+		// Use Control.Focused on the actual candidate controls rather than Form.ActiveControl:
+		// ActiveControl only reports the immediate active *container* (the TabControl / TabPage),
+		// not the deeply nested ListBox or WebView that truly holds focus, so identity checks
+		// against it never matched and the cycle skipped the WebView step.
+		bool onHeaders = mainTabs.Focused;
+
 		// If focus is somewhere inside the TabControl but not on the headers
-		if (current != mainTabs)
+		if (!onHeaders)
 		{
 			// If we are in the Wiki tab, cycle between Results -> Web View -> Tabs
 			if (mainTabs.SelectedIndex == (int)AppTab.Wiki)
 			{
 				// If we're in the list, move to web view
-				if (current == listWikiResults || (current != null && current.Parent == listWikiResults))
+				if (listWikiResults.Focused)
 				{
 					webViewWiki.Focus();
 					Speak("Wiki Content");
@@ -217,7 +221,7 @@ public partial class Form1
 			else if (mainTabs.SelectedIndex == (int)AppTab.Walkthroughs)
 			{
 				// If we're in the list, move to web view
-				if (current == listWalkthroughs || (current != null && current.Parent == listWalkthroughs))
+				if (listWalkthroughs.Focused)
 				{
 					webViewWalkthrough.Focus();
 					Speak("Walkthrough Content");
@@ -237,17 +241,19 @@ public partial class Form1
 		}
 		else
 		{
-			// Focus is on the Tab headers, jump into the primary control of the current tab
+			// Focus is on the Tab headers, jump into the primary control of the current tab.
+			// The list's Enter handler (List_Enter) announces the name/position, so focusing is
+			// enough here — and it works the same whether the user arrived via F6, Tab, or click.
 			switch (mainTabs.SelectedIndex)
 			{
-				case (int)AppTab.Installed:  listInstalled.Focus();   Speak("Installed Mods List");   break;
-				case (int)AppTab.Updates:    listUpdates.Focus();     Speak("Available Updates List"); break;
-				case (int)AppTab.Backups:    listBackups.Focus();     Speak("Backups List");           break;
-				case (int)AppTab.Discovery:  listDiscovery.Focus();   Speak("Mod Discovery Results"); break;
-				case (int)AppTab.Wiki:       listWikiResults.Focus(); Speak("Wiki Results");           break;
-				case (int)AppTab.Walkthroughs: listWalkthroughs.Focus(); Speak("Walkthrough Guides List"); break;
-				case (int)AppTab.Profiles:   listProfiles.Focus();    Speak("Profiles List");          break;
-				case (int)AppTab.SmapiLog:   listLog.Focus();         Speak("SMAPI Log");              break;
+				case (int)AppTab.Installed:    listInstalled.Focus();   break;
+				case (int)AppTab.Updates:      listUpdates.Focus();     break;
+				case (int)AppTab.Backups:      listBackups.Focus();     break;
+				case (int)AppTab.Discovery:    listDiscovery.Focus();   break;
+				case (int)AppTab.Wiki:         listWikiResults.Focus(); break;
+				case (int)AppTab.Walkthroughs: listWalkthroughs.Focus(); break;
+				case (int)AppTab.Profiles:     listProfiles.Focus();    break;
+				case (int)AppTab.SmapiLog:     listLog.Focus();         break;
 			}
 		}
 	}

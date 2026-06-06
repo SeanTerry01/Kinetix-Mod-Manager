@@ -887,6 +887,44 @@ public static class ModFileSystem
 		}
 	}
 
+	/// <summary>
+	/// Installs the SSE Engine Fixes "Part 2" SKSE64 preloader by extracting <c>d3dx9_42.dll</c>
+	/// from <paramref name="archivePath"/> directly into the game's root folder (where the preloader
+	/// must live), so the user does not have to perform the manual root-folder step themselves.
+	/// </summary>
+	public static async Task InstallEnginePreloaderAsync(string archivePath, string gamePath, Action<string, string> logError, NexusService? nexusService = null)
+	{
+		string tempDir = Path.Combine(Path.GetTempPath(), "Preloader_" + Path.GetRandomFileName());
+		try
+		{
+			Directory.CreateDirectory(tempDir);
+			string ext = Path.GetExtension(archivePath).ToLower();
+			if (ext == ".7z")
+			{
+				string dataBasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AudiVentureGames", "KinetixModManager");
+				string exePath = await Ensure7ZipCommandLineTool(dataBasePath, nexusService);
+				await Task.Run(() => Run7ZipExtract(exePath, archivePath, tempDir));
+			}
+			else
+			{
+				await Task.Run(() => ZipFile.ExtractToDirectory(archivePath, tempDir));
+			}
+
+			string[] matches = Directory.GetFiles(tempDir, "d3dx9_42.dll", SearchOption.AllDirectories);
+			if (matches.Length == 0)
+			{
+				throw new Exception("Could not find d3dx9_42.dll inside the Engine Fixes preloader archive.");
+			}
+
+			Directory.CreateDirectory(gamePath);
+			File.Copy(matches[0], Path.Combine(gamePath, "d3dx9_42.dll"), overwrite: true);
+		}
+		finally
+		{
+			try { Directory.Delete(tempDir, true); } catch {}
+		}
+	}
+
 	public static string? ExtractVersionFromFileName(string fileName, string? modId)
 	{
 		if (string.IsNullOrEmpty(modId)) return null;

@@ -46,6 +46,11 @@ public partial class Form1
 		base.KeyPreview = true;
 		base.KeyDown += Form1_KeyDown;
 		MenuStrip menuStrip = new MenuStrip();
+		// Exiting the Alt menu (e.g. Alt then Escape) restores focus to the underlying list without
+		// raising GotFocus, because the menu uses a special input mode that never takes the list's
+		// focus. Re-announce the focused list when the menu deactivates so the user still hears their
+		// position. BeginInvoke defers until focus has actually been restored.
+		menuStrip.MenuDeactivate += (s, e) => BeginInvoke(new Action(AnnounceFocusedList));
 		_menuFile = new ToolStripMenuItem("&File");
 		_menuFile.DropDownItems.Add("Refresh All (" + GetShortcutString("RefreshAll") + ")", null, delegate
 		{
@@ -512,7 +517,11 @@ public partial class Form1
 			Dock = DockStyle.Fill,
 			Orientation = Orientation.Vertical,
 			SplitterDistance = 300,
-			Visible = false
+			Visible = false,
+			// Keep the splitter out of the keyboard tab order; otherwise Tab from the
+			// results list lands on the bare splitter (announced as a generic "pane")
+			// before reaching the WebView.
+			TabStop = false
 		};		listWikiResults = new ListBox
 		{
 			Dock = DockStyle.Fill,
@@ -559,7 +568,10 @@ public partial class Form1
 		{
 			Dock = DockStyle.Fill,
 			Orientation = Orientation.Vertical,
-			SplitterDistance = 300
+			SplitterDistance = 300,
+			// See splitWiki above: keep the splitter out of the tab order so Tab moves
+			// straight from the guides list to the WebView.
+			TabStop = false
 		};
 		listWalkthroughs = new ListBox
 		{
@@ -627,18 +639,22 @@ public partial class Form1
 		listBackups.SelectedIndexChanged += List_SelectedIndexChanged;
 		listProfiles.SelectedIndexChanged += List_SelectedIndexChanged;
 		listLog.SelectedIndexChanged += List_SelectedIndexChanged;
-		listInstalled.Enter += List_Enter;
-		listUpdates.Enter += List_Enter;
-		listDiscovery.Enter += List_Enter;
-		listBackups.Enter += List_Enter;
-		listProfiles.Enter += List_Enter;
-		listLog.Enter += List_Enter;
+		// GotFocus (not Enter) so the position is re-announced whenever focus lands on the list,
+		// including when it is restored after a modal dialog or menu closes — Enter does not fire
+		// in that case because the form's ActiveControl never changed while the dialog was open.
+		listInstalled.GotFocus += List_Enter;
+		listUpdates.GotFocus += List_Enter;
+		listDiscovery.GotFocus += List_Enter;
+		listBackups.GotFocus += List_Enter;
+		listProfiles.GotFocus += List_Enter;
+		listLog.GotFocus += List_Enter;
 		_searchTimer.Tick += delegate
 		{
 			_searchTimer.Stop();
 			_searchBuffer = "";
 		};
 		listWikiResults.SelectedIndexChanged += Wiki_SelectedIndexChanged;
+		listWikiResults.GotFocus += List_Enter;
 		listWikiResults.DoubleClick += async delegate(object? s, EventArgs e)
 		{
 			if (listWikiResults.SelectedItem is WikiResult res)
@@ -657,7 +673,7 @@ public partial class Form1
 				webViewWalkthrough.CoreWebView2?.Navigate(guide.Url);
 			}
 		};
-		listWalkthroughs.Enter += List_Enter;
+		listWalkthroughs.GotFocus += List_Enter;
 		PopulateWalkthroughs();
 	}
 }

@@ -252,7 +252,7 @@ public partial class Form1
 		btnSelect.Click += (s, e) =>
 		{
 			if (lstGames.SelectedIndex == -1) return;
-			string selectedGame = lstGames.SelectedItem.ToString() ?? "";
+			string selectedGame = lstGames.SelectedItem?.ToString() ?? "";
 			dialog.Close();
 			ShowStoreSelectionDialog(selectedGame);
 		};
@@ -324,7 +324,7 @@ public partial class Form1
 		btnOpen.Click += (s, e) =>
 		{
 			if (lstStores.SelectedIndex == -1) return;
-			string store = lstStores.SelectedItem.ToString() ?? "";
+			string store = lstStores.SelectedItem?.ToString() ?? "";
 			bool isGog = store.StartsWith("GOG", StringComparison.OrdinalIgnoreCase);
 			string url = "";
 

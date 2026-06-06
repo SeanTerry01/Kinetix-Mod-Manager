@@ -92,18 +92,43 @@ public partial class Form1
 		}
 	}
 
-	private void List_Enter(object? sender, EventArgs e)
+	private async void List_Enter(object? sender, EventArgs e)
 	{
-		if (sender is ListBox listBox)
+		if (sender is not ListBox listBox) return;
+
+		if (listBox.Items.Count == 0)
 		{
-			if (listBox.Items.Count > 0 && listBox.SelectedIndex == -1)
-			{
-				listBox.SelectedIndex = 0;
-			}
-			if (listBox.Items.Count == 0 && !_isLoading)
-			{
-				Speak("List is empty.");
-			}
+			if (!_isLoading) Speak("List is empty.");
+			return;
+		}
+		if (listBox.SelectedIndex == -1)
+		{
+			// Selecting an item raises SelectedIndexChanged, which announces the position itself.
+			listBox.SelectedIndex = 0;
+			return;
+		}
+		// An item is already selected, so focusing did not raise SelectedIndexChanged. Announce the
+		// position here, after a short delay so the screen reader speaks the list name and selected
+		// item first — putting "X of Y" at the end, matching the arrow-key path (List_SelectedIndexChanged).
+		await Task.Delay(100);
+		if (!listBox.Focused) return;
+		Speak($"{listBox.SelectedIndex + 1} of {listBox.Items.Count}");
+	}
+
+	[System.Runtime.InteropServices.DllImport("user32.dll")]
+	private static extern IntPtr GetFocus();
+
+	/// <summary>
+	/// Re-announces the focused list's position by invoking <see cref="List_Enter"/> on it. Used
+	/// when focus is restored by a path that does not raise GotFocus — notably exiting the
+	/// MenuStrip's Alt menu mode, which keeps the underlying control's focus and so never re-fires
+	/// the event. Generic: it acts on whichever ListBox currently holds focus, or does nothing.
+	/// </summary>
+	private void AnnounceFocusedList()
+	{
+		if (Control.FromHandle(GetFocus()) is ListBox list)
+		{
+			List_Enter(list, EventArgs.Empty);
 		}
 	}
 

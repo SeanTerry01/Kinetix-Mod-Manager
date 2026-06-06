@@ -75,6 +75,28 @@ public class AppSettings
 
 	public string CurrentTheme { get; set; } = "Default";
 
+	/// <summary>
+	/// When <c>false</c> (default) the sound theme strictly follows the loaded game via
+	/// <see cref="ThemeForGame"/>. When <c>true</c> the user's manually chosen
+	/// <see cref="CurrentTheme"/> is honoured and persists across game switches and restarts.
+	/// </summary>
+	public bool AllowManualTheme { get; set; } = false;
+
+	/// <summary>
+	/// Maps an active-game identifier to its sound-theme folder name (under <c>sounds/</c>).
+	/// Games without a dedicated theme, or no game loaded ("None"), fall back to "Default".
+	/// The SoundEngine also falls back to the Default theme per-sound, so a game whose theme
+	/// folder does not exist yet (e.g. Skyrim/Fallout 4 before their themes are authored) will
+	/// simply play the Default sounds.
+	/// </summary>
+	public static string ThemeForGame(string game) => game switch
+	{
+		"StardewValley" => "Stardew Valley",
+		"SkyrimSE"      => "Skyrim",
+		"Fallout4"      => "Fallout 4",
+		_               => "Default"
+	};
+
 	public Dictionary<string, string> IgnoredVersions { get; set; } = new Dictionary<string, string>();
 
 	public Dictionary<string, string> ModCategories { get; set; } = new Dictionary<string, string>();

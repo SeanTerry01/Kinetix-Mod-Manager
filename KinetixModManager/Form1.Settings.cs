@@ -248,6 +248,10 @@ public partial class Form1
 			AutoSize = true,
 			Padding = new Padding(0, 5, 0, 0)
 		}, 0, 9);
+		// Suppress the logo audio preview while the list is repopulated programmatically (e.g.
+		// when the theme changes or the manual-theme box is unchecked); only a deliberate logo
+		// selection or Space press should play a logo.
+		bool suppressLogoPreview = false;
 		ComboBox cmbLogo = new ComboBox
 		{
 			DropDownStyle = ComboBoxStyle.DropDownList,
@@ -256,7 +260,7 @@ public partial class Form1
 		};
 		cmbLogo.SelectedIndexChanged += delegate
 		{
-			if (f.Visible)
+			if (f.Visible && !suppressLogoPreview)
 			{
 				PreviewLogo();
 			}
@@ -337,7 +341,36 @@ public partial class Form1
 		{
 			RefreshLogoList(cTheme.SelectedItem?.ToString() ?? "Default");
 		};
+
+		// When unchecked, the sound theme is decided entirely by the loaded game and the theme
+		// dropdown is disabled. When checked, the dropdown selection is honoured and persists.
+		CheckBox cManualTheme = new CheckBox
+		{
+			Text = "Set theme manually",
+			AutoSize = true,
+			Checked = _settings.AllowManualTheme,
+			Padding = new Padding(10, 4, 0, 0),
+			AccessibleName = "Set sound theme manually instead of following the loaded game"
+		};
+		cTheme.Enabled = _settings.AllowManualTheme;
+		cManualTheme.CheckedChanged += delegate
+		{
+			cTheme.Enabled = cManualTheme.Checked;
+			if (!cManualTheme.Checked)
+			{
+				// Reverting to game-driven: reflect the active game's theme in the dropdown.
+				string gameTheme = AppSettings.ThemeForGame(_settings.ActiveGame);
+				if (cTheme.Items.Contains(gameTheme)) cTheme.SelectedItem = gameTheme;
+				RefreshLogoList(gameTheme);
+			}
+			Speak(cManualTheme.Checked
+				? "Set theme manually, checked. You can now choose a sound theme."
+				: "Set theme manually, unchecked. Sound theme follows the loaded game.");
+		};
+		// Checkbox sits before the theme dropdown so it reads and tabs first.
+		flowLayoutPanel4.Controls.Add(cManualTheme);
 		flowLayoutPanel4.Controls.Add(cTheme);
+
 		tableLayoutPanel.Controls.Add(flowLayoutPanel4, 0, 13);
 		RefreshLogoList(_settings.CurrentTheme);
 
@@ -399,7 +432,10 @@ public partial class Form1
 				_settings.CheckForUpdatesAtStartup = cUpdates.Checked;
 				_settings.SoundVolume = (int)nVol.Value;
 				_settings.MaxBackupsPerMod = (int)nPrune.Value;
-				_settings.CurrentTheme = cTheme.SelectedItem?.ToString() ?? "Default";
+				_settings.AllowManualTheme = cManualTheme.Checked;
+				_settings.CurrentTheme = cManualTheme.Checked
+					? (cTheme.SelectedItem?.ToString() ?? "Default")
+					: AppSettings.ThemeForGame(_settings.ActiveGame);
 				_settings.Save();
 				UpdateGamesMenu();
 				f.Close();
@@ -449,21 +485,31 @@ public partial class Form1
 		}
 		void RefreshLogoList(string theme)
 		{
-			cmbLogo.Items.Clear();
-			string path = Path.Combine(themesPath, theme, "logo");
-			if (Directory.Exists(path))
+			// Repopulating the list changes the selection, which would otherwise fire the
+			// preview; suppress it so only deliberate user selection plays a logo.
+			suppressLogoPreview = true;
+			try
 			{
-				object[] items = Directory.GetFiles(path, "*.ogg").Select(Path.GetFileName).Cast<object>()
-					.ToArray();
-				cmbLogo.Items.AddRange(items);
-				if (!string.IsNullOrEmpty(_settings.SelectedLogoFile) && cmbLogo.Items.Contains(_settings.SelectedLogoFile))
+				cmbLogo.Items.Clear();
+				string path = Path.Combine(themesPath, theme, "logo");
+				if (Directory.Exists(path))
 				{
-					cmbLogo.SelectedItem = _settings.SelectedLogoFile;
+					object[] items = Directory.GetFiles(path, "*.ogg").Select(Path.GetFileName).Cast<object>()
+						.ToArray();
+					cmbLogo.Items.AddRange(items);
+					if (!string.IsNullOrEmpty(_settings.SelectedLogoFile) && cmbLogo.Items.Contains(_settings.SelectedLogoFile))
+					{
+						cmbLogo.SelectedItem = _settings.SelectedLogoFile;
+					}
+					else if (cmbLogo.Items.Count > 0)
+					{
+						cmbLogo.SelectedIndex = 0;
+					}
 				}
-				else if (cmbLogo.Items.Count > 0)
-				{
-					cmbLogo.SelectedIndex = 0;
-				}
+			}
+			finally
+			{
+				suppressLogoPreview = false;
 			}
 		}
 	}

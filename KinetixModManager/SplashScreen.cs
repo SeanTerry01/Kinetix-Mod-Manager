@@ -53,7 +53,11 @@ public class SplashScreen : Form
 	{
 		try
 		{
-			string path = _settings.CurrentTheme ?? "Default";
+			// The splash runs before Form1, so mirror the in-app rule here: follow the active
+			// game's theme unless the user has opted into manual theme selection.
+			string path = _settings.AllowManualTheme
+				? (_settings.CurrentTheme ?? "Default")
+				: AppSettings.ThemeForGame(_settings.ActiveGame);
 			string text = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sounds", path, "logo");
 			if (!Directory.Exists(text) || Directory.GetFiles(text, "*.ogg").Length == 0)
 			{

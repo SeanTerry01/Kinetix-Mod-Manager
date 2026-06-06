@@ -72,6 +72,9 @@ public partial class Form1
 			Font = new Font("Segoe UI", 11f),
 			AccessibleName = "Accessibility Mods Status"
 		};
+		// Announce the position on focus the same way the main form's lists do (GotFocus so it
+		// also fires when focus returns to the list after another dialog closes).
+		lstStatus.GotFocus += List_Enter;
 
 		bool loaderInstalled = false;
 		bool allModsInstalled = true;
@@ -102,8 +105,14 @@ public partial class Form1
 			suiteItems.Add(new SuiteItem("powerofthree's Papyrus Extender", HasModNameContains("Papyrus Extender") || HasModNameContains("PapyrusExtender"), "Nexus", "22854"));
 			suiteItems.Add(new SuiteItem("powerofthree's Tweaks", HasModNameContains("powerofthree's Tweaks") || HasModNameContains("powerofthree'sTweaks") || HasModNameContains("po3's Tweaks"), "Nexus", "51073"));
 			suiteItems.Add(new SuiteItem("Dylbills Papyrus Functions", HasModNameContains("Dylbills Papyrus Functions") || HasModNameContains("DylbillsPapyrusFunctions") || HasModNameContains("DbMiscFunctions"), "Nexus", "65410"));
-			suiteItems.Add(new SuiteItem("SSE Engine Fixes (Part 1)", HasModNameContains("SSE Engine Fixes") || HasModNameContains("EngineFixes"), "Nexus", "17230"));
-			suiteItems.Add(new SuiteItem("SSE Engine Fixes (Part 2)", File.Exists(Path.Combine(gameFolder, "d3dx9_42.dll")), "Nexus", "17230"));
+			// SSE Engine Fixes ships as two files on the same Nexus page: the main SKSE plugin
+			// (installs like a normal mod) and a "Preloader" whose d3dx9_42.dll must sit in the
+			// game root. Treat them as one entry that is only "installed" when BOTH are present;
+			// the installer auto-handles both parts (see InstallEngineFixesAsync).
+			suiteItems.Add(new SuiteItem("SSE Engine Fixes",
+				(HasModNameContains("SSE Engine Fixes") || HasModNameContains("EngineFixes"))
+					&& File.Exists(Path.Combine(gameFolder, "d3dx9_42.dll")),
+				"Nexus", "17230"));
 			suiteItems.Add(new SuiteItem("Media Keys Fix", HasModNameContains("Media Keys Fix") || HasModNameContains("MediaKeysFix"), "Nexus", "92948"));
 			suiteItems.Add(new SuiteItem("Stay At The System Page - AE", HasModNameContains("Stay At The System Page") || HasModNameContains("StayAtTheSystemPage"), "Nexus", "67883"));
 			suiteItems.Add(new SuiteItem("Skyrim Access", HasModNameContains("Skyrim Access") || HasModNameContains("SkyrimAccess") || HasModNameContains("SkyrimTTS"), "Nexus", "181131"));
@@ -127,6 +136,10 @@ public partial class Form1
 			{
 				allModsInstalled = false;
 			}
+		}
+		if (lstStatus.Items.Count > 0)
+		{
+			lstStatus.SelectedIndex = 0;
 		}
 
 		Button btnInstall = new Button
@@ -174,6 +187,14 @@ public partial class Form1
 				{
 					if (item.IsInstalled) continue;
 					if (item.Type == "Loader" && game == "StardewValley") continue;
+
+					// SSE Engine Fixes is a two-part install (main mod + root-folder preloader);
+					// handle both parts together so the user never has to place the DLL manually.
+					if (game == "SkyrimSE" && item.Source == "17230")
+					{
+						await InstallEngineFixesAsync();
+						continue;
+					}
 
 					SetStatus($"Downloading {item.Name}...");
 					Speak($"Downloading {item.Name}...");
@@ -303,8 +324,74 @@ public partial class Form1
 			}
 		};
 
+		// Focusing the list raises its Enter handler (List_Enter), which announces the position
+		// after the screen reader reads the list name and selected item — same as every other list.
+		dialog.Shown += (s, e) => lstStatus.Focus();
+
 		dialog.Controls.Add(layout);
 		dialog.ShowDialog();
+	}
+
+	/// <summary>
+	/// Installs both halves of SSE Engine Fixes (Nexus mod 17230): the main SKSE plugin into the
+	/// mods folder, and the "Preloader" <c>d3dx9_42.dll</c> into the game root. Premium users get a
+	/// fully automatic install; everyone else is sent to the files page with correct instructions
+	/// for both files. Only the missing half is fetched.
+	/// </summary>
+	private async Task InstallEngineFixesAsync()
+	{
+		string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder("SkyrimSE") : _settings.CurrentGamePath;
+		bool mainInstalled = HasModNameContains("SSE Engine Fixes") || HasModNameContains("EngineFixes");
+		bool preloaderInstalled = File.Exists(Path.Combine(gameFolder, "d3dx9_42.dll"));
+
+		if (_nexusService.IsPremium)
+		{
+			if (!mainInstalled)
+			{
+				try
+				{
+					SetStatus("Downloading SSE Engine Fixes...");
+					Speak("Downloading SSE Engine Fixes...");
+					var mainMod = new GameMod { NexusID = "17230", Name = "SSE Engine Fixes Part 1" };
+					string mainZip = await _nexusService.DownloadModUpdateAsync(mainMod, downloadsPath);
+					await InstallFromZip(mainZip, "17230");
+				}
+				catch (Exception ex)
+				{
+					LogError("SSE Engine Fixes", $"Main file download failed: {ex.Message}");
+					Speak("Failed to install SSE Engine Fixes main file.");
+				}
+			}
+
+			if (!preloaderInstalled)
+			{
+				try
+				{
+					SetStatus("Installing SSE Engine Fixes preloader...");
+					Speak("Installing SSE Engine Fixes preloader...");
+					var preMod = new GameMod { NexusID = "17230", Name = "SSE Engine Fixes Part 2" };
+					string preZip = await _nexusService.DownloadModUpdateAsync(preMod, downloadsPath);
+					await ModFileSystem.InstallEnginePreloaderAsync(preZip, gameFolder, LogError, _nexusService);
+				}
+				catch (Exception ex)
+				{
+					LogError("SSE Engine Fixes", $"Preloader download failed: {ex.Message}");
+					Speak("Failed to install SSE Engine Fixes preloader.");
+				}
+			}
+			return;
+		}
+
+		// Non-premium accounts cannot download through the Nexus API, so guide the manual install
+		// for whichever parts are still missing.
+		Speak("SSE Engine Fixes must be downloaded manually from Nexus. Opening browser.");
+		Process.Start(new ProcessStartInfo("https://www.nexusmods.com/skyrimspecialedition/mods/17230?tab=files") { UseShellExecute = true });
+		MessageBox.Show(
+			"SSE Engine Fixes has two files on this page:\n\n" +
+			"1. Main file: download it, then press Control+I in the mod manager to install it.\n\n" +
+			"2. \"Engine Fixes - skse64 Preloader\": download it and extract d3dx9_42.dll directly into your " +
+			"Skyrim game folder (the folder containing SkyrimSE.exe).",
+			"Manual Download Required");
 	}
 
 	private bool HasModUniqueId(string uniqueId)

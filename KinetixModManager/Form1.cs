@@ -239,6 +239,13 @@ public partial class Form1 : Form, IMessageFilter
 		InitializeComponent();
         Application.AddMessageFilter(this);
         _settings = AppSettings.Load();
+		// Unless the user has opted into manual theme selection, the sound theme follows the
+		// loaded game. A normal launch restores the persisted active game without going through
+		// SwitchActiveGame, so apply the mapping here too.
+		if (!_settings.AllowManualTheme)
+		{
+			_settings.CurrentTheme = AppSettings.ThemeForGame(_settings.ActiveGame);
+		}
 		_soundEngine    = new SoundEngine(themesPath, _settings);
 		_nexusService   = new NexusService(_settings);
 		if (string.IsNullOrEmpty(_settings.ApiKey) && File.Exists("nexus_key.txt"))
@@ -319,8 +326,14 @@ public partial class Form1 : Form, IMessageFilter
 		base.FormClosing += delegate
 		{
 			form._pipeCts.Cancel();
-			form._soundEngine.Play("disconnect");
-			Thread.Sleep(800);
+			// Only disconnect on exit if a game session is still open. Closing a session
+			// (Ctrl+Shift+C) already disconnects, so exiting with no game loaded must not
+			// replay a disconnect for a session that was already torn down.
+			if (form._settings!.ActiveGame != "None")
+			{
+				form._soundEngine.Play("disconnect");
+				Thread.Sleep(800); // let the disconnect cue finish before the process exits
+			}
 			if (Tolk.IsLoaded())
 			{
 				Tolk.Unload();
@@ -330,7 +343,7 @@ public partial class Form1 : Form, IMessageFilter
 		{
 			await form.CheckForAppUpdates(manual: false);
 
-			if (form._settings.ActiveGame == "None")
+			if (form._settings!.ActiveGame == "None")
 			{
 				if (form._lstGames != null)
 				{

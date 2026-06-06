@@ -9,6 +9,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <PlatformTarget>x64</PlatformTarget>
     <ApplicationIcon />
+    <!-- The WebView2 NuGet package ships an unused WPF control assembly built against
+         WindowsBase v5; we only use the WinForms control. MSBuild correctly unifies this
+         to the framework's WindowsBase v4, so demote the benign MSB3277 conflict to a message. -->
+    <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
   </PropertyGroup>
 
   <ItemGroup>
@@ -29,9 +33,9 @@
     <Reference Include="NAudio.Wave">
       <HintPath>lib\NAudio.Wasapi.dll</HintPath>
     </Reference>
-    <Reference Include="Tolk">
-      <HintPath>lib\Tolk.dll</HintPath>
-    </Reference>
+    <!-- Tolk.dll is a native library loaded via P/Invoke (see Tolk.cs) and resolved
+         at runtime from the lib\ folder via SetDllDirectory in Program.cs. It must NOT
+         be a managed <Reference> (it has no .NET metadata, which triggers MSB3246). -->
   </ItemGroup>
 
   <ItemGroup>

@@ -54,6 +54,17 @@ public class NexusService
 	/// <summary>Initialises the service with the live application settings.</summary>
 	public NexusService(AppSettings settings) => _settings = settings;
 
+	/// <summary>
+	/// Clears the cached authentication state from the last <see cref="ValidateAsync"/> call.
+	/// Called when the active game session is closed so the manager no longer reports a
+	/// connected Nexus user. The API key in settings is left untouched.
+	/// </summary>
+	public void Disconnect()
+	{
+		NexusUser = "Unknown User";
+		IsPremium = false;
+	}
+
 	public string CurrentGameDomain => _settings.ActiveGame switch
 	{
 		"SkyrimSE" => "skyrimspecialedition",
