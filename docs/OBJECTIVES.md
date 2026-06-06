@@ -1,6 +1,6 @@
-# Stardew Valley Accessible Mod Manager - Project Objectives
+# Kinetix Mod Manager - Project Objectives
 
-This file tracks the "Pro-Level" features being integrated into the manager to make it the definitive tool for accessible modding.
+This file tracks the "Pro-Level" features being integrated into the manager to make it the definitive tool for accessible modding across Stardew Valley, Skyrim Special Edition, and Fallout 4.
 
 ## ✅ Completed Objectives
 
@@ -37,8 +37,8 @@ This file tracks the "Pro-Level" features being integrated into the manager to m
 *   **Status**: Completed.
 
 ### 9. Audio Theme Packs
-*   **Description**: Support for multiple audio themes, including profile-specific themes and a Theme Manager.
-*   **Status**: Completed.
+*   **Description**: Support for multiple audio themes. The active theme follows the loaded game (Stardew Valley, Skyrim, Fallout 4, or Default when no game is loaded), with an optional manual override; per-profile themes and a Theme Manager are also supported.
+*   **Status**: Completed (game-driven theme switching and the manual-override toggle added in v1.2.0).
 
 ### 10. Mod Version "Ignore"
 *   **Description**: Hide specific mod updates from the list using the Delete key.

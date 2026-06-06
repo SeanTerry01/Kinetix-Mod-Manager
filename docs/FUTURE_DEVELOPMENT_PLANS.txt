@@ -1,6 +1,6 @@
-# Stardew Valley Accessible Mod Manager: Future Development Roadmap
+# Kinetix Mod Manager: Future Development Roadmap
 
-This document tracks potential improvements, architectural refinements, and new features to enhance the accessibility and power of the manager.
+This document tracks potential improvements, architectural refinements, and new features to enhance the accessibility and power of the manager. (Now a multi-game suite covering Stardew Valley, Skyrim Special Edition, and Fallout 4.)
 
 ---
 
@@ -36,8 +36,8 @@ This document tracks potential improvements, architectural refinements, and new 
 ### E. "Broken Mod" Detection
 *   Integrate with community-maintained compatibility lists to warn users about mods known to be broken in the latest game version, even if no update is available on Nexus.
 
-### F. Multi-Game Support?
-*   While built for Stardew Valley, the core engine could potentially be adapted for other accessible modding communities (e.g., Slay the Spire or Minecraft).
+### F. Multi-Game Support — Done
+*   ~~Adapt the core engine beyond Stardew Valley~~ — **Done (v1.1.0–v1.2.0).** The manager now fully supports Stardew Valley, Skyrim Special Edition, and Fallout 4, each with its own wiki, walkthroughs, accessibility-suite installer, and game-driven sound theme. Adapting to further communities (e.g., other Bethesda/SMAPI-style titles) remains a possible future direction.
 
 ---
 
