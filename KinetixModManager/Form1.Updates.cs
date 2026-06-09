@@ -74,6 +74,8 @@ public partial class Form1
 			if (Interlocked.Decrement(ref _activeChecks) <= 0)
 			{
 				_isLoading = false;
+				// This batch is done; release the guard so the next update check can start.
+				Interlocked.Exchange(ref _updateCheckRunning, 0);
 				_soundEngine.Play("load_complete");
 				Invoke(delegate
 				{

@@ -1,3 +1,20 @@
+# Release Notes & Changelog: Version 1.2.1
+
+A small bug-fix release addressing two issues found when running the manager on a PC where not every supported game is installed.
+
+---
+
+## 🐛 Bug Fixes in Version 1.2.1
+
+### 🎮 Loading a session for an uninstalled game
+*   **No more wrong-game mods**: Loading a game session for a game that isn't installed previously fell back to the Stardew Valley Mods folder, silently showing Stardew's mods under the wrong game. The manager now detects this, announces that the session is for a game that hasn't been installed, and asks whether you'd like to purchase it.
+*   **Guided purchase flow**: Answering "Yes" lets you choose **Steam** or **GOG**, then opens that store's page for the game in your default browser. At startup, a saved-but-uninstalled active game now returns you to the game-selection screen instead of loading another game's mods.
+
+### 🔄 Duplicate update-check results
+*   **One completion, accurate count**: Checking for mod updates while a check was already running (for example, the automatic startup check) could replay the "update check complete" sound repeatedly and report an inflated count full of duplicate entries. Update checks are now single-batch: a second check is held off until the first finishes, so the completion cue plays once and the count is correct.
+
+---
+
 # Release Notes & Changelog: Version 1.2.0
 
 This release builds on the 1.1.0 multi-game foundation with a game-aware audio theme system, broad accessibility and keyboard-focus fixes, and a smoother Skyrim Engine Fixes install.

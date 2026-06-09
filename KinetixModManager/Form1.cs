@@ -102,6 +102,14 @@ public partial class Form1 : Form, IMessageFilter
 
 	private int _activeChecks;
 
+	// 0 = no update-check batch running, 1 = one in flight. Guards against overlapping
+	// RefreshModList(checkUpdates:true) calls (e.g. a startup check still running when the user
+	// triggers a manual one). Two concurrent batches corrupt _activeChecks, which makes the
+	// completion cue/announcement repeat and piles duplicate entries into listUpdates. Acquired
+	// in RefreshModList; released by the final CheckForUpdates completion (or in RefreshModList
+	// itself when no checks end up being launched).
+	private int _updateCheckRunning;
+
 	private int _currentDiscoveryPage = 1;
 
 	private bool _isLoading;
@@ -343,6 +351,11 @@ public partial class Form1 : Form, IMessageFilter
 		{
 			await form.CheckForAppUpdates(manual: false);
 
+			bool stardewInstalled = form.IsGameInstalled("StardewValley");
+			bool skyrimInstalled = form.IsGameInstalled("SkyrimSE");
+			bool falloutInstalled = form.IsGameInstalled("Fallout4");
+			bool anyInstalled = stardewInstalled || skyrimInstalled || falloutInstalled;
+
 			if (form._settings!.ActiveGame == "None")
 			{
 				if (form._lstGames != null)
@@ -351,15 +364,22 @@ public partial class Form1 : Form, IMessageFilter
 				}
 				Speak("Welcome to Kinetix Mod Manager. Please select a game to manage from the list. Use arrow keys to select, and press Enter to confirm.");
 			}
-			else
+			else if (form.IsGameInstalled(form._settings.ActiveGame))
 			{
 				form.RefreshAllData(form._settings.CheckForUpdatesAtStartup);
 			}
+			else if (anyInstalled)
+			{
+				// The previously active game is no longer installed (e.g. settings carried over
+				// from another PC) but other supported games are. Return to the game-selection
+				// screen rather than loading another game's mods by mistake.
+				form.SwitchActiveGame("None");
+			}
 
-			bool stardewInstalled = form.IsGameInstalled("StardewValley");
-			bool skyrimInstalled = form.IsGameInstalled("SkyrimSE");
-			bool falloutInstalled = form.IsGameInstalled("Fallout4");
-			if (!stardewInstalled && !skyrimInstalled && !falloutInstalled && form._settings.ActiveGame != "None")
+			// If no supported game is installed at all, guide the user to purchase one. This also
+			// covers a saved-but-uninstalled active game with no other game present (in which case
+			// we deliberately neither refreshed nor reset above, so no wrong mods were loaded).
+			if (!anyInstalled && form._settings.ActiveGame != "None")
 			{
 				form.ShowNoGamesInstalledFlow();
 			}

@@ -31,6 +31,12 @@ public partial class Form1
 	private void SwitchActiveGame(string game)
 	{
 		if (_settings.ActiveGame == game) return;
+		// Refuse to load a session for a game that is not installed. Without this guard
+		// CurrentModsPath falls back to the Stardew Mods path, so the session would silently
+		// load with another game's mods. EnsureGameInstalledOrOfferPurchase announces the
+		// situation and offers the Steam/GOG purchase flow; on failure we leave the current
+		// session untouched.
+		if (!EnsureGameInstalledOrOfferPurchase(game)) return;
 		// Capture the closing session's sound theme before it is swapped out below, so the
 		// disconnect cue can play in the theme of the game being closed rather than the new one.
 		string closingTheme = _settings.CurrentTheme;

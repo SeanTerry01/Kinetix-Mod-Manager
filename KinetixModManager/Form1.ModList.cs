@@ -59,6 +59,18 @@ public partial class Form1
 			}
 			return;
 		}
+		// Acquire the single-batch update-check guard before any list mutation, so a blocked
+		// caller returns without clearing listUpdates out from under the in-flight check. See
+		// _updateCheckRunning. The guard is held across the async checks and released either by
+		// their completion (CheckForUpdates) or by the finally below when none get launched.
+		if (checkUpdates && Interlocked.CompareExchange(ref _updateCheckRunning, 1, 0) != 0)
+		{
+			Speak("Update check already in progress.");
+			return;
+		}
+		bool launchedChecks = false;
+		try
+		{
 		SetStatus("Connecting to Nexus...");
 		if (!(await ValidateNexusConnection()))
 		{
@@ -204,9 +216,19 @@ public partial class Form1
 		Interlocked.Exchange(ref _activeChecks, list.Count);
 		Speak("Checking for updates.");
 		_ = RunLoadingLoop();
+		launchedChecks = true;
 		foreach (IGrouping<string, StardewMod> item3 in list)
 		{
 			_ = CheckForUpdates(item3.ToList());
+		}
+		}
+		finally
+		{
+			// Release the guard unless the async checks took ownership of it; once launched they
+			// release it on completion (see CheckForUpdates). This also frees it on any early
+			// return or exception above, so a failed scan can't block all future update checks.
+			if (checkUpdates && !launchedChecks)
+				Interlocked.Exchange(ref _updateCheckRunning, 0);
 		}
 	}
 

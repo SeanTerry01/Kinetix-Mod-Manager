@@ -143,6 +143,42 @@ public partial class Form1
 		return false;
 	}
 
+	/// <summary>
+	/// Verifies <paramref name="game"/> is installed before a session is allowed to load. When it
+	/// is not, the session must NOT load: <see cref="AppSettings.CurrentModsPath"/> falls back to the
+	/// Stardew Valley Mods path when a game's own path is unset, so loading anyway would silently show
+	/// another game's mods. Announces the situation, offers to purchase the game, and on "Yes" opens the
+	/// Steam/GOG store picker. Returns <c>true</c> only when loading may proceed (game installed, or
+	/// "None"), and <c>false</c> when the caller must abort the load.
+	/// </summary>
+	private bool EnsureGameInstalledOrOfferPurchase(string game)
+	{
+		if (game == "None" || IsGameInstalled(game)) return true;
+
+		string targetName = game switch
+		{
+			"SkyrimSE" => "Skyrim Special Edition",
+			"Fallout4" => "Fallout 4",
+			"StardewValley" => "Stardew Valley",
+			_ => game
+		};
+
+		Speak($"The session you are trying to load is for {targetName}, a game that has not yet been installed on this PC.");
+
+		DialogResult choice = MessageBox.Show(
+			$"The session you are trying to load is for {targetName}, which has not yet been installed on this PC.\n\nWould you like to purchase {targetName}?",
+			"Game Not Installed",
+			MessageBoxButtons.YesNo,
+			MessageBoxIcon.Warning);
+
+		if (choice == DialogResult.Yes)
+		{
+			ShowStoreSelectionDialog(targetName);
+		}
+
+		return false;
+	}
+
 	private void UpdateGamesMenu()
 	{
 		if (_menuGames == null) return;
