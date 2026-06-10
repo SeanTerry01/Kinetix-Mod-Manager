@@ -130,6 +130,78 @@ public class NexusService
 		finally { _apiSemaphore.Release(); }
 	}
 
+	/// <summary>One mod's suggested update as resolved by the SMAPI web API.</summary>
+	public readonly record struct SmapiUpdate(string Version, string Url);
+
+	/// <summary>
+	/// Queries the SMAPI web API (smapi.io) for available updates, exactly as SMAPI itself does. Unlike the
+	/// per-mod Nexus check, this resolves updates by each mod's UniqueID against SMAPI's crowdsourced mod
+	/// database, so it also finds mods whose <c>manifest.json</c> has a missing or broken update key (for
+	/// example <c>Nexus:???</c> or no key at all). Returns a map of mod UniqueID (case-insensitive) to its
+	/// suggested update, or <c>null</c> if the service could not be reached — in which case callers fall back
+	/// to the manifest-based Nexus check. Include an entry with id "SMAPI" to also receive SMAPI's own update.
+	/// </summary>
+	/// <param name="mods">Installed mods as (UniqueID, installed version, update keys) tuples.</param>
+	/// <param name="smapiVersion">Installed SMAPI version, sent as the API's apiVersion (must be valid semver).</param>
+	/// <param name="gameVersion">Installed Stardew Valley version, used by the API to filter compatible updates.</param>
+	public async Task<Dictionary<string, SmapiUpdate>?> GetSmapiUpdatesAsync(
+		IEnumerable<(string Id, string Version, IEnumerable<string> UpdateKeys)> mods,
+		string smapiVersion, string gameVersion)
+	{
+		try
+		{
+			var modArray = new JArray();
+			foreach (var m in mods)
+			{
+				if (string.IsNullOrEmpty(m.Id)) continue;
+				var keys = new JArray();
+				foreach (string k in m.UpdateKeys)
+					if (!string.IsNullOrWhiteSpace(k)) keys.Add(k);
+
+				modArray.Add(new JObject
+				{
+					["id"]               = m.Id,
+					["updateKeys"]       = keys,
+					["installedVersion"] = string.IsNullOrEmpty(m.Version) ? "0.0.0" : m.Version,
+					["isBroken"]         = false
+				});
+			}
+
+			var body = new JObject
+			{
+				["mods"]                    = modArray,
+				["apiVersion"]              = string.IsNullOrEmpty(smapiVersion) ? "4.0.0" : smapiVersion,
+				["gameVersion"]             = string.IsNullOrEmpty(gameVersion) ? "1.6.15" : gameVersion,
+				["platform"]                = "Windows",
+				["includeExtendedMetadata"] = true
+			};
+
+			using var req = new HttpRequestMessage(HttpMethod.Post, "https://smapi.io/api/v3.0/mods");
+			req.Content = new StringContent(body.ToString(), Encoding.UTF8, "application/json");
+			req.Headers.UserAgent.ParseAdd($"KinetixModManager/{AppVersion}");
+
+			using var resp = await HttpClient.SendAsync(req);
+			if (!resp.IsSuccessStatusCode) return null;
+
+			var arr = JArray.Parse(await resp.Content.ReadAsStringAsync());
+			var result = new Dictionary<string, SmapiUpdate>(StringComparer.OrdinalIgnoreCase);
+			foreach (JToken entry in arr)
+			{
+				string? id = (string?)entry["id"];
+				JToken? suggested = entry["suggestedUpdate"];
+				if (string.IsNullOrEmpty(id) || suggested == null || suggested.Type != JTokenType.Object)
+					continue;
+
+				string? version = (string?)suggested["version"];
+				string? url = (string?)suggested["url"];
+				if (!string.IsNullOrEmpty(version))
+					result[id!] = new SmapiUpdate(version!, url ?? "");
+			}
+			return result;
+		}
+		catch { return null; }
+	}
+
 	// -------------------------------------------------------------------------
 	// Discovery / search
 	// -------------------------------------------------------------------------

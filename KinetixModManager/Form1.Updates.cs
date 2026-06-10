@@ -71,20 +71,184 @@ public partial class Form1
 		}
 		finally
 		{
-			if (Interlocked.Decrement(ref _activeChecks) <= 0)
+			CompleteUpdateCheckUnit();
+		}
+	}
+
+	/// <summary>
+	/// Decrements the count of in-flight update-check units (Nexus/GitHub groups plus the optional
+	/// smapi.io batch) and, once the last one finishes, ends the loading state, releases the
+	/// single-batch guard, plays the completion cue, and announces the final result. Shared by every
+	/// check unit so the cue and announcement fire exactly once regardless of how many sources ran.
+	/// </summary>
+	// A SMAPI program update found during the smapi.io check, surfaced only after the whole update
+	// run finishes so its prompt doesn't interrupt the mod-update announcement. Null when none.
+	private (string Current, string Latest, string Url)? _pendingSmapiUpdate;
+
+	private void CompleteUpdateCheckUnit()
+	{
+		if (Interlocked.Decrement(ref _activeChecks) <= 0)
+		{
+			_isLoading = false;
+			// This batch is done; release the guard so the next update check can start.
+			Interlocked.Exchange(ref _updateCheckRunning, 0);
+			_soundEngine.Play("load_complete");
+			var pendingSmapi = _pendingSmapiUpdate;
+			_pendingSmapiUpdate = null;
+			Invoke(delegate
 			{
-				_isLoading = false;
-				// This batch is done; release the guard so the next update check can start.
-				Interlocked.Exchange(ref _updateCheckRunning, 0);
-				_soundEngine.Play("load_complete");
+				Speak(listUpdates.Items.Count > 0
+					? $"Update check complete. Found {listUpdates.Items.Count} mod updates."
+					: "Update check complete. All mods are up-to-date.");
+				if (pendingSmapi is { } s)
+					NotifySmapiUpdateAvailable(s.Current, s.Latest, s.Url);
+			});
+		}
+	}
+
+	/// <summary>
+	/// Update-check unit that queries the SMAPI web API (smapi.io) for the supplied Stardew Valley mods and
+	/// adds any with a newer suggested version to <c>listUpdates</c>. This is the primary Stardew check: it
+	/// catches mods the manifest-only Nexus check misses because their update key is missing or broken. When
+	/// the API resolves a mod to a Nexus page, the mod's <see cref="GameMod.NexusID"/> is back-filled so the
+	/// existing download/open-page actions work on it. Also surfaces a SMAPI program update if one is offered.
+	/// Runs alongside the Nexus group checks and de-dupes against them by reusing the same mod instances.
+	/// </summary>
+	private async Task CheckUpdatesViaSmapiApi(List<StardewMod> installed, string smapiVersion, string gameVersion)
+	{
+		try
+		{
+			var entries = new List<(string Id, string Version, IEnumerable<string> UpdateKeys)>();
+			foreach (StardewMod mod in installed)
+			{
+				if (mod.IsGroup || string.IsNullOrEmpty(mod.UniqueId)) continue;
+				var keys = new List<string>();
+				if (!string.IsNullOrEmpty(mod.NexusID)) keys.Add("Nexus:" + mod.NexusID);
+				if (!string.IsNullOrEmpty(mod.GitHubRepo)) keys.Add("GitHub:" + mod.GitHubRepo);
+				entries.Add((mod.UniqueId, mod.Version, keys));
+			}
+			// Include SMAPI itself so the same call reports a SMAPI program update.
+			entries.Add(("SMAPI", smapiVersion, new[] { "GitHub:Pathoschild/SMAPI", "Nexus:2400" }));
+
+			var updates = await _nexusService.GetSmapiUpdatesAsync(entries, smapiVersion, gameVersion);
+			if (updates == null) return; // Service unreachable; the Nexus fallback check still runs.
+
+			if (updates.TryGetValue("SMAPI", out var smapiUpd) && IsNewerVersion(smapiVersion, smapiUpd.Version))
+			{
+				// Defer the prompt until the whole check completes (see CompleteUpdateCheckUnit).
+				_pendingSmapiUpdate = (smapiVersion, smapiUpd.Version, smapiUpd.Url);
+			}
+
+			foreach (StardewMod mod in installed)
+			{
+				if (mod.IsGroup || string.IsNullOrEmpty(mod.UniqueId)) continue;
+				if (!updates.TryGetValue(mod.UniqueId, out var upd)) continue;
+				if (!IsNewerVersion(mod.Version, upd.Version)) continue;
+
+				if (_settings.IgnoredVersions.TryGetValue(mod.UniqueId, out string? ignored) && ignored == upd.Version)
+					continue;
+
+				mod.LatestVersion = upd.Version;
+				// Back-fill a Nexus ID or GitHub repo from the suggested page when the manifest lacked a
+				// usable update key, so the mod becomes actionable by the existing update/open-page flow.
+				if (string.IsNullOrEmpty(mod.NexusID) && string.IsNullOrEmpty(mod.GitHubRepo) && !string.IsNullOrEmpty(upd.Url))
+				{
+					var nexus = Regex.Match(upd.Url, @"nexusmods\.com/stardewvalley/mods/(\d+)", RegexOptions.IgnoreCase);
+					if (nexus.Success)
+					{
+						mod.NexusID = nexus.Groups[1].Value;
+					}
+					else
+					{
+						var gh = Regex.Match(upd.Url, @"github\.com/([^/]+/[^/]+?)(?:/|$)", RegexOptions.IgnoreCase);
+						if (gh.Success) mod.GitHubRepo = gh.Groups[1].Value;
+					}
+				}
+
 				Invoke(delegate
 				{
-					Speak(listUpdates.Items.Count > 0
-						? $"Update check complete. Found {listUpdates.Items.Count} mod updates."
-						: "Update check complete. All mods are up-to-date.");
+					listUpdates.BeginUpdate();
+					if (!listUpdates.Items.Contains(mod))
+					{
+						mod.IsUpdateResult = true;
+						listUpdates.Items.Add(mod);
+					}
+					listUpdates.EndUpdate();
 				});
 			}
 		}
+		catch (Exception ex)
+		{
+			LogError("SmapiUpdate", "SMAPI update check failed: " + ex.Message);
+		}
+		finally
+		{
+			CompleteUpdateCheckUnit();
+		}
+	}
+
+	/// <summary>
+	/// Announces an available SMAPI program update and offers to open its download page. SMAPI is updated by
+	/// running its own installer, so it is intentionally not added to the updatable mod list.
+	/// </summary>
+	private void NotifySmapiUpdateAvailable(string current, string latest, string url)
+	{
+		_soundEngine.Play("connect");
+		Speak($"A SMAPI update is available. You have {current}; version {latest} is available.");
+		string target = string.IsNullOrEmpty(url) ? "https://smapi.io/" : url;
+		if (MessageBox.Show(
+				$"A SMAPI update is available.\n\nInstalled: {current}\nLatest: {latest}\n\nSMAPI is updated by running its installer. Open the SMAPI download page now?",
+				"SMAPI Update Available", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+		{
+			try { Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }
+			catch (Exception ex) { MessageBox.Show("Could not open the SMAPI page: " + ex.Message); }
+		}
+	}
+
+	/// <summary>
+	/// Best-effort detection of the installed SMAPI and Stardew Valley versions for the smapi.io request.
+	/// Reads them from the SMAPI log header when present (it records "SMAPI x.y.z with Stardew Valley a.b.c"),
+	/// otherwise falls back to the StardewModdingAPI.dll file version and a current game-version default.
+	/// </summary>
+	private (string Smapi, string Game) DetectStardewVersions()
+	{
+		string smapi = "";
+		string game = "";
+		try
+		{
+			string logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+				"StardewValley", "ErrorLogs", "SMAPI-latest.txt");
+			if (File.Exists(logPath))
+			{
+				foreach (string line in File.ReadLines(logPath))
+				{
+					var m = Regex.Match(line, @"SMAPI\s+(\d+\.\d+\.\d+)\s+with\s+Stardew Valley\s+(\d+\.\d+(?:\.\d+)?)",
+						RegexOptions.IgnoreCase);
+					if (m.Success) { smapi = m.Groups[1].Value; game = m.Groups[2].Value; break; }
+				}
+			}
+		}
+		catch { }
+
+		if (string.IsNullOrEmpty(smapi))
+		{
+			try
+			{
+				string gameFolder = Path.GetDirectoryName(_settings.CurrentModsPath) ?? "";
+				string dll = Path.Combine(gameFolder, "StardewModdingAPI.dll");
+				if (File.Exists(dll))
+				{
+					var fv = System.Diagnostics.FileVersionInfo.GetVersionInfo(dll);
+					if (!string.IsNullOrEmpty(fv.FileVersion))
+						smapi = fv.FileVersion!.Split('+', ' ')[0];
+				}
+			}
+			catch { }
+		}
+
+		if (string.IsNullOrEmpty(smapi)) smapi = "4.0.0";
+		if (string.IsNullOrEmpty(game)) game = "1.6.15";
+		return (smapi, game);
 	}
 
 	/// <summary>

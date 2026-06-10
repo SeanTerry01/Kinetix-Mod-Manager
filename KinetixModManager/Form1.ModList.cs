@@ -205,18 +205,28 @@ public partial class Form1
 		List<IGrouping<string, StardewMod>> list = (from m in _allInstalledMods
 			where !string.IsNullOrEmpty(m.NexusID) || !string.IsNullOrEmpty(m.GitHubRepo)
 			group m by (!string.IsNullOrEmpty(m.NexusID) ? "Nexus:" + m.NexusID : "GitHub:" + m.GitHubRepo)).ToList();
-		if (list.Count == 0)
+		// Stardew Valley additionally runs one smapi.io batch check (counted as a unit), which catches
+		// mods whose manifest update key is missing or broken — the manifest-only Nexus grouping below
+		// can't see those. Skyrim/Fallout 4 use only the Nexus group checks.
+		bool runSmapi = _settings.ActiveGame == "StardewValley";
+		int unitCount = list.Count + (runSmapi ? 1 : 0);
+		if (unitCount == 0)
 		{
 			_isLoading = false;
 			_soundEngine.Play("load_complete");
-			Speak("No mods found with Nexus IDs or GitHub Repos to check for updates.");
+			Speak("No mods found with update sources to check.");
 			return;
 		}
 		_isLoading = true;
-		Interlocked.Exchange(ref _activeChecks, list.Count);
+		Interlocked.Exchange(ref _activeChecks, unitCount);
 		Speak("Checking for updates.");
 		_ = RunLoadingLoop();
 		launchedChecks = true;
+		if (runSmapi)
+		{
+			var (smapiVer, gameVer) = DetectStardewVersions();
+			_ = CheckUpdatesViaSmapiApi(_allInstalledMods.Where(m => !m.IsGroup).ToList(), smapiVer, gameVer);
+		}
 		foreach (IGrouping<string, StardewMod> item3 in list)
 		{
 			_ = CheckForUpdates(item3.ToList());
