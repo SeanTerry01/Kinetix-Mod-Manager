@@ -176,4 +176,105 @@ public partial class Form1
 		{
 		}
 	}
+
+	/// <summary>Opens a single log-line link in the default browser, speaking success or failure.</summary>
+	private void OpenLogLink(string url)
+	{
+		try
+		{
+			Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+			Speak("Opening mod page in your browser.");
+		}
+		catch (Exception ex)
+		{
+			LogError("SmapiLog", "Could not open log link: " + ex.Message);
+			Speak("Could not open the link.");
+		}
+	}
+
+	/// <summary>
+	/// Shows an accessible picker when a log line contains more than one link (for example a SMAPI
+	/// "no longer compatible" line that lists the Nexus, GitHub, and smapi.io pages). Each link is
+	/// listed by a friendly source label plus its URL; Enter on a selection opens it in the default
+	/// browser, Escape cancels. Mirrors the keyboard/focus conventions of the app's other list dialogs.
+	/// </summary>
+	private void ShowLogLinkPicker(List<string> urls)
+	{
+		Form dialog = new Form
+		{
+			Text = "Open which link? - Escape to Close",
+			Size = new Size(560, 320),
+			StartPosition = FormStartPosition.CenterScreen,
+			KeyPreview = true
+		};
+		dialog.KeyDown += (s, e) => { if (e.KeyCode == Keys.Escape) dialog.Close(); };
+
+		ListBox list = new ListBox
+		{
+			Dock = DockStyle.Fill,
+			Font = new Font("Segoe UI", 12f),
+			Name = "listLinkPicker",
+			AccessibleName = "Links in this log line"
+		};
+		foreach (string url in urls)
+		{
+			list.Items.Add($"{LinkLabel(url)}: {url}");
+		}
+		// Announce position on focus the same way the main lists do.
+		list.GotFocus += List_Enter;
+		if (list.Items.Count > 0)
+		{
+			list.SelectedIndex = 0;
+		}
+		list.KeyDown += (s, e) =>
+		{
+			if (e.KeyCode == Keys.Return && list.SelectedIndex >= 0)
+			{
+				OpenLogLink(urls[list.SelectedIndex]);
+				e.Handled = true;
+				dialog.Close();
+			}
+		};
+
+		Label hint = new Label
+		{
+			Text = "Select a link and press Enter to open it. Escape to cancel.",
+			Dock = DockStyle.Fill,
+			TextAlign = ContentAlignment.MiddleLeft,
+			Padding = new Padding(4, 0, 0, 0)
+		};
+
+		TableLayoutPanel layout = new TableLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			ColumnCount = 1,
+			RowCount = 2
+		};
+		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+		layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32f));
+		layout.Controls.Add(list, 0, 0);
+		layout.Controls.Add(hint, 0, 1);
+
+		dialog.Controls.Add(layout);
+		dialog.Shown += (s, e) => list.Focus();
+		dialog.ShowDialog();
+	}
+
+	/// <summary>Returns a short, screen-reader-friendly label for a link based on its host (e.g. "Nexus Mods page").</summary>
+	private static string LinkLabel(string url)
+	{
+		if (url.Contains("nexusmods.com", StringComparison.OrdinalIgnoreCase))
+		{
+			return "Nexus Mods page";
+		}
+		if (url.Contains("github.com", StringComparison.OrdinalIgnoreCase))
+		{
+			return url.Contains("/releases", StringComparison.OrdinalIgnoreCase) ? "GitHub releases page" : "GitHub page";
+		}
+		if (url.Contains("smapi.io", StringComparison.OrdinalIgnoreCase))
+		{
+			return "SMAPI.io";
+		}
+		try { return new Uri(url).Host; } catch { return "Link"; }
+	}
 }

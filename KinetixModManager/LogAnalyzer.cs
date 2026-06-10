@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
@@ -153,17 +154,36 @@ public static class LogAnalyzer
 	public static string ExtractUrl(string logLine)
 	{
 		Match match = Regex.Match(logLine, @"https?://[^\s]+", RegexOptions.IgnoreCase);
-		if (!match.Success)
-		{
-			return "";
-		}
-		string url = match.Value.TrimEnd('.', ',', ';', ':', ')', ']', '}', '>', '"', '\'');
+		return match.Success ? NormalizeLogUrl(match.Value) : "";
+	}
 
-		Match nexus = Regex.Match(url, @"^(https?://www\.nexusmods\.com/[^/]+/mods/\d+)", RegexOptions.IgnoreCase);
-		if (nexus.Success)
+	/// <summary>
+	/// Extracts every http(s) URL from a log line, in order and de-duplicated, with trailing punctuation
+	/// trimmed and nexusmods.com mod pages normalized to the Files tab (see <see cref="NormalizeLogUrl"/>).
+	/// A SMAPI "no longer compatible" line, for instance, can list the Nexus page, a GitHub releases page,
+	/// and smapi.io — letting the log viewer offer a choice. Returns an empty list when there are no links.
+	/// </summary>
+	public static List<string> ExtractUrls(string logLine)
+	{
+		var result = new List<string>();
+		foreach (Match m in Regex.Matches(logLine, @"https?://[^\s]+", RegexOptions.IgnoreCase))
 		{
-			return nexus.Groups[1].Value + "?tab=files";
+			string url = NormalizeLogUrl(m.Value);
+			bool dup = false;
+			foreach (string existing in result)
+			{
+				if (string.Equals(existing, url, StringComparison.OrdinalIgnoreCase)) { dup = true; break; }
+			}
+			if (!dup) result.Add(url);
 		}
-		return url;
+		return result;
+	}
+
+	/// <summary>Trims trailing punctuation the log wraps around a URL and points nexusmods.com mod pages at the Files tab.</summary>
+	private static string NormalizeLogUrl(string raw)
+	{
+		string url = raw.TrimEnd('.', ',', ';', ':', ')', ']', '}', '>', '"', '\'');
+		Match nexus = Regex.Match(url, @"^(https?://www\.nexusmods\.com/[^/]+/mods/\d+)", RegexOptions.IgnoreCase);
+		return nexus.Success ? nexus.Groups[1].Value + "?tab=files" : url;
 	}
 }

@@ -498,23 +498,20 @@ public partial class Form1
 		}
 		if (list.Name == "listLog" && e.KeyCode == Keys.Return && list.SelectedItem is LogEntry logEntry)
 		{
-			// A SMAPI "you can update N mods" line includes the mod's page URL. Pressing Enter on such
-			// a line opens it (Nexus pages on the Files tab, just like the updates list does) so the
-			// user can grab an update SMAPI's own checker missed. Lines without a link fall through to
-			// the view-return / detail behavior below.
-			string logUrl = LogAnalyzer.ExtractUrl(logEntry.Text);
-			if (!string.IsNullOrEmpty(logUrl))
+			// A SMAPI line can include one or more links (e.g. a "no longer compatible" line lists the
+			// Nexus, GitHub, and smapi.io pages). Enter on a single-link line opens it directly (Nexus
+			// pages on the Files tab, like the updates list); a multi-link line shows a picker so the
+			// user chooses which to open. Lines without a link fall through to the view/detail behavior.
+			List<string> logUrls = LogAnalyzer.ExtractUrls(logEntry.Text);
+			if (logUrls.Count == 1)
 			{
-				try
-				{
-					Process.Start(new ProcessStartInfo(logUrl) { UseShellExecute = true });
-					Speak("Opening mod page in your browser.");
-				}
-				catch (Exception ex)
-				{
-					LogError("SmapiLog", "Could not open log link: " + ex.Message);
-					Speak("Could not open the link.");
-				}
+				OpenLogLink(logUrls[0]);
+				e.Handled = true;
+				return;
+			}
+			if (logUrls.Count > 1)
+			{
+				ShowLogLinkPicker(logUrls);
 				e.Handled = true;
 				return;
 			}
