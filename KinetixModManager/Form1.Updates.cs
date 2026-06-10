@@ -188,21 +188,25 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Announces an available SMAPI program update and offers to open its download page. SMAPI is updated by
-	/// running its own installer, so it is intentionally not added to the updatable mod list.
+	/// Announces an available SMAPI program update and offers to install it in place automatically. SMAPI is
+	/// updated by re-running its installer over the existing install, which is exactly what <see
+	/// cref="InstallSmapiAsync"/> does, so "Yes" downloads the latest installer and runs it unattended. SMAPI
+	/// is intentionally not added to the updatable mod list because it is the loader, not a mod. Declining
+	/// leaves the install untouched; any failure inside the installer falls back to opening smapi.io.
 	/// </summary>
-	private void NotifySmapiUpdateAvailable(string current, string latest, string url)
+	private async void NotifySmapiUpdateAvailable(string current, string latest, string url)
 	{
 		_soundEngine.Play("connect");
 		Speak($"A SMAPI update is available. You have {current}; version {latest} is available.");
-		string target = string.IsNullOrEmpty(url) ? "https://smapi.io/" : url;
 		if (MessageBox.Show(
-				$"A SMAPI update is available.\n\nInstalled: {current}\nLatest: {latest}\n\nSMAPI is updated by running its installer. Open the SMAPI download page now?",
-				"SMAPI Update Available", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
-		{
-			try { Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }
-			catch (Exception ex) { MessageBox.Show("Could not open the SMAPI page: " + ex.Message); }
-		}
+				$"A SMAPI update is available.\n\nInstalled: {current}\nLatest: {latest}\n\n" +
+				"KinetixModManager can download and install it for you automatically. Update SMAPI now?",
+				"SMAPI Update Available", MessageBoxButtons.YesNo, MessageBoxIcon.Information) != DialogResult.Yes)
+			return;
+
+		// SMAPI's installer updates an existing install in place, so the same routine used for a fresh
+		// install performs the update; it self-reports success/failure by voice and handles its own fallback.
+		await InstallSmapiAsync(DetectGameFolder("StardewValley"));
 	}
 
 	/// <summary>

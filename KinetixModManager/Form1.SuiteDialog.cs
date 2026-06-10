@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.IO.Compression;
 using System.IO.Pipes;
 using System.Linq;
 using System.Net;
@@ -132,7 +133,9 @@ public partial class Form1
 		{
 			string statusText = item.IsInstalled ? "Installed" : "Not Installed";
 			lstStatus.Items.Add($"{item.Name}: {statusText}");
-			if (!item.IsInstalled && (item.Type != "Loader" || game != "StardewValley"))
+			// SMAPI (the Stardew "Loader") now installs automatically too, so a missing loader
+			// should also enable the Install button rather than being treated as already handled.
+			if (!item.IsInstalled)
 			{
 				allModsInstalled = false;
 			}
@@ -176,11 +179,12 @@ public partial class Form1
 			{
 				Speak("Starting accessibility suite installation.");
 				
+				// SMAPI is the Stardew mod loader; install it first (and automatically) so the
+				// accessibility mods below have something to load them. Other games' loaders are
+				// handled inside the loop via the script-extender installer.
 				if (!loaderInstalled && game == "StardewValley")
 				{
-					Speak("Warning: SMAPI is not detected. Please install it manually.");
-					MessageBox.Show("We recommend installing SMAPI to run accessibility mods. Opening download link...", "SMAPI Missing");
-					Process.Start(new ProcessStartInfo(suiteItems[0].Source) { UseShellExecute = true });
+					loaderInstalled = await InstallSmapiAsync(DetectGameFolder("StardewValley"));
 				}
 
 				foreach (var item in suiteItems)
@@ -392,6 +396,98 @@ public partial class Form1
 			"2. \"Engine Fixes - skse64 Preloader\": download it and extract d3dx9_42.dll directly into your " +
 			"Skyrim game folder (the folder containing SkyrimSE.exe).",
 			"Manual Download Required");
+	}
+
+	/// <summary>
+	/// Downloads the latest SMAPI installer from its GitHub release and runs it unattended against the
+	/// detected Stardew Valley folder, so the user never has to drive SMAPI's interactive console
+	/// installer. SMAPI's installer accepts <c>--install</c>, <c>--game-path</c> and <c>--no-prompt</c>
+	/// for exactly this scripted scenario. Falls back to opening smapi.io in the browser whenever the
+	/// game folder, download, or installer can't be resolved, or the result can't be confirmed. Returns
+	/// true only when <c>StardewModdingAPI.exe</c> is present in the game folder afterwards.
+	/// </summary>
+	private async Task<bool> InstallSmapiAsync(string gameFolder)
+	{
+		// SMAPI can only install into a real Stardew Valley folder; bail to the manual flow otherwise.
+		if (string.IsNullOrEmpty(gameFolder) || !File.Exists(Path.Combine(gameFolder, "Stardew Valley.exe")))
+		{
+			Speak("Could not find the Stardew Valley folder. Opening the SMAPI download page instead.");
+			Process.Start(new ProcessStartInfo("https://smapi.io") { UseShellExecute = true });
+			MessageBox.Show(
+				"KinetixModManager couldn't locate your Stardew Valley installation, so SMAPI could not be " +
+				"installed automatically. Please install SMAPI from the page that just opened.",
+				"SMAPI Install");
+			return false;
+		}
+
+		string tempDir = Path.Combine(Path.GetTempPath(), "SMAPI_" + Path.GetRandomFileName());
+		try
+		{
+			SetStatus("Downloading SMAPI...");
+			Speak("Downloading SMAPI...");
+
+			string? url = await GetSmapiInstallerZipUrl();
+			if (string.IsNullOrEmpty(url)) throw new Exception("Could not resolve the SMAPI download URL.");
+
+			byte[] bytes = await _nexusService.DownloadBytesAsync(url);
+			Directory.CreateDirectory(tempDir);
+			string zipPath = Path.Combine(tempDir, "SMAPI-installer.zip");
+			File.WriteAllBytes(zipPath, bytes);
+
+			string extractDir = Path.Combine(tempDir, "extracted");
+			await Task.Run(() => ZipFile.ExtractToDirectory(zipPath, extractDir));
+
+			// The installer sits at "<top-level installer folder>/internal/windows/SMAPI.Installer.exe";
+			// search for it so we don't depend on the version number in the folder name.
+			string marker = Path.Combine("internal", "windows");
+			string? installerExe = Directory.EnumerateFiles(extractDir, "SMAPI.Installer.exe", SearchOption.AllDirectories)
+					.FirstOrDefault(p => p.Contains(marker, StringComparison.OrdinalIgnoreCase))
+				?? Directory.EnumerateFiles(extractDir, "SMAPI.Installer.exe", SearchOption.AllDirectories).FirstOrDefault();
+			if (installerExe == null) throw new Exception("SMAPI.Installer.exe was not found in the download.");
+
+			SetStatus("Installing SMAPI...");
+			Speak("Installing SMAPI. This may take a moment.");
+
+			var psi = new ProcessStartInfo(installerExe)
+			{
+				UseShellExecute = false,
+				CreateNoWindow = true,
+				WorkingDirectory = Path.GetDirectoryName(installerExe)!
+			};
+			psi.ArgumentList.Add("--install");
+			psi.ArgumentList.Add("--game-path");
+			psi.ArgumentList.Add(gameFolder);
+			psi.ArgumentList.Add("--no-prompt");
+
+			await Task.Run(() =>
+			{
+				using Process? proc = Process.Start(psi);
+				proc?.WaitForExit();
+			});
+
+			bool installed = File.Exists(Path.Combine(gameFolder, "StardewModdingAPI.exe"));
+			if (installed)
+			{
+				Speak("SMAPI installed successfully.");
+			}
+			else
+			{
+				Speak("SMAPI installation could not be confirmed. Opening the SMAPI page so you can install it manually.");
+				Process.Start(new ProcessStartInfo("https://smapi.io") { UseShellExecute = true });
+			}
+			return installed;
+		}
+		catch (Exception ex)
+		{
+			LogError("SMAPI", "Automatic SMAPI install failed: " + ex.Message);
+			Speak("Automatic SMAPI install failed. Opening the SMAPI download page.");
+			Process.Start(new ProcessStartInfo("https://smapi.io") { UseShellExecute = true });
+			return false;
+		}
+		finally
+		{
+			try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { }
+		}
 	}
 
 	private bool HasModUniqueId(string uniqueId)

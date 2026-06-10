@@ -1,3 +1,18 @@
+# Release Notes & Changelog: Version 1.2.3
+
+Automates SMAPI for Stardew Valley — installing it, and keeping it up to date — so a new modder never has to use SMAPI's console installer or a download page.
+
+---
+
+## ✨ New in Version 1.2.3
+
+### 🤖 Automatic SMAPI install and update
+*   **One-step SMAPI install**: The Accessibility Suite Installer now installs SMAPI for you. It downloads the latest installer straight from SMAPI's official GitHub release and runs it silently against your detected Stardew Valley folder, so you no longer have to drive SMAPI's interactive console installer by hand. You hear spoken progress throughout — "Downloading SMAPI", "Installing SMAPI", and "SMAPI installed successfully".
+*   **Update SMAPI in place**: When a mod update check finds a newer SMAPI (Stardew Valley reports this through the smapi.io check added in 1.2.2's groundwork), the manager now offers to download and install the update for you automatically, instead of just opening the download page. Choosing "No" leaves your install untouched.
+*   **Safe fallbacks**: If your Stardew Valley folder can't be found, the download fails, or the install can't be confirmed afterwards, the manager says so and opens smapi.io so you always have a way forward.
+
+---
+
 # Release Notes & Changelog: Version 1.2.2
 
 Adds the ability to edit a mod's config and manifest files directly inside the manager, building on the 1.2.1 fixes.
