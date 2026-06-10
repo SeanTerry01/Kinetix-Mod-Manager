@@ -4,7 +4,7 @@
 [Setup]
 AppId={{D37D0B2E-6D3F-4B1C-BD03-9A1D2E3F4B5C}
 AppName=Kinetix Mod Manager
-AppVersion=1.2.1
+AppVersion=1.2.2
 AppPublisher=Audi Venture Games
 AppPublisherURL=https://www.nexusmods.com/stardewvalley/mods/32385
 AppSupportURL=https://www.nexusmods.com/stardewvalley/mods/32385

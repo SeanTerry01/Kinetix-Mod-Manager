@@ -1,3 +1,18 @@
+# Release Notes & Changelog: Version 1.2.2
+
+Adds the ability to edit a mod's config and manifest files directly inside the manager, building on the 1.2.1 fixes.
+
+---
+
+## ✨ New in Version 1.2.2
+
+### 📝 Edit a mod's config and manifest in-program
+*   **Edit Config File (Ctrl+E)**: Open the selected mod's `config.json` in the built-in JSON editor to change mod settings without leaving the manager — for example, setting where the Stardew Valley "Skip Intro" mod skips to (such as `Load`). If a mod hasn't generated its config yet (most do so the first time the game runs with the mod enabled), the manager says so instead of failing.
+*   **Edit Manifest File (Ctrl+M)**: Open the selected mod's manifest (`manifest.json` for Stardew Valley, or the manager's `.manager_manifest.json` for Skyrim/Fallout 4) to fix details directly — most usefully a version number a mod author forgot to bump, which otherwise keeps the mod flagged for updates. Saving a manifest edit re-scans the installed list so the corrected version takes effect immediately.
+*   **Safe, accessible editing**: Both use the same in-program editor as the mod keybind config — Ctrl+S to save, Escape to cancel, JSON validation that refuses to save malformed files, an unsaved-changes prompt, and spoken prompts throughout. Both actions appear in the Mods menu, in the Installed-tab context help (Shift+F1), and in the Shortcut Customization dialog, so the keys can be rebound.
+
+---
+
 # Release Notes & Changelog: Version 1.2.1
 
 A small bug-fix release addressing two issues found when running the manager on a PC where not every supported game is installed.

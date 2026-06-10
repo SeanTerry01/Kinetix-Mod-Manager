@@ -92,6 +92,16 @@ public partial class Form1
 			e.SuppressKeyPress = true;
 			OpenModPage();
 		}
+		if (IsShortcut(e, "OpenConfig"))
+		{
+			e.SuppressKeyPress = true;
+			OpenSelectedModConfig();
+		}
+		if (IsShortcut(e, "OpenManifest"))
+		{
+			e.SuppressKeyPress = true;
+			OpenSelectedModManifest();
+		}
 		if (IsShortcut(e, "OpenDownloads"))
 		{
 			e.SuppressKeyPress = true;

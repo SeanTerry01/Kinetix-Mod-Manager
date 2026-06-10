@@ -755,13 +755,15 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Opens a modal text editor with syntax validation for editing the selected mod's configuration file.
+	/// Opens a modal text editor with JSON syntax validation for editing one of the selected mod's files.
+	/// <paramref name="fileLabel"/> names the file in the window title and spoken prompts (for example
+	/// "Configuration" or "Manifest") and defaults to "Configuration" for existing callers.
 	/// </summary>
-	private void OpenConfigEditor(string modName, string configPath, Action onSaveSuccess)
+	private void OpenConfigEditor(string modName, string configPath, Action onSaveSuccess, string fileLabel = "Configuration")
 	{
 		if (!File.Exists(configPath))
 		{
-			Speak("Configuration file not found.");
+			Speak($"{fileLabel} file not found.");
 			return;
 		}
 
@@ -772,13 +774,13 @@ public partial class Form1
 		}
 		catch
 		{
-			Speak("Could not read configuration file.");
+			Speak($"Could not read {fileLabel.ToLower()} file.");
 			return;
 		}
 
 		Form editorForm = new Form
 		{
-			Text = $"Edit Configuration - {modName} - Ctrl+S to Save, Escape to Cancel",
+			Text = $"Edit {fileLabel} - {modName} - Ctrl+S to Save, Escape to Cancel",
 			Size = new Size(800, 600),
 			StartPosition = FormStartPosition.CenterParent,
 			KeyPreview = true
@@ -853,7 +855,7 @@ public partial class Form1
 			try
 			{
 				File.WriteAllText(configPath, editedText);
-				Speak("Configuration saved.");
+				Speak($"{fileLabel} saved.");
 				onSaveSuccess?.Invoke();
 				editorForm.DialogResult = DialogResult.OK;
 				editorForm.Close();
@@ -898,7 +900,7 @@ public partial class Form1
 			}
 		};
 
-		Speak($"Editing configuration for {modName}. Press Control S to save, or Escape to cancel.");
+		Speak($"Editing {fileLabel.ToLower()} for {modName}. Press Control S to save, or Escape to cancel.");
 		editorForm.ShowDialog();
 	}
 }

@@ -287,6 +287,14 @@ public class AppSettings
 				Keys.R | Keys.Control
 			},
 			{
+				"OpenConfig",
+				Keys.E | Keys.Control
+			},
+			{
+				"OpenManifest",
+				Keys.M | Keys.Control
+			},
+			{
 				"PruneBackups",
 				Keys.B | Keys.Shift | Keys.Control
 			},

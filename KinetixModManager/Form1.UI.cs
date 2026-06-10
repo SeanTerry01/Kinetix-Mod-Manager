@@ -116,6 +116,14 @@ public partial class Form1
 		{
 			await AutoMatchNexusIDs();
 		});
+		toolStripMenuItem2.DropDownItems.Add("Edit Selected Mod's Config File (" + GetShortcutString("OpenConfig") + ")", null, delegate
+		{
+			OpenSelectedModConfig();
+		});
+		toolStripMenuItem2.DropDownItems.Add("Edit Selected Mod's Manifest File (" + GetShortcutString("OpenManifest") + ")", null, delegate
+		{
+			OpenSelectedModManifest();
+		});
 
 		ToolStripMenuItem toolStripMenuItem3 = new ToolStripMenuItem("&View");
 		toolStripMenuItem3.DropDownItems.Add("Open Downloads Folder (" + GetShortcutString("OpenDownloads") + ")", null, delegate
