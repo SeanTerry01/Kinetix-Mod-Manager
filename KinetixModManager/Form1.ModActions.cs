@@ -223,7 +223,9 @@ public partial class Form1
 			{
 				return;
 			}
-			string text = LogAnalyzer.ExtractMissingModId(listLog.SelectedItem.ToString() ?? "");
+			string line = listLog.SelectedItem.ToString() ?? "";
+			// If the line names a missing dependency, offer the actionable Discovery search directly.
+			string text = LogAnalyzer.ExtractMissingModId(line);
 			if (!string.IsNullOrEmpty(text))
 			{
 				if (MessageBox.Show("Search for missing dependency: " + text + "?", "Quick-Fix from Log", MessageBoxButtons.YesNo) == DialogResult.Yes)
@@ -232,11 +234,12 @@ public partial class Form1
 					txtSearch.Text = text;
 					_ = RunDiscovery();
 				}
+				return;
 			}
-			else
-			{
-				Speak("Could not identify a missing mod in this log entry.");
-			}
+			// Otherwise explain what the line means and how to fix it.
+			string diagnosis = LogAnalyzer.Diagnose(line);
+			Speak("Diagnosing log entry.");
+			MessageBox.Show(diagnosis, "Diagnose Log Entry");
 		}
 	}
 

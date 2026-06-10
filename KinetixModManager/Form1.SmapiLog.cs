@@ -69,18 +69,25 @@ public partial class Form1
 			for (int i = 0; i < array.Length; i++)
 			{
 				string text2 = array[i];
-				bool flag = text2.Contains("[ERROR]");
-				bool flag2 = text2.Contains("[WARN]");
+				// The level lives inside the header bracket ("[HH:MM:SS ERROR Source]"), so detect it
+				// via LogAnalyzer.GetLevel rather than looking for a literal "[ERROR]" that never appears.
+				string level = LogAnalyzer.GetLevel(text2);
+				bool isError = level == "ERROR";
+				bool isWarn = level == "WARN";
 				bool flag3 = false;
 				if (text == "Full Log")
 				{
 					flag3 = true;
 				}
-				else if (text == "Errors Only" && flag)
+				else if (text == "Errors Only" && isError)
 				{
 					flag3 = true;
 				}
-				else if (text == "Errors and Warnings" && (flag || flag2))
+				else if (text == "Errors and Warnings" && (isError || isWarn))
+				{
+					flag3 = true;
+				}
+				else if (text == "Links Only" && !string.IsNullOrEmpty(LogAnalyzer.ExtractUrl(text2)))
 				{
 					flag3 = true;
 				}

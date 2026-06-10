@@ -406,7 +406,7 @@ public partial class Form1
 			DropDownStyle = ComboBoxStyle.DropDownList
 		};
 		ComboBox.ObjectCollection items3 = cmbLogFilter.Items;
-		items2 = new string[3] { "Errors and Warnings", "Errors Only", "Full Log" };
+		items2 = new string[4] { "Errors and Warnings", "Errors Only", "Full Log", "Links Only" };
 		items3.AddRange(items2);
 		cmbLogFilter.SelectedIndex = 0;
 		cmbLogFilter.SelectedIndexChanged += delegate
@@ -445,7 +445,10 @@ public partial class Form1
 		{
 			Dock = DockStyle.Fill,
 			Name = "listLog",
-			Font = new Font("Segoe UI", 12f)
+			Font = new Font("Segoe UI", 12f),
+			// Allow standard multi-selection (Shift/Ctrl + arrows) so lines can be selected and copied
+			// to the clipboard with Ctrl+C, without having to open SMAPI-latest.txt by hand.
+			SelectionMode = SelectionMode.MultiExtended
 		};
 		listLog.AccessibleName = "Parsed SMAPI Log Entries";
 		tableLayoutPanel5.Controls.Add(flowLayoutPanel3, 0, 0);

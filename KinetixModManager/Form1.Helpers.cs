@@ -170,10 +170,16 @@ public partial class Form1
 		string text = $"{list.SelectedIndex + 1} of {list.Items.Count}";
 		if (list.Name == "listLog")
 		{
-			string suggestedFix = LogAnalyzer.GetSuggestedFix(list.SelectedItem.ToString() ?? "");
+			string lineText = list.SelectedItem.ToString() ?? "";
+			string suggestedFix = LogAnalyzer.GetSuggestedFix(lineText);
 			if (!string.IsNullOrEmpty(suggestedFix))
 			{
 				text = text + ". Suggested Fix: " + suggestedFix;
+			}
+			// Let a screen-reader user know this line is actionable (e.g. a SMAPI update notice).
+			if (!string.IsNullOrEmpty(LogAnalyzer.ExtractUrl(lineText)))
+			{
+				text = text + ". Press Enter to open mod page.";
 			}
 		}
 		Speak(text);
@@ -215,7 +221,7 @@ public partial class Form1
 			text = "Profiles: Enter to apply profile. Delete to remove profile.";
 			break;
 		case (int)AppTab.SmapiLog:
-			text = "SMAPI Log: Search box available. Enter on search result to jump to it in full view. " + GetShortcutString("QuickFix") + " to Quick-Fix detected issue. " + GetShortcutString("Login") + " to upload to SMAPI.io. " + GetShortcutString("OpenLogFile") + " to open raw file.";
+			text = "SMAPI Log: Filter dropdown includes Errors Only, Errors and Warnings, Full Log, and Links Only. Search box available. Enter on a line with a link opens the mod page; Enter on a search result jumps to it in full view. " + GetShortcutString("QuickFix") + " to diagnose and fix the selected line. Control C to copy selected lines to the clipboard. " + GetShortcutString("Login") + " to upload to SMAPI.io. " + GetShortcutString("OpenLogFile") + " to open raw file.";
 			break;
 		}
 		if (!string.IsNullOrEmpty(text))

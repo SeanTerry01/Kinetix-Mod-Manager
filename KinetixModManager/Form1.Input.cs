@@ -498,6 +498,27 @@ public partial class Form1
 		}
 		if (list.Name == "listLog" && e.KeyCode == Keys.Return && list.SelectedItem is LogEntry logEntry)
 		{
+			// A SMAPI "you can update N mods" line includes the mod's page URL. Pressing Enter on such
+			// a line opens it (Nexus pages on the Files tab, just like the updates list does) so the
+			// user can grab an update SMAPI's own checker missed. Lines without a link fall through to
+			// the view-return / detail behavior below.
+			string logUrl = LogAnalyzer.ExtractUrl(logEntry.Text);
+			if (!string.IsNullOrEmpty(logUrl))
+			{
+				try
+				{
+					Process.Start(new ProcessStartInfo(logUrl) { UseShellExecute = true });
+					Speak("Opening mod page in your browser.");
+				}
+				catch (Exception ex)
+				{
+					LogError("SmapiLog", "Could not open log link: " + ex.Message);
+					Speak("Could not open the link.");
+				}
+				e.Handled = true;
+				return;
+			}
+
 			if (list.Items.Count < _fullLogEntries.Count)
 			{
 				txtSearchLog.Text = "";
@@ -526,6 +547,27 @@ public partial class Form1
 		if (list.Name == "listLog" && IsShortcut(e, "Login"))
 		{
 			await UploadSmapiLog();
+			e.Handled = true;
+			e.SuppressKeyPress = true;
+		}
+		// Ctrl+C copies the selected log line(s) to the clipboard so the user can paste them elsewhere
+		// (a forum post, the mod's Discord) without opening and searching SMAPI-latest.txt by hand.
+		if (list.Name == "listLog" && e.Control && e.KeyCode == Keys.C)
+		{
+			var selected = list.SelectedItems.Count > 0
+				? list.SelectedItems.Cast<object>()
+				: (list.SelectedItem != null ? new[] { list.SelectedItem } : System.Array.Empty<object>());
+			string copied = string.Join("\r\n", selected.Select(o => o.ToString()));
+			if (!string.IsNullOrEmpty(copied))
+			{
+				Clipboard.SetText(copied);
+				int count = copied.Split('\n').Length;
+				Speak(count == 1 ? "Copied line to clipboard." : $"Copied {count} lines to clipboard.");
+			}
+			else
+			{
+				Speak("No log lines selected to copy.");
+			}
 			e.Handled = true;
 			e.SuppressKeyPress = true;
 		}
