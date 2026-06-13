@@ -1,3 +1,24 @@
+# Release Notes & Changelog: Version 1.2.5
+
+Fixes for the SMAPI log viewer and for how mod groups are announced while you navigate, plus support for installing on Windows 11 on ARM.
+
+---
+
+## ✨ New in Version 1.2.5
+
+### 🪵 SMAPI log viewer
+*   **The log now loads while the game is running**: Previously, opening the SMAPI Log tab while Stardew Valley was running showed no entries in any filter — even "Full Log" — because the game keeps the log file open and the manager couldn't read it. The manager now reads the live log without disturbing the game, so you can review errors mid-session.
+*   **Refresh the log on demand**: Press Ctrl+Shift+R on the SMAPI Log tab to re-read the log at any time, including while the game is running. You'll hear how many entries were found.
+
+### 🔊 Cleaner mod-group announcements
+*   **No more stray "first mod" when collapsing a group**: Collapsing a group while focused on one of its mods no longer briefly announces the first mod in the list before landing on the group.
+*   **Expanding and collapsing no longer repeats itself**: Each expand or collapse now reads the group line once — stating "Expanded" or "Collapsed" and the position — instead of speaking the same information several times over.
+
+### 💻 ARM Windows support
+*   **The installer now runs on Windows 11 on ARM**: Previously the installer refused to run on ARM PCs (such as Snapdragon-based Surface and Copilot+ devices), reporting an incompatible architecture before installing anything. It now installs on any PC that can run 64-bit apps — including ARM machines, where the manager runs through Windows 11's built-in x64 emulation.
+
+---
+
 # Release Notes & Changelog: Version 1.2.4
 
 Overhauls the Stardew Valley SMAPI log viewer so errors are easier to find, understand, and act on — plus a small accessibility-suite cleanup.

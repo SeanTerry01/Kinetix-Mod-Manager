@@ -114,6 +114,12 @@ public partial class Form1 : Form, IMessageFilter
 
 	private bool _isLoading;
 
+	// Set while expanding/collapsing a mod group so RebuildInstalledListBox does not speak the selected
+	// item itself. The screen reader already reads the group line (which states "Expanded"/"Collapsed")
+	// when the selection changes, and List_SelectedIndexChanged announces the position, so the rebuild's
+	// own announcement would just repeat the whole group line.
+	private bool _suppressRebuildSpeak;
+
 	private bool _isSettingsOpen;
 
 	private List<StardewMod> _allInstalledMods = new List<StardewMod>();
@@ -166,6 +172,11 @@ public partial class Form1 : Form, IMessageFilter
 	private Button btnPruneBackups = null!;
 	private TextBox txtWikiSearch = null!;
 	private ComboBox cmbWikiCategories = null!;
+	private ComboBox cmbModWikis = null!;
+	// The wiki currently driving Search / Categories / the embedded view. Defaults to the base game wiki.
+	private ModWikiLink? _activeWiki;
+	// Suppresses the cmbModWikis SelectedIndexChanged handler while the list is rebuilt on game switch.
+	private bool _suppressModWikiEvent;
 	private ListBox listWikiResults = null!;
 	private WebView2 webViewWiki = null!;
 	private ListBox listWalkthroughs = null!;
@@ -591,5 +602,28 @@ public class WalkthroughGuide
 {
 	public string Title { get; set; } = "";
 	public string Url { get; set; } = "";
+	public override string ToString() => Title;
+}
+
+public class ModWikiLink
+{
+	/// <summary>Display name shown in the Mod Wikis dropdown.</summary>
+	public string Title { get; set; } = "";
+	/// <summary>Landing page navigated to when this wiki is selected.</summary>
+	public string Url { get; set; } = "";
+	/// <summary>
+	/// MediaWiki <c>api.php</c> endpoint used for in-app Search and Categories. Empty means this wiki is
+	/// "browse-only" — its host exposes no usable MediaWiki API, so it only opens in the embedded browser.
+	/// </summary>
+	public string ApiUrl { get; set; } = "";
+	/// <summary>Article URL prefix (e.g. <c>https://x.wiki.gg/wiki/</c>) used to open a search/category result.</summary>
+	public string ArticleBase { get; set; } = "";
+	/// <summary>True for the base game wiki.</summary>
+	public bool IsGameWiki { get; set; }
+	/// <summary>
+	/// MediaWiki <c>acprefix</c> used to scope the live category list to one game on multi-game wikis
+	/// (e.g. "Skyrim" on UESP, "Fallout 4" on the Fallout wiki). Empty means list all categories.
+	/// </summary>
+	public string CategoryPrefix { get; set; } = "";
 	public override string ToString() => Title;
 }

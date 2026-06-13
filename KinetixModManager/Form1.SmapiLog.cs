@@ -46,6 +46,34 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// Reads every line of a file even while another process holds it open for writing. SMAPI keeps
+	/// SMAPI-latest.txt open for the whole game session, and <see cref="File.ReadAllLines"/> opens with
+	/// only <see cref="FileShare.Read"/>, so it throws a sharing violation while the game is running and
+	/// the log appears empty. Opening with <see cref="FileShare.ReadWrite"/> lets us read the live log
+	/// without disturbing SMAPI's writer.
+	/// </summary>
+	private static string[] ReadAllLinesShared(string path)
+	{
+		using FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+		using StreamReader reader = new StreamReader(stream);
+		List<string> lines = new List<string>();
+		string? line;
+		while ((line = reader.ReadLine()) != null)
+		{
+			lines.Add(line);
+		}
+		return lines.ToArray();
+	}
+
+	/// <summary>Reads a whole file as text while another process (SMAPI) has it open for writing. See <see cref="ReadAllLinesShared"/>.</summary>
+	private static string ReadAllTextShared(string path)
+	{
+		using FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+		using StreamReader reader = new StreamReader(stream);
+		return reader.ReadToEnd();
+	}
+
+	/// <summary>
 	/// Reads the SMAPI log file, runs it through <see cref="LogAnalyzer"/>, and populates
 	/// <c>listLog</c> with parsed <see cref="LogEntry"/> items.
 	/// </summary>
@@ -65,7 +93,7 @@ public partial class Form1
 		string text = cmbLogFilter.SelectedItem?.ToString() ?? "Errors and Warnings";
 		try
 		{
-			string[] array = File.ReadAllLines(path);
+			string[] array = ReadAllLinesShared(path);
 			for (int i = 0; i < array.Length; i++)
 			{
 				string text2 = array[i];
@@ -153,7 +181,7 @@ public partial class Form1
 		SetStatus("Uploading log to SMAPI.io...");
 		try
 		{
-			string value = File.ReadAllText(path);
+			string value = ReadAllTextShared(path);
 			FormUrlEncodedContent content = new FormUrlEncodedContent(new KeyValuePair<string, string>[1]
 			{
 				new KeyValuePair<string, string>("input", value)

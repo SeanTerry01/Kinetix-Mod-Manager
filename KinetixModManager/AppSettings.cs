@@ -303,6 +303,10 @@ public class AppSettings
 				Keys.L | Keys.Shift | Keys.Control
 			},
 			{
+				"RefreshLog",
+				Keys.R | Keys.Shift | Keys.Control
+			},
+			{
 				"RefreshAll",
 				Keys.None
 			},

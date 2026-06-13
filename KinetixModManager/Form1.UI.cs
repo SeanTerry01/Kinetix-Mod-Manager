@@ -169,6 +169,10 @@ public partial class Form1
 		{
 			ShowShortcutManager();
 		});
+		toolStripMenuItem4.DropDownItems.Add("About Kinetix Mod Manager", null, delegate
+		{
+			ShowAbout();
+		});
 		menuStrip.Items.Add(_menuFile);
 		menuStrip.Items.Add(_menuGames);
 		menuStrip.Items.Add(toolStripMenuItem2);
@@ -506,10 +510,14 @@ public partial class Form1
 		RefreshWikiCategories();
 		cmbWikiCategories.SelectedIndexChanged += async delegate
 		{
-			if (cmbWikiCategories.SelectedIndex > 0)
+			// The category combo can change (e.g. while its items are being rebuilt) before splitWiki exists
+			// during the initial UI build; guard against that to avoid a null dereference.
+			if (splitWiki == null) return;
+			// Index 0 is the "Select Category"/"No categories" placeholder, never a real category.
+			if (cmbWikiCategories.SelectedIndex > 0 && cmbWikiCategories.SelectedItem is string cat && cat != "Select Category")
 			{
 				splitWiki.Visible = true;
-				await LoadWikiCategory(cmbWikiCategories.SelectedItem?.ToString() ?? "");
+				await LoadWikiCategory(cat);
 			}
 			else
 			{
@@ -518,8 +526,26 @@ public partial class Form1
 				wikiNavStack.Clear();
 			}
 		};
+		cmbModWikis = new ComboBox
+		{
+			Width = 240,
+			Font = new Font("Segoe UI", 12f),
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			AccessibleName = "Mod Wikis"
+		};
+		PopulateModWikis();
+		cmbModWikis.SelectedIndexChanged += async delegate
+		{
+			if (_suppressModWikiEvent) return;
+			if (cmbModWikis.SelectedItem is ModWikiLink link)
+			{
+				await OnModWikiSelected(link);
+			}
+		};
 		flowLayoutPanelWikiTop.Controls.Add(new Label { Text = "Search:", AutoSize = true, Padding = new Padding(0, 5, 0, 0) });
 		flowLayoutPanelWikiTop.Controls.Add(txtWikiSearch);
+		flowLayoutPanelWikiTop.Controls.Add(new Label { Text = "Mod Wikis:", AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
+		flowLayoutPanelWikiTop.Controls.Add(cmbModWikis);
 		flowLayoutPanelWikiTop.Controls.Add(new Label { Text = "Categories:", AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
 		flowLayoutPanelWikiTop.Controls.Add(cmbWikiCategories);
 
@@ -566,6 +592,10 @@ public partial class Form1
 		tableLayoutPanelWiki.Controls.Add(flowLayoutPanelWikiTop, 0, 0);
 		tableLayoutPanelWiki.Controls.Add(splitWiki, 0, 1);
 		tabWiki.Controls.Add(tableLayoutPanelWiki);
+
+		// Now that splitWiki exists, load the default (main game) wiki's live categories. PopulateModWikis above
+		// deliberately doesn't do this, since it runs before splitWiki is created.
+		_ = RefreshCategoriesForActiveWikiAsync();
 
 		// Walkthroughs Tab Setup
 		string initialWalkthroughTitle = _settings.ActiveGame switch

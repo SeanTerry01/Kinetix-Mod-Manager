@@ -1,11 +1,13 @@
-# Stardew Valley Accessible Mod Manager - User Manual
+# Kinetix Mod Manager - User Manual
 
-Welcome to the Stardew Valley Accessible Mod Manager! This tool is designed for accessibility, providing full keyboard control and screen reader compatibility for managing your Stardew Valley mods.
+Welcome to Kinetix Mod Manager! This is a fully keyboard-driven, screen-reader-accessible mod manager built for the blind and visually impaired gaming community. It currently supports **Stardew Valley**, **Skyrim Special Edition**, and **Fallout 4**, and works with NVDA, JAWS, and SAPI-based screen readers via Tolk.
+
+You choose which game you're managing from the **Games** menu (press **Alt**, then arrow to **Games**), and the manager tailors its mod list, updates, wiki, and other features to that game. Most of this manual applies to every supported game; where something is specific to one game — such as the SMAPI log viewer for Stardew Valley — it is called out.
 
 ## Getting Started & First-Time Setup
 
-1.  **Your First Launch**: When you run the manager for the first time, the **Settings Dashboard** will automatically open. This is to ensure your Stardew Valley Mods path is detected correctly and to give you a chance to enter your Nexus Mods API Key.
-2.  **Configuring Paths**: The app attempts to find your Mods folder automatically. If it succeeds, the path will be pre-filled. If not, please use the "Browse" button in settings to select your Stardew Valley `Mods` folder.
+1.  **Your First Launch**: When you run the manager for the first time, the **Settings Dashboard** will automatically open. This is to ensure the active game's mods folder is detected correctly and to give you a chance to enter your Nexus Mods API Key.
+2.  **Configuring Paths**: The app attempts to find your mods folder automatically for the selected game (the `Mods` folder for Stardew Valley, or the `Data` folder for Skyrim Special Edition and Fallout 4). If it succeeds, the path will be pre-filled. If not, please use the "Browse" button in settings to select it.
 3.  **Nexus Integration**: To search for mods or check for updates, you **must** provide a **Nexus Mods API Key** (sometimes called a Nexus ID). This is a standard requirement for all mod managers. See the **"Nexus Mods Setup"** section below for instructions on how to get yours for free.
 4.  **Closing Settings**: If you aren't ready to configure everything yet, you can press **Escape** or click **Cancel** to close the settings and browse the app. You can reopen this screen at any time by pressing **Ctrl + P**.
 5.  **Getting Help**: 
@@ -17,28 +19,50 @@ Welcome to the Stardew Valley Accessible Mod Manager! This tool is designed for 
 
 ## Nexus Mods Setup: Obtaining Your API Key
 
-To use the manager's update and discovery features, you must have a free account on Nexus Mods and provide your unique **API Key** to the app.
+To search for new mods and check for updates, the manager needs to talk to Nexus Mods on your behalf. It does this using something called an **API key**. Think of the API key as a long, private password — made up of letters and numbers — that proves to Nexus Mods that the requests are really coming from your account.
 
-### 1. Create a Nexus Mods Account
-*   Go to **[nexusmods.com](https://www.nexusmods.com)**.
-*   Click **"Register"** in the top right corner.
-*   Follow the instructions to create and verify your account.
+Getting a key is **free**, you only have to do it **once**, and the manager remembers it securely afterwards. The whole process has three stages: (1) make a free Nexus account, (2) copy your personal key from the Nexus website, and (3) paste it into the manager. Each stage is broken down step by step below.
 
-### 2. Find Your Personal API Key
-Once you are logged in to the website:
-*   Click your **User Icon** (avatar) in the top right corner of the page.
-*   Select **"Settings"** from the dropdown menu.
-*   In the settings page, click on the **"API"** tab (this is usually the last tab on the right).
-*   Scroll down to the section labeled **"Personal API Key"**.
-*   Click the **"Show"** button (you may need to click "Generate" first if it's your first time).
-*   **Copy** the long string of letters and numbers that appears.
+> **Tip for screen reader users:** The Nexus website changes its layout from time to time, which is why the steps below also give you **direct web addresses** you can type or paste into your browser to jump straight to the right page, instead of hunting through menus.
 
-### 3. Enter the Key into the Mod Manager
-*   Open the Mod Manager and press **Ctrl + P** to open the **Settings Dashboard**.
-*   Find the box labeled **"Nexus API Key"**.
-*   **Paste** your copied key into this box.
-*   Press **"Save Settings"** or **Enter**.
-*   The manager will play the **"Connect"** sound and display your username in the title bar if successful.
+### Stage 1: Create a Free Nexus Mods Account
+
+If you already have a Nexus Mods account, skip to Stage 2.
+
+1.  Open your web browser and go to **https://www.nexusmods.com**.
+2.  Find and activate the **"Register"** link. It is near the top of the page. (With a screen reader, you can press the letter **B** to jump between buttons, or use "find" to search the page for the word "Register".)
+3.  Fill in the requested details — a username, your email address, and a password — then submit the form.
+4.  Nexus will send you a **confirmation email**. Open it and activate the verification link inside. Your account is not fully active until you do this.
+5.  Return to the Nexus website and **sign in** with your new username and password.
+
+### Stage 2: Copy Your Personal API Key
+
+You must be **signed in** to the Nexus website for this stage to work.
+
+1.  Go directly to your API settings page by entering this exact address in your browser's address bar:
+    **https://www.nexusmods.com/users/myaccount?tab=api**
+    *   This link takes you straight to the right page, so you do not need to find any menus, buttons, or on-screen pictures. If for some reason it doesn't open the API page, first go to **https://www.nexusmods.com/users/myaccount** (your account settings), then on that page use your screen reader's "find" command to search for the link or tab named **"API Keys"** and activate it.
+2.  This page has two parts. Near the top is a list of **"Application"** keys for specific tools — **you do not need these**. Keep moving **down the page** until you reach the section titled **"Personal API Key"**. This is the one you want.
+3.  In the Personal API Key section:
+    *   If you see a button such as **"Generate"** or **"Request Api Key"**, activate it once. (You only need to do this the very first time — it creates your key.)
+    *   Your key will then be shown as a very long line of letters and numbers (usually 50 or more characters, sometimes with dashes).
+4.  **Select and copy the entire key.** The safest way is to put your cursor in the key field, press **Ctrl + A** to select all of it, then **Ctrl + C** to copy. Make sure you copy the **whole** thing, with no spaces before or after it. Copying only part of the key is the most common reason setup fails.
+
+### Stage 3: Enter the Key into the Manager
+
+1.  Switch back to Kinetix Mod Manager.
+2.  Press **Ctrl + P** to open the **Settings Dashboard**.
+3.  Tab to the field labeled **"Nexus API Key"**.
+4.  Press **Ctrl + V** to **paste** your copied key into the field.
+5.  Activate the **"Save Settings"** button (or press **Enter**).
+6.  If the key is correct, the manager plays the **"Connect"** sound and shows your Nexus username in the window title bar. You are now connected.
+
+### If It Doesn't Work
+
+*   **You hear the "Disconnect" sound, or nothing happens.** The key was most likely copied incompletely or has extra spaces. Go back to Stage 2, copy the **entire** key again with **Ctrl + A** then **Ctrl + C**, and re-paste it.
+*   **You're not sure a key was ever created.** Return to the Personal API Key section (Stage 2) and look for the **"Generate" / "Request Api Key"** button. If it's still there, your key hasn't been created yet — activate it.
+*   **You can change or re-enter your key at any time** by pressing **Ctrl + L** in the manager, or by reopening the Settings Dashboard with **Ctrl + P**.
+*   Your key is stored **encrypted** on your own computer and is never shown in plain text or shared with anyone but Nexus Mods.
 
 ---
 
@@ -47,7 +71,7 @@ Once you are logged in to the website:
 ### Global Shortcuts
 *   **F1**: Open this User Manual (Internal Window).
 *   **Shift + F1**: **Context Help** - Speaks the shortcuts for your current tab.
-*   **F5**: Launch Stardew Valley (via SMAPI).
+*   **F5**: Launch the active game through its mod loader (SMAPI for Stardew Valley, SKSE for Skyrim Special Edition, F4SE for Fallout 4).
 *   **F6**: **Cycle Focus** - Jump between the tab headers and the primary list in each tab (and the web view in the Wiki tab).
 *   **Alt**: Access the Menu Bar.
 *   **Ctrl + P**: Open the **Settings Dashboard**.
@@ -82,7 +106,8 @@ Once you are logged in to the website:
 *   **Delete**: Permanently remove the backup zip file.
 *   **Ctrl + Shift + B**: **Prune Backups** - Deletes all but the most recent archives based on your settings.
 
-### SMAPI Log Tab Shortcuts
+### SMAPI Log Tab Shortcuts (Stardew Valley only)
+*The SMAPI Log tab appears only when Stardew Valley is the active game, since SMAPI is its mod loader.*
 *   **Ctrl + F**: Focus the **Log Search** bar.
 *   **Enter (in Search bar)**: Filter the log to show only matching lines.
 *   **Enter (on a search result)**: Restore the full log view and **jump** to that specific line.
@@ -98,8 +123,8 @@ Once you are logged in to the website:
 *   **Ctrl + U**: **Update All** mods (Premium only).
 *   **Ctrl + R**: Read the mod's summary.
 
-### Stardew Wiki Tab Shortcuts
-*   **Enter (in Search bar)**: Search the Stardew Valley Wiki for the entered text.
+### Wiki Tab Shortcuts
+*   **Enter (in Search bar)**: Search the active game's wiki for the entered text.
 *   **Enter (on a Result)**: 
     *   If it's a **Page**: Load the content into the Web View.
     *   If it's a **Category**: Drill down into that category to see its members.
@@ -126,13 +151,14 @@ This shortcut is especially useful when a page is very long, as it allows you to
 ## Wiki Integration
 The Wiki tab (e.g. **Stardew Wiki**, **Skyrim Wiki**, or **Fallout 4 Wiki**) provides a built-in, accessible way to browse the official game wiki.
 1.  **Search**: Type any item, quest, villager, or mechanic into the search box and press **Enter**.
-2.  **Browse by Category**: Use the **Categories** dropdown to quickly find lists of Crops, Fish, Quests, Skills, and more.
-3.  **Navigation**: The results list shows pages and sub-categories. You can "drill down" into categories by pressing **Enter** and go back up by pressing **Backspace**.
-4.  **Accessible Reading**: When you press **Enter** on a page, it loads in the integrated **Web View**. This view is fully compatible with screen readers, allowing you to use standard web navigation commands:
+2.  **Browse by Category**: Use the **Categories** dropdown to quickly find lists of pages — for example Villagers, Crops, and Fish in Stardew Valley, or Quests, Factions, Weapons, and Locations in Skyrim and Fallout 4. The categories listed always match the wiki you are currently browsing.
+3.  **Switch Wikis with the Mod Wikis dropdown**: The **Mod Wikis** dropdown lets you choose which wiki you are searching. Alongside the main game wiki, it lists dedicated wikis for popular content mods — world-expansion wikis for Stardew Valley (such as Stardew Valley Expanded, Ridgeside Village, and East Scarp), and large quest or new-land mod wikis for Skyrim and Fallout 4 (such as the Elder Scrolls Mods Wiki, Legacy of the Dragonborn, and Sim Settlements 2). Choosing a wiki points the Search box, the Categories dropdown, and the Web View at that wiki. A few wikis are "browse-only" (they open in the Web View, but can't be searched in-app); the manager tells you when that's the case.
+4.  **Navigation**: The results list shows pages and sub-categories. You can "drill down" into categories by pressing **Enter** and go back up by pressing **Backspace**.
+5.  **Accessible Reading**: When you press **Enter** on a page, it loads in the integrated **Web View**. This view is fully compatible with screen readers, allowing you to use standard web navigation commands:
     *   **H**: Jump between Headings.
     *   **T**: Navigate Tables.
     *   **L**: List links on the page.
-5.  **Moving In and Out of the Page**: While focus is inside the Web View:
+6.  **Moving In and Out of the Page**: While focus is inside the Web View:
     *   **Ctrl+Home** jumps to the top of the page (and the heading), **Ctrl+End** to the bottom — and your **Tab** order continues from there.
     *   **Shift+Tab** at the top of the page returns to the Results list; **Tab** at the bottom moves to the tab headers.
     *   **F6** leaves the Web View and returns to the tab headers from anywhere.
@@ -173,19 +199,19 @@ When the manager detects an update, it will appear in the **Updates Available** 
 
 ### 4. The Download Page
 *   You will be taken to a final download page. Find the button labeled **"Slow Download"** (this is the free option) and click it.
-*   A countdown will begin, and then your browser will ask for permission to open the link with **Stardew Valley Accessible Mod Manager**. Confirm this.
+*   A countdown will begin, and then your browser will ask for permission to open the link with **Kinetix Mod Manager**. Confirm this.
 
 ### 5. Installation
 *   Once the download finishes, the Mod Manager will automatically regain focus and play the **"Connect"** sound.
 *   A dialog will ask: **"Downloaded [Mod Name]. Install now?"**
-*   Press **Enter** (Yes) to automatically back up your old version and install the new update directly into your Mods folder.
+*   Press **Enter** (Yes) to automatically back up your old version and install the new update directly into the active game's mods folder.
 
 ---
 
 ## Smart Game Launching (F5)
 The manager does more than just launch the game:
-*   It announces when it starts launching SMAPI.
-*   It speaks and displays *"Game is loaded and running"* once Stardew Valley is active.
+*   It announces when it starts launching the game through its mod loader (SMAPI for Stardew Valley, SKSE for Skyrim Special Edition, F4SE for Fallout 4).
+*   It speaks and displays *"Game is loaded and running"* once the game is active.
 *   It instantly detects when you close the game and announces *"Game closed."*
 
 ---
@@ -222,8 +248,8 @@ If you have multiple audio files in your theme's `logo` folder, you can:
 ### 5. Management Safety
 All management windows (Settings, Shortcuts, Themes) now feature a **Save and Cancel** system. Pressing **Escape** or the **Cancel** button will discard any changes made since the window was opened, confirmed by a spoken audio cue.
 
-### 6. Log Search and Jump
-Troubleshooting large logs is easier with the Search feature in the **SMAPI Log** tab. Search for a keyword (like "Error" or a mod name) to filter the list. Selecting a result and pressing **Enter** will restore the full log and position you exactly at that line, allowing you to read the context surrounding the event.
+### 6. Log Search and Jump (Stardew Valley)
+Troubleshooting large logs is easier with the Search feature in the **SMAPI Log** tab (available when Stardew Valley is the active game). Search for a keyword (like "Error" or a mod name) to filter the list. Selecting a result and pressing **Enter** will restore the full log and position you exactly at that line, allowing you to read the context surrounding the event.
 
 ---
-*Happy Farming!*
+*Happy Modding!*

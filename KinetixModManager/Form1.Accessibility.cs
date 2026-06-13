@@ -139,6 +139,95 @@ public partial class Form1
 		manualForm.ShowDialog();
 	}
 
+	/// <summary>
+	/// Shows a standard, screen-reader-friendly "About" dialog: a brief description of the program, its version,
+	/// publisher, website, and licensing — the kind of dialog most applications expose from their Help menu.
+	/// </summary>
+	private void ShowAbout()
+	{
+		string nl = Environment.NewLine;
+		string about =
+			"Kinetix Mod Manager" + nl +
+			"Version: " + NexusService.AppVersion + nl +
+			"Publisher: Audi Venture Games" + nl +
+			"Website: https://github.com/SeanTerry01/Kinetix-Mod-Manager" + nl +
+			nl +
+			"Kinetix Mod Manager is a fully keyboard-driven, screen-reader-accessible mod manager for " +
+			"Stardew Valley, Skyrim Special Edition, and Fallout 4. It is built for the blind and visually " +
+			"impaired gaming community, with spoken feedback, full keyboard control, and audio cues throughout." + nl +
+			nl +
+			"With it you can install and manage your mods, check for and apply updates through Nexus Mods, " +
+			"discover new mods, save and switch between mod profiles, keep automatic backups, browse an " +
+			"accessible game wiki, and review the SMAPI log for Stardew Valley." + nl +
+			nl +
+			"Kinetix Mod Manager works with NVDA, JAWS, and SAPI-based screen readers via Tolk." + nl +
+			nl +
+			"Copyright (C) 2026 Audi Venture Games." + nl +
+			"Provided as-is for personal and community use.";
+
+		Form aboutForm = new Form
+		{
+			Text = "About Kinetix Mod Manager - Press Escape to Close",
+			Size = new Size(600, 460),
+			StartPosition = FormStartPosition.CenterScreen,
+			KeyPreview = true,
+			MinimizeBox = false,
+			MaximizeBox = false,
+			FormBorderStyle = FormBorderStyle.FixedDialog
+		};
+		aboutForm.KeyDown += delegate (object? s, KeyEventArgs e)
+		{
+			if (e.KeyCode == Keys.Escape) aboutForm.Close();
+		};
+
+		TableLayoutPanel layout = new TableLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			Padding = new Padding(15),
+			ColumnCount = 1,
+			RowCount = 2
+		};
+		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+		layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 55f));
+
+		// Read-only multiline box so a screen reader can read or arrow through the text line by line.
+		TextBox tbAbout = new TextBox
+		{
+			Dock = DockStyle.Fill,
+			Multiline = true,
+			ReadOnly = true,
+			ScrollBars = ScrollBars.Vertical,
+			Font = new Font("Segoe UI", 12f),
+			Text = about,
+			AccessibleName = "About Kinetix Mod Manager",
+			TabStop = true
+		};
+		tbAbout.GotFocus += delegate { tbAbout.Select(0, 0); };
+
+		Button btnClose = new Button
+		{
+			Text = "Close",
+			Dock = DockStyle.Right,
+			Width = 140,
+			Height = 45,
+			Font = new Font("Segoe UI", 12f, FontStyle.Bold),
+			AccessibleName = "Close About dialog"
+		};
+		btnClose.Click += delegate { aboutForm.Close(); };
+
+		layout.Controls.Add(tbAbout, 0, 0);
+		layout.Controls.Add(btnClose, 0, 1);
+		aboutForm.Controls.Add(layout);
+		aboutForm.AcceptButton = btnClose;
+		aboutForm.CancelButton = btnClose;
+		aboutForm.Shown += delegate
+		{
+			tbAbout.Focus();
+			Speak("About Kinetix Mod Manager. Version " + NexusService.AppVersion + ".");
+		};
+		aboutForm.ShowDialog();
+	}
+
 	private class ModKeybinds
 	{
 		public string Name { get; }

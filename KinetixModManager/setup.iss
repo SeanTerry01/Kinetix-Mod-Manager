@@ -4,7 +4,7 @@
 [Setup]
 AppId={{D37D0B2E-6D3F-4B1C-BD03-9A1D2E3F4B5C}
 AppName=Kinetix Mod Manager
-AppVersion=1.2.4
+AppVersion=1.2.5
 AppPublisher=Audi Venture Games
 AppPublisherURL=https://www.nexusmods.com/stardewvalley/mods/32385
 AppSupportURL=https://www.nexusmods.com/stardewvalley/mods/32385
@@ -12,9 +12,10 @@ AppUpdatesURL=https://www.nexusmods.com/stardewvalley/mods/32385
 DefaultDirName={autopf}\KinetixModManager
 DefaultGroupName=Kinetix Mod Manager
 AllowNoIcons=yes
-; Targets x64 exclusively
-ArchitecturesAllowed=x64
-ArchitecturesInstallIn64BitMode=x64
+; Allow install on any OS that can run x64 binaries: native x64 AND Windows 11 on ARM
+; (which runs the x64 build under its built-in x64 emulation). Requires Inno Setup 6.3+.
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
 ; Output configuration
 OutputDir=Setup
 OutputBaseFilename=KinetixModManager_Setup

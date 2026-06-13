@@ -246,13 +246,20 @@ public partial class Form1
 	/// Re-renders <c>listInstalled</c> from <c>_allInstalledMods</c>, applying the current search
 	/// query and category filter, and grouping mods by their top-level sub-folder.
 	/// </summary>
-	private void RebuildInstalledListBox()
+	/// <param name="preferUniqueId">
+	/// When set, the rebuilt list selects the item with this <c>UniqueId</c> instead of restoring the
+	/// previously selected item. Callers that collapse a group from one of its sub-mods pass the parent
+	/// group's id here so selection lands on the group directly — without transiently selecting index 0,
+	/// which a screen reader would otherwise announce as the first mod.
+	/// </param>
+	private void RebuildInstalledListBox(string? preferUniqueId = null)
 	{
 		string query = txtSearchInstalled.Text.Trim().ToLower();
 		string category = cmbCategoryFilter.SelectedItem?.ToString() ?? "All Categories";
 		bool flag = !string.IsNullOrEmpty(query) || category != "All Categories";
 		listInstalled.BeginUpdate();
 		StardewMod? stardewMod = listInstalled.SelectedItem as StardewMod;
+		string? restoreId = preferUniqueId ?? stardewMod?.UniqueId;
 		listInstalled.Items.Clear();
 		foreach (IGrouping<string, StardewMod> item2 in from g in _allInstalledMods.Where((StardewMod m) => !m.IsGroup).GroupBy(delegate(StardewMod m)
 			{
@@ -301,11 +308,11 @@ public partial class Form1
 				listInstalled.Items.Add(item4);
 			}
 		}
-		if (stardewMod != null)
+		if (restoreId != null)
 		{
 			for (int num = 0; num < listInstalled.Items.Count; num++)
 			{
-				if (listInstalled.Items[num] is StardewMod stardewMod2 && stardewMod2.UniqueId == stardewMod.UniqueId)
+				if (listInstalled.Items[num] is StardewMod stardewMod2 && stardewMod2.UniqueId == restoreId)
 				{
 					listInstalled.SelectedIndex = num;
 					break;
@@ -316,7 +323,7 @@ public partial class Form1
 		{
 			listInstalled.SelectedIndex = 0;
 		}
-		if (listInstalled.Focused && listInstalled.SelectedItem != null)
+		if (listInstalled.Focused && listInstalled.SelectedItem != null && !_suppressRebuildSpeak)
 		{
 			string itemText = listInstalled.SelectedItem.ToString() ?? "";
 			Speak($"{itemText}. {listInstalled.SelectedIndex + 1} of {listInstalled.Items.Count}");

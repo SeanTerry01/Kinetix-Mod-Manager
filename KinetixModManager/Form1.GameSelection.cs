@@ -195,17 +195,18 @@ public partial class Form1
 			falloutInstalled = true;
 		}
 
-		if (stardewInstalled || _settings.ActiveGame == "StardewValley")
+		// Listed alphabetically.
+		if (falloutInstalled || _settings.ActiveGame == "Fallout4")
 		{
-			_menuGames.DropDownItems.Add("Stardew Valley", null, delegate { SwitchActiveGame("StardewValley"); });
+			_menuGames.DropDownItems.Add("Fallout 4", null, delegate { SwitchActiveGame("Fallout4"); });
 		}
 		if (skyrimInstalled || _settings.ActiveGame == "SkyrimSE")
 		{
 			_menuGames.DropDownItems.Add("Skyrim Special Edition", null, delegate { SwitchActiveGame("SkyrimSE"); });
 		}
-		if (falloutInstalled || _settings.ActiveGame == "Fallout4")
+		if (stardewInstalled || _settings.ActiveGame == "StardewValley")
 		{
-			_menuGames.DropDownItems.Add("Fallout 4", null, delegate { SwitchActiveGame("Fallout4"); });
+			_menuGames.DropDownItems.Add("Stardew Valley", null, delegate { SwitchActiveGame("StardewValley"); });
 		}
 
 		// Close session option is in the File menu
@@ -263,9 +264,10 @@ public partial class Form1
 			Font = new Font("Segoe UI", 11f),
 			AccessibleName = "Select game to purchase"
 		};
-		lstGames.Items.Add("Stardew Valley");
-		lstGames.Items.Add("Skyrim Special Edition");
+		// Listed alphabetically.
 		lstGames.Items.Add("Fallout 4");
+		lstGames.Items.Add("Skyrim Special Edition");
+		lstGames.Items.Add("Stardew Valley");
 		layout.Controls.Add(lstGames, 0, 1);
 
 		Button btnSelect = new Button

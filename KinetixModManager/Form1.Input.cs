@@ -363,20 +363,25 @@ public partial class Form1
 			if (stardewMod3.IsGroup)
 			{
 				string groupName = stardewMod3.GroupName;
+				// The screen reader re-reads the group line on selection (it states "Expanded"/"Collapsed"),
+				// and List_SelectedIndexChanged announces the position, so suppress the rebuild's own speech
+				// to avoid repeating the whole group line. See _suppressRebuildSpeak.
 				if (flag)
 				{
 					if (!_expandedGroups.Contains(groupName))
 					{
 						_expandedGroups.Add(groupName);
+						_suppressRebuildSpeak = true;
 						RebuildInstalledListBox();
-						Speak("Expanded.");
+						_suppressRebuildSpeak = false;
 					}
 				}
 				else if (flag2 && _expandedGroups.Contains(groupName))
 				{
 					_expandedGroups.Remove(groupName);
+					_suppressRebuildSpeak = true;
 					RebuildInstalledListBox();
-					Speak("Collapsed.");
+					_suppressRebuildSpeak = false;
 				}
 			}
 			else if (stardewMod3.IsSubMod && flag2)
@@ -387,22 +392,13 @@ public partial class Form1
 				if (_expandedGroups.Contains(text3))
 				{
 					_expandedGroups.Remove(text3);
-					StardewMod tag = new StardewMod
-					{
-						UniqueId = "GROUP:" + text3
-					};
-					listInstalled.SelectedItem = null;
-					listInstalled.Tag = tag;
-					RebuildInstalledListBox();
-					for (int k = 0; k < listInstalled.Items.Count; k++)
-					{
-						if ((listInstalled.Items[k] as StardewMod)?.UniqueId == "GROUP:" + text3)
-						{
-							listInstalled.SelectedIndex = k;
-							break;
-						}
-					}
-					Speak(text3 + " Collapsed.");
+					// Select the parent group directly in the rebuild. Passing its id avoids the previous
+					// null-then-reselect, which briefly selected index 0 and made the screen reader announce
+					// the first mod before landing on the collapsed group. The screen reader reads the group
+					// line (stating "Collapsed") on selection, so suppress the rebuild's own speech.
+					_suppressRebuildSpeak = true;
+					RebuildInstalledListBox("GROUP:" + text3);
+					_suppressRebuildSpeak = false;
 				}
 				e.Handled = true;
 				e.SuppressKeyPress = true;
@@ -544,6 +540,18 @@ public partial class Form1
 		if (list.Name == "listLog" && IsShortcut(e, "Login"))
 		{
 			await UploadSmapiLog();
+			e.Handled = true;
+			e.SuppressKeyPress = true;
+		}
+		// Re-read SMAPI-latest.txt on demand. SMAPI holds the log open for the whole game session, so this
+		// pulls in lines written since the tab was last loaded (e.g. after triggering an error in-game)
+		// without closing Stardew. The shared-read in RefreshSmapiLog means it succeeds mid-session.
+		if (list.Name == "listLog" && IsShortcut(e, "RefreshLog"))
+		{
+			RefreshSmapiLog();
+			Speak(listLog.Items.Count > 0
+				? $"Log refreshed. {listLog.Items.Count} entries."
+				: "Log refreshed. No matching entries.");
 			e.Handled = true;
 			e.SuppressKeyPress = true;
 		}

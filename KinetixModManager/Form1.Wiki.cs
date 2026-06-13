@@ -76,6 +76,139 @@ public partial class Form1
 		}
 	}
 
+	/// <summary>Builds a wiki.gg entry (standard MediaWiki layout: <c>/api.php</c> + <c>/wiki/</c> articles).</summary>
+	private static ModWikiLink WikiGg(string title, string host) => new ModWikiLink
+	{
+		Title = title,
+		Url = $"https://{host}/",
+		ApiUrl = $"https://{host}/api.php",
+		ArticleBase = $"https://{host}/wiki/"
+	};
+
+	/// <summary>Builds a Fandom entry (MediaWiki: <c>/api.php</c> + <c>/wiki/</c> articles). With no
+	/// <paramref name="landingPath"/> it lands on the site root (which redirects to the wiki's main page).</summary>
+	private static ModWikiLink Fandom(string title, string host, string landingPath = "") => new ModWikiLink
+	{
+		Title = title,
+		Url = landingPath.Length > 0 ? $"https://{host}/wiki/{landingPath}" : $"https://{host}/",
+		ApiUrl = $"https://{host}/api.php",
+		ArticleBase = $"https://{host}/wiki/"
+	};
+
+	/// <summary>Builds a UESP entry (MediaWiki: <c>/w/api.php</c> + <c>/wiki/</c> articles).</summary>
+	private static ModWikiLink Uesp(string title, string landingPath) => new ModWikiLink
+	{
+		Title = title,
+		Url = $"https://en.uesp.net/wiki/{landingPath}",
+		ApiUrl = "https://en.uesp.net/w/api.php",
+		ArticleBase = "https://en.uesp.net/wiki/"
+	};
+
+	/// <summary>Builds a browse-only entry: opens in the embedded browser, but no in-app Search/Categories.</summary>
+	private static ModWikiLink BrowseOnly(string title, string url) => new ModWikiLink { Title = title, Url = url };
+
+	/// <summary>
+	/// Fills the Mod Wikis dropdown for the active game. The first entry is always the base game wiki, so the
+	/// dropdown acts as the master wiki selector: choosing an entry repoints Search, Categories, and the
+	/// embedded view at that wiki. Entries built via <see cref="WikiGg"/>/<see cref="Fandom"/>/<see cref="Uesp"/>
+	/// support full in-app search; <see cref="BrowseOnly"/> entries (hosts with no usable MediaWiki API) only
+	/// open in the browser.
+	/// </summary>
+	private void PopulateModWikis()
+	{
+		if (cmbModWikis == null) return;
+
+		ModWikiLink gameWiki = _settings.ActiveGame switch
+		{
+			"SkyrimSE" => new ModWikiLink { Title = "UESP Skyrim Wiki (main game wiki)", Url = "https://en.uesp.net/wiki/Skyrim:Skyrim", ApiUrl = "https://en.uesp.net/w/api.php", ArticleBase = "https://en.uesp.net/wiki/", IsGameWiki = true, CategoryPrefix = "Skyrim" },
+			"Fallout4" => new ModWikiLink { Title = "Fallout Wiki (main game wiki)", Url = "https://fallout.fandom.com/wiki/Fallout_4", ApiUrl = "https://fallout.fandom.com/api.php", ArticleBase = "https://fallout.fandom.com/wiki/", IsGameWiki = true, CategoryPrefix = "Fallout 4" },
+			_ => new ModWikiLink { Title = "Stardew Valley Wiki (main game wiki)", Url = "https://stardewvalleywiki.com/", ApiUrl = "https://stardewvalleywiki.com/mediawiki/api.php", ArticleBase = "https://stardewvalleywiki.com/", IsGameWiki = true }
+		};
+
+		ModWikiLink[] modWikis = _settings.ActiveGame switch
+		{
+			// Wikis for big Skyrim content mods (new lands, quests, areas). The Elder Scrolls Mods Wiki and
+			// UESP host several of these, so the per-mod entries land on that mod's page while Search/Categories
+			// run against the host wiki (which carries mod-specific categories like "Skyrim: Falskaar Quests").
+			"SkyrimSE" => new[]
+			{
+				Fandom("Elder Scrolls Mods Wiki (new lands & quest mods hub)", "tes-mods.fandom.com"),
+				Fandom("Legacy of the Dragonborn Wiki", "legacy-of-the-dragonborn.fandom.com"),
+				Fandom("Enderal: Forgotten Stories Wiki", "enderal-forgotten-stories.fandom.com"),
+				Uesp("Beyond Skyrim: Bruma", "Beyond_Skyrim:Bruma"),
+				Fandom("Falskaar", "tes-mods.fandom.com", "Falskaar"),
+				Uesp("Wyrmstooth", "Skyrim_Mod:Wyrmstooth"),
+				Fandom("VIGILANT", "tes-mods.fandom.com", "VIGILANT"),
+				Fandom("Moonpath to Elsweyr", "tes-mods.fandom.com", "Moonpath_to_Elsweyr")
+			},
+			// Wikis for big Fallout 4 content mods. The mod hosts (fallout.wiki, Sim Settlements 2) block or lack
+			// an in-app API, so these are browse-only; the main Fallout wiki above stays fully searchable.
+			"Fallout4" => new[]
+			{
+				BrowseOnly("Fallout 4 Mods Hub (The Fallout Wiki)", "https://fallout.wiki/wiki/Mod:Fallout_4_Mods"),
+				BrowseOnly("Sim Settlements 2 Wiki", "https://wiki.simsettlements2.com/"),
+				BrowseOnly("Fallout: London Wiki", "https://fallout.wiki/wiki/Mod:Fallout_London"),
+				BrowseOnly("America Rising 2 — Legacy of the Enclave Wiki", "https://fallout.wiki/wiki/Mod:America_Rising_2_-_Legacy_of_the_Enclave")
+			},
+			// Dedicated wikis for Stardew Valley "world expansion" content mods (new towns, NPCs, quests). Most are
+			// on wiki.gg (fully searchable in-app); Downtown Zuzu (Miraheze) and Stoffton are browse-only.
+			_ => new[]
+			{
+				WikiGg("Expansion Mods Hub (Stardew Modding Wiki)", "stardewmodding.wiki.gg"),
+				WikiGg("Stardew Valley Expanded (SVE) Wiki", "stardewvalleyexpanded.wiki.gg"),
+				WikiGg("Ridgeside Village Wiki", "ridgesidevillage.wiki.gg"),
+				WikiGg("East Scarp Wiki", "eastscarp.wiki.gg"),
+				WikiGg("Sunberry Village Wiki", "sunberryvillage.wiki.gg"),
+				WikiGg("Visit Mount Vapius Wiki", "visitmountvapius.wiki.gg"),
+				BrowseOnly("Downtown Zuzu Wiki", "https://downtownzuzu.miraheze.org/wiki/Main_Page"),
+				WikiGg("Return to Mineral Town Wiki", "returntomineraltown.wiki.gg"),
+				// The dedicated stoffton.com wiki is frequently unreachable (connection times out), so point at the
+				// reliable Nexus mod page instead; it carries the mod's full description and docs.
+				BrowseOnly("Stoffton & Fostoria (Nexus page)", "https://www.nexusmods.com/stardewvalley/mods/11666")
+			}
+		};
+
+		_suppressModWikiEvent = true;
+		cmbModWikis.Items.Clear();
+		cmbModWikis.Items.Add(gameWiki);
+		foreach (var w in modWikis) cmbModWikis.Items.Add(w);
+		cmbModWikis.SelectedIndex = 0;
+		_activeWiki = gameWiki;
+		txtWikiSearch.AccessibleName = "Search " + gameWiki.Title;
+		_suppressModWikiEvent = false;
+		// NB: the caller loads the default wiki's categories via RefreshCategoriesForActiveWikiAsync once the wiki
+		// tab (specifically splitWiki) exists. We must not trigger it here — during the initial UI build this runs
+		// before splitWiki is created, and the category combo's handler would dereference a null splitWiki.
+	}
+
+	/// <summary>
+	/// Switches the active wiki to <paramref name="link"/>: lands the embedded view on it and repoints Search and
+	/// Categories. Browse-only wikis simply open in the view (Search/Categories become unavailable).
+	/// </summary>
+	private async Task OnModWikiSelected(ModWikiLink link)
+	{
+		_activeWiki = link;
+		txtWikiSearch.AccessibleName = "Search " + link.Title;
+
+		// Clear any results from the previous wiki so they aren't mistaken for this one's.
+		listWikiResults.Items.Clear();
+		wikiNavStack.Clear();
+
+		// Refresh categories first: it resets the category combo to index 0, which fires that combo's handler and
+		// hides the split. We reveal the split afterwards so the wiki page (in Panel2's WebView) stays visible.
+		await RefreshCategoriesForActiveWikiAsync();
+
+		await EnsureWebViewsInitializedAsync();
+		splitWiki.Visible = true;
+		if (!string.IsNullOrEmpty(link.Url)) webViewWiki.CoreWebView2?.Navigate(link.Url);
+
+		// Tell the user whether this wiki is fully searchable in-app or just opens in the view.
+		bool browseOnly = string.IsNullOrEmpty(link.ApiUrl);
+		Speak(browseOnly
+			? $"Opening {link.Title}. This wiki opens in the view only — in-app search and categories aren't available for it."
+			: "Opening " + link.Title);
+	}
+
 	/// <summary>
 	/// Ensures both WebView2 controls are initialised exactly once and returns a task that completes
 	/// when they are ready. Safe to call (and await) from any navigation path — repeat calls return the
@@ -272,23 +405,33 @@ public partial class Form1
     }
 
 	/// <summary>
-	/// Searches the Stardew Valley wiki for <paramref name="query"/> via the MediaWiki API
-	/// and populates the wiki results list. Returns <c>false</c> if the query is empty.
+	/// MediaWiki <c>api.php</c> endpoint that Search and Categories query. Reflects the wiki currently selected
+	/// in the Mod Wikis dropdown; empty for a browse-only wiki. Falls back to the game default before the
+	/// dropdown is populated.
 	/// </summary>
-	private string CurrentWikiApiUrl => _settings.ActiveGame switch
-	{
-		"SkyrimSE" => "https://en.uesp.net/w/api.php",
-		"Fallout4" => "https://fallout.fandom.com/api.php",
-		_ => "https://stardewvalleywiki.com/mediawiki/api.php"
-	};
+	private string CurrentWikiApiUrl => _activeWiki != null
+		? _activeWiki.ApiUrl
+		: _settings.ActiveGame switch
+		{
+			"SkyrimSE" => "https://en.uesp.net/w/api.php",
+			"Fallout4" => "https://fallout.fandom.com/api.php",
+			_ => "https://stardewvalleywiki.com/mediawiki/api.php"
+		};
 
-	private string CurrentWikiBaseUrl => _settings.ActiveGame switch
-	{
-		"SkyrimSE" => "https://en.uesp.net/wiki/",
-		"Fallout4" => "https://fallout.fandom.com/wiki/",
-		_ => "https://stardewvalleywiki.com/"
-	};
+	/// <summary>Article URL prefix for the active wiki; results are opened as <c>base + Title</c>.</summary>
+	private string CurrentWikiBaseUrl => _activeWiki != null
+		? _activeWiki.ArticleBase
+		: _settings.ActiveGame switch
+		{
+			"SkyrimSE" => "https://en.uesp.net/wiki/",
+			"Fallout4" => "https://fallout.fandom.com/wiki/",
+			_ => "https://stardewvalleywiki.com/"
+		};
 
+	/// <summary>True when the active wiki is the base game wiki (curated categories + game-specific prefixes).</summary>
+	private bool ActiveWikiIsGameWiki => _activeWiki == null || _activeWiki.IsGameWiki;
+
+	/// <summary>Populates the Categories dropdown with the base game wiki's curated category list.</summary>
 	private void RefreshWikiCategories()
 	{
 		cmbWikiCategories.Items.Clear();
@@ -305,12 +448,85 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// Rebuilds the Categories dropdown for the active wiki: live categories fetched from the MediaWiki API for
+	/// every searchable wiki (each game wiki and mod wiki shows its own categories), or a clear "no categories"
+	/// placeholder for browse-only wikis. Multi-game wikis (UESP, Fallout) are scoped via their
+	/// <see cref="ModWikiLink.CategoryPrefix"/> so only the active game's categories appear.
+	/// </summary>
+	private async Task RefreshCategoriesForActiveWikiAsync()
+	{
+		if (cmbWikiCategories == null) return;
+		cmbWikiCategories.Items.Clear();
+
+		// Browse-only wiki: no API to query, so say so instead of showing an empty "Select Category".
+		if (string.IsNullOrEmpty(CurrentWikiApiUrl))
+		{
+			cmbWikiCategories.Items.Add("No categories — browse this wiki in the view");
+			cmbWikiCategories.SelectedIndex = 0;
+			return;
+		}
+
+		cmbWikiCategories.Items.Add("Select Category");
+
+		try
+		{
+			// allcategories is alphabetical, so pull a large batch with page counts and keep the most populated
+			// content categories — that surfaces the wiki's real sections (Characters, Locations, ...) rather
+			// than its alphabetical first entries. On multi-game wikis, acprefix scopes to the active game.
+			string prefix = _activeWiki?.CategoryPrefix ?? "";
+			string prefixParam = prefix.Length > 0 ? $"&acprefix={Uri.EscapeDataString(prefix)}" : "";
+			string url = $"{CurrentWikiApiUrl}?action=query&list=allcategories&aclimit=500&acprop=size{prefixParam}&format=json&formatversion=2";
+			string json = await NexusService.HttpClient.GetStringAsync(url);
+			JArray cats = (JObject.Parse(json)["query"]?["allcategories"] as JArray) ?? new JArray();
+
+			object[] top = cats
+				.Select(c => new { Name = c["category"]?.ToString() ?? "", Pages = (int?)c["pages"] ?? 0 })
+				.Where(c => c.Pages > 0 && c.Name.Length > 0 && !IsMaintenanceCategory(c.Name))
+				.OrderByDescending(c => c.Pages)
+				.Take(30)
+				.Select(c => (object)c.Name)
+				.ToArray();
+
+			cmbWikiCategories.Items.AddRange(top);
+		}
+		catch (Exception ex)
+		{
+			LogError("Wiki", "Category list error: " + ex.Message);
+		}
+		cmbWikiCategories.SelectedIndex = 0;
+	}
+
+	// Substrings that mark a wiki's housekeeping categories (templates, image requests, stubs, etc.) rather
+	// than navigable game content. Matched case-insensitively against fetched category names.
+	private static readonly string[] _maintenanceCategoryMarkers =
+	{
+		"template", "navbox", "infobox", "stub", "documentation", "image needed", "screenshot",
+		"candidates for deletion", "disambig", "transclusion", "pages with", "maintenance", "cleanup",
+		"redirect", "gallery", "files", "browse", "policy", "needed", "wiki", "icons", "category",
+		"under construction", "candidates", "deletion", "talk pages", "bugs", "discussion",
+		"script files", "dialogue files"
+	};
+
+	private static bool IsMaintenanceCategory(string name)
+	{
+		string lower = name.ToLowerInvariant();
+		foreach (var marker in _maintenanceCategoryMarkers)
+			if (lower.Contains(marker)) return true;
+		return false;
+	}
+
+	/// <summary>
 	/// Searches the active game's wiki for <paramref name="query"/> via the MediaWiki API
 	/// and populates the wiki results list. Returns <c>false</c> if the query is empty.
 	/// </summary>
 	private async Task<bool> SearchWiki(string query)
 	{
 		if (string.IsNullOrEmpty(query)) return false;
+		if (string.IsNullOrEmpty(CurrentWikiApiUrl))
+		{
+			Speak($"{_activeWiki?.Title ?? "This wiki"} can't be searched here. It's open in the wiki view — use the page's own search.");
+			return false;
+		}
 		splitWiki.Visible = true;
 		SetStatus("Searching Wiki...");
 		try
@@ -347,13 +563,15 @@ public partial class Form1
 		SetStatus("Loading Category: " + category, speak: false);
 		try
 		{
+			// The curated game-wiki categories use friendly names that must be mapped to the wiki's real category
+			// titles. Categories fetched live from a mod wiki are already exact titles, so skip the mapping there.
 			string mappedCategory = category;
-			if (_settings.ActiveGame == "SkyrimSE")
+			if (ActiveWikiIsGameWiki && _settings.ActiveGame == "SkyrimSE")
 			{
 				if (category == "Quests" || category == "Items" || category == "Skills" || category == "NPCs" || category == "Magic" || category == "Factions" || category == "Locations")
 					mappedCategory = "Skyrim-" + category;
 			}
-			else if (_settings.ActiveGame == "Fallout4")
+			else if (ActiveWikiIsGameWiki && _settings.ActiveGame == "Fallout4")
 			{
 				if (category == "Quests" || category == "Weapons" || category == "Perks" || category == "Characters" || category == "Factions" || category == "Locations" || category == "Items")
 					mappedCategory = "Fallout 4 " + category.ToLower();

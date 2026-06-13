@@ -165,6 +165,9 @@ public partial class Form1
 
 		RefreshWikiCategories();
 		PopulateWalkthroughs();
+		PopulateModWikis();
+		// Load the (now reset) active wiki's live categories; splitWiki already exists on a game switch.
+		_ = RefreshCategoriesForActiveWikiAsync();
 
 		if (webViewWiki.CoreWebView2 != null)
 		{
@@ -286,9 +289,10 @@ public partial class Form1
 			AccessibleName = "Select Game List",
 			AccessibleDescription = "Choose Stardew Valley, Skyrim Special Edition, or Fallout 4 to manage."
 		};
-		_lstGames.Items.Add("Stardew Valley");
-		_lstGames.Items.Add("Skyrim Special Edition");
+		// Listed alphabetically.
 		_lstGames.Items.Add("Fallout 4");
+		_lstGames.Items.Add("Skyrim Special Edition");
+		_lstGames.Items.Add("Stardew Valley");
 		_lstGames.SelectedIndex = 0;
 
 		FlowLayoutPanel buttonLayout = new FlowLayoutPanel
