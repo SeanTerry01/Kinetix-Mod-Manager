@@ -1,6 +1,6 @@
 # Release Notes & Changelog: Version 1.2.5
 
-Fixes for the SMAPI log viewer and for how mod groups are announced while you navigate, plus support for installing on Windows 11 on ARM.
+A big update: a new Mod Wikis browser with per-wiki search, a language filter for finding mods, an easier way to install the accessibility suite one mod at a time, an About dialog, support for installing on Windows 11 on ARM, and a fully refreshed manual — alongside fixes for the SMAPI log viewer and mod-group announcements.
 
 ---
 
@@ -16,6 +16,32 @@ Fixes for the SMAPI log viewer and for how mod groups are announced while you na
 
 ### 💻 ARM Windows support
 *   **The installer now runs on Windows 11 on ARM**: Previously the installer refused to run on ARM PCs (such as Snapdragon-based Surface and Copilot+ devices), reporting an incompatible architecture before installing anything. It now installs on any PC that can run 64-bit apps — including ARM machines, where the manager runs through Windows 11's built-in x64 emulation.
+
+### 📚 Mod Wikis browser
+*   **New "Mod Wikis" dropdown on the Wiki tab**: Choose which wiki you want to use. As well as the main game wiki, it lists dedicated wikis for popular content mods — world-expansion wikis for Stardew Valley (Stardew Valley Expanded, Ridgeside Village, East Scarp, Sunberry Village, and more) and large quest / new-land mod wikis for Skyrim and Fallout 4 (the Elder Scrolls Mods Wiki, Legacy of the Dragonborn, Enderal, Sim Settlements 2, and others).
+*   **Search and categories follow the wiki you pick**: Selecting a wiki points the Search box, the Categories list, and the page view at that wiki. Categories are now pulled live from the chosen wiki, so they always match what you're browsing (and on multi-game wikis they're scoped to the active game).
+*   **Browse-only wikis are handled gracefully**: A few mod wikis can't be searched from inside the app; selecting one opens it in the view and the manager tells you it's browse-only.
+
+### 🌐 Language filter for finding mods
+*   **Filter mod searches by language**: The Find New Mods tab has a new **Language** dropdown. It defaults to English and remembers your choice. The list shows the languages that actually have mods for your current game, with a count for each, and a "Any language" option turns the filter off. It applies to keyword searches and the Trending, Most Popular, and Recent lists.
+
+### ♿ Easier accessibility-suite installs
+*   **Install suite mods one at a time, at your own pace**: In the Accessibility Suite Installer you can now select any mod in the list and press **Enter** to open just that mod's download page (the Files tab on Nexus, or the official site / GitHub releases for others). This is a calmer alternative to the "Install Missing Suite Mods" button when several mods are needed and you'd rather handle them one by one.
+
+### ℹ️ About dialog
+*   **New "About Kinetix Mod Manager" in the Help menu**: A standard About dialog showing the program description, version, publisher, website, and licensing — read aloud and fully keyboard accessible.
+
+### 🎮 Polish
+*   **Games are now listed alphabetically** in the Games menu and on the game-selection screen.
+
+### 📖 A fully refreshed manual
+*   **Clearer Nexus API key instructions**: Rewritten as step-by-step stages that explain what an API key is, give direct web links so you don't have to hunt through menus or on-screen pictures, point out the "Copy API Key" button, and include a troubleshooting section.
+*   **Now covers all three games**: The manual has been generalized beyond Stardew Valley to describe Stardew Valley, Skyrim Special Edition, and Fallout 4 throughout, with game-specific features clearly called out.
+*   **Both ways to download from Nexus are explained**: A new section spells out that you can use either the **Mod Manager Download** button (the manager installs it for you) or **Manual Download** + Ctrl+I, and walks through the "Slow Download" button and the required-mods page step by step.
+*   **No more empty help topics**: The "Keyboard Shortcuts" and "Advanced Features" topics now open with an overview of what's in them instead of appearing blank.
+
+### 🐛 Fixes
+*   **Focus returns to the manager after a "Mod Manager Download"**: When you download a mod with the "Mod Manager Download" button on Nexus, the "Install now?" prompt now reliably comes to the front and takes keyboard and screen-reader focus, instead of sometimes opening behind your browser.
 
 ---
 

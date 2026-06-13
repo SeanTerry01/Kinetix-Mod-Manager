@@ -191,7 +191,43 @@ The Walkthroughs tab (e.g. **Stardew Walkthroughs**, **Skyrim Walkthroughs**, or
 ## Mod Discovery (Find New Mods)
 The **Find New Mods** tab allows you to browse and search for mods without leaving the app.
 1.  **Search**: Type a mod name in the search box and press Enter.
-2.  **Types**: Use the dropdown to see **Trending**, **Most Popular**, or **Recent** mods.
+2.  **Types**: Use the **Type** dropdown to see **Trending**, **Most Popular**, or **Recent** mods.
+3.  **Language Filter**: Use the **Language** dropdown to restrict results to a single language. It defaults to **English**, and your choice is remembered between sessions. The list is built from the languages that actually have mods for the game you're currently managing, with a count beside each — for example "English (16362)". Choose **"Any language"** at the top of the list to turn the filter off and see results in every language. The filter applies to keyword searches and to the Trending, Most Popular, and Recent lists alike.
+    *   *Note:* The language comes from how each mod's author tagged it on Nexus Mods, so on rare occasions a mod tagged incorrectly by its author may still appear. Switching to "Any language" always shows the complete results.
+
+---
+
+## Downloading Mods from Nexus Mods (Two Ways)
+
+Whenever you're on a mod's page on the Nexus Mods website — whether you got there from the Find New Mods tab, the Accessibility Suite Installer, or the Updates tab — there are **two** ways to download it, and **either one works**. A common misunderstanding is that the only way is "Manual Download" followed by Ctrl+I; in fact the **"Mod Manager Download"** button is usually the easier choice, because the manager then installs the mod for you.
+
+On the mod's **Files** tab, each file has two buttons:
+
+*   **Mod Manager Download (recommended, most automatic):** Find and activate the **"Mod Manager Download"** button. After the download finishes (see "Finishing the download" below), Kinetix Mod Manager comes to the front by itself and asks **"Downloaded [mod]. Install now?"** — press **Enter** (Yes) and it installs automatically. You do **not** need to press Ctrl+I with this method.
+*   **Manual Download (you install it yourself):** Find and activate the **"Manual Download"** button. After the download finishes, switch back to Kinetix Mod Manager and press **Ctrl + I** to pick the downloaded ZIP and install it.
+
+### Finishing the download (applies to both buttons)
+
+After you activate either button, Nexus sometimes shows a page that lists the mod's **required mods** at the top:
+
+*   **If the page shows required mods at the top:** find and press **Enter** on the **"Download"** button (the one near that list of requirements). Then on the **next** page, find the **"Slow Download"** button and press **Enter** to start the download.
+*   **If there are no required mods at the top:** simply find the **"Slow Download"** button and press **Enter** to start the download.
+
+("Slow Download" is the free option. "Fast Download" is only for Nexus Premium members.)
+
+---
+
+## Accessibility Suite Installer
+Each supported game needs a set of foundation mods to be accessible (its mod loader plus the screen-reader and helper mods). The **Accessibility Suite Installer** gathers them all in one place. Open it from the **Mods** menu → **"Install [Game] Accessibility Suite"** (the exact name reflects the active game).
+
+The dialog shows a **status list**, with one line per required mod telling you whether it is **Installed** or **Not Installed**. The suite differs per game — for example SMAPI and Stardew Access for Stardew Valley; SKSE64, SkyUI, and others for Skyrim Special Edition; and F4SE, the Mod Configuration Menu, and Fallout 4 Access for Fallout 4.
+
+There are two ways to get the missing mods:
+
+1.  **Install everything at once**: Tab to the **"Install Missing Suite Mods"** button and press Enter or Spacebar. The manager downloads and installs every missing mod for you. (If you are a Nexus Premium member, Nexus mods install automatically; otherwise the manager opens each mod's page so you can download it manually.) This is the quickest option, but with several mods it can mean a lot of pages opening at once.
+2.  **Get them one at a time, at your own pace**: Select a mod in the status list and press **Enter**. The manager opens just that one mod's download page — the **Files** tab on Nexus Mods, or the official site / GitHub releases page for other mods. From there you can download it with **either** the **Mod Manager Download** button (the manager will then offer to install it for you) **or** the **Manual Download** button (then press **Ctrl + I** to install the ZIP) — see **"Downloading Mods from Nexus Mods"** above for the full steps. Repeat for each mod whenever you're ready. This is handy when several mods are needed and opening them all together would be overwhelming.
+
+You can mix the two approaches freely, and you can re-open the installer at any time to check what's still missing.
 
 ---
 
@@ -206,20 +242,11 @@ When the manager detects an update, it will appear in the **Updates Available** 
 ### 2. Locate the Correct File
 *   Use your screen reader's "Heading" or "Link" navigation to find the **"Main Files"** section.
 *   The top file is almost always the latest version. Confirm the version number matches what the manager reported.
-*   Find the button or link labeled **"Mod Manager Download"** for that specific file and click it.
 
-### 3. Handle Dependencies (If Prompted)
-*   If the mod requires other mods to work, a pop-up window labeled **"Additional files required"** may appear.
-*   Review the list of dependencies. If you already have them, simply find and click the **"Download"** button at the bottom of this pop-up.
-
-### 4. The Download Page
-*   You will be taken to a final download page. Find the button labeled **"Slow Download"** (this is the free option) and click it.
-*   A countdown will begin, and then your browser will ask for permission to open the link with **Kinetix Mod Manager**. Confirm this.
-
-### 5. Installation
-*   Once the download finishes, the Mod Manager will automatically regain focus and play the **"Connect"** sound.
-*   A dialog will ask: **"Downloaded [Mod Name]. Install now?"**
-*   Press **Enter** (Yes) to automatically back up your old version and install the new update directly into the active game's mods folder.
+### 3. Download and Install It
+*   Download the file with **either** the **Mod Manager Download** or the **Manual Download** button, following the steps in **"Downloading Mods from Nexus Mods"** above (including the "Slow Download" button and the required-mods case).
+*   **If you used Mod Manager Download:** once the download finishes, the manager automatically comes to the front, plays the **"Connect"** sound, and asks **"Downloaded [Mod Name]. Install now?"** Press **Enter** (Yes) to back up your old version and install the update into the active game's mods folder.
+*   **If you used Manual Download:** once the ZIP finishes downloading, switch to the manager and press **Ctrl + I** to install it.
 
 ---
 

@@ -71,7 +71,9 @@ public partial class Form1
 		{
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 11f),
-			AccessibleName = "Accessibility Mods Status"
+			AccessibleName = "Accessibility Mods Status",
+			AccessibleDescription = "Press Enter on a mod to open its download page so you can install it yourself at your own pace, " +
+				"or use the Install Missing Suite Mods button to install everything that's missing at once."
 		};
 		// Announce the position on focus the same way the main form's lists do (GotFocus so it
 		// also fires when focus returns to the list after another dialog closes).
@@ -153,13 +155,46 @@ public partial class Form1
 			Font = new Font("Segoe UI", 12f, FontStyle.Bold)
 		};
 
+		// Resolves the best "go download it yourself" page for a suite entry. Nexus mods open straight to
+		// their Files tab; loaders open their official site; GitHub mods open their Releases page; and
+		// GitHubStatic entries are a direct zip link.
+		string SuiteItemUrl(SuiteItem item)
+		{
+			switch (item.Type)
+			{
+				case "Nexus":
+					string domain = game switch
+					{
+						"SkyrimSE" => "skyrimspecialedition",
+						"Fallout4" => "fallout4",
+						_          => "stardewvalley"
+					};
+					return $"https://www.nexusmods.com/{domain}/mods/{item.Source}?tab=files";
+				case "GitHub":
+					return $"https://github.com/{item.Source}/releases";
+				default: // "Loader" (site URL) and "GitHubStatic" (direct zip link)
+					return item.Source;
+			}
+		}
+
+		// Enter on a list item opens that single mod's download page, so the user can grab missing mods
+		// one at a time at their own pace instead of running the whole bulk install. (The bulk install is
+		// still available on the button below via Tab.)
 		lstStatus.KeyDown += (s, e) =>
 		{
-			if (e.KeyCode == Keys.Enter && btnInstall.Enabled)
-			{
-				btnInstall.PerformClick();
-				e.Handled = true;
-			}
+			if (e.KeyCode != Keys.Enter) return;
+			int idx = lstStatus.SelectedIndex;
+			if (idx < 0 || idx >= suiteItems.Count) return;
+
+			e.Handled = true;
+			e.SuppressKeyPress = true;
+			var item = suiteItems[idx];
+			string url = SuiteItemUrl(item);
+			Speak(item.IsInstalled
+				? $"{item.Name} is already installed. Opening its page anyway."
+				: $"Opening the download page for {item.Name}.");
+			try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
+			catch (Exception ex) { LogError(item.Name, "Failed to open download page: " + ex.Message); }
 		};
 
 		layout.Controls.Add(lstStatus, 0, 1);

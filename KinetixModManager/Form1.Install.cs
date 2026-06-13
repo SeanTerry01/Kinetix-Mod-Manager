@@ -214,13 +214,39 @@ public partial class Form1
 				}
 			}
 			catch { }
-			if (MessageBox.Show("Downloaded " + realName + ". Install now?", "Success", MessageBoxButtons.YesNo) == DialogResult.Yes)
+			// The download was started from the browser (Mod Manager Download button), so the browser
+			// owns the foreground by now. Pull the manager to the front first, otherwise this prompt can
+			// open behind the browser and never receive keyboard / screen-reader focus.
+			ForceToForeground();
+			if (MessageBox.Show(this, "Downloaded " + realName + ". Install now?", "Success", MessageBoxButtons.YesNo) == DialogResult.Yes)
 				_ = InstallFromZip(path, nexusId);
 		}
 		catch (Exception ex)
 		{
 			MessageBox.Show("NXM Error: " + ex.Message);
 		}
+	}
+
+	/// <summary>
+	/// Forces the main window to the foreground and gives it focus. Needed when something the user did in
+	/// another app (e.g. clicking "Mod Manager Download" in their browser) hands control back to us and we
+	/// need to show a prompt: a background app can't simply <c>Activate()</c> itself, so we restore it if
+	/// minimised and use the well-known TopMost flip to pull the window — and any dialog we then open — to
+	/// the front where it receives keyboard and screen-reader focus.
+	/// </summary>
+	private void ForceToForeground()
+	{
+		try
+		{
+			if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
+			bool wasTopMost = TopMost;
+			TopMost = true;
+			Activate();
+			BringToFront();
+			TopMost = wasTopMost;
+			Focus();
+		}
+		catch { /* foreground hint is best-effort */ }
 	}
 
 	/// <summary>Opens a file dialog to select a .zip file and installs it via <see cref="InstallFromZip"/>.</summary>
