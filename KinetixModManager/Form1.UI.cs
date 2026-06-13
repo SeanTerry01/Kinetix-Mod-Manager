@@ -320,6 +320,29 @@ public partial class Form1
 		object[] items2 = new string[4] { "Search", "Trending", "Most Popular", "Recent" };
 		items.AddRange(items2);
 		cmbDiscoveryType.SelectedIndex = 0;
+		cmbDiscoveryLanguage = new ComboBox
+		{
+			Width = 170,
+			Font = new Font("Segoe UI", 12f),
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			AccessibleName = "Filter results by language"
+		};
+		// Starter options so the control is usable before the dynamic, game-specific list loads.
+		_suppressDiscoveryLanguageEvent = true;
+		cmbDiscoveryLanguage.Items.Add(new LanguageOption { Name = "" });        // Any language
+		cmbDiscoveryLanguage.Items.Add(new LanguageOption { Name = "English" });
+		cmbDiscoveryLanguage.SelectedIndex =
+			string.IsNullOrEmpty(_settings.DiscoveryLanguage) ? 0 : 1;
+		_suppressDiscoveryLanguageEvent = false;
+		cmbDiscoveryLanguage.SelectedIndexChanged += delegate
+		{
+			if (_suppressDiscoveryLanguageEvent) return;
+			if (cmbDiscoveryLanguage.SelectedItem is LanguageOption opt)
+			{
+				_settings.DiscoveryLanguage = opt.Name;
+				_settings.Save();
+			}
+		};
 		btnSearch = new Button
 		{
 			Text = "Go",
@@ -357,6 +380,8 @@ public partial class Form1
 		});
 		flowLayoutPanel2.Controls.Add(txtSearch);
 		flowLayoutPanel2.Controls.Add(cmbDiscoveryType);
+		flowLayoutPanel2.Controls.Add(new Label { Text = "Language:", AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
+		flowLayoutPanel2.Controls.Add(cmbDiscoveryLanguage);
 		flowLayoutPanel2.Controls.Add(btnSearch);
 		flowLayoutPanel2.Controls.Add(btnLoadMoreDiscovery);
 		listDiscovery = new ListBox

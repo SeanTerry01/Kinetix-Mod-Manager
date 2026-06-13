@@ -253,12 +253,13 @@ public partial class Form1
 
 		string searchType = cmbDiscoveryType.SelectedItem?.ToString() ?? "Search";
 		string searchTerm = txtSearch.Text.Trim();
+		string language = (cmbDiscoveryLanguage?.SelectedItem as LanguageOption)?.Name ?? _settings.DiscoveryLanguage;
 		Speak((loadMore ? "Loading more " : "Starting mod ") + searchType + "...");
 		SetStatus((loadMore ? "Loading more " : "Running ") + searchType + "...");
 		try
 		{
 			const int pageSize = 20;
-			var (results, total) = await _nexusService.SearchModsAsync(searchType, searchTerm, _currentDiscoveryPage, pageSize);
+			var (results, total) = await _nexusService.SearchModsAsync(searchType, searchTerm, _currentDiscoveryPage, pageSize, language);
 			int offset = (_currentDiscoveryPage - 1) * pageSize;
 			foreach (var mod in results) listDiscovery.Items.Add(mod);
 			btnLoadMoreDiscovery.Visible = (offset + results.Count) < total;
@@ -276,6 +277,32 @@ public partial class Form1
 		{
 			MessageBox.Show("Discovery Error: " + ex.Message);
 		}
+	}
+
+	/// <summary>
+	/// Fills the Discovery "Language" dropdown with the languages that actually have mods for the active game
+	/// (most common first, with counts), and selects the user's saved language preference. Falls back to the
+	/// starter list if the facet query returns nothing.
+	/// </summary>
+	private async Task PopulateDiscoveryLanguagesAsync()
+	{
+		if (cmbDiscoveryLanguage == null) return;
+		var langs = await _nexusService.GetModLanguagesAsync();
+		if (langs.Count == 0) return; // network failure etc. — keep whatever is already there
+
+		string desired = _settings.DiscoveryLanguage; // "" = Any language
+		_suppressDiscoveryLanguageEvent = true;
+		cmbDiscoveryLanguage.Items.Clear();
+		cmbDiscoveryLanguage.Items.Add(new LanguageOption { Name = "" }); // Any language
+		int selectIndex = 0;
+		foreach (var (name, count) in langs)
+		{
+			cmbDiscoveryLanguage.Items.Add(new LanguageOption { Name = name, Count = count });
+			if (string.Equals(name, desired, StringComparison.OrdinalIgnoreCase))
+				selectIndex = cmbDiscoveryLanguage.Items.Count - 1;
+		}
+		cmbDiscoveryLanguage.SelectedIndex = selectIndex;
+		_suppressDiscoveryLanguageEvent = false;
 	}
 
 	/// <summary>Maps a Nexus Mods numeric category ID to a human-readable category name.</summary>

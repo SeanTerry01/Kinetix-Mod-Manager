@@ -165,6 +165,9 @@ public partial class Form1 : Form, IMessageFilter
 	private TextBox txtSearchInstalled = null!;
 	private TextBox txtSearchLog = null!;
 	private ComboBox cmbDiscoveryType = null!;
+	private ComboBox cmbDiscoveryLanguage = null!;
+	// Suppresses the language combo's change handler while its list is rebuilt (e.g. on game switch).
+	private bool _suppressDiscoveryLanguageEvent;
 	private ComboBox cmbLogFilter = null!;
 	private ComboBox cmbCategoryFilter = null!;
 	private Button btnSearch = null!;
@@ -603,6 +606,16 @@ public class WalkthroughGuide
 	public string Title { get; set; } = "";
 	public string Url { get; set; } = "";
 	public override string ToString() => Title;
+}
+
+public class LanguageOption
+{
+	/// <summary>Nexus language name (e.g. "English"). Empty string means "Any language" (no filter).</summary>
+	public string Name { get; set; } = "";
+	/// <summary>Number of mods in this language for the active game; 0 hides the count.</summary>
+	public int Count { get; set; }
+	public override string ToString() =>
+		string.IsNullOrEmpty(Name) ? "Any language" : (Count > 0 ? $"{Name} ({Count})" : Name);
 }
 
 public class ModWikiLink

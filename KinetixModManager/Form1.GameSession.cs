@@ -168,6 +168,8 @@ public partial class Form1
 		PopulateModWikis();
 		// Load the (now reset) active wiki's live categories; splitWiki already exists on a game switch.
 		_ = RefreshCategoriesForActiveWikiAsync();
+		// Refresh the Discovery language list for the new game (languages and counts are game-specific).
+		_ = PopulateDiscoveryLanguagesAsync();
 
 		if (webViewWiki.CoreWebView2 != null)
 		{

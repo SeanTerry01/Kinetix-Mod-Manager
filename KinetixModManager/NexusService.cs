@@ -221,30 +221,31 @@ public class NexusService
 	/// Returns an empty list on failure.
 	/// </returns>
 	public async Task<(List<GameMod> Results, int Total)> SearchModsAsync(
-		string searchType, string searchTerm, int page, int pageSize)
+		string searchType, string searchTerm, int page, int pageSize, string? language = null)
 	{
 		int offset = (page - 1) * pageSize;
 		string gqlQuery;
 		object variables;
 
+		// Build the filter as a dictionary so the optional language clause can be added conditionally.
+		// An empty/null language means "Any language" — no languageName clause is sent.
+		var filter = new Dictionary<string, object>
+		{
+			["gameId"] = new[] { new { value = CurrentGameId, op = "EQUALS" } }
+		};
+		if (!string.IsNullOrEmpty(language))
+			filter["languageName"] = new[] { new { value = language, op = "EQUALS" } };
+
 		if (searchType == "Search")
 		{
+			filter["name"] = new[] { new { value = searchTerm, op = "WILDCARD" } };
 			gqlQuery = @"query SearchMods($filter: ModsFilter, $count: Int, $offset: Int) {
 				mods(filter: $filter, count: $count, offset: $offset) {
 					nodes { modId name summary author version }
 					totalCount
 				}
 			}";
-			variables = new
-			{
-				filter = new
-				{
-					gameId = new[] { new { value = CurrentGameId, op = "EQUALS" } },
-					name   = new[] { new { value = searchTerm, op = "WILDCARD" } }
-				},
-				count  = pageSize,
-				offset
-			};
+			variables = new { filter, count = pageSize, offset };
 		}
 		else
 		{
@@ -262,7 +263,7 @@ public class NexusService
 			}";
 			variables = new
 			{
-				filter = new { gameId = new[] { new { value = CurrentGameId, op = "EQUALS" } } },
+				filter,
 				sort   = new[] { new Dictionary<string, object> { { sortField, new { direction = "DESC" } } } },
 				count  = pageSize,
 				offset
@@ -306,6 +307,52 @@ public class NexusService
 			return (results, total);
 		}
 		catch { return (new(), 0); }
+	}
+
+	/// <summary>
+	/// Returns the languages that have mods for the active game, with a count for each, as reported by the
+	/// Nexus GraphQL language facet (already ordered most-common first). Returns an empty list on failure.
+	/// </summary>
+	public async Task<List<(string Name, int Count)>> GetModLanguagesAsync()
+	{
+		var languages = new List<(string, int)>();
+		try
+		{
+			const string gql = @"query ModLanguages($filter: ModsFilter) {
+				mods(filter: $filter, count: 0, facets: { languageName: [""*""] }) {
+					facets { facet value count }
+				}
+			}";
+			var variables = new
+			{
+				filter = new Dictionary<string, object>
+				{
+					["gameId"] = new[] { new { value = CurrentGameId, op = "EQUALS" } }
+				}
+			};
+
+			using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.nexusmods.com/v2/graphql");
+			req.Headers.Add("User-Agent", $"KinetixModManager/{AppVersion}");
+			if (!string.IsNullOrEmpty(_settings.ApiKey)) req.Headers.Add("apikey", _settings.ApiKey);
+			req.Content = new StringContent(
+				JsonConvert.SerializeObject(new { query = gql, variables }),
+				Encoding.UTF8, "application/json");
+
+			var resp = await HttpClient.SendAsync(req);
+			if (!resp.IsSuccessStatusCode) return languages;
+
+			JObject data = JObject.Parse(await resp.Content.ReadAsStringAsync());
+			JArray facets = (data["data"]?["mods"]?["facets"] as JArray) ?? new JArray();
+			foreach (var f in facets)
+			{
+				if (f["facet"]?.ToString() != "languageName") continue;
+				string name = f["value"]?.ToString() ?? "";
+				int count = f["count"] != null ? (int)f["count"]! : 0;
+				if (name.Length > 0) languages.Add((name, count));
+			}
+		}
+		catch { /* fall through to whatever was collected (possibly empty) */ }
+		return languages;
 	}
 
 	// -------------------------------------------------------------------------

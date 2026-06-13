@@ -73,6 +73,9 @@ public class AppSettings
 
 	public int MaxBackupsPerMod { get; set; } = 5;
 
+	/// <summary>Language to restrict Find New Mods (Discovery) searches to. Empty string means "Any language".</summary>
+	public string DiscoveryLanguage { get; set; } = "English";
+
 	public string CurrentTheme { get; set; } = "Default";
 
 	/// <summary>
