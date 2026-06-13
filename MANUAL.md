@@ -46,7 +46,10 @@ You must be **signed in** to the Nexus website for this stage to work.
 3.  In the Personal API Key section:
     *   If you see a button such as **"Generate"** or **"Request Api Key"**, activate it once. (You only need to do this the very first time — it creates your key.)
     *   Your key will then be shown as a very long line of letters and numbers (usually 50 or more characters, sometimes with dashes).
-4.  **Select and copy the entire key.** The safest way is to put your cursor in the key field, press **Ctrl + A** to select all of it, then **Ctrl + C** to copy. Make sure you copy the **whole** thing, with no spaces before or after it. Copying only part of the key is the most common reason setup fails.
+4.  **Copy the entire key.** There are two easy ways to do this:
+    *   **Easiest — use the copy button:** Right next to the key there is a button labeled **"Copy API Key"** (some screen readers may announce it simply as **"Copy"**). Move to that button and press **Enter** (or Spacebar) to copy the whole key straight to your clipboard. You don't have to enter the key field at all, and this guarantees you get the complete key.
+    *   **By hand:** Alternatively, put your cursor in the key field, press **Ctrl + A** to select all of it, then **Ctrl + C** to copy.
+    *   Either way, make sure you copy the **whole** thing, with no spaces before or after it. Copying only part of the key is the most common reason setup fails — which is why the **"Copy API Key"** button is the recommended option.
 
 ### Stage 3: Enter the Key into the Manager
 
@@ -67,6 +70,18 @@ You must be **signed in** to the Nexus website for this stage to work.
 ---
 
 ## Keyboard Shortcuts
+
+Kinetix Mod Manager is fully keyboard-driven. The shortcuts are grouped by where they apply, and each group has its own topic in this manual's contents list, just below this one. Here is what each group covers:
+
+*   **Global Shortcuts**: Keys that work anywhere in the app — opening this manual, context help, launching the game, cycling focus with F6, opening Settings, logging in with your Nexus key, opening the downloads, backups, and error-log folders, and more.
+*   **Mod List Shortcuts (Installed Mods Tab)**: Managing your installed mods — enabling, disabling, deleting, searching, categorising, saving profiles, viewing dependencies, installing from a zip, reading descriptions, and opening a mod's Nexus page.
+*   **Profiles Tab Shortcuts**: Applying and deleting saved mod setups.
+*   **Backups Tab Shortcuts**: Restoring, deleting, and pruning your automatic mod backups.
+*   **SMAPI Log Tab Shortcuts (Stardew Valley only)**: Searching the SMAPI log, jumping to a line, diagnosing issues, and uploading the log for help. This tab appears only when Stardew Valley is the active game.
+*   **Discovery & Updates Tabs**: Opening mod pages, ignoring an update, updating all mods, and reading summaries.
+*   **Wiki Tab Shortcuts**: Searching the active game's wiki, opening pages and categories, and moving between the search box, dropdowns, results list, and the web view.
+
+You can also press **Shift + F1** on any tab at any time to hear the shortcuts for just that tab.
 
 ### Global Shortcuts
 *   **F1**: Open this User Manual (Internal Window).
@@ -230,6 +245,15 @@ The manager uses audio cues to provide feedback. Demo these under **Help -> Soun
 ---
 
 ## Advanced Features
+
+Beyond the basics of enabling and updating mods, Kinetix Mod Manager includes several power-user features. Each one has its own topic in the contents list, just below this one. Here is what each covers:
+
+*   **Mod Profiles**: Save different enabled/disabled mod setups for different playthroughs and switch between them; profiles also remember your audio theme.
+*   **Automatic & Smart Backups**: The manager zips your mods before every update, re-installation, or deletion, and keeps a configurable number of recent backups.
+*   **Audio Theme Packs**: Customise every sound the app makes, create your own themes, and switch between them.
+*   **Splash Screen Customization**: Randomise the startup logo sound or pick a specific one.
+*   **Management Safety**: Settings, Shortcut, and Theme windows use a Save/Cancel system, so pressing Escape or Cancel discards your changes.
+*   **Log Search and Jump (Stardew Valley)**: Search the SMAPI log and jump straight to a matching line in context.
 
 ### 1. Mod Profiles
 Profiles allow you to have different mod setups for different playthroughs. Save your current list with **Ctrl + S**, and switch between them in the **Profiles** tab. Profiles also remember your active **Audio Theme**.
