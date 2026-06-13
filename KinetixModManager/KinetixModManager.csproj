@@ -49,6 +49,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>MANUAL.md</Link>
     </None>
+    <None Include="..\CHANGELOG.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>CHANGELOG.md</Link>
+    </None>
   </ItemGroup>
 
 </Project>

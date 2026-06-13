@@ -42,6 +42,8 @@ Source: "lib\nvdaControllerClient64.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "bin\Release\net10.0-windows\win-x64\publish\*.dll"; DestDir: "{app}"; Flags: ignoreversion
 ; Manual for help menu
 Source: "bin\Release\net10.0-windows\win-x64\publish\MANUAL.md"; DestDir: "{app}"; Flags: ignoreversion
+; Changelog / release notes
+Source: "bin\Release\net10.0-windows\win-x64\publish\CHANGELOG.md"; DestDir: "{app}"; Flags: ignoreversion
 ; Sound themes and initial folders - using skipifsourcedoesntexist to allow empty folders
 Source: "bin\Release\net10.0-windows\win-x64\publish\sounds\*"; DestDir: "{app}\sounds"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "bin\Release\net10.0-windows\win-x64\publish\profiles\*"; DestDir: "{app}\profiles"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
