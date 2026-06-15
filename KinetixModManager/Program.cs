@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.IO.Pipes;
+using System.Globalization;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -101,6 +102,13 @@ internal static class Program
 		}
 		ApplicationConfiguration.Initialize();
 
+		// Load settings once up front so the chosen UI language is active before any window is built.
+		// An empty Language follows the Windows display language; English is always the fallback.
+		AppSettings startupSettings = AppSettings.Load();
+		Loc.Init(startupSettings.Language);
+		Thread.CurrentThread.CurrentUICulture = Loc.ActiveCulture;
+		CultureInfo.DefaultThreadCurrentUICulture = Loc.ActiveCulture;
+
 		// Global safety net for unhandled exceptions. Event handlers must be `async void`, so an
 		// exception that escapes one cannot be observed by a caller; without this it would crash the
 		// app with a raw .NET dialog. Catching it on the UI thread lets us log it and keep running.
@@ -109,7 +117,7 @@ internal static class Program
 		AppDomain.CurrentDomain.UnhandledException += (s, e) =>
 			HandleUnhandledException(e.ExceptionObject as Exception, terminating: e.IsTerminating);
 
-		if (AppSettings.Load().ShowSplashScreen)
+		if (startupSettings.ShowSplashScreen)
 		{
 			using SplashScreen splashScreen = new SplashScreen();
 			splashScreen.ShowDialog();

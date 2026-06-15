@@ -34,7 +34,7 @@ public partial class Form1
 		string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "MANUAL.md");
 		if (!File.Exists(path))
 		{
-			MessageBox.Show("Manual not found.");
+			MessageBox.Show(Loc.T("manual.notFound"));
 			return;
 		}
 		string[] array = File.ReadAllLines(path);
@@ -77,7 +77,7 @@ public partial class Form1
 		Hide();
 		Form manualForm = new Form
 		{
-			Text = "User Manual - Press Escape to Close",
+			Text = Loc.T("manual.windowTitle"),
 			Size = new Size(800, 600),
 			StartPosition = FormStartPosition.CenterScreen,
 			KeyPreview = true
@@ -93,7 +93,7 @@ public partial class Form1
 		{
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 12f),
-			AccessibleName = "Table of Contents"
+			AccessibleName = Loc.T("manual.toc")
 		};
 		foreach (string key3 in sections.Keys)
 		{
@@ -106,7 +106,7 @@ public partial class Form1
 			ReadOnly = true,
 			ScrollBars = ScrollBars.Vertical,
 			Font = new Font("Segoe UI", 12f),
-			AccessibleName = "Topic Information"
+			AccessibleName = Loc.T("manual.topicInfo")
 		};
 		lbToc.SelectedIndexChanged += async delegate
 		{
@@ -115,7 +115,7 @@ public partial class Form1
 				string key2 = lbToc.SelectedItem.ToString() ?? "";
 				tbContent.Text = sections[key2].Trim();
 				await Task.Delay(150);
-				Speak($"{lbToc.SelectedIndex + 1} of {lbToc.Items.Count}");
+				Speak(Loc.T("common.position", lbToc.SelectedIndex + 1, lbToc.Items.Count));
 			}
 		};
 		manualForm.KeyDown += delegate(object? s, KeyEventArgs pe)
@@ -145,29 +145,11 @@ public partial class Form1
 	/// </summary>
 	private void ShowAbout()
 	{
-		string nl = Environment.NewLine;
-		string about =
-			"Kinetix Mod Manager" + nl +
-			"Version: " + NexusService.AppVersion + nl +
-			"Publisher: Audi Venture Games" + nl +
-			"Website: https://github.com/SeanTerry01/Kinetix-Mod-Manager" + nl +
-			nl +
-			"Kinetix Mod Manager is a fully keyboard-driven, screen-reader-accessible mod manager for " +
-			"Stardew Valley, Skyrim Special Edition, and Fallout 4. It is built for the blind and visually " +
-			"impaired gaming community, with spoken feedback, full keyboard control, and audio cues throughout." + nl +
-			nl +
-			"With it you can install and manage your mods, check for and apply updates through Nexus Mods, " +
-			"discover new mods, save and switch between mod profiles, keep automatic backups, browse an " +
-			"accessible game wiki, and review the SMAPI log for Stardew Valley." + nl +
-			nl +
-			"Kinetix Mod Manager works with NVDA, JAWS, and SAPI-based screen readers via Tolk." + nl +
-			nl +
-			"Copyright (C) 2026 Audi Venture Games." + nl +
-			"Provided as-is for personal and community use.";
+		string about = Loc.T("about.body", NexusService.AppVersion).Replace("\n", Environment.NewLine);
 
 		Form aboutForm = new Form
 		{
-			Text = "About Kinetix Mod Manager - Press Escape to Close",
+			Text = Loc.T("about.windowTitle"),
 			Size = new Size(600, 460),
 			StartPosition = FormStartPosition.CenterScreen,
 			KeyPreview = true,
@@ -199,19 +181,19 @@ public partial class Form1
 			ScrollBars = ScrollBars.Vertical,
 			Font = new Font("Segoe UI", 12f),
 			Text = about,
-			AccessibleName = "About Kinetix Mod Manager",
+			AccessibleName = Loc.T("about.title"),
 			TabStop = true
 		};
 		tbAbout.GotFocus += delegate { tbAbout.Select(0, 0); };
 
 		Button btnClose = new Button
 		{
-			Text = "Close",
+			Text = Loc.T("common.close"),
 			Dock = DockStyle.Right,
 			Width = 140,
 			Height = 45,
 			Font = new Font("Segoe UI", 12f, FontStyle.Bold),
-			AccessibleName = "Close About dialog"
+			AccessibleName = Loc.T("about.close")
 		};
 		btnClose.Click += delegate { aboutForm.Close(); };
 
@@ -223,7 +205,7 @@ public partial class Form1
 		aboutForm.Shown += delegate
 		{
 			tbAbout.Focus();
-			Speak("About Kinetix Mod Manager. Version " + NexusService.AppVersion + ".");
+			Speak(Loc.T("about.spoken", NexusService.AppVersion));
 		};
 		aboutForm.ShowDialog();
 	}
@@ -419,7 +401,7 @@ public partial class Form1
 		Hide();
 		Form controlsForm = new Form
 		{
-			Text = $"Accessibility Controls for {gameName} - Press Escape to Close",
+			Text = Loc.T("controls.windowTitle", gameName),
 			Size = new Size(900, 600),
 			StartPosition = FormStartPosition.CenterScreen,
 			KeyPreview = true
@@ -447,14 +429,14 @@ public partial class Form1
 		{
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 12f),
-			AccessibleName = "Available Mods and Guides"
+			AccessibleName = Loc.T("controls.availableMods")
 		};
 
 		ListBox lbControls = new ListBox
 		{
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 12f),
-			AccessibleName = "Controls and Descriptions"
+			AccessibleName = Loc.T("controls.descriptions")
 		};
 
 		tableLayoutPanel.Controls.Add(lbMods, 0, 0);
@@ -471,19 +453,19 @@ public partial class Form1
 
 		Button btnEditConfig = new Button
 		{
-			Text = "Edit Mod Configuration (Enter)",
+			Text = Loc.T("controls.editConfigBtn"),
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 11f),
 			Enabled = false,
-			AccessibleName = "Edit Selected Mod Configuration"
+			AccessibleName = Loc.T("controls.editConfig")
 		};
 
 		Button btnClose = new Button
 		{
-			Text = "Close (Escape)",
+			Text = Loc.T("controls.closeBtn"),
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 11f),
-			AccessibleName = "Close Controls Guide"
+			AccessibleName = Loc.T("controls.close")
 		};
 
 		bottomLayout.Controls.Add(btnEditConfig, 0, 0);
@@ -735,7 +717,7 @@ public partial class Form1
 				if (lbMods.Focused)
 				{
 					await Task.Delay(100);
-					Speak($"{lbMods.SelectedIndex + 1} of {lbMods.Items.Count}");
+					Speak(Loc.T("common.position", lbMods.SelectedIndex + 1, lbMods.Items.Count));
 				}
 			}
 		};
@@ -745,7 +727,7 @@ public partial class Form1
 			if (lbControls.SelectedItem != null && lbControls.Focused)
 			{
 				await Task.Delay(100);
-				Speak($"{lbControls.SelectedIndex + 1} of {lbControls.Items.Count}");
+				Speak(Loc.T("common.position", lbControls.SelectedIndex + 1, lbControls.Items.Count));
 			}
 		};
 
@@ -757,7 +739,7 @@ public partial class Form1
 			}
 			if (lbMods.SelectedItem is ModKeybinds selectedMod)
 			{
-				Speak($"Mod list. {lbMods.SelectedIndex + 1} of {lbMods.Items.Count}");
+				Speak(Loc.T("controls.modListPos", lbMods.SelectedIndex + 1, lbMods.Items.Count));
 			}
 		};
 
@@ -769,7 +751,7 @@ public partial class Form1
 			}
 			if (lbControls.SelectedItem != null)
 			{
-				Speak($"Controls list. {lbControls.SelectedIndex + 1} of {lbControls.Items.Count}");
+				Speak(Loc.T("controls.controlsListPos", lbControls.SelectedIndex + 1, lbControls.Items.Count));
 			}
 		};
 
@@ -782,11 +764,11 @@ public partial class Form1
 				if (lbControls.Items.Count > 0)
 				{
 					if (lbControls.SelectedIndex < 0) lbControls.SelectedIndex = 0;
-					Speak($"Entered controls. 1 of {lbControls.Items.Count}");
+					Speak(Loc.T("controls.entered", lbControls.Items.Count));
 				}
 				else
 				{
-					Speak("No keybinds defined for this mod.");
+					Speak(Loc.T("controls.noKeybinds"));
 				}
 			}
 			else if (pe.KeyCode == Keys.Enter || (pe.KeyCode == Keys.E && pe.Control))
@@ -806,7 +788,7 @@ public partial class Form1
 			{
 				pe.Handled = true;
 				lbMods.Focus();
-				Speak($"Returned to mod list. {lbMods.SelectedIndex + 1} of {lbMods.Items.Count}");
+				Speak(Loc.T("controls.returnedModList", lbMods.SelectedIndex + 1, lbMods.Items.Count));
 			}
 		};
 
@@ -839,7 +821,7 @@ public partial class Form1
 		// Run the initial load
 		LoadModsAndControls();
 
-		Speak($"Accessibility Controls for {gameName} opened. Select a mod using Up and Down arrows, then press Tab or Right Arrow to browse its controls.");
+		Speak(Loc.T("controls.opened", gameName));
 		controlsForm.ShowDialog();
 	}
 
@@ -852,7 +834,7 @@ public partial class Form1
 	{
 		if (!File.Exists(configPath))
 		{
-			Speak($"{fileLabel} file not found.");
+			Speak(Loc.T("config.fileNotFound", fileLabel));
 			return;
 		}
 
@@ -863,13 +845,13 @@ public partial class Form1
 		}
 		catch
 		{
-			Speak($"Could not read {fileLabel.ToLower()} file.");
+			Speak(Loc.T("config.couldNotRead", fileLabel.ToLower()));
 			return;
 		}
 
 		Form editorForm = new Form
 		{
-			Text = $"Edit {fileLabel} - {modName} - Ctrl+S to Save, Escape to Cancel",
+			Text = Loc.T("config.editorTitle", fileLabel, modName),
 			Size = new Size(800, 600),
 			StartPosition = FormStartPosition.CenterParent,
 			KeyPreview = true
@@ -891,7 +873,7 @@ public partial class Form1
 			ScrollBars = ScrollBars.Both,
 			Font = new Font("Consolas", 11f),
 			Text = originalJson,
-			AccessibleName = $"JSON Editor for {modName}"
+			AccessibleName = Loc.T("config.jsonEditorName", modName)
 		};
 
 		TableLayoutPanel buttonLayout = new TableLayoutPanel
@@ -905,18 +887,18 @@ public partial class Form1
 
 		Button btnSave = new Button
 		{
-			Text = "Save (Ctrl+S)",
+			Text = Loc.T("config.saveBtn"),
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 11f),
-			AccessibleName = "Save Changes"
+			AccessibleName = Loc.T("config.saveChanges")
 		};
 
 		Button btnCancel = new Button
 		{
-			Text = "Cancel (Escape)",
+			Text = Loc.T("config.cancelBtn"),
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 11f),
-			AccessibleName = "Cancel Changes"
+			AccessibleName = Loc.T("config.cancelChanges")
 		};
 
 		buttonLayout.Controls.Add(btnSave, 0, 0);
@@ -936,23 +918,23 @@ public partial class Form1
 			}
 			catch (Exception ex)
 			{
-				Speak($"Invalid JSON syntax. Please correct it. Details: {ex.Message}");
-				MessageBox.Show($"Invalid JSON syntax:\n{ex.Message}", "JSON Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				Speak(Loc.T("config.invalidJsonSpeak", ex.Message));
+				MessageBox.Show(Loc.T("config.invalidJsonBox", ex.Message), Loc.T("config.jsonValidationTitle"), MessageBoxButtons.OK, MessageBoxIcon.Error);
 				return;
 			}
 
 			try
 			{
 				File.WriteAllText(configPath, editedText);
-				Speak($"{fileLabel} saved.");
+				Speak(Loc.T("config.saved", fileLabel));
 				onSaveSuccess?.Invoke();
 				editorForm.DialogResult = DialogResult.OK;
 				editorForm.Close();
 			}
 			catch (Exception ex)
 			{
-				Speak("Failed to save configuration.");
-				MessageBox.Show($"Failed to save file:\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				Speak(Loc.T("config.saveFailed"));
+				MessageBox.Show(Loc.T("config.saveFailedBox", ex.Message), Loc.T("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
 			}
 		};
 
@@ -979,17 +961,17 @@ public partial class Form1
 		{
 			if (editorForm.DialogResult != DialogResult.OK && tbJson.Text != originalJson)
 			{
-				var res = MessageBox.Show("Discard unsaved changes?", "Confirm Cancel", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+				var res = MessageBox.Show(Loc.T("config.discardConfirm"), Loc.T("config.confirmCancelTitle"), MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 				if (res == DialogResult.No)
 				{
 					pe.Cancel = true;
 					return;
 				}
-				Speak("Changes cancelled.");
+				Speak(Loc.T("common.changesCancelled"));
 			}
 		};
 
-		Speak($"Editing {fileLabel.ToLower()} for {modName}. Press Control S to save, or Escape to cancel.");
+		Speak(Loc.T("config.editing", fileLabel.ToLower(), modName));
 		editorForm.ShowDialog();
 	}
 }

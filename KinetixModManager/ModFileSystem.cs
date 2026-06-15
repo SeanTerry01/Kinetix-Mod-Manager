@@ -490,6 +490,274 @@ public static class ModFileSystem
 	/// <summary>
 	/// Finds the deepest common directory containing game files or plugins.
 	/// </summary>
+	public static List<FileConflict> SyncDeployment(
+		string gameRootPath,
+		List<(string Name, string FolderPath)> enabledModsHighToLow,
+		DeploymentManifest manifest,
+		Action<string, string> logError,
+		HashSet<string>? forceRelink = null)
+	{
+		var conflicts = new List<FileConflict>();
+		if (string.IsNullOrEmpty(gameRootPath)) return conflicts;
+		gameRootPath = Path.GetFullPath(gameRootPath).TrimEnd(Path.DirectorySeparatorChar);
+
+		// Destination path (relative to the game root) -> winning source file / owning mod. providers
+		// tracks every mod that supplies a path so conflicts can be reported.
+		var desiredSource = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		var desiredOwner  = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		var providers     = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+		// Walk lowest priority first so the highest-priority provider is written last and wins.
+		for (int i = enabledModsHighToLow.Count - 1; i >= 0; i--)
+		{
+			var (modName, folderPath) = enabledModsHighToLow[i];
+			if (string.IsNullOrEmpty(folderPath) || !Directory.Exists(folderPath)) continue;
+			string canonical = Path.GetFullPath(folderPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+			foreach (string sourceFile in Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories))
+			{
+				if (Path.GetFileName(sourceFile).Equals(".manager_manifest.json", StringComparison.OrdinalIgnoreCase))
+					continue;
+
+				string relativePath = Path.GetFullPath(sourceFile).Substring(canonical.Length);
+				bool isRootFile = relativePath.StartsWith("Root" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+								  relativePath.StartsWith("Root" + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+				string destRel = isRootFile ? relativePath.Substring(5) : Path.Combine("Data", relativePath);
+
+				desiredSource[destRel] = sourceFile;
+				desiredOwner[destRel]  = modName;
+				if (!providers.TryGetValue(destRel, out var list)) { list = new List<string>(); providers[destRel] = list; }
+				list.Add(modName);
+			}
+		}
+
+		// 1. Remove files we previously deployed that are no longer wanted by any enabled mod.
+		foreach (var kv in manifest.Deployed)
+		{
+			if (desiredSource.ContainsKey(kv.Key)) continue;
+			string destAbs = Path.Combine(gameRootPath, kv.Key);
+			try
+			{
+				if (File.Exists(destAbs)) File.Delete(destAbs);
+				CleanEmptyParents(Path.GetDirectoryName(destAbs), gameRootPath);
+			}
+			catch (Exception ex) { logError(destAbs, $"Undeploy failed: {ex.Message}"); }
+		}
+
+		// 2. (Re)link desired files whose winning owner changed, that are missing, or that are forced.
+		foreach (var kv in desiredSource)
+		{
+			string destRel = kv.Key;
+			string sourceFile = kv.Value;
+			string owner = desiredOwner[destRel];
+			string destAbs = Path.Combine(gameRootPath, destRel);
+
+			bool needsRelink = !manifest.Deployed.TryGetValue(destRel, out string? prevOwner)
+							   || !string.Equals(prevOwner, owner, StringComparison.OrdinalIgnoreCase)
+							   || !File.Exists(destAbs)
+							   || (forceRelink != null && forceRelink.Contains(owner));
+			if (!needsRelink) continue;
+
+			try
+			{
+				string? destDir = Path.GetDirectoryName(destAbs);
+				if (destDir != null && !Directory.Exists(destDir)) Directory.CreateDirectory(destDir);
+				if (File.Exists(destAbs)) File.Delete(destAbs);
+				if (!TryCreateHardLink(destAbs, sourceFile)) File.Copy(sourceFile, destAbs, true);
+			}
+			catch (Exception ex) { logError(sourceFile, $"Deploy failed: {ex.Message}"); }
+		}
+
+		// 3. Record the new state and surface conflicts.
+		manifest.Deployed = desiredOwner;
+		foreach (var kv in providers)
+		{
+			if (kv.Value.Count <= 1) continue;
+			string winner = desiredOwner[kv.Key];
+			var losers = kv.Value
+				.Where(n => !string.Equals(n, winner, StringComparison.OrdinalIgnoreCase))
+				.Distinct(StringComparer.OrdinalIgnoreCase)
+				.ToList();
+			if (losers.Count > 0)
+				conflicts.Add(new FileConflict { RelativePath = kv.Key, Winner = winner, Losers = losers });
+		}
+		return conflicts;
+	}
+
+	/// <summary>Deletes empty directories upward from <paramref name="dir"/>, stopping at <paramref name="limitRoot"/>.</summary>
+	private static void CleanEmptyParents(string? dir, string limitRoot)
+	{
+		try
+		{
+			while (dir != null && dir.Length > limitRoot.Length && Directory.Exists(dir) &&
+				   !Directory.EnumerateFileSystemEntries(dir).Any())
+			{
+				Directory.Delete(dir);
+				dir = Path.GetDirectoryName(dir);
+			}
+		}
+		catch { /* best-effort tidy-up; leftover empty dirs are harmless */ }
+	}
+
+	// -------------------------------------------------------------------------
+	// Plugin load order (Skyrim / Fallout 4)
+	// -------------------------------------------------------------------------
+
+	/// <summary>File extensions of Bethesda plugins that participate in load order.</summary>
+	public static bool IsPluginFile(string fileName)
+	{
+		string ext = Path.GetExtension(fileName).ToLowerInvariant();
+		return ext == ".esp" || ext == ".esm" || ext == ".esl";
+	}
+
+	/// <summary>
+	/// Base-game and official DLC master files that the engine always loads first on its own. They are
+	/// kept implicit: never shown in the Plugin Order list and never written to plugins.txt.
+	/// </summary>
+	private static readonly HashSet<string> SkyrimBaseMasters = new(StringComparer.OrdinalIgnoreCase)
+	{
+		"Skyrim.esm", "Update.esm", "Dawnguard.esm", "HearthFires.esm", "Dragonborn.esm"
+	};
+
+	private static readonly HashSet<string> Fallout4BaseMasters = new(StringComparer.OrdinalIgnoreCase)
+	{
+		"Fallout4.esm", "DLCRobot.esm", "DLCworkshop01.esm", "DLCCoast.esm",
+		"DLCworkshop02.esm", "DLCworkshop03.esm", "DLCNukaWorld.esm", "DLCUltraHighResolution.esm"
+	};
+
+	/// <summary>True when <paramref name="fileName"/> is an implicit base-game/DLC master for the game.</summary>
+	public static bool IsBaseMaster(string activeGame, string fileName) => activeGame switch
+	{
+		"SkyrimSE" => SkyrimBaseMasters.Contains(fileName),
+		"Fallout4" => Fallout4BaseMasters.Contains(fileName),
+		_ => false
+	};
+
+	/// <summary>
+	/// Reads a plugin's master/light status from its TES4 record header flags, falling back to the file
+	/// extension when the header cannot be read. The engine loads master-flagged and light (ESL) plugins
+	/// before regular plugins, so this — not the extension alone — decides the masters-first grouping
+	/// (an ESL-flagged <c>.esp</c> loads with the masters even though its extension says otherwise).
+	/// </summary>
+	public static (bool IsMaster, bool IsLight) ReadPluginFlags(string filePath)
+	{
+		string ext = Path.GetExtension(filePath).ToLowerInvariant();
+		bool extMaster = ext == ".esm" || ext == ".esl";
+		bool extLight = ext == ".esl";
+		try
+		{
+			using FileStream fs = File.OpenRead(filePath);
+			byte[] buf = new byte[12];
+			if (fs.Read(buf, 0, 12) == 12 && buf[0] == (byte)'T' && buf[1] == (byte)'E' && buf[2] == (byte)'S' && buf[3] == (byte)'4')
+			{
+				uint flags = BitConverter.ToUInt32(buf, 8);
+				bool master = (flags & 0x1u) != 0 || extMaster;     // 0x1 = ESM (master)
+				bool light  = (flags & 0x200u) != 0 || extLight;    // 0x200 = light (ESL / ESPFE)
+				return (master, light);
+			}
+		}
+		catch { /* unreadable header: fall back to the extension classification below */ }
+		return (extMaster, extLight);
+	}
+
+	/// <summary>
+	/// Reads the master files a plugin depends on, from the MAST subrecords in its TES4 header. These are
+	/// the plugins that must load before this one, and drive the dependency-aware auto-sort. Returns an
+	/// empty list if the header cannot be parsed.
+	/// </summary>
+	public static List<string> ReadPluginMasters(string filePath)
+	{
+		var masters = new List<string>();
+		try
+		{
+			using FileStream fs = File.OpenRead(filePath);
+			using var br = new System.IO.BinaryReader(fs);
+
+			byte[] sig = br.ReadBytes(4);
+			if (sig.Length < 4 || sig[0] != (byte)'T' || sig[1] != (byte)'E' || sig[2] != (byte)'S' || sig[3] != (byte)'4')
+				return masters;
+
+			uint dataSize = br.ReadUInt32();
+			br.ReadUInt32(); // flags
+			br.ReadUInt32(); // form id
+			br.ReadUInt32(); // version control info
+			br.ReadUInt16(); // internal version
+			br.ReadUInt16(); // unknown
+			// The remaining record data is a series of fields: type[4] + size[2] + data[size].
+			byte[] data = br.ReadBytes((int)Math.Min(dataSize, (uint)int.MaxValue));
+
+			int pos = 0;
+			while (pos + 6 <= data.Length)
+			{
+				string type = System.Text.Encoding.ASCII.GetString(data, pos, 4);
+				ushort size = BitConverter.ToUInt16(data, pos + 4);
+				pos += 6;
+				if (pos + size > data.Length) break;
+				if (type == "MAST")
+				{
+					int strLen = size;
+					while (strLen > 0 && data[pos + strLen - 1] == 0) strLen--; // trim trailing null(s)
+					if (strLen > 0)
+					{
+						string name = System.Text.Encoding.Latin1.GetString(data, pos, strLen);
+						if (!string.IsNullOrWhiteSpace(name)) masters.Add(name);
+					}
+				}
+				pos += size;
+			}
+		}
+		catch { /* unreadable/odd header: treat as no declared masters */ }
+		return masters;
+	}
+
+	/// <summary>Returns the active plugin names (asterisk-prefixed lines) from the game's plugins.txt.</summary>
+	public static List<string> ReadActivePlugins(string activeGame)
+	{
+		var result = new List<string>();
+		string path = PluginsTxtPath(activeGame);
+		if (string.IsNullOrEmpty(path) || !File.Exists(path)) return result;
+		try
+		{
+			foreach (string raw in File.ReadAllLines(path))
+			{
+				string line = raw.Trim();
+				if (line.StartsWith("*") && line.Length > 1)
+					result.Add(line.Substring(1).Trim());
+			}
+		}
+		catch { /* unreadable plugins.txt: treat as no external entries */ }
+		return result;
+	}
+
+	/// <summary>
+	/// Writes plugins.txt as the authoritative active load order: one <c>*name</c> line per plugin in the
+	/// given order, which the caller has already arranged masters-first. Replaces the previous per-mod
+	/// add/remove approach so the order is deterministic.
+	/// </summary>
+	public static void WritePluginsTxt(string activeGame, IEnumerable<string> orderedActivePlugins, Action<string, string> logError)
+	{
+		string path = PluginsTxtPath(activeGame);
+		if (string.IsNullOrEmpty(path)) return;
+		try
+		{
+			string? dir = Path.GetDirectoryName(path);
+			if (dir != null && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
+			File.WriteAllLines(path, orderedActivePlugins.Select(p => "*" + p));
+		}
+		catch (Exception ex) { logError(path, $"Failed to write plugins.txt: {ex.Message}"); }
+	}
+
+	private static string PluginsTxtPath(string activeGame)
+	{
+		if (activeGame != "SkyrimSE" && activeGame != "Fallout4") return "";
+		string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+		string folderName = activeGame == "SkyrimSE" ? "Skyrim Special Edition" : "Fallout4";
+		return Path.Combine(localAppData, folderName, "plugins.txt");
+	}
+
+	/// <summary>
+	/// Finds the deepest common directory containing game files or plugins.
+	/// </summary>
 	public static string FindEffectiveModRoot(string tempDir)
 	{
 		var targets = Directory.GetFileSystemEntries(tempDir, "*", SearchOption.AllDirectories)
@@ -578,10 +846,11 @@ public static class ModFileSystem
 
 				if (existing != null && Directory.Exists(existing.FolderPath))
 				{
+					// Remove the old version's plugin entries; its deployed asset files are reconciled by
+					// the caller's SyncDeployment pass after extraction (which relinks the new contents and
+					// prunes any files this version drops), so no per-file asset undeploy is needed here.
 					if (activeGame != "StardewValley" && !string.IsNullOrEmpty(currentGamePath))
 					{
-						string gameData = Path.Combine(currentGamePath, "Data");
-						DeployModFiles(existing.FolderPath, gameData, false, logError);
 						SyncPluginsFile(existing.FolderPath, activeGame, false, logError);
 					}
 

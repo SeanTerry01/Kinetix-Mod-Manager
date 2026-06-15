@@ -41,7 +41,7 @@ public partial class Form1
 			"StardewValley" => "Stardew Valley",
 			_ => ""
 		};
-		Text = string.IsNullOrEmpty(gameName) ? "Kinetix Mod Manager" : $"{gameName} Kinetix Mod Manager";
+		Text = string.IsNullOrEmpty(gameName) ? Loc.T("ui.appTitle") : Loc.T("ui.appTitleGame", gameName);
 		base.Size = new Size(1000, 700);
 		base.KeyPreview = true;
 		base.KeyDown += Form1_KeyDown;
@@ -51,26 +51,26 @@ public partial class Form1
 		// focus. Re-announce the focused list when the menu deactivates so the user still hears their
 		// position. BeginInvoke defers until focus has actually been restored.
 		menuStrip.MenuDeactivate += (s, e) => BeginInvoke(new Action(AnnounceFocusedList));
-		_menuFile = new ToolStripMenuItem("&File");
-		_menuFile.DropDownItems.Add("Refresh All (" + GetShortcutString("RefreshAll") + ")", null, delegate
+		_menuFile = new ToolStripMenuItem(Loc.T("menu.file")) { Name = "menuFile" };
+		_menuFile.DropDownItems.Add(Loc.T("menu.refreshAll", GetShortcutString("RefreshAll")), null, delegate
 		{
 			RefreshAllData(checkUpdates: true);
-		});
-		_menuFile.DropDownItems.Add("Refresh Installed Only (" + GetShortcutString("RefreshInstalled") + ")", null, delegate
+		}).Name = "menuRefreshAll";
+		_menuFile.DropDownItems.Add(Loc.T("menu.refreshInstalled", GetShortcutString("RefreshInstalled")), null, delegate
 		{
 			_ = RefreshModList(checkUpdates: false);
-		});
-		_menuFile.DropDownItems.Add("Check for Manager Updates", null, async delegate
+		}).Name = "menuRefreshInstalled";
+		_menuFile.DropDownItems.Add(Loc.T("menu.checkManagerUpdates"), null, async delegate
 		{
 			await CheckForAppUpdates(manual: true);
 		});
-		_menuFile.DropDownItems.Add("Settings (" + GetShortcutString("Settings") + ")", null, delegate
+		_menuFile.DropDownItems.Add(Loc.T("menu.settings", GetShortcutString("Settings")), null, delegate
 		{
 			ShowSettings();
 		});
 		_menuFile.DropDownItems.Add(new ToolStripSeparator());
 
-		_menuCloseSessionItem = new ToolStripMenuItem("Close Current Game Session", null, delegate { CloseGameSession(); })
+		_menuCloseSessionItem = new ToolStripMenuItem(Loc.T("menu.closeSession"), null, delegate { CloseGameSession(); })
 		{
 			ShortcutKeys = Keys.Control | Keys.Shift | Keys.C,
 			Visible = (_settings.ActiveGame != "None")
@@ -83,62 +83,70 @@ public partial class Form1
 		};
 		_menuFile.DropDownItems.Add(_menuCloseSeparator);
 
-		_menuFile.DropDownItems.Add("Exit", null, delegate
+		_menuFile.DropDownItems.Add(Loc.T("menu.exit"), null, delegate
 		{
 			Application.Exit();
 		});
 
-		_menuGames = new ToolStripMenuItem("&Games");
+		_menuGames = new ToolStripMenuItem(Loc.T("menu.games"));
 		UpdateGamesMenu();
 
-		ToolStripMenuItem toolStripMenuItem2 = new ToolStripMenuItem("&Mods");
-		toolStripMenuItem2.DropDownItems.Add("Save Current Setup as Profile (" + GetShortcutString("SaveProfile") + ")", null, delegate
+		ToolStripMenuItem toolStripMenuItem2 = new ToolStripMenuItem(Loc.T("menu.mods")) { Name = "menuMods" };
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.saveProfile", GetShortcutString("SaveProfile")), null, delegate
 		{
 			CreateProfileFromCurrent();
 		});
-		toolStripMenuItem2.DropDownItems.Add("Install from Zip (" + GetShortcutString("InstallZip") + ")", null, delegate
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.installZip", GetShortcutString("InstallZip")), null, delegate
 		{
 			ManualInstall();
 		});
-		toolStripMenuItem2.DropDownItems.Add("Update All Available (" + GetShortcutString("UpdateAll") + ")", null, async delegate
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.updateAll", GetShortcutString("UpdateAll")), null, async delegate
 		{
 			await UpdateAllMods();
 		});
-		toolStripMenuItem2.DropDownItems.Add($"Launch {gameName} (" + GetShortcutString("LaunchGame") + ")", null, delegate
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.launch", gameName, GetShortcutString("LaunchGame")), null, delegate
 		{
 			LaunchGame();
-		});
-		toolStripMenuItem2.DropDownItems.Add($"Install {gameName} Accessibility Suite", null, delegate
+		}).Name = "menuLaunch";
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.installSuite", gameName), null, delegate
 		{
 			ShowAccessibilitySuiteDialog();
-		});
-		toolStripMenuItem2.DropDownItems.Add("Auto-match Nexus IDs for All Mods", null, async delegate
+		}).Name = "menuSuite";
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.autoMatch"), null, async delegate
 		{
 			await AutoMatchNexusIDs();
 		});
-		toolStripMenuItem2.DropDownItems.Add("Edit Selected Mod's Config File (" + GetShortcutString("OpenConfig") + ")", null, delegate
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.autoSort", GetShortcutString("AutoSort")), null, async delegate
+		{
+			await AutoSortPluginsAsync();
+		}).Name = "menuAutoSort";
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.rebuildDeploy"), null, delegate
+		{
+			RebuildDeployment();
+		}).Name = "menuRebuildDeploy";
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.editConfig", GetShortcutString("OpenConfig")), null, delegate
 		{
 			OpenSelectedModConfig();
 		});
-		toolStripMenuItem2.DropDownItems.Add("Edit Selected Mod's Manifest File (" + GetShortcutString("OpenManifest") + ")", null, delegate
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.editManifest", GetShortcutString("OpenManifest")), null, delegate
 		{
 			OpenSelectedModManifest();
 		});
 
-		ToolStripMenuItem toolStripMenuItem3 = new ToolStripMenuItem("&View");
-		toolStripMenuItem3.DropDownItems.Add("Open Downloads Folder (" + GetShortcutString("OpenDownloads") + ")", null, delegate
+		ToolStripMenuItem toolStripMenuItem3 = new ToolStripMenuItem(Loc.T("menu.view")) { Name = "menuView" };
+		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.openDownloads", GetShortcutString("OpenDownloads")), null, delegate
 		{
 			Process.Start("explorer.exe", downloadsPath);
 		});
-		toolStripMenuItem3.DropDownItems.Add("Open Backups Folder (" + GetShortcutString("OpenBackups") + ")", null, delegate
+		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.openBackups", GetShortcutString("OpenBackups")), null, delegate
 		{
 			Process.Start("explorer.exe", backupsPath);
 		});
-		toolStripMenuItem3.DropDownItems.Add("Open SMAPI Log File (" + GetShortcutString("OpenLogFile") + ")", null, delegate
+		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.openSmapiLog", GetShortcutString("OpenLogFile")), null, delegate
 		{
 			OpenRawSmapiLog();
 		});
-		toolStripMenuItem3.DropDownItems.Add("Open Error Log (" + GetShortcutString("OpenErrorLog") + ")", null, delegate
+		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.openErrorLog", GetShortcutString("OpenErrorLog")), null, delegate
 		{
 			if (File.Exists(errorLogPath))
 			{
@@ -148,28 +156,28 @@ public partial class Form1
 				});
 			}
 		});
-		ToolStripMenuItem toolStripMenuItem4 = new ToolStripMenuItem("&Help");
-		toolStripMenuItem4.DropDownItems.Add("User Manual (" + GetShortcutString("Manual") + ")", null, delegate
+		ToolStripMenuItem toolStripMenuItem4 = new ToolStripMenuItem(Loc.T("menu.help"));
+		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.userManual", GetShortcutString("Manual")), null, delegate
 		{
 			ShowManual();
 		});
-		toolStripMenuItem4.DropDownItems.Add("Accessibility Controls (" + GetShortcutString("ControlsHelp") + ")", null, delegate
+		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.accessibilityControls", GetShortcutString("ControlsHelp")), null, delegate
 		{
 			ShowAccessibilityControls();
 		});
-		toolStripMenuItem4.DropDownItems.Add("Sound Demo", null, delegate
+		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.soundDemo"), null, delegate
 		{
 			ShowSoundDemo();
 		});
-		toolStripMenuItem4.DropDownItems.Add("Audio Theme Manager", null, delegate
+		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.themeManager"), null, delegate
 		{
 			ShowThemeManager();
 		});
-		toolStripMenuItem4.DropDownItems.Add("Shortcut Customization", null, delegate
+		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.shortcutCustomization"), null, delegate
 		{
 			ShowShortcutManager();
 		});
-		toolStripMenuItem4.DropDownItems.Add("About Kinetix Mod Manager", null, delegate
+		toolStripMenuItem4.DropDownItems.Add(Loc.T("about.title"), null, delegate
 		{
 			ShowAbout();
 		});
@@ -191,7 +199,7 @@ public partial class Form1
 		{
 			Dock = DockStyle.Fill
 		};
-		tabInstalled = new TabPage("Installed Mods");
+		tabInstalled = new TabPage(Loc.T("tab.installed"));
 		TableLayoutPanel tableLayoutPanel2 = new TableLayoutPanel
 		{
 			Dock = DockStyle.Fill,
@@ -209,7 +217,7 @@ public partial class Form1
 		{
 			Width = 200,
 			Font = new Font("Segoe UI", 12f),
-			AccessibleName = "Search Installed Mods"
+			AccessibleName = Loc.T("ui.searchInstalled")
 		};
 		txtSearchInstalled.TextChanged += delegate
 		{
@@ -229,14 +237,14 @@ public partial class Form1
 		};
 		flowLayoutPanel.Controls.Add(new Label
 		{
-			Text = "Search:",
+			Text = Loc.T("ui.searchLabel"),
 			AutoSize = true,
 			Padding = new Padding(5, 8, 0, 0)
 		});
 		flowLayoutPanel.Controls.Add(txtSearchInstalled);
 		flowLayoutPanel.Controls.Add(new Label
 		{
-			Text = "Category:",
+			Text = Loc.T("ui.categoryLabel"),
 			AutoSize = true,
 			Padding = new Padding(10, 8, 0, 0)
 		});
@@ -247,20 +255,20 @@ public partial class Form1
 			Name = "listInstalled",
 			Font = new Font("Segoe UI", 12f)
 		};
-		listInstalled.AccessibleName = "Installed Mods List";
+		listInstalled.AccessibleName = Loc.T("ui.installedList");
 		tableLayoutPanel2.Controls.Add(flowLayoutPanel, 0, 0);
 		tableLayoutPanel2.Controls.Add(listInstalled, 0, 1);
 		tabInstalled.Controls.Add(tableLayoutPanel2);
-		tabUpdates = new TabPage("Updates Available");
+		tabUpdates = new TabPage(Loc.T("tab.updates"));
 		listUpdates = new ListBox
 		{
 			Dock = DockStyle.Fill,
 			Name = "listUpdates",
 			Font = new Font("Segoe UI", 12f)
 		};
-		listUpdates.AccessibleName = "Available Updates List";
+		listUpdates.AccessibleName = Loc.T("ui.updatesList");
 		tabUpdates.Controls.Add(listUpdates);
-		tabBackups = new TabPage("Backups");
+		tabBackups = new TabPage(Loc.T("tab.backups"));
 		TableLayoutPanel tableLayoutPanel3 = new TableLayoutPanel
 		{
 			Dock = DockStyle.Fill,
@@ -271,7 +279,7 @@ public partial class Form1
 		tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
 		btnPruneBackups = new Button
 		{
-			Text = "Prune Old Backups (" + GetShortcutString("PruneBackups") + ")",
+			Text = Loc.T("ui.pruneBackups", GetShortcutString("PruneBackups")),
 			Width = 250,
 			Height = 35
 		};
@@ -286,10 +294,10 @@ public partial class Form1
 			Name = "listBackups",
 			Font = new Font("Segoe UI", 12f)
 		};
-		listBackups.AccessibleName = "Mod Backups List";
+		listBackups.AccessibleName = Loc.T("ui.backupsList");
 		tableLayoutPanel3.Controls.Add(listBackups, 0, 1);
 		tabBackups.Controls.Add(tableLayoutPanel3);
-		tabDiscovery = new TabPage("Find New Mods");
+		tabDiscovery = new TabPage(Loc.T("tab.discovery"));
 		TableLayoutPanel tableLayoutPanel4 = new TableLayoutPanel
 		{
 			Dock = DockStyle.Fill,
@@ -308,7 +316,7 @@ public partial class Form1
 		{
 			Width = 250,
 			Font = new Font("Segoe UI", 12f),
-			AccessibleName = "Search Mod Name"
+			AccessibleName = Loc.T("ui.searchModName")
 		};
 		cmbDiscoveryType = new ComboBox
 		{
@@ -325,7 +333,7 @@ public partial class Form1
 			Width = 170,
 			Font = new Font("Segoe UI", 12f),
 			DropDownStyle = ComboBoxStyle.DropDownList,
-			AccessibleName = "Filter results by language"
+			AccessibleName = Loc.T("ui.filterLanguage")
 		};
 		// Starter options so the control is usable before the dynamic, game-specific list loads.
 		_suppressDiscoveryLanguageEvent = true;
@@ -345,7 +353,7 @@ public partial class Form1
 		};
 		btnSearch = new Button
 		{
-			Text = "Go",
+			Text = Loc.T("ui.go"),
 			Height = 30,
 			Width = 60
 		};
@@ -355,11 +363,11 @@ public partial class Form1
 		};
 		btnLoadMoreDiscovery = new Button
 		{
-			Text = "Load More",
+			Text = Loc.T("ui.loadMoreBtn"),
 			Height = 30,
 			Width = 100,
 			Visible = false,
-			AccessibleName = "Load more discovery results"
+			AccessibleName = Loc.T("ui.loadMore")
 		};
 		btnLoadMoreDiscovery.Click += async delegate
 		{
@@ -374,13 +382,13 @@ public partial class Form1
 		};
 		flowLayoutPanel2.Controls.Add(new Label
 		{
-			Text = "Search/Type:",
+			Text = Loc.T("ui.searchTypeLabel"),
 			AutoSize = true,
 			Padding = new Padding(0, 5, 0, 0)
 		});
 		flowLayoutPanel2.Controls.Add(txtSearch);
 		flowLayoutPanel2.Controls.Add(cmbDiscoveryType);
-		flowLayoutPanel2.Controls.Add(new Label { Text = "Language:", AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
+		flowLayoutPanel2.Controls.Add(new Label { Text = Loc.T("ui.languageLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
 		flowLayoutPanel2.Controls.Add(cmbDiscoveryLanguage);
 		flowLayoutPanel2.Controls.Add(btnSearch);
 		flowLayoutPanel2.Controls.Add(btnLoadMoreDiscovery);
@@ -390,7 +398,7 @@ public partial class Form1
 			Name = "listDiscovery",
 			Font = new Font("Segoe UI", 12f)
 		};
-		listDiscovery.AccessibleName = "Mod Discovery Results";
+		listDiscovery.AccessibleName = Loc.T("ui.discoveryList");
 		
 		// Adjust table layout for 3 rows
 		tableLayoutPanel4.RowCount = 3;
@@ -405,16 +413,36 @@ public partial class Form1
 		btnLoadMoreDiscovery.Dock = DockStyle.Fill;
 
 		tabDiscovery.Controls.Add(tableLayoutPanel4);
-		tabProfiles = new TabPage("Profiles");
+		tabProfiles = new TabPage(Loc.T("tab.profiles"));
 		listProfiles = new ListBox
 		{
 			Dock = DockStyle.Fill,
 			Name = "listProfiles",
 			Font = new Font("Segoe UI", 12f)
 		};
-		listProfiles.AccessibleName = "Mod Profiles List";
+		listProfiles.AccessibleName = Loc.T("ui.profilesList");
 		tabProfiles.Controls.Add(listProfiles);
-		tabSmapiLog = new TabPage("SMAPI Log");
+		tabModPriority = new TabPage(Loc.T("tab.modPriority"));
+		listModPriority = new ListBox
+		{
+			Dock = DockStyle.Fill,
+			Name = "listModPriority",
+			Font = new Font("Segoe UI", 12f),
+			AccessibleName = Loc.T("ui.modPriorityList"),
+			AccessibleDescription = Loc.T("ui.modPriorityDesc")
+		};
+		tabModPriority.Controls.Add(listModPriority);
+		tabPluginOrder = new TabPage(Loc.T("tab.pluginOrder"));
+		listPluginOrder = new ListBox
+		{
+			Dock = DockStyle.Fill,
+			Name = "listPluginOrder",
+			Font = new Font("Segoe UI", 12f),
+			AccessibleName = Loc.T("ui.pluginOrderList"),
+			AccessibleDescription = Loc.T("ui.pluginOrderDesc")
+		};
+		tabPluginOrder.Controls.Add(listPluginOrder);
+		tabSmapiLog = new TabPage(Loc.T("tab.smapiLog"));
 		TableLayoutPanel tableLayoutPanel5 = new TableLayoutPanel
 		{
 			Dock = DockStyle.Fill,
@@ -446,7 +474,7 @@ public partial class Form1
 		{
 			Width = 180,
 			Font = new Font("Segoe UI", 12f),
-			AccessibleName = "Search Log Entries"
+			AccessibleName = Loc.T("ui.searchLog")
 		};
 		txtSearchLog.KeyDown += delegate(object? s, KeyEventArgs e)
 		{
@@ -458,14 +486,14 @@ public partial class Form1
 		};
 		flowLayoutPanel3.Controls.Add(new Label
 		{
-			Text = "Filter:",
+			Text = Loc.T("ui.filterLabel"),
 			AutoSize = true,
 			Padding = new Padding(5, 8, 0, 0)
 		});
 		flowLayoutPanel3.Controls.Add(cmbLogFilter);
 		flowLayoutPanel3.Controls.Add(new Label
 		{
-			Text = "Search:",
+			Text = Loc.T("ui.searchLabel"),
 			AutoSize = true,
 			Padding = new Padding(10, 8, 0, 0)
 		});
@@ -479,16 +507,16 @@ public partial class Form1
 			// to the clipboard with Ctrl+C, without having to open SMAPI-latest.txt by hand.
 			SelectionMode = SelectionMode.MultiExtended
 		};
-		listLog.AccessibleName = "Parsed SMAPI Log Entries";
+		listLog.AccessibleName = Loc.T("ui.logList");
 		tableLayoutPanel5.Controls.Add(flowLayoutPanel3, 0, 0);
 		tableLayoutPanel5.Controls.Add(listLog, 0, 1);
 		tabSmapiLog.Controls.Add(tableLayoutPanel5);
 
 		string initialWikiTitle = _settings.ActiveGame switch
 		{
-			"SkyrimSE" => "Skyrim Wiki",
-			"Fallout4" => "Fallout 4 Wiki",
-			_ => "Stardew Wiki"
+			"SkyrimSE" => Loc.T("tab.wikiSkyrim"),
+			"Fallout4" => Loc.T("tab.wikiFallout"),
+			_ => Loc.T("tab.wikiStardew")
 		};
 		tabWiki = new TabPage(initialWikiTitle);
 		TableLayoutPanel tableLayoutPanelWiki = new TableLayoutPanel
@@ -507,9 +535,9 @@ public partial class Form1
 		};
 		string searchLabel = _settings.ActiveGame switch
 		{
-			"SkyrimSE" => "Search Skyrim Wiki",
-			"Fallout4" => "Search Fallout 4 Wiki",
-			_ => "Search Stardew Wiki"
+			"SkyrimSE" => Loc.T("ui.searchWikiSkyrim"),
+			"Fallout4" => Loc.T("ui.searchWikiFallout"),
+			_ => Loc.T("ui.searchWikiStardew")
 		};
 		txtWikiSearch = new TextBox
 		{
@@ -530,7 +558,7 @@ public partial class Form1
 			Width = 200,
 			Font = new Font("Segoe UI", 12f),
 			DropDownStyle = ComboBoxStyle.DropDownList,
-			AccessibleName = "Wiki Categories"
+			AccessibleName = Loc.T("ui.wikiCategories")
 		};
 		RefreshWikiCategories();
 		cmbWikiCategories.SelectedIndexChanged += async delegate
@@ -556,7 +584,7 @@ public partial class Form1
 			Width = 240,
 			Font = new Font("Segoe UI", 12f),
 			DropDownStyle = ComboBoxStyle.DropDownList,
-			AccessibleName = "Mod Wikis"
+			AccessibleName = Loc.T("ui.modWikis")
 		};
 		PopulateModWikis();
 		cmbModWikis.SelectedIndexChanged += async delegate
@@ -567,11 +595,11 @@ public partial class Form1
 				await OnModWikiSelected(link);
 			}
 		};
-		flowLayoutPanelWikiTop.Controls.Add(new Label { Text = "Search:", AutoSize = true, Padding = new Padding(0, 5, 0, 0) });
+		flowLayoutPanelWikiTop.Controls.Add(new Label { Text = Loc.T("ui.searchLabel"), AutoSize = true, Padding = new Padding(0, 5, 0, 0) });
 		flowLayoutPanelWikiTop.Controls.Add(txtWikiSearch);
-		flowLayoutPanelWikiTop.Controls.Add(new Label { Text = "Mod Wikis:", AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
+		flowLayoutPanelWikiTop.Controls.Add(new Label { Text = Loc.T("ui.modWikisLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
 		flowLayoutPanelWikiTop.Controls.Add(cmbModWikis);
-		flowLayoutPanelWikiTop.Controls.Add(new Label { Text = "Categories:", AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
+		flowLayoutPanelWikiTop.Controls.Add(new Label { Text = Loc.T("ui.categoriesLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
 		flowLayoutPanelWikiTop.Controls.Add(cmbWikiCategories);
 
 		splitWiki = new SplitContainer
@@ -589,7 +617,7 @@ public partial class Form1
 			Dock = DockStyle.Fill,
 			Name = "listWikiResults",
 			Font = new Font("Segoe UI", 12f),
-			AccessibleName = "Wiki Results"
+			AccessibleName = Loc.T("ui.wikiResults")
 		};
 		listWikiResults.KeyDown += async delegate(object? s, KeyEventArgs e)
 		{
@@ -608,7 +636,7 @@ public partial class Form1
 		webViewWiki = new WebView2
 		{
 			Dock = DockStyle.Fill,
-			AccessibleName = "Wiki Content View"
+			AccessibleName = Loc.T("ui.wikiContent")
 		};
 		_ = InitializeAndLoadInitialPagesAsync();
 		
@@ -625,9 +653,9 @@ public partial class Form1
 		// Walkthroughs Tab Setup
 		string initialWalkthroughTitle = _settings.ActiveGame switch
 		{
-			"SkyrimSE" => "Skyrim Walkthroughs",
-			"Fallout4" => "Fallout 4 Walkthroughs",
-			_ => "Stardew Walkthroughs"
+			"SkyrimSE" => Loc.T("tab.walkSkyrim"),
+			"Fallout4" => Loc.T("tab.walkFallout"),
+			_ => Loc.T("tab.walkStardew")
 		};
 		tabWalkthroughs = new TabPage(initialWalkthroughTitle);
 		splitWalkthroughs = new SplitContainer
@@ -644,18 +672,25 @@ public partial class Form1
 			Dock = DockStyle.Fill,
 			Name = "listWalkthroughs",
 			Font = new Font("Segoe UI", 12f),
-			AccessibleName = "Walkthrough Guides List"
+			AccessibleName = Loc.T("ui.walkthroughList")
 		};
 		webViewWalkthrough = new WebView2
 		{
 			Dock = DockStyle.Fill,
-			AccessibleName = "Walkthrough Content View"
+			AccessibleName = Loc.T("ui.walkthroughContent")
 		};
 		splitWalkthroughs.Panel1.Controls.Add(listWalkthroughs);
 		splitWalkthroughs.Panel2.Controls.Add(webViewWalkthrough);
 		tabWalkthroughs.Controls.Add(splitWalkthroughs);
 
 		mainTabs.TabPages.Add(tabInstalled);
+		// Mod Priority and Plugin Order sit right after Installed (Skyrim/Fallout 4 only) so the load order
+		// controls are next to the mod list.
+		if (IsBethesdaGame)
+		{
+			mainTabs.TabPages.Add(tabModPriority);
+			mainTabs.TabPages.Add(tabPluginOrder);
+		}
 		mainTabs.TabPages.Add(tabUpdates);
 		mainTabs.TabPages.Add(tabBackups);
 		mainTabs.TabPages.Add(tabDiscovery);
@@ -714,6 +749,12 @@ public partial class Form1
 		listBackups.GotFocus += List_Enter;
 		listProfiles.GotFocus += List_Enter;
 		listLog.GotFocus += List_Enter;
+		listModPriority.KeyDown += ListModPriority_KeyDown;
+		listModPriority.SelectedIndexChanged += ListModPriority_SelectedIndexChanged;
+		listModPriority.GotFocus += List_Enter;
+		listPluginOrder.KeyDown += ListPluginOrder_KeyDown;
+		listPluginOrder.SelectedIndexChanged += ListModPriority_SelectedIndexChanged;
+		listPluginOrder.GotFocus += List_Enter;
 		_searchTimer.Tick += delegate
 		{
 			_searchTimer.Stop();

@@ -88,7 +88,7 @@ public partial class Form1
 		listInstalled.EndUpdate();
 		if (!string.IsNullOrEmpty(query) || category != "All Categories")
 		{
-			Speak($"{list.Count} mods found.");
+			Speak(Loc.T("discovery.modsFound", list.Count));
 		}
 	}
 
@@ -98,7 +98,7 @@ public partial class Form1
 
 		if (listBox.Items.Count == 0)
 		{
-			if (!_isLoading) Speak("List is empty.");
+			if (!_isLoading) Speak(Loc.T("common.listEmpty"));
 			return;
 		}
 		if (listBox.SelectedIndex == -1)
@@ -112,7 +112,7 @@ public partial class Form1
 		// item first — putting "X of Y" at the end, matching the arrow-key path (List_SelectedIndexChanged).
 		await Task.Delay(100);
 		if (!listBox.Focused) return;
-		Speak($"{listBox.SelectedIndex + 1} of {listBox.Items.Count}");
+		Speak(Loc.T("common.position", listBox.SelectedIndex + 1, listBox.Items.Count));
 	}
 
 	[System.Runtime.InteropServices.DllImport("user32.dll")]
@@ -150,7 +150,7 @@ public partial class Form1
 				"Fallout4" => "Fallout 4",
 				_ => "Stardew Valley"
 			};
-			string text2 = $"{gameName} Kinetix Mod Manager - Status: {text}";
+			string text2 = Loc.T("status.titleFormat", gameName, text);
 			Text = text2;
 			if (speak)
 			{
@@ -167,25 +167,25 @@ public partial class Form1
 		}
 		await Task.Delay(100);
 		if (!list.Focused) return;
-		string text = $"{list.SelectedIndex + 1} of {list.Items.Count}";
+		string text = Loc.T("common.position", list.SelectedIndex + 1, list.Items.Count);
 		if (list.Name == "listLog")
 		{
 			string lineText = list.SelectedItem.ToString() ?? "";
 			string suggestedFix = LogAnalyzer.GetSuggestedFix(lineText);
 			if (!string.IsNullOrEmpty(suggestedFix))
 			{
-				text = text + ". Suggested Fix: " + suggestedFix;
+				text = text + Loc.T("helpers.suggestedFixSuffix", suggestedFix);
 			}
 			// Let a screen-reader user know this line is actionable (e.g. a SMAPI update notice),
 			// and whether Enter opens a page directly or offers a choice of several links.
 			int linkCount = LogAnalyzer.ExtractUrls(lineText).Count;
 			if (linkCount == 1)
 			{
-				text = text + ". Press Enter to open mod page.";
+				text = text + Loc.T("helpers.pressEnterOpenPage");
 			}
 			else if (linkCount > 1)
 			{
-				text = text + $". Press Enter to choose from {linkCount} links.";
+				text = text + Loc.T("helpers.pressEnterChoose", linkCount);
 			}
 		}
 		Speak(text);
@@ -197,37 +197,43 @@ public partial class Form1
 	private void ShowContextHelp()
 	{
 		string text = "";
-		switch (mainTabs.SelectedIndex)
+		switch (CurrentTab())
 		{
-		case (int)AppTab.Installed:
-			text = $"Installed Mods: Space to Toggle. Delete to remove mod. {GetShortcutString("Search")} to Search. {GetShortcutString("ChangeCategory")} to change Category. {GetShortcutString("BatchCategory")} to batch toggle Category. {GetShortcutString("OpenModPage")} for Nexus. {GetShortcutString("ShowDependencies")} for dependencies. {GetShortcutString("QuickFix")} to Quick-Fix. {GetShortcutString("ManualID")} for Nexus ID. {GetShortcutString("InstallZip")} to install zip. {GetShortcutString("SaveProfile")} to save as profile. {GetShortcutString("ReadDescription")} to read description. {GetShortcutString("OpenConfig")} to edit the mod's config file. {GetShortcutString("OpenManifest")} to edit the mod's manifest file. {GetShortcutString("LaunchGame")} to launch game.";
+		case AppTab.Installed:
+			text = Loc.T("help.installed", GetShortcutString("Search"), GetShortcutString("ChangeCategory"), GetShortcutString("BatchCategory"), GetShortcutString("OpenModPage"), GetShortcutString("ShowDependencies"), GetShortcutString("QuickFix"), GetShortcutString("ManualID"), GetShortcutString("InstallZip"), GetShortcutString("SaveProfile"), GetShortcutString("ReadDescription"), GetShortcutString("OpenConfig"), GetShortcutString("OpenManifest"), GetShortcutString("LaunchGame"));
 			break;
-		case (int)AppTab.Updates:
-			text = $"Updates: Enter for Nexus page. Delete to Ignore this update. {GetShortcutString("UpdateAll")} to Update All (Premium). {GetShortcutString("ReadDescription")} to read description. {GetShortcutString("LaunchGame")} to launch game.";
+		case AppTab.Updates:
+			text = Loc.T("help.updates", GetShortcutString("UpdateAll"), GetShortcutString("ReadDescription"), GetShortcutString("LaunchGame"));
 			break;
-		case (int)AppTab.Backups:
-			text = $"Backups: Enter to restore. Delete to remove zip. {GetShortcutString("PruneBackups")} to prune old backups. {GetShortcutString("OpenBackups")} to open backups folder.";
+		case AppTab.Backups:
+			text = Loc.T("help.backups", GetShortcutString("PruneBackups"), GetShortcutString("OpenBackups"));
 			break;
-		case (int)AppTab.Discovery:
-			text = "Discovery: Enter for Nexus page. " + GetShortcutString("ReadDescription") + " to read summary. Tab to search.";
+		case AppTab.Discovery:
+			text = Loc.T("help.discovery", GetShortcutString("ReadDescription"));
 			break;
-		case (int)AppTab.Wiki:
-			text = "Stardew Wiki: Type in Search box and press Enter. Or select a Category. In Results: Enter to open page or sub-category. Backspace to go back up. Tab into the web view to read content with screen reader commands (H for headings, T for tables).";
+		case AppTab.Wiki:
+			text = Loc.T("help.wiki");
 			break;
-		case (int)AppTab.Walkthroughs:
+		case AppTab.Walkthroughs:
 			string activeGameWalkthroughTitle = _settings.ActiveGame switch
 			{
 				"SkyrimSE" => "Skyrim",
 				"Fallout4" => "Fallout 4",
 				_ => "Stardew Valley"
 			};
-			text = $"{activeGameWalkthroughTitle} Walkthroughs: Select a guide from the list using Up/Down arrow keys. Press F6 or Tab to move to the Web View to read the guide with screen reader commands (H for headings, T for tables).";
+			text = Loc.T("help.walkthroughs", activeGameWalkthroughTitle);
 			break;
-		case (int)AppTab.Profiles:
-			text = "Profiles: Enter to apply profile. Delete to remove profile.";
+		case AppTab.Profiles:
+			text = Loc.T("help.profiles");
 			break;
-		case (int)AppTab.SmapiLog:
-			text = "SMAPI Log: Filter dropdown includes Errors Only, Errors and Warnings, Full Log, and Links Only. Search box available. Enter on a line with a link opens it, or lists the links to choose from when there are several; Enter on a search result jumps to it in full view. " + GetShortcutString("QuickFix") + " to diagnose and fix the selected line. Control C to copy selected lines to the clipboard. " + GetShortcutString("RefreshLog") + " to refresh the log, even while the game is running. " + GetShortcutString("Login") + " to upload to SMAPI.io. " + GetShortcutString("OpenLogFile") + " to open raw file.";
+		case AppTab.ModPriority:
+			text = Loc.T("help.modPriority");
+			break;
+		case AppTab.PluginOrder:
+			text = Loc.T("help.pluginOrder", GetShortcutString("AutoSort"));
+			break;
+		case AppTab.SmapiLog:
+			text = Loc.T("help.smapiLog", GetShortcutString("QuickFix"), GetShortcutString("RefreshLog"), GetShortcutString("Login"), GetShortcutString("OpenLogFile"));
 			break;
 		}
 		if (!string.IsNullOrEmpty(text))
@@ -245,7 +251,7 @@ public partial class Form1
 	{
 		if (string.IsNullOrEmpty(_settings.ApiKey))
 		{
-			Speak("Please login first.");
+			Speak(Loc.T("discovery.loginFirst"));
 			return;
 		}
 		if (!loadMore) { _currentDiscoveryPage = 1; listDiscovery.Items.Clear(); }
@@ -254,8 +260,8 @@ public partial class Form1
 		string searchType = cmbDiscoveryType.SelectedItem?.ToString() ?? "Search";
 		string searchTerm = txtSearch.Text.Trim();
 		string language = (cmbDiscoveryLanguage?.SelectedItem as LanguageOption)?.Name ?? _settings.DiscoveryLanguage;
-		Speak((loadMore ? "Loading more " : "Starting mod ") + searchType + "...");
-		SetStatus((loadMore ? "Loading more " : "Running ") + searchType + "...");
+		Speak(loadMore ? Loc.T("discovery.loadingMore", searchType) : Loc.T("discovery.startingSearch", searchType));
+		SetStatus(loadMore ? Loc.T("discovery.loadingMore", searchType) : Loc.T("discovery.statusRunning", searchType));
 		try
 		{
 			const int pageSize = 20;
@@ -265,17 +271,17 @@ public partial class Form1
 			btnLoadMoreDiscovery.Visible = (offset + results.Count) < total;
 			if (results.Count > 0)
 			{
-				Speak((loadMore ? "Added " : "Found ") + results.Count + " mods.");
+				Speak(loadMore ? Loc.T("discovery.added", results.Count) : Loc.T("discovery.found", results.Count));
 				if (!loadMore) listDiscovery.SelectedIndex = 0;
 			}
 			else
 			{
-				Speak(loadMore ? "No more mods found." : "No mods found.");
+				Speak(loadMore ? Loc.T("discovery.noMore") : Loc.T("discovery.none"));
 			}
 		}
 		catch (Exception ex)
 		{
-			MessageBox.Show("Discovery Error: " + ex.Message);
+			MessageBox.Show(Loc.T("discovery.errorBox", ex.Message));
 		}
 	}
 

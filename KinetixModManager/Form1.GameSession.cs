@@ -56,7 +56,7 @@ public partial class Form1
 			"StardewValley" => "Stardew Valley",
 			_ => ""
 		};
-		Text = string.IsNullOrEmpty(gameName) ? "Kinetix Mod Manager" : $"{gameName} Kinetix Mod Manager";
+		Text = string.IsNullOrEmpty(gameName) ? Loc.T("ui.appTitle") : Loc.T("ui.appTitleGame", gameName);
 
 		bool noGame = game == "None";
 		if (noGame)
@@ -100,55 +100,41 @@ public partial class Form1
 			_nexusService.Disconnect();
 			_soundEngine.Play("disconnect", closingTheme);
 			if (_lstGames != null) _lstGames.Focus();
-			Speak("Game session closed. Returned to game selection screen.");
+			Speak(Loc.T("session.closed"));
 			return;
 		}
 
-		if (MainMenuStrip != null)
+		// Re-label the game-specific Mods items for the newly loaded game. Items are found by their stable
+		// Name (set in SetupAccessibleUI), not their visible text, so this keeps working when the UI is localized.
+		if (MainMenuStrip?.Items["menuMods"] is ToolStripMenuItem modsMenu)
 		{
-			foreach (ToolStripItem item in MainMenuStrip.Items)
-			{
-				if (item is ToolStripMenuItem subMenu && subMenu.Text == "&Mods")
-				{
-					foreach (ToolStripItem subItem in subMenu.DropDownItems)
-					{
-						if (subItem != null && subItem.Text != null)
-						{
-							if (subItem.Text.StartsWith("Launch "))
-							{
-								subItem.Text = $"Launch {gameName} (" + GetShortcutString("LaunchGame") + ")";
-							}
-							else if (subItem.Text.Contains("Accessibility Suite"))
-							{
-								subItem.Text = $"Install {gameName} Accessibility Suite";
-							}
-						}
-					}
-				}
-			}
+			if (modsMenu.DropDownItems["menuLaunch"] is ToolStripItem launchItem)
+				launchItem.Text = Loc.T("menu.launch", gameName, GetShortcutString("LaunchGame"));
+			if (modsMenu.DropDownItems["menuSuite"] is ToolStripItem suiteItem)
+				suiteItem.Text = Loc.T("menu.installSuite", gameName);
 		}
 
 		tabWiki.Text = game switch
 		{
-			"SkyrimSE" => "Skyrim Wiki",
-			"Fallout4" => "Fallout 4 Wiki",
-			_ => "Stardew Wiki"
+			"SkyrimSE" => Loc.T("tab.wikiSkyrim"),
+			"Fallout4" => Loc.T("tab.wikiFallout"),
+			_ => Loc.T("tab.wikiStardew")
 		};
 
 		tabWalkthroughs.Text = game switch
 		{
-			"SkyrimSE" => "Skyrim Walkthroughs",
-			"Fallout4" => "Fallout 4 Walkthroughs",
-			_ => "Stardew Walkthroughs"
+			"SkyrimSE" => Loc.T("tab.walkSkyrim"),
+			"Fallout4" => Loc.T("tab.walkFallout"),
+			_ => Loc.T("tab.walkStardew")
 		};
 
 		if (txtWikiSearch != null)
 		{
 			txtWikiSearch.AccessibleName = game switch
 			{
-				"SkyrimSE" => "Search Skyrim Wiki",
-				"Fallout4" => "Search Fallout 4 Wiki",
-				_ => "Search Stardew Wiki"
+				"SkyrimSE" => Loc.T("ui.searchWikiSkyrim"),
+				"Fallout4" => Loc.T("ui.searchWikiFallout"),
+				_ => Loc.T("ui.searchWikiStardew")
 			};
 		}
 
@@ -161,6 +147,23 @@ public partial class Form1
 		{
 			if (mainTabs.TabPages.Contains(tabSmapiLog))
 				mainTabs.TabPages.Remove(tabSmapiLog);
+		}
+
+		// The Mod Priority and Plugin Order (load order) tabs apply only to Skyrim SE / Fallout 4, and sit
+		// right after the Installed tab (indexes 1 and 2) so the load order is next to the mod list.
+		if (game == "SkyrimSE" || game == "Fallout4")
+		{
+			if (!mainTabs.TabPages.Contains(tabModPriority))
+				mainTabs.TabPages.Insert(1, tabModPriority);
+			if (!mainTabs.TabPages.Contains(tabPluginOrder))
+				mainTabs.TabPages.Insert(2, tabPluginOrder);
+		}
+		else
+		{
+			if (mainTabs.TabPages.Contains(tabModPriority))
+				mainTabs.TabPages.Remove(tabModPriority);
+			if (mainTabs.TabPages.Contains(tabPluginOrder))
+				mainTabs.TabPages.Remove(tabPluginOrder);
 		}
 
 		RefreshWikiCategories();
@@ -190,7 +193,7 @@ public partial class Form1
 
 		mainTabs.SelectedIndex = 0;
 		mainTabs.Focus();
-		Speak($"Switched to {gameName}. Loading mod list.");
+		Speak(Loc.T("session.switched", gameName));
 		RefreshAllData(checkUpdates: _settings.CheckForUpdatesAtStartup);
 	}
 
@@ -210,30 +213,16 @@ public partial class Form1
 		{
 			_menuCloseSeparator.Visible = hasGame;
 		}
+		// Enable/disable menus by stable Name (set in SetupAccessibleUI) rather than visible text, so this
+		// keeps working once the UI is localized.
 		if (MainMenuStrip != null)
 		{
-			foreach (ToolStripItem item in MainMenuStrip.Items)
+			if (MainMenuStrip.Items["menuMods"] is ToolStripMenuItem modsMenu) modsMenu.Enabled = hasGame;
+			if (MainMenuStrip.Items["menuView"] is ToolStripMenuItem viewMenu) viewMenu.Enabled = hasGame;
+			if (MainMenuStrip.Items["menuFile"] is ToolStripMenuItem fileMenu)
 			{
-				if (item is ToolStripMenuItem menu)
-				{
-					if (menu.Text == "&Mods" || menu.Text == "&View")
-					{
-						menu.Enabled = hasGame;
-					}
-					else if (menu.Text == "&File")
-					{
-						foreach (ToolStripItem subItem in menu.DropDownItems)
-						{
-							if (subItem != null && subItem.Text != null)
-							{
-								if (subItem.Text.StartsWith("Refresh"))
-								{
-									subItem.Enabled = hasGame;
-								}
-							}
-						}
-					}
-				}
+				if (fileMenu.DropDownItems["menuRefreshAll"] is ToolStripItem refreshAll) refreshAll.Enabled = hasGame;
+				if (fileMenu.DropDownItems["menuRefreshInstalled"] is ToolStripItem refreshInstalled) refreshInstalled.Enabled = hasGame;
 			}
 		}
 	}
@@ -262,7 +251,7 @@ public partial class Form1
 
 		Label lblTitle = new Label
 		{
-			Text = "Kinetix Mod Manager",
+			Text = Loc.T("ui.appTitle"),
 			Font = new Font("Segoe UI", 26f, FontStyle.Bold),
 			ForeColor = Color.FromArgb(15, 23, 42), // Slate-900
 			TextAlign = ContentAlignment.MiddleCenter,
@@ -273,7 +262,7 @@ public partial class Form1
 
 		Label lblPrompt = new Label
 		{
-			Text = "Select a game to manage:",
+			Text = Loc.T("session.selectPrompt"),
 			Font = new Font("Segoe UI", 14f, FontStyle.Regular),
 			ForeColor = Color.FromArgb(71, 85, 105), // Slate-600
 			TextAlign = ContentAlignment.MiddleCenter,
@@ -288,8 +277,8 @@ public partial class Form1
 			Width = 400,
 			Height = 150,
 			Anchor = AnchorStyles.None,
-			AccessibleName = "Select Game List",
-			AccessibleDescription = "Choose Stardew Valley, Skyrim Special Edition, or Fallout 4 to manage."
+			AccessibleName = Loc.T("session.selectGameList"),
+			AccessibleDescription = Loc.T("session.selectGameDesc")
 		};
 		// Listed alphabetically.
 		_lstGames.Items.Add("Fallout 4");
@@ -307,14 +296,14 @@ public partial class Form1
 
 		Button btnConfirm = new Button
 		{
-			Text = "Select Game",
+			Text = Loc.T("session.selectGame"),
 			Font = new Font("Segoe UI", 12f, FontStyle.Bold),
 			Width = 180,
 			Height = 45,
 			BackColor = Color.FromArgb(37, 99, 235), // Primary blue
 			ForeColor = Color.White,
 			FlatStyle = FlatStyle.Flat,
-			AccessibleName = "Select Game"
+			AccessibleName = Loc.T("session.selectGame")
 		};
 		btnConfirm.FlatAppearance.BorderSize = 0;
 		btnConfirm.Click += delegate
@@ -324,14 +313,14 @@ public partial class Form1
 
 		Button btnExit = new Button
 		{
-			Text = "Exit",
+			Text = Loc.T("menu.exit"),
 			Font = new Font("Segoe UI", 12f, FontStyle.Regular),
 			Width = 120,
 			Height = 45,
 			BackColor = Color.FromArgb(226, 232, 240), // Light gray
 			ForeColor = Color.FromArgb(71, 85, 105),
 			FlatStyle = FlatStyle.Flat,
-			AccessibleName = "Exit Manager"
+			AccessibleName = Loc.T("session.exitManager")
 		};
 		btnExit.FlatAppearance.BorderSize = 0;
 		btnExit.Click += delegate

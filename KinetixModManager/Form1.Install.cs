@@ -40,12 +40,12 @@ public partial class Form1
 		}
 		if (!_nexusService.IsPremium)
 		{
-			Speak("Update All is a Nexus Mods Premium feature. Free users must update mods individually via the browser.");
-			MessageBox.Show("Updating multiple mods automatically requires a Nexus Mods Premium account. Free users must download and install updates one-by-one.", "Premium Feature Required", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+			Speak(Loc.T("updateAll.premiumSpeak"));
+			MessageBox.Show(Loc.T("updateAll.premiumBox"), Loc.T("updateAll.premiumTitle"), MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
 		}
 		else
 		{
-			if (MessageBox.Show($"Update all {listUpdates.Items.Count} mods?", "Confirm", MessageBoxButtons.YesNo) == DialogResult.No)
+			if (MessageBox.Show(Loc.T("updateAll.confirm", listUpdates.Items.Count), Loc.T("common.confirm"), MessageBoxButtons.YesNo) == DialogResult.No)
 			{
 				return;
 			}
@@ -55,15 +55,15 @@ public partial class Form1
 				List<StardewMod> mods = listUpdates.Items.Cast<StardewMod>().ToList();
 				for (int i = 0; i < mods.Count; i++)
 				{
-					SetStatus($"Updating ({i + 1}/{mods.Count}): {mods[i].Name}");
+					SetStatus(Loc.T("updateAll.updatingStatus", i + 1, mods.Count, mods[i].Name));
 					await DownloadAndInstallUpdate(mods[i], silent: true);
 				}
-				Speak("All updates finished.");
+				Speak(Loc.T("updateAll.finished"));
 			}
 			catch (Exception ex)
 			{
 				LogError("Updates", "Update All failed: " + ex.Message);
-				Speak("Update all failed: " + ex.Message);
+				Speak(Loc.T("updateAll.failed", ex.Message));
 			}
 			finally
 			{
@@ -77,17 +77,17 @@ public partial class Form1
 	private void OpenModPage()
 	{
 		ListBox listBox;
-		if (mainTabs.SelectedIndex == (int)AppTab.Installed)
+		if (CurrentTab() == AppTab.Installed)
 		{
 			listBox = listInstalled;
 		}
-		else if (mainTabs.SelectedIndex == (int)AppTab.Updates)
+		else if (CurrentTab() == AppTab.Updates)
 		{
 			listBox = listUpdates;
 		}
 		else
 		{
-			if (mainTabs.SelectedIndex != (int)AppTab.Discovery)
+			if (CurrentTab() != AppTab.Discovery)
 			{
 				return;
 			}
@@ -132,7 +132,7 @@ public partial class Form1
 			ModFileSystem.PruneBackups(modName, backupsPath, _settings.MaxBackupsPerMod);
 		int deleted = before - Directory.GetFiles(backupsPath, "*.zip").Length;
 		RefreshBackupsList();
-		Speak($"Pruning complete. Deleted {deleted} old backups.");
+		Speak(Loc.T("backups.pruneComplete", deleted));
 	}
 
 	/// <summary>
@@ -173,9 +173,9 @@ public partial class Form1
 				}
 			}
 
-			SetStatus("Parsing Nexus Link...");
+			SetStatus(Loc.T("download.parsingLink"));
 			var (dlUri, realName) = await _nexusService.ResolveNxmUrlAsync(url);
-			SetStatus("Downloading " + realName + "...");
+			SetStatus(Loc.T("download.downloading", realName));
 			string path = Path.Combine(downloadsPath, realName);
 
 			int lastReportedPercent = 0;
@@ -185,7 +185,7 @@ public partial class Form1
 				if (percent >= lastReportedPercent + 10)
 				{
 					lastReportedPercent = (percent / 10) * 10;
-					SetStatus($"Downloading {realName}... {lastReportedPercent}%");
+					SetStatus(Loc.T("download.downloadingPct", realName, lastReportedPercent));
 				}
 				else
 				{
@@ -197,7 +197,7 @@ public partial class Form1
 							"Fallout4" => "Fallout 4",
 							_ => "Stardew Valley"
 						};
-						Text = $"{gameName} Kinetix Mod Manager - Status: Downloading {realName}... {percent}%";
+						Text = Loc.T("download.titleStatus", gameName, realName, percent);
 					});
 				}
 			});
@@ -218,12 +218,12 @@ public partial class Form1
 			// owns the foreground by now. Pull the manager to the front first, otherwise this prompt can
 			// open behind the browser and never receive keyboard / screen-reader focus.
 			ForceToForeground();
-			if (MessageBox.Show(this, "Downloaded " + realName + ". Install now?", "Success", MessageBoxButtons.YesNo) == DialogResult.Yes)
+			if (MessageBox.Show(this, Loc.T("download.installNow", realName), Loc.T("download.successTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 				_ = InstallFromZip(path, nexusId);
 		}
 		catch (Exception ex)
 		{
-			MessageBox.Show("NXM Error: " + ex.Message);
+			MessageBox.Show(Loc.T("download.nxmError", ex.Message));
 		}
 	}
 
@@ -255,7 +255,7 @@ public partial class Form1
 		using OpenFileDialog openFileDialog = new OpenFileDialog
 		{
 			InitialDirectory = downloadsPath,
-			Filter = "Zips|*.zip"
+			Filter = Loc.T("install.zipFilter")
 		};
 		if (openFileDialog.ShowDialog() == DialogResult.OK)
 		{
@@ -311,20 +311,21 @@ public partial class Form1
 				backupsPath, _settings.MaxBackupsPerMod, _settings.ActiveGame, LogError, nexusId, _nexusService, null, _settings.CurrentGamePath);
 			_soundEngine.Play("connect");
 
-			if (_settings.ActiveGame == "SkyrimSE" || _settings.ActiveGame == "Fallout4")
-			{
-				string modDir = Path.Combine(_settings.CurrentModsPath, name);
-				string gameData = Path.Combine(_settings.CurrentGamePath, "Data");
-				ModFileSystem.DeployModFiles(modDir, gameData, true, LogError);
-				ModFileSystem.SyncPluginsFile(modDir, _settings.ActiveGame, true, LogError);
-			}
-
 			await RefreshModList(checkUpdates: false);
-			MessageBox.Show(name + " installed!");
+
+			// RefreshModList already added the new mod to the priority/plugin order and wrote plugins.txt.
+			// Re-sync assets with forceRelink so the new mod's files are linked even on a reinstall that
+			// reuses the folder name (where ownership is unchanged), then refresh the priority list.
+			if (IsBethesdaGame)
+			{
+				SyncBethesdaDeployment(new HashSet<string>(new[] { name }, StringComparer.OrdinalIgnoreCase));
+				RefreshModPriorityList();
+			}
+			MessageBox.Show(Loc.T("install.installed", name));
 		}
 		catch (Exception ex)
 		{
-			MessageBox.Show("Install failed: " + ex.Message);
+			MessageBox.Show(Loc.T("install.failed", ex.Message));
 		}
 	}
 }

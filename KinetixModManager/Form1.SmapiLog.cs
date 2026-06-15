@@ -41,7 +41,7 @@ public partial class Form1
 		}
 		else
 		{
-			MessageBox.Show("SMAPI log not found.");
+			MessageBox.Show(Loc.T("smapi.logNotFound"));
 		}
 	}
 
@@ -163,7 +163,7 @@ public partial class Form1
 			listLog.Items.Add(item);
 		}
 		listLog.EndUpdate();
-		Speak($"Found {list.Count} results. Enter to jump to line in full view.");
+		Speak(Loc.T("smapi.foundResults", list.Count));
 		if (listLog.Items.Count > 0)
 		{
 			listLog.SelectedIndex = 0;
@@ -178,7 +178,7 @@ public partial class Form1
 		{
 			return;
 		}
-		SetStatus("Uploading log to SMAPI.io...");
+		SetStatus(Loc.T("smapi.uploading"));
 		try
 		{
 			string value = ReadAllTextShared(path);
@@ -193,12 +193,12 @@ public partial class Form1
 				{
 					UseShellExecute = true
 				});
-				Speak("Log uploaded successfully.");
+				Speak(Loc.T("smapi.uploadSuccess"));
 			}
 		}
 		catch (Exception ex)
 		{
-			MessageBox.Show("Upload failed: " + ex.Message);
+			MessageBox.Show(Loc.T("smapi.uploadFailed", ex.Message));
 		}
 		finally
 		{
@@ -211,12 +211,12 @@ public partial class Form1
 		try
 		{
 			Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-			Speak("Opening mod page in your browser.");
+			Speak(Loc.T("smapi.openingModPage"));
 		}
 		catch (Exception ex)
 		{
 			LogError("SmapiLog", "Could not open log link: " + ex.Message);
-			Speak("Could not open the link.");
+			Speak(Loc.T("smapi.couldNotOpenLink"));
 		}
 	}
 
@@ -230,7 +230,7 @@ public partial class Form1
 	{
 		Form dialog = new Form
 		{
-			Text = "Open which link? - Escape to Close",
+			Text = Loc.T("smapi.linkPickerTitle"),
 			Size = new Size(560, 320),
 			StartPosition = FormStartPosition.CenterScreen,
 			KeyPreview = true
@@ -242,7 +242,7 @@ public partial class Form1
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 12f),
 			Name = "listLinkPicker",
-			AccessibleName = "Links in this log line"
+			AccessibleName = Loc.T("smapi.linksInLine")
 		};
 		foreach (string url in urls)
 		{
@@ -266,7 +266,7 @@ public partial class Form1
 
 		Label hint = new Label
 		{
-			Text = "Select a link and press Enter to open it. Escape to cancel.",
+			Text = Loc.T("smapi.linkPickerHint"),
 			Dock = DockStyle.Fill,
 			TextAlign = ContentAlignment.MiddleLeft,
 			Padding = new Padding(4, 0, 0, 0)
@@ -293,16 +293,16 @@ public partial class Form1
 	{
 		if (url.Contains("nexusmods.com", StringComparison.OrdinalIgnoreCase))
 		{
-			return "Nexus Mods page";
+			return Loc.T("smapi.linkNexus");
 		}
 		if (url.Contains("github.com", StringComparison.OrdinalIgnoreCase))
 		{
-			return url.Contains("/releases", StringComparison.OrdinalIgnoreCase) ? "GitHub releases page" : "GitHub page";
+			return url.Contains("/releases", StringComparison.OrdinalIgnoreCase) ? Loc.T("smapi.linkGitHubReleases") : Loc.T("smapi.linkGitHub");
 		}
 		if (url.Contains("smapi.io", StringComparison.OrdinalIgnoreCase))
 		{
-			return "SMAPI.io";
+			return Loc.T("smapi.linkSmapi");
 		}
-		try { return new Uri(url).Host; } catch { return "Link"; }
+		try { return new Uri(url).Host; } catch { return Loc.T("smapi.linkGeneric"); }
 	}
 }

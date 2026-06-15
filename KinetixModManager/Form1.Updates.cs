@@ -98,8 +98,8 @@ public partial class Form1
 			Invoke(delegate
 			{
 				Speak(listUpdates.Items.Count > 0
-					? $"Update check complete. Found {listUpdates.Items.Count} mod updates."
-					: "Update check complete. All mods are up-to-date.");
+					? Loc.T("updates.checkComplete", listUpdates.Items.Count)
+					: Loc.T("updates.checkCompleteNone"));
 				if (pendingSmapi is { } s)
 					NotifySmapiUpdateAvailable(s.Current, s.Latest, s.Url);
 			});
@@ -197,11 +197,10 @@ public partial class Form1
 	private async void NotifySmapiUpdateAvailable(string current, string latest, string url)
 	{
 		_soundEngine.Play("connect");
-		Speak($"A SMAPI update is available. You have {current}; version {latest} is available.");
+		Speak(Loc.T("updates.smapiAvailableSpeak", current, latest));
 		if (MessageBox.Show(
-				$"A SMAPI update is available.\n\nInstalled: {current}\nLatest: {latest}\n\n" +
-				"KinetixModManager can download and install it for you automatically. Update SMAPI now?",
-				"SMAPI Update Available", MessageBoxButtons.YesNo, MessageBoxIcon.Information) != DialogResult.Yes)
+				Loc.T("updates.smapiBox", current, latest),
+				Loc.T("updates.smapiTitle"), MessageBoxButtons.YesNo, MessageBoxIcon.Information) != DialogResult.Yes)
 			return;
 
 		// SMAPI's installer updates an existing install in place, so the same routine used for a fresh
@@ -266,8 +265,8 @@ public partial class Form1
         {
             try
             {
-                SetStatus($"Updating {mod.Name} from GitHub...");
-                if (!silent) Speak($"Downloading {mod.Name}...");
+                SetStatus(Loc.T("updates.updatingGitHub", mod.Name));
+                if (!silent) Speak(Loc.T("updates.downloading", mod.Name));
 
                 string? downloadUrl = await GetGitHubLatestReleaseZipUrl(mod.GitHubRepo);
                 if (string.IsNullOrEmpty(downloadUrl))
@@ -282,12 +281,12 @@ public partial class Form1
                 {
                     Invoke(delegate
                     {
-                        Text = $"Downloading {mod.Name}... {pct:F0}%";
+                        Text = Loc.T("updates.titleDownloading", mod.Name, pct);
                         int rounded = (int)(pct / 10.0) * 10;
                         if (rounded > lastPctSpoken && rounded < 100)
                         {
                             lastPctSpoken = rounded;
-                            Speak($"{rounded}%");
+                            Speak(Loc.T("common.percent", rounded));
                         }
                     });
                 });
@@ -298,14 +297,6 @@ public partial class Form1
                     destinationPath, _settings.CurrentModsPath, _allInstalledMods,
                     backupsPath, _settings.MaxBackupsPerMod, _settings.ActiveGame, LogError,
                     mod.NexusID, _nexusService, mod.GitHubRepo, _settings.CurrentGamePath);
-
-                if (_settings.ActiveGame == "SkyrimSE" || _settings.ActiveGame == "Fallout4")
-                {
-                    string modDir = Path.Combine(_settings.CurrentModsPath, name);
-                    string gameData = Path.Combine(_settings.CurrentGamePath, "Data");
-                    ModFileSystem.DeployModFiles(modDir, gameData, true, LogError);
-                    ModFileSystem.SyncPluginsFile(modDir, _settings.ActiveGame, true, LogError);
-                }
 
                 Invoke(delegate
                 {
@@ -318,14 +309,23 @@ public partial class Form1
                             listUpdates.Items.RemoveAt(i);
                     }
                     listUpdates.EndUpdate();
-                    _ = RefreshModList(checkUpdates: false);
                 });
+
+                await RefreshModList(checkUpdates: false);
+
+                // Reconcile assets after the rescan; forceRelink replaces the old version's hard links,
+                // which would otherwise still point at the now-deleted previous file data.
+                if (IsBethesdaGame)
+                {
+                    SyncBethesdaDeployment(new HashSet<string>(new[] { name }, StringComparer.OrdinalIgnoreCase));
+                    Invoke(delegate { RefreshModPriorityList(); });
+                }
 
                 if (!silent)
                 {
                     _soundEngine.Play("connect");
-                    Speak($"{mod.Name} updated successfully from GitHub.");
-                    SetStatus($"Connected as {_nexusService.NexusUser}");
+                    Speak(Loc.T("updates.githubSuccess", mod.Name));
+                    SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser));
                 }
                 return;
             }
@@ -333,7 +333,7 @@ public partial class Form1
             {
                 _soundEngine.Play("error");
                 LogError(mod.Name, "GitHub Download/Install Failure: " + ex.Message);
-                MessageBox.Show($"Update failed for {mod.Name} from GitHub: {ex.Message}");
+                MessageBox.Show(Loc.T("updates.githubFailBox", mod.Name, ex.Message));
                 return;
             }
         }
@@ -345,8 +345,8 @@ public partial class Form1
         }
         try
         {
-            SetStatus($"Updating {mod.Name}...");
-            if (!silent) Speak($"Downloading {mod.Name}...");
+            SetStatus(Loc.T("updates.updating", mod.Name));
+            if (!silent) Speak(Loc.T("updates.downloading", mod.Name));
 
             int lastReportedPercent = 0;
             Progress<double>? progress = null;
@@ -358,7 +358,7 @@ public partial class Form1
                     if (percent >= lastReportedPercent + 10)
                     {
                         lastReportedPercent = (percent / 10) * 10;
-                        SetStatus($"Downloading {mod.Name}... {lastReportedPercent}%");
+                        SetStatus(Loc.T("updates.downloadingPct", mod.Name, lastReportedPercent));
                     }
                     else
                     {
@@ -370,7 +370,7 @@ public partial class Form1
                                 "Fallout4" => "Fallout 4",
                                 _ => "Stardew Valley"
                             };
-                            Text = $"{gameName} Kinetix Mod Manager - Status: Downloading {mod.Name}... {percent}%";
+                            Text = Loc.T("download.titleStatus", gameName, mod.Name, percent);
                         });
                     }
                 });
@@ -394,15 +394,15 @@ public partial class Form1
             if (!silent)
             {
                 _soundEngine.Play("connect");
-                Speak($"{mod.Name} updated successfully.");
-                SetStatus($"Connected as {_nexusService.NexusUser}");
+                Speak(Loc.T("updates.success", mod.Name));
+                SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser));
             }
         }
         catch (Exception ex)
         {
             _soundEngine.Play("error");
             LogError(mod.Name, "Download/Install Failure: " + ex.Message);
-            Invoke(delegate { MessageBox.Show($"Update failed for {mod.Name}: {ex.Message}"); });
+            Invoke(delegate { MessageBox.Show(Loc.T("updates.failBox", mod.Name, ex.Message)); });
         }
     }
 
@@ -429,7 +429,7 @@ public partial class Form1
 		int totalMods = 0;
 		_isLoading = true;
 		_ = RunLoadingLoop();
-		Speak("Starting auto-matching process for installed mods.");
+		Speak(Loc.T("updates.autoMatchStart"));
 		
 		try
 		{
@@ -438,7 +438,7 @@ public partial class Form1
 
 			if (totalMods == 0)
 			{
-				Speak("No unmatched mods found.");
+				Speak(Loc.T("updates.noUnmatched"));
 				_isLoading = false;
 				_soundEngine.Play("load_complete");
 				return;
@@ -448,8 +448,8 @@ public partial class Form1
 			foreach (var mod in targetMods)
 			{
 				current++;
-				SetStatus($"Matching {current}/{totalMods}: {mod.Name}...");
-				Speak($"Searching for {mod.Name}");
+				SetStatus(Loc.T("updates.matchingStatus", current, totalMods, mod.Name));
+				Speak(Loc.T("updates.searchingFor", mod.Name));
 
 				var (results, total) = await _nexusService.SearchModsAsync("Search", mod.Name, 1, 5);
 				if (results.Count > 0)
@@ -499,16 +499,16 @@ public partial class Form1
 						}
 						
 						matchCount++;
-						Speak($"Matched with {bestMatch.Name}.");
+						Speak(Loc.T("updates.matchedWith", bestMatch.Name));
 					}
 					else
 					{
-						Speak("No confident match found.");
+						Speak(Loc.T("updates.noConfidentMatch"));
 					}
 				}
 				else
 				{
-					Speak("No search results found.");
+					Speak(Loc.T("updates.noResults"));
 				}
 
 				await Task.Delay(500);
@@ -516,7 +516,7 @@ public partial class Form1
 
 			_isLoading = false;
 			_soundEngine.Play("load_complete");
-			Speak($"Auto-matching complete. Successfully matched {matchCount} out of {totalMods} mods.");
+			Speak(Loc.T("updates.autoMatchComplete", matchCount, totalMods));
 			_ = RefreshModList(checkUpdates: false);
 		}
 		catch (Exception ex)
@@ -524,36 +524,36 @@ public partial class Form1
 			_isLoading = false;
 			_soundEngine.Play("error");
 			LogError("AutoMatch", "Auto-match failed: " + ex.Message);
-			MessageBox.Show("Auto-matching failed: " + ex.Message, "Error");
-			Speak("Auto-matching failed.");
+			MessageBox.Show(Loc.T("updates.autoMatchFailBox", ex.Message), Loc.T("common.error"));
+			Speak(Loc.T("updates.autoMatchFailed"));
 		}
 	}
 
     private async Task CheckForAppUpdates(bool manual)
 	{
-		if (manual) Speak("Checking for manager updates...");
+		if (manual) Speak(Loc.T("updates.checkingManager"));
 		try
 		{
 			NexusService.AppReleaseInfo? release = await _nexusService.GetLatestAppReleaseAsync();
-			if (release == null) { if (manual) { Speak("Update check failed."); } return; }
+			if (release == null) { if (manual) { Speak(Loc.T("updates.checkFailed")); } return; }
 			string tag = release.TagName;
 			string target = tag.StartsWith("v") ? tag.Substring(1) : tag;
 			if (IsNewerVersion(NexusService.AppVersion, target))
 			{
 				_soundEngine.Play("connect");
-				Speak("A new version of the manager is available: " + tag + ".");
+				Speak(Loc.T("updates.newVersion", tag));
 				if (!string.IsNullOrEmpty(release.DownloadUrl))
 				{
-					if (MessageBox.Show("Version " + tag + " is available! Would you like to automatically download and install this update?",
-							"Update Available", MessageBoxButtons.YesNo) == DialogResult.Yes)
+					if (MessageBox.Show(Loc.T("updates.versionAvailDownload", tag),
+							Loc.T("updates.updateAvailTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 					{
 						await DownloadAndInstallAppUpdateAsync(release);
 					}
 				}
 				else
 				{
-					if (MessageBox.Show("Version " + tag + " is available! However, no automatic installer was found. Would you like to open the download page?",
-							"Update Available", MessageBoxButtons.YesNo) == DialogResult.Yes)
+					if (MessageBox.Show(Loc.T("updates.versionAvailNoInstaller", tag),
+							Loc.T("updates.updateAvailTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 					{
 						Process.Start(new ProcessStartInfo(
 							"https://github.com/SeanTerry01/Kinetix-Mod-Manager/releases/latest")
@@ -563,13 +563,13 @@ public partial class Form1
 			}
 			else if (manual)
 			{
-				Speak("The manager is up to date.");
-				MessageBox.Show("You are running the latest version of Kinetix Mod Manager.", "Up to Date");
+				Speak(Loc.T("updates.upToDate"));
+				MessageBox.Show(Loc.T("updates.upToDateBox"), Loc.T("updates.upToDateTitle"));
 			}
 		}
 		catch (Exception ex)
 		{
-			if (manual) { Speak("Update check failed."); MessageBox.Show("Could not check for updates: " + ex.Message); }
+			if (manual) { Speak(Loc.T("updates.checkFailed")); MessageBox.Show(Loc.T("updates.checkFailBox", ex.Message)); }
 		}
 	}
 
@@ -580,7 +580,7 @@ public partial class Form1
 		{
 			_isLoading = true;
 			_ = RunLoadingLoop();
-			Speak("Downloading manager update.");
+			Speak(Loc.T("updates.downloadingUpdate"));
 
 			if (!Directory.Exists(downloadsPath))
 			{
@@ -594,12 +594,12 @@ public partial class Form1
 			{
 				Invoke(delegate
 				{
-					Text = $"Downloading Manager Update... {pct:F0}%";
+					Text = Loc.T("updates.titleManagerUpdate", pct);
 					int rounded = (int)(pct / 10.0) * 10;
 					if (rounded > lastPctSpoken && rounded < 100)
 					{
 						lastPctSpoken = rounded;
-						Speak($"{rounded}%");
+						Speak(Loc.T("common.percent", rounded));
 					}
 				});
 			});
@@ -607,7 +607,7 @@ public partial class Form1
 			await _nexusService.DownloadFileWithProgressAsync(release.DownloadUrl, destinationPath, progress);
 
 			_isLoading = false;
-			Speak("Download complete. Preparing installation.");
+			Speak(Loc.T("updates.downloadComplete"));
 
 			string installerPath = destinationPath;
 
@@ -636,8 +636,8 @@ public partial class Form1
 				throw new FileNotFoundException("Installer executable not found.");
 			}
 
-			Speak("Starting installer. The manager will now close to complete the update.");
-			MessageBox.Show("The installer will now launch. Kinetix Mod Manager will close to allow the update to complete.", "Installing Update");
+			Speak(Loc.T("updates.startingInstaller"));
+			MessageBox.Show(Loc.T("updates.installerBox"), Loc.T("updates.installingTitle"));
 
 			Process.Start(new ProcessStartInfo(installerPath)
 			{
@@ -651,8 +651,8 @@ public partial class Form1
 			_isLoading = false;
 			Text = originalTitle;
 			LogError("AppUpdate", "Self-update failed: " + ex.Message);
-			MessageBox.Show("Self-update failed: " + ex.Message, "Update Error");
-			Speak("Update failed.");
+			MessageBox.Show(Loc.T("updates.selfUpdateFailBox", ex.Message), Loc.T("updates.updateErrorTitle"));
+			Speak(Loc.T("updates.failed"));
 		}
 	}
 }

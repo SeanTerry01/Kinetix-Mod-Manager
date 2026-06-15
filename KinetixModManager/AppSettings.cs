@@ -76,6 +76,12 @@ public class AppSettings
 	/// <summary>Language to restrict Find New Mods (Discovery) searches to. Empty string means "Any language".</summary>
 	public string DiscoveryLanguage { get; set; } = "English";
 
+	/// <summary>
+	/// UI language for the whole program, as a two-letter code (e.g. "es"). Empty string means
+	/// "follow the Windows display language". English is always the fallback. See <see cref="Loc"/>.
+	/// </summary>
+	public string Language { get; set; } = "";
+
 	public string CurrentTheme { get; set; } = "Default";
 
 	/// <summary>
@@ -103,6 +109,20 @@ public class AppSettings
 	public Dictionary<string, string> IgnoredVersions { get; set; } = new Dictionary<string, string>();
 
 	public Dictionary<string, string> ModCategories { get; set; } = new Dictionary<string, string>();
+
+	/// <summary>
+	/// Per-game mod priority order for Skyrim SE / Fallout 4, deciding which mod's loose files win when
+	/// two mods provide the same file. Keyed by game id ("SkyrimSE", "Fallout4"); the value lists mod
+	/// folder names highest priority first (index 0 wins conflicts). Stardew Valley does not use this.
+	/// </summary>
+	public Dictionary<string, List<string>> ModPriority { get; set; } = new Dictionary<string, List<string>>();
+
+	/// <summary>
+	/// Per-game plugin load order for Skyrim SE / Fallout 4: the order of active <c>.esp/.esm/.esl</c>
+	/// files written to plugins.txt. Keyed by game id; the value lists plugin file names in load order
+	/// (kept masters-first). Base-game/DLC masters are implicit and never stored here.
+	/// </summary>
+	public Dictionary<string, List<string>> PluginOrder { get; set; } = new Dictionary<string, List<string>>();
 
 	public Dictionary<string, Keys> Shortcuts { get; set; } = new Dictionary<string, Keys>();
 
@@ -205,6 +225,9 @@ public class AppSettings
 		if (!GamePaths.ContainsKey("StardewValley")) GamePaths["StardewValley"] = "";
 		if (!GamePaths.ContainsKey("SkyrimSE")) GamePaths["SkyrimSE"] = "";
 		if (!GamePaths.ContainsKey("Fallout4")) GamePaths["Fallout4"] = "";
+
+		if (ModPriority == null) ModPriority = new Dictionary<string, List<string>>();
+		if (PluginOrder == null) PluginOrder = new Dictionary<string, List<string>>();
 
 		if (string.IsNullOrEmpty(ActiveGame)) ActiveGame = "None";
 		foreach (KeyValuePair<string, Keys> item in new Dictionary<string, Keys>
@@ -320,6 +343,10 @@ public class AppSettings
 			{
 				"CycleFocus",
 				Keys.F6
+			},
+			{
+				"AutoSort",
+				Keys.F8
 			}
 		})
 		{

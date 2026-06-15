@@ -35,7 +35,7 @@ public partial class Form1
 		string previewTheme = _settings.CurrentTheme;
 		Form demoForm = new Form
 		{
-			Text = "Sound Demo - Escape to Close",
+			Text = Loc.T("soundDemo.title"),
 			Size = new Size(500, 600),
 			StartPosition = FormStartPosition.CenterScreen,
 			KeyPreview = true
@@ -64,7 +64,7 @@ public partial class Form1
 		};
 		tableLayoutPanel.Controls.Add(new Label
 		{
-			Text = "Preview Theme:",
+			Text = Loc.T("soundDemo.previewTheme"),
 			AutoSize = true,
 			Padding = new Padding(0, 5, 0, 0)
 		}, 0, 0);
@@ -73,7 +73,7 @@ public partial class Form1
 		{
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 12f),
-			AccessibleName = "Sound List"
+			AccessibleName = Loc.T("soundDemo.soundList")
 		};
 		foreach (string key2 in SoundEngine.SoundDescriptions.Keys)
 		{
@@ -85,7 +85,7 @@ public partial class Form1
 			{
 				string key = lb.SelectedItem.ToString() ?? "";
 				await Task.Delay(100);
-				Speak($"{key}. {SoundEngine.SoundDescriptions[key]}. {lb.SelectedIndex + 1} of {lb.Items.Count}");
+				Speak(Loc.T("soundDemo.announce", key, Loc.T("sound." + key), lb.SelectedIndex + 1, lb.Items.Count));
 			}
 		};
 		lb.KeyDown += delegate(object? s, KeyEventArgs pe)
@@ -113,7 +113,7 @@ public partial class Form1
 	{
 		Form f = new Form
 		{
-			Text = "Audio Theme Manager - Escape to Cancel",
+			Text = Loc.T("themeMgr.title"),
 			Size = new Size(500, 600),
 			StartPosition = FormStartPosition.CenterScreen,
 			KeyPreview = true
@@ -129,12 +129,12 @@ public partial class Form1
 		{
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 12f),
-			AccessibleName = "Installed Themes"
+			AccessibleName = Loc.T("themeMgr.installedThemes")
 		};
 		RefreshList();
 		Button button = new Button
 		{
-			Text = "Set Selected as Active Theme",
+			Text = Loc.T("themeMgr.setActive"),
 			Dock = DockStyle.Top,
 			Height = 35
 		};
@@ -143,18 +143,18 @@ public partial class Form1
 			if (lb.SelectedItem != null)
 			{
 				tempActiveTheme = lb.SelectedItem.ToString() ?? "";
-				Speak("Active theme changed to " + tempActiveTheme + ". Press Save to confirm.");
+				Speak(Loc.T("themeMgr.activeChanged", tempActiveTheme));
 			}
 		};
 		Button button2 = new Button
 		{
-			Text = "Create New Theme",
+			Text = Loc.T("themeMgr.createNew"),
 			Dock = DockStyle.Top,
 			Height = 35
 		};
 		button2.Click += delegate
 		{
-			string text = Interaction.InputBox("Enter name for new theme:", "Create Theme");
+			string text = Interaction.InputBox(Loc.T("themeMgr.createPrompt"), Loc.T("themeMgr.createTitle"));
 			if (!string.IsNullOrEmpty(text))
 			{
 				string text2 = Path.Combine(themesPath, text);
@@ -166,7 +166,7 @@ public partial class Form1
 						Directory.CreateDirectory(Path.Combine(text2, key));
 					}
 					Directory.CreateDirectory(Path.Combine(text2, "logo"));
-					Speak("Theme created. Drop your .ogg files into the theme folders.");
+					Speak(Loc.T("themeMgr.created"));
 					Process.Start("explorer.exe", text2);
 					RefreshList();
 				}
@@ -174,7 +174,7 @@ public partial class Form1
 		};
 		Button button3 = new Button
 		{
-			Text = "Add Missing Folders to All Themes",
+			Text = Loc.T("themeMgr.addMissing"),
 			Dock = DockStyle.Top,
 			Height = 35
 		};
@@ -194,11 +194,11 @@ public partial class Form1
 					}
 				}
 			}
-			Speak($"Updated themes. Added {num} missing folders.");
+			Speak(Loc.T("themeMgr.foldersAdded", num));
 		};
 		Button button4 = new Button
 		{
-			Text = "Delete Theme",
+			Text = Loc.T("themeMgr.delete"),
 			Dock = DockStyle.Top,
 			Height = 35
 		};
@@ -209,9 +209,9 @@ public partial class Form1
 				string text = lb.SelectedItem.ToString() ?? "";
 				if (text == "Default")
 				{
-					MessageBox.Show("Cannot delete Default theme.");
+					MessageBox.Show(Loc.T("themeMgr.cannotDeleteDefault"));
 				}
-				else if (MessageBox.Show("Delete theme '" + text + "'?", "Confirm", MessageBoxButtons.YesNo) == DialogResult.Yes)
+				else if (MessageBox.Show(Loc.T("themeMgr.confirmDelete", text), Loc.T("common.confirm"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 				{
 					Directory.Delete(Path.Combine(themesPath, text), recursive: true);
 					if (tempActiveTheme == text)
@@ -219,7 +219,7 @@ public partial class Form1
 						tempActiveTheme = "Default";
 					}
 					RefreshList();
-					Speak("Theme deleted.");
+					Speak(Loc.T("themeMgr.deleted"));
 				}
 			}
 		};
@@ -231,7 +231,7 @@ public partial class Form1
 		};
 		Button button5 = new Button
 		{
-			Text = "Save and Close",
+			Text = Loc.T("common.saveAndClose"),
 			Width = 120,
 			Height = 35
 		};
@@ -240,17 +240,17 @@ public partial class Form1
 			_settings.CurrentTheme = tempActiveTheme;
 			_settings.Save();
 			f.Close();
-			Speak("Theme settings saved.");
+			Speak(Loc.T("themeMgr.saved"));
 		};
 		Button button6 = new Button
 		{
-			Text = "Cancel",
+			Text = Loc.T("common.cancel"),
 			Width = 100,
 			Height = 35
 		};
 		button6.Click += delegate
 		{
-			Speak("Changes cancelled.");
+			Speak(Loc.T("common.changesCancelled"));
 			f.Close();
 		};
 		flowLayoutPanel.Controls.AddRange(button5, button6);
@@ -265,7 +265,7 @@ public partial class Form1
 		{
 			if (pe.KeyCode == Keys.Escape)
 			{
-				Speak("Changes cancelled.");
+				Speak(Loc.T("common.changesCancelled"));
 				f.Close();
 			}
 		};
@@ -284,7 +284,7 @@ public partial class Form1
 	{
 		Form f = new Form
 		{
-			Text = "Shortcut Customization - Escape to Cancel",
+			Text = Loc.T("shortcutMgr.title"),
 			Size = new Size(500, 600),
 			StartPosition = FormStartPosition.CenterScreen,
 			KeyPreview = true
@@ -300,12 +300,12 @@ public partial class Form1
 		{
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 12f),
-			AccessibleName = "Action List"
+			AccessibleName = Loc.T("shortcutMgr.actionList")
 		};
 		RefreshList();
 		Button button = new Button
 		{
-			Text = "Remap Selected Action",
+			Text = Loc.T("shortcutMgr.remap"),
 			Dock = DockStyle.Fill,
 			Height = 35
 		};
@@ -314,10 +314,10 @@ public partial class Form1
 			if (lb.SelectedItem != null)
 			{
 				string action = (lb.SelectedItem.ToString() ?? "").Split(':')[0].Trim();
-				Speak("Press the new key combination for " + action + "...");
+				Speak(Loc.T("shortcutMgr.pressFor", action));
 				Form prompt = new Form
 				{
-					Text = "Press Keys...",
+					Text = Loc.T("shortcutMgr.pressKeys"),
 					Size = new Size(300, 150),
 					StartPosition = FormStartPosition.CenterParent,
 					FormBorderStyle = FormBorderStyle.FixedDialog,
@@ -329,7 +329,7 @@ public partial class Form1
 					{
 						tempShortcuts[action] = e.KeyData;
 						prompt.Close();
-						Speak(action + " remapped. Press Save to confirm.");
+						Speak(Loc.T("shortcutMgr.remapped", action));
 						RefreshList();
 					}
 				};
@@ -338,13 +338,13 @@ public partial class Form1
 		};
 		Button button2 = new Button
 		{
-			Text = "Reset All to Defaults",
+			Text = Loc.T("shortcutMgr.reset"),
 			Dock = DockStyle.Fill,
 			Height = 35
 		};
 		button2.Click += delegate
 		{
-			if (MessageBox.Show("Reset all shortcuts to defaults?", "Confirm", MessageBoxButtons.YesNo) == DialogResult.Yes)
+			if (MessageBox.Show(Loc.T("shortcutMgr.resetConfirm"), Loc.T("common.confirm"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 			{
 				tempShortcuts.Clear();
 				AppSettings appSettings = new AppSettings();
@@ -354,7 +354,7 @@ public partial class Form1
 					tempShortcuts[shortcut.Key] = shortcut.Value;
 				}
 				RefreshList();
-				Speak("Reset to defaults. Press Save to confirm.");
+				Speak(Loc.T("shortcutMgr.resetDone"));
 			}
 		};
 		FlowLayoutPanel flowLayoutPanel = new FlowLayoutPanel
@@ -365,7 +365,7 @@ public partial class Form1
 		};
 		Button button3 = new Button
 		{
-			Text = "Save and Close",
+			Text = Loc.T("common.saveAndClose"),
 			Width = 120,
 			Height = 35
 		};
@@ -374,18 +374,18 @@ public partial class Form1
 			_settings.Shortcuts = tempShortcuts;
 			_settings.Save();
 			f.Close();
-			Speak("Shortcuts saved.");
+			Speak(Loc.T("shortcutMgr.saved"));
 			SetupAccessibleUI();
 		};
 		Button button4 = new Button
 		{
-			Text = "Cancel",
+			Text = Loc.T("common.cancel"),
 			Width = 100,
 			Height = 35
 		};
 		button4.Click += delegate
 		{
-			Speak("Changes cancelled.");
+			Speak(Loc.T("common.changesCancelled"));
 			f.Close();
 		};
 		flowLayoutPanel.Controls.AddRange(button3, button4);
@@ -398,7 +398,7 @@ public partial class Form1
 		{
 			if (pe.KeyCode == Keys.Escape)
 			{
-				Speak("Changes cancelled.");
+				Speak(Loc.T("common.changesCancelled"));
 				f.Close();
 			}
 		};
@@ -423,7 +423,7 @@ public partial class Form1
 		{
 			if (value == Keys.None)
 			{
-				return "Unmapped";
+				return Loc.T("shortcutMgr.unmapped");
 			}
 			StringBuilder stringBuilder = new StringBuilder();
 			if ((value & Keys.Control) == Keys.Control)

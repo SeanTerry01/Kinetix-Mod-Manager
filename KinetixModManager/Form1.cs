@@ -40,7 +40,49 @@ public partial class Form1 : Form, IMessageFilter
 		Wiki      = 4,
 		Walkthroughs = 5,
 		Profiles  = 6,
-		SmapiLog  = 7
+		SmapiLog  = 7,
+		ModPriority = 8,
+		PluginOrder = 9
+	}
+
+	/// <summary>
+	/// The logical <see cref="AppTab"/> for the currently selected tab, resolved by tab-page reference
+	/// rather than physical index. Mod Priority (Skyrim/Fallout 4) and SMAPI Log (Stardew) are added
+	/// conditionally and at different positions, so the physical index of a tab is not a reliable id.
+	/// </summary>
+	private AppTab CurrentTab()
+	{
+		TabPage? t = mainTabs.SelectedTab;
+		if (t == tabUpdates) return AppTab.Updates;
+		if (t == tabBackups) return AppTab.Backups;
+		if (t == tabDiscovery) return AppTab.Discovery;
+		if (t == tabWiki) return AppTab.Wiki;
+		if (t == tabWalkthroughs) return AppTab.Walkthroughs;
+		if (t == tabProfiles) return AppTab.Profiles;
+		if (t == tabModPriority) return AppTab.ModPriority;
+		if (t == tabPluginOrder) return AppTab.PluginOrder;
+		if (t == tabSmapiLog) return AppTab.SmapiLog;
+		return AppTab.Installed;
+	}
+
+	/// <summary>Selects the given logical tab by reference, if that tab is currently present.</summary>
+	private void SelectTab(AppTab tab)
+	{
+		TabPage? page = tab switch
+		{
+			AppTab.Installed    => tabInstalled,
+			AppTab.Updates      => tabUpdates,
+			AppTab.Backups      => tabBackups,
+			AppTab.Discovery    => tabDiscovery,
+			AppTab.Wiki         => tabWiki,
+			AppTab.Walkthroughs => tabWalkthroughs,
+			AppTab.Profiles     => tabProfiles,
+			AppTab.ModPriority  => tabModPriority,
+			AppTab.PluginOrder  => tabPluginOrder,
+			AppTab.SmapiLog     => tabSmapiLog,
+			_                   => null
+		};
+		if (page != null && mainTabs.TabPages.Contains(page)) mainTabs.SelectedTab = page;
 	}
 
 	/// <summary>
@@ -152,6 +194,8 @@ public partial class Form1 : Form, IMessageFilter
 	private TabPage tabDiscovery = null!;
 	private TabPage tabBackups = null!;
 	private TabPage tabProfiles = null!;
+	private TabPage tabModPriority = null!;
+	private TabPage tabPluginOrder = null!;
 	private TabPage tabSmapiLog = null!;
 	private TabPage tabWiki = null!;
 	private TabPage tabWalkthroughs = null!;
@@ -160,6 +204,8 @@ public partial class Form1 : Form, IMessageFilter
 	private ListBox listDiscovery = null!;
 	private ListBox listBackups = null!;
 	private ListBox listProfiles = null!;
+	private ListBox listModPriority = null!;
+	private ListBox listPluginOrder = null!;
 	private ListBox listLog = null!;
 	private TextBox txtSearch = null!;
 	private TextBox txtSearchInstalled = null!;
@@ -280,11 +326,11 @@ public partial class Form1 : Form, IMessageFilter
 		{
 			Tolk.Load();
 			Tolk.TrySAPI(trySAPI: true);
-			Speak("Mod Manager Started. Press F1 for the manual, or Shift + F1 at any time to hear a list of shortcuts for the selected tab.");
+			Speak(Loc.T("app.started"));
 		}
 		catch (Exception ex)
 		{
-			MessageBox.Show("Tolk could not be loaded. Please ensure all native DLLs (Tolk.dll, nvdaControllerClient.dll, etc.) are in the application folder or lib folder.\nError: " + ex.Message);
+			MessageBox.Show(Loc.T("app.tolkFailed", ex.Message));
 		}
 		// Migrate old root backups/downloads files to StardewValley game subfolder if present
 		try
@@ -376,7 +422,7 @@ public partial class Form1 : Form, IMessageFilter
 				{
 					form._lstGames.Focus();
 				}
-				Speak("Welcome to Kinetix Mod Manager. Please select a game to manage from the list. Use arrow keys to select, and press Enter to confirm.");
+				Speak(Loc.T("app.welcome"));
 			}
 			else if (form.IsGameInstalled(form._settings.ActiveGame))
 			{
@@ -433,7 +479,7 @@ public partial class Form1 : Form, IMessageFilter
                     BeginInvoke(new Action(() =>
                     {
                         listWikiResults.Focus();
-                        Speak("Wiki Results List");
+                        Speak(Loc.T("common.wikiResultsList"));
                     }));
                 }
                 else if (isWalkthroughFocused)
@@ -441,7 +487,7 @@ public partial class Form1 : Form, IMessageFilter
                     BeginInvoke(new Action(() =>
                     {
                         listWalkthroughs.Focus();
-                        Speak("Walkthrough Guides List");
+                        Speak(Loc.T("common.walkthroughGuidesList"));
                     }));
                 }
                 return true; // Prevent the browser from trapping Shift+Tab

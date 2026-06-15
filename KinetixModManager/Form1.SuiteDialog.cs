@@ -41,7 +41,7 @@ public partial class Form1
 
 		Form dialog = new Form
 		{
-			Text = $"{gameName} Accessibility Suite Installer - Escape to Close",
+			Text = Loc.T("suite.installerTitle", gameName),
 			Size = new Size(500, 450),
 			StartPosition = FormStartPosition.CenterScreen,
 			KeyPreview = true
@@ -60,7 +60,7 @@ public partial class Form1
 
 		Label lblTitle = new Label
 		{
-			Text = $"{gameName} Accessibility Suite Status",
+			Text = Loc.T("suite.statusTitle", gameName),
 			Font = new Font("Segoe UI", 14f, FontStyle.Bold),
 			AutoSize = true,
 			Dock = DockStyle.Fill
@@ -71,9 +71,8 @@ public partial class Form1
 		{
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 11f),
-			AccessibleName = "Accessibility Mods Status",
-			AccessibleDescription = "Press Enter on a mod to open its download page so you can install it yourself at your own pace, " +
-				"or use the Install Missing Suite Mods button to install everything that's missing at once."
+			AccessibleName = Loc.T("suite.statusName"),
+			AccessibleDescription = Loc.T("suite.statusDesc")
 		};
 		// Announce the position on focus the same way the main form's lists do (GotFocus so it
 		// also fires when focus returns to the list after another dialog closes).
@@ -132,8 +131,8 @@ public partial class Form1
 
 		foreach (var item in suiteItems)
 		{
-			string statusText = item.IsInstalled ? "Installed" : "Not Installed";
-			lstStatus.Items.Add($"{item.Name}: {statusText}");
+			string statusText = item.IsInstalled ? Loc.T("suite.installed") : Loc.T("suite.notInstalled");
+			lstStatus.Items.Add(Loc.T("suite.statusLine", item.Name, statusText));
 			// SMAPI (the Stardew "Loader") now installs automatically too, so a missing loader
 			// should also enable the Install button rather than being treated as already handled.
 			if (!item.IsInstalled)
@@ -148,7 +147,7 @@ public partial class Form1
 
 		Button btnInstall = new Button
 		{
-			Text = allModsInstalled ? "Suite Installed" : "Install Missing Suite Mods",
+			Text = allModsInstalled ? Loc.T("suite.suiteInstalled") : Loc.T("suite.installMissing"),
 			Enabled = !allModsInstalled,
 			Height = 45,
 			Dock = DockStyle.Fill,
@@ -191,8 +190,8 @@ public partial class Form1
 			var item = suiteItems[idx];
 			string url = SuiteItemUrl(item);
 			Speak(item.IsInstalled
-				? $"{item.Name} is already installed. Opening its page anyway."
-				: $"Opening the download page for {item.Name}.");
+				? Loc.T("suite.openInstalledPage", item.Name)
+				: Loc.T("suite.openDownloadPage", item.Name));
 			try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
 			catch (Exception ex) { LogError(item.Name, "Failed to open download page: " + ex.Message); }
 		};
@@ -206,12 +205,12 @@ public partial class Form1
 			if (isInstalling) return;
 			isInstalling = true;
 			btnInstall.Enabled = false;
-			btnInstall.Text = "Installing...";
+			btnInstall.Text = Loc.T("suite.installing");
 			dialog.UseWaitCursor = true;
 
 			try
 			{
-				Speak("Starting accessibility suite installation.");
+				Speak(Loc.T("suite.startInstall"));
 				
 				// SMAPI is the Stardew mod loader; install it first (and automatically) so the
 				// accessibility mods below have something to load them. Other games' loaders are
@@ -234,8 +233,8 @@ public partial class Form1
 						continue;
 					}
 
-					SetStatus($"Downloading {item.Name}...");
-					Speak($"Downloading {item.Name}...");
+					SetStatus(Loc.T("suite.downloading", item.Name));
+					Speak(Loc.T("suite.downloading", item.Name));
 
 					string? downloadUrl = null;
 					string zipName = $"{item.Name.Replace(" ", "")}_Install" + (item.Type == "Loader" ? ".7z" : ".zip");
@@ -282,9 +281,9 @@ public partial class Form1
 							"Fallout4" => "fallout4",
 							_ => "stardewvalley"
 						};
-						Speak($"{item.Name} must be downloaded manually from Nexus. Opening browser.");
+						Speak(Loc.T("suite.manualDownloadSpeak", item.Name));
 						Process.Start(new ProcessStartInfo($"https://www.nexusmods.com/{gameDomain}/mods/{item.Source}?tab=files") { UseShellExecute = true });
-						MessageBox.Show($"Please click 'Manual Download' on the webpage for {item.Name}. After downloading, press Control+I in the mod manager to install the ZIP.", "Manual Download Required");
+						MessageBox.Show(Loc.T("suite.manualDownloadBox1", item.Name), Loc.T("suite.manualDownloadTitle"));
 						continue;
 					}
 
@@ -315,9 +314,9 @@ public partial class Form1
 								}
 							}
 							
-							Speak($"{item.Name} must be downloaded manually from Nexus. Opening browser.");
+							Speak(Loc.T("suite.manualDownloadSpeak", item.Name));
 							Process.Start(new ProcessStartInfo(downloadUrl) { UseShellExecute = true });
-							MessageBox.Show($"Please click 'Manual Download' on the webpage for {item.Name}. After downloading, extract its contents directly into your game install folder.", "Manual Download Required");
+							MessageBox.Show(Loc.T("suite.manualDownloadBox2", item.Name), Loc.T("suite.manualDownloadTitle"));
 							continue;
 						}
 
@@ -329,8 +328,8 @@ public partial class Form1
 
 							if (item.Type == "Loader")
 							{
-								SetStatus($"Installing {item.Name}...");
-								Speak($"Installing {item.Name}...");
+								SetStatus(Loc.T("suite.installingItem", item.Name));
+								Speak(Loc.T("suite.installingItem", item.Name));
 								await ModFileSystem.InstallScriptExtenderAsync(tempPath, _settings.CurrentGamePath, game, LogError, _nexusService);
 							}
 							else
@@ -341,23 +340,23 @@ public partial class Form1
 						catch (Exception ex)
 						{
 							LogError(item.Name, $"Download or extraction failed: {ex.Message}");
-							Speak($"Failed to install {item.Name}.");
+							Speak(Loc.T("suite.failedInstallItem", item.Name));
 						}
 					}
 				}
 
-				Speak("Accessibility suite setup complete. Refreshing mod list.");
+				Speak(Loc.T("suite.setupComplete"));
 				dialog.Close();
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show("Suite installation error: " + ex.Message);
+				MessageBox.Show(Loc.T("suite.installErrorBox", ex.Message));
 			}
 			finally
 			{
 				dialog.UseWaitCursor = false;
 				btnInstall.Enabled = true;
-				btnInstall.Text = "Install Missing Suite Mods";
+				btnInstall.Text = Loc.T("suite.installMissing");
 				isInstalling = false;
 			}
 		};
@@ -388,8 +387,8 @@ public partial class Form1
 			{
 				try
 				{
-					SetStatus("Downloading SSE Engine Fixes...");
-					Speak("Downloading SSE Engine Fixes...");
+					SetStatus(Loc.T("suite.engineFixesDownloading"));
+					Speak(Loc.T("suite.engineFixesDownloading"));
 					var mainMod = new GameMod { NexusID = "17230", Name = "SSE Engine Fixes Part 1" };
 					string mainZip = await _nexusService.DownloadModUpdateAsync(mainMod, downloadsPath);
 					await InstallFromZip(mainZip, "17230");
@@ -397,7 +396,7 @@ public partial class Form1
 				catch (Exception ex)
 				{
 					LogError("SSE Engine Fixes", $"Main file download failed: {ex.Message}");
-					Speak("Failed to install SSE Engine Fixes main file.");
+					Speak(Loc.T("suite.engineFixesMainFailed"));
 				}
 			}
 
@@ -405,8 +404,8 @@ public partial class Form1
 			{
 				try
 				{
-					SetStatus("Installing SSE Engine Fixes preloader...");
-					Speak("Installing SSE Engine Fixes preloader...");
+					SetStatus(Loc.T("suite.engineFixesPreloaderInstalling"));
+					Speak(Loc.T("suite.engineFixesPreloaderInstalling"));
 					var preMod = new GameMod { NexusID = "17230", Name = "SSE Engine Fixes Part 2" };
 					string preZip = await _nexusService.DownloadModUpdateAsync(preMod, downloadsPath);
 					await ModFileSystem.InstallEnginePreloaderAsync(preZip, gameFolder, LogError, _nexusService);
@@ -414,7 +413,7 @@ public partial class Form1
 				catch (Exception ex)
 				{
 					LogError("SSE Engine Fixes", $"Preloader download failed: {ex.Message}");
-					Speak("Failed to install SSE Engine Fixes preloader.");
+					Speak(Loc.T("suite.engineFixesPreloaderFailed"));
 				}
 			}
 			return;
@@ -422,14 +421,11 @@ public partial class Form1
 
 		// Non-premium accounts cannot download through the Nexus API, so guide the manual install
 		// for whichever parts are still missing.
-		Speak("SSE Engine Fixes must be downloaded manually from Nexus. Opening browser.");
+		Speak(Loc.T("suite.engineFixesManualSpeak"));
 		Process.Start(new ProcessStartInfo("https://www.nexusmods.com/skyrimspecialedition/mods/17230?tab=files") { UseShellExecute = true });
 		MessageBox.Show(
-			"SSE Engine Fixes has two files on this page:\n\n" +
-			"1. Main file: download it, then press Control+I in the mod manager to install it.\n\n" +
-			"2. \"Engine Fixes - skse64 Preloader\": download it and extract d3dx9_42.dll directly into your " +
-			"Skyrim game folder (the folder containing SkyrimSE.exe).",
-			"Manual Download Required");
+			Loc.T("suite.engineFixesManualBox"),
+			Loc.T("suite.manualDownloadTitle"));
 	}
 
 	/// <summary>
@@ -445,20 +441,19 @@ public partial class Form1
 		// SMAPI can only install into a real Stardew Valley folder; bail to the manual flow otherwise.
 		if (string.IsNullOrEmpty(gameFolder) || !File.Exists(Path.Combine(gameFolder, "Stardew Valley.exe")))
 		{
-			Speak("Could not find the Stardew Valley folder. Opening the SMAPI download page instead.");
+			Speak(Loc.T("suite.smapiNotFoundSpeak"));
 			Process.Start(new ProcessStartInfo("https://smapi.io") { UseShellExecute = true });
 			MessageBox.Show(
-				"KinetixModManager couldn't locate your Stardew Valley installation, so SMAPI could not be " +
-				"installed automatically. Please install SMAPI from the page that just opened.",
-				"SMAPI Install");
+				Loc.T("suite.smapiNotFoundBox"),
+				Loc.T("suite.smapiInstallTitle"));
 			return false;
 		}
 
 		string tempDir = Path.Combine(Path.GetTempPath(), "SMAPI_" + Path.GetRandomFileName());
 		try
 		{
-			SetStatus("Downloading SMAPI...");
-			Speak("Downloading SMAPI...");
+			SetStatus(Loc.T("suite.smapiDownloading"));
+			Speak(Loc.T("suite.smapiDownloading"));
 
 			string? url = await GetSmapiInstallerZipUrl();
 			if (string.IsNullOrEmpty(url)) throw new Exception("Could not resolve the SMAPI download URL.");
@@ -479,8 +474,8 @@ public partial class Form1
 				?? Directory.EnumerateFiles(extractDir, "SMAPI.Installer.exe", SearchOption.AllDirectories).FirstOrDefault();
 			if (installerExe == null) throw new Exception("SMAPI.Installer.exe was not found in the download.");
 
-			SetStatus("Installing SMAPI...");
-			Speak("Installing SMAPI. This may take a moment.");
+			SetStatus(Loc.T("suite.smapiInstallingStatus"));
+			Speak(Loc.T("suite.smapiInstalling"));
 
 			var psi = new ProcessStartInfo(installerExe)
 			{
@@ -502,11 +497,11 @@ public partial class Form1
 			bool installed = File.Exists(Path.Combine(gameFolder, "StardewModdingAPI.exe"));
 			if (installed)
 			{
-				Speak("SMAPI installed successfully.");
+				Speak(Loc.T("suite.smapiInstalled"));
 			}
 			else
 			{
-				Speak("SMAPI installation could not be confirmed. Opening the SMAPI page so you can install it manually.");
+				Speak(Loc.T("suite.smapiUnconfirmed"));
 				Process.Start(new ProcessStartInfo("https://smapi.io") { UseShellExecute = true });
 			}
 			return installed;
@@ -514,7 +509,7 @@ public partial class Form1
 		catch (Exception ex)
 		{
 			LogError("SMAPI", "Automatic SMAPI install failed: " + ex.Message);
-			Speak("Automatic SMAPI install failed. Opening the SMAPI download page.");
+			Speak(Loc.T("suite.smapiAutoFailed"));
 			Process.Start(new ProcessStartInfo("https://smapi.io") { UseShellExecute = true });
 			return false;
 		}

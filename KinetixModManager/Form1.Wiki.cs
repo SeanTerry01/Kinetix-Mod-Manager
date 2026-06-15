@@ -174,7 +174,7 @@ public partial class Form1
 		foreach (var w in modWikis) cmbModWikis.Items.Add(w);
 		cmbModWikis.SelectedIndex = 0;
 		_activeWiki = gameWiki;
-		txtWikiSearch.AccessibleName = "Search " + gameWiki.Title;
+		txtWikiSearch.AccessibleName = Loc.T("wiki.searchAcc", gameWiki.Title);
 		_suppressModWikiEvent = false;
 		// NB: the caller loads the default wiki's categories via RefreshCategoriesForActiveWikiAsync once the wiki
 		// tab (specifically splitWiki) exists. We must not trigger it here — during the initial UI build this runs
@@ -188,7 +188,7 @@ public partial class Form1
 	private async Task OnModWikiSelected(ModWikiLink link)
 	{
 		_activeWiki = link;
-		txtWikiSearch.AccessibleName = "Search " + link.Title;
+		txtWikiSearch.AccessibleName = Loc.T("wiki.searchAcc", link.Title);
 
 		// Clear any results from the previous wiki so they aren't mistaken for this one's.
 		listWikiResults.Items.Clear();
@@ -205,8 +205,8 @@ public partial class Form1
 		// Tell the user whether this wiki is fully searchable in-app or just opens in the view.
 		bool browseOnly = string.IsNullOrEmpty(link.ApiUrl);
 		Speak(browseOnly
-			? $"Opening {link.Title}. This wiki opens in the view only — in-app search and categories aren't available for it."
-			: "Opening " + link.Title);
+			? Loc.T("wiki.openingBrowseOnly", link.Title)
+			: Loc.T("wiki.opening", link.Title));
 	}
 
 	/// <summary>
@@ -378,7 +378,7 @@ public partial class Form1
                 BeginInvoke(new Action(() =>
                 {
                     mainTabs.Focus();
-                    Speak((mainTabs.SelectedTab?.Text ?? "") + " Tab");
+                    Speak(Loc.T("common.tabSuffix", mainTabs.SelectedTab?.Text ?? ""));
                 }));
             }
             else if (message == "focusresults")
@@ -389,12 +389,12 @@ public partial class Form1
                     if (isWiki)
                     {
                         listWikiResults.Focus();
-                        Speak("Wiki Results List");
+                        Speak(Loc.T("common.wikiResultsList"));
                     }
                     else
                     {
                         listWalkthroughs.Focus();
-                        Speak("Walkthrough Guides List");
+                        Speak(Loc.T("common.walkthroughGuidesList"));
                     }
                 }));
             }
@@ -461,7 +461,7 @@ public partial class Form1
 		// Browse-only wiki: no API to query, so say so instead of showing an empty "Select Category".
 		if (string.IsNullOrEmpty(CurrentWikiApiUrl))
 		{
-			cmbWikiCategories.Items.Add("No categories — browse this wiki in the view");
+			cmbWikiCategories.Items.Add(Loc.T("wiki.noCategories"));
 			cmbWikiCategories.SelectedIndex = 0;
 			return;
 		}
@@ -524,11 +524,11 @@ public partial class Form1
 		if (string.IsNullOrEmpty(query)) return false;
 		if (string.IsNullOrEmpty(CurrentWikiApiUrl))
 		{
-			Speak($"{_activeWiki?.Title ?? "This wiki"} can't be searched here. It's open in the wiki view — use the page's own search.");
+			Speak(Loc.T("wiki.cantSearch", _activeWiki?.Title ?? Loc.T("wiki.thisWiki")));
 			return false;
 		}
 		splitWiki.Visible = true;
-		SetStatus("Searching Wiki...");
+		SetStatus(Loc.T("wiki.searching"));
 		try
 		{
 			string url = $"{CurrentWikiApiUrl}?action=query&list=search&srsearch={Uri.EscapeDataString(query)}&format=json";
@@ -544,12 +544,12 @@ public partial class Form1
 			
 			PushWikiState("Search: " + query, wikiResults.Cast<object>().ToList());
 			UpdateWikiList(wikiResults);
-			Speak($"Found {wikiResults.Count} results.");
+			Speak(Loc.T("wiki.foundResults", wikiResults.Count));
 		}
 		catch (Exception ex)
 		{
 			LogError("Wiki", "Search Error: " + ex.Message);
-			Speak("Wiki search failed.");
+			Speak(Loc.T("wiki.searchFailed"));
 		}
 		return true;
 	}
@@ -560,7 +560,7 @@ public partial class Form1
 	/// </summary>
 	private async Task<bool> LoadWikiCategory(string category)
 	{
-		SetStatus("Loading Category: " + category, speak: false);
+		SetStatus(Loc.T("wiki.loadingCategory", category), speak: false);
 		try
 		{
 			// The curated game-wiki categories use friendly names that must be mapped to the wiki's real category
@@ -593,12 +593,12 @@ public partial class Form1
 			
 			PushWikiState(category, wikiResults.Cast<object>().ToList());
 			UpdateWikiList(wikiResults);
-			Speak($"{category} category loaded with {wikiResults.Count} items.");
+			Speak(Loc.T("wiki.categoryLoaded", category, wikiResults.Count));
 		}
 		catch (Exception ex)
 		{
 			LogError("Wiki", "Category Error: " + ex.Message);
-			Speak("Failed to load wiki category.");
+			Speak(Loc.T("wiki.categoryFailed"));
 		}
 		return true;
 	}
@@ -611,7 +611,7 @@ public partial class Form1
 		await EnsureWebViewsInitializedAsync();
 		string url = CurrentWikiBaseUrl + Uri.EscapeDataString(title.Replace(" ", "_"));
 		webViewWiki.CoreWebView2?.Navigate(url);
-		Speak("Loading page: " + title);
+		Speak(Loc.T("wiki.loadingPage", title));
 		return true;
 	}
 
@@ -637,9 +637,9 @@ public partial class Form1
 			UpdateWikiList(state.Results.Cast<WikiResult>().ToList());
 			if (state.SelectedIndex >= 0 && state.SelectedIndex < listWikiResults.Items.Count)
 				listWikiResults.SelectedIndex = state.SelectedIndex;
-			Speak("Back to " + state.Title);
+			Speak(Loc.T("wiki.backTo", state.Title));
 		}
-		else Speak("Already at top level.");
+		else Speak(Loc.T("wiki.atTopLevel"));
 	}
 
 	/// <summary>Populates <c>listWikiResults</c> with a set of <see cref="WikiResult"/> items.</summary>
@@ -658,7 +658,7 @@ public partial class Form1
 		{
 			await Task.Delay(100);
 			if (!listWikiResults.Focused) return;
-			Speak($"{listWikiResults.SelectedIndex + 1} of {listWikiResults.Items.Count}");
+			Speak(Loc.T("common.position", listWikiResults.SelectedIndex + 1, listWikiResults.Items.Count));
 		}
 	}
 }

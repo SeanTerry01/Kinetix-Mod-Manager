@@ -142,11 +142,11 @@ public partial class Form1
 		if (IsShortcut(e, "Search"))
 		{
 			e.SuppressKeyPress = true;
-			if (mainTabs.SelectedIndex == (int)AppTab.Installed)
+			if (CurrentTab() == AppTab.Installed)
 			{
 				txtSearchInstalled.Focus();
 			}
-			else if (mainTabs.SelectedIndex == (int)AppTab.SmapiLog)
+			else if (CurrentTab() == AppTab.SmapiLog)
 			{
 				txtSearchLog.Focus();
 			}
@@ -175,18 +175,23 @@ public partial class Form1
 		{
 			e.SuppressKeyPress = true;
 			RefreshAllData(checkUpdates: true);
-			Speak("Refreshing everything.");
+			Speak(Loc.T("modlist.refreshingAll"));
 		}
 		if (IsShortcut(e, "RefreshInstalled"))
 		{
 			e.SuppressKeyPress = true;
 			_ = RefreshModList(checkUpdates: false);
-			Speak("Refreshed installed mods.");
+			Speak(Loc.T("modlist.refreshedInstalled"));
 		}
 		if (IsShortcut(e, "CycleFocus"))
 		{
 			e.SuppressKeyPress = true;
 			HandleCycleFocus();
+		}
+		if (IsShortcut(e, "AutoSort"))
+		{
+			e.SuppressKeyPress = true;
+			_ = AutoSortPluginsAsync();
 		}
 		if (IsShortcut(e, "OpenErrorLog") && File.Exists("mod_manager_log.txt"))
 		{
@@ -213,40 +218,40 @@ public partial class Form1
 		if (!onHeaders)
 		{
 			// If we are in the Wiki tab, cycle between Results -> Web View -> Tabs
-			if (mainTabs.SelectedIndex == (int)AppTab.Wiki)
+			if (CurrentTab() == AppTab.Wiki)
 			{
 				// If we're in the list, move to web view
 				if (listWikiResults.Focused)
 				{
 					webViewWiki.Focus();
-					Speak("Wiki Content");
+					Speak(Loc.T("modlist.wikiContent"));
 				}
 				else
 				{
 					// Otherwise (likely in WebView or search boxes), move to headers
 					mainTabs.Focus();
-					Speak((mainTabs.SelectedTab?.Text ?? "") + " Tab");
+					Speak(Loc.T("common.tabSuffix", mainTabs.SelectedTab?.Text ?? ""));
 				}
 			}
-			else if (mainTabs.SelectedIndex == (int)AppTab.Walkthroughs)
+			else if (CurrentTab() == AppTab.Walkthroughs)
 			{
 				// If we're in the list, move to web view
 				if (listWalkthroughs.Focused)
 				{
 					webViewWalkthrough.Focus();
-					Speak("Walkthrough Content");
+					Speak(Loc.T("modlist.walkthroughContent"));
 				}
 				else
 				{
 					mainTabs.Focus();
-					Speak((mainTabs.SelectedTab?.Text ?? "") + " Tab");
+					Speak(Loc.T("common.tabSuffix", mainTabs.SelectedTab?.Text ?? ""));
 				}
 			}
 			else
 			{
 				// In other tabs, just jump back to the Tab headers
 				mainTabs.Focus();
-				Speak((mainTabs.SelectedTab?.Text ?? "") + " Tab");
+				Speak(Loc.T("common.tabSuffix", mainTabs.SelectedTab?.Text ?? ""));
 			}
 		}
 		else
@@ -254,16 +259,18 @@ public partial class Form1
 			// Focus is on the Tab headers, jump into the primary control of the current tab.
 			// The list's Enter handler (List_Enter) announces the name/position, so focusing is
 			// enough here — and it works the same whether the user arrived via F6, Tab, or click.
-			switch (mainTabs.SelectedIndex)
+			switch (CurrentTab())
 			{
-				case (int)AppTab.Installed:    listInstalled.Focus();   break;
-				case (int)AppTab.Updates:      listUpdates.Focus();     break;
-				case (int)AppTab.Backups:      listBackups.Focus();     break;
-				case (int)AppTab.Discovery:    listDiscovery.Focus();   break;
-				case (int)AppTab.Wiki:         listWikiResults.Focus(); break;
-				case (int)AppTab.Walkthroughs: listWalkthroughs.Focus(); break;
-				case (int)AppTab.Profiles:     listProfiles.Focus();    break;
-				case (int)AppTab.SmapiLog:     listLog.Focus();         break;
+				case AppTab.Installed:    listInstalled.Focus();   break;
+				case AppTab.Updates:      listUpdates.Focus();     break;
+				case AppTab.Backups:      listBackups.Focus();     break;
+				case AppTab.Discovery:    listDiscovery.Focus();   break;
+				case AppTab.Wiki:         listWikiResults.Focus(); break;
+				case AppTab.Walkthroughs: listWalkthroughs.Focus(); break;
+				case AppTab.Profiles:     listProfiles.Focus();    break;
+				case AppTab.ModPriority:  listModPriority.Focus(); break;
+				case AppTab.PluginOrder:  listPluginOrder.Focus(); break;
+				case AppTab.SmapiLog:     listLog.Focus();         break;
 			}
 		}
 	}
@@ -272,17 +279,17 @@ public partial class Form1
 	private void ReadSelectedDescription()
 	{
 		ListBox listBox;
-		if (mainTabs.SelectedIndex == (int)AppTab.Installed)
+		if (CurrentTab() == AppTab.Installed)
 		{
 			listBox = listInstalled;
 		}
-		else if (mainTabs.SelectedIndex == (int)AppTab.Updates)
+		else if (CurrentTab() == AppTab.Updates)
 		{
 			listBox = listUpdates;
 		}
 		else
 		{
-			if (mainTabs.SelectedIndex != (int)AppTab.Discovery)
+			if (CurrentTab() != AppTab.Discovery)
 			{
 				return;
 			}
@@ -296,7 +303,7 @@ public partial class Form1
 			}
 			else
 			{
-				Speak("No description available for this mod.");
+				Speak(Loc.T("modlist.noDescription"));
 			}
 		}
 	}
@@ -417,7 +424,7 @@ public partial class Form1
 			}
 			if (e.KeyCode == Keys.Apps)
 			{
-				MessageBox.Show($"Mod: {stardewMod3.Name}\nAuthor: {stardewMod3.Author}\nDescription: {stardewMod3.Description}", "Details");
+				MessageBox.Show(Loc.T("modlist.detailsBox", stardewMod3.Name, stardewMod3.Author, stardewMod3.Description), Loc.T("modlist.detailsTitle"));
 				e.Handled = true;
 			}
 			if (e.KeyCode == Keys.L && e.Control)
@@ -429,7 +436,7 @@ public partial class Form1
 		}
 		if (list.Name == "listUpdates" && list.SelectedItem is StardewMod stardewMod4 && e.KeyCode == Keys.Delete)
 		{
-			if (MessageBox.Show($"Ignore version {stardewMod4.LatestVersion} for {stardewMod4.Name}?", "Ignore Update", MessageBoxButtons.YesNo) == DialogResult.Yes)
+			if (MessageBox.Show(Loc.T("modlist.ignoreConfirm", stardewMod4.LatestVersion ?? "", stardewMod4.Name), Loc.T("modlist.ignoreTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 			{
 				_settings.IgnoredVersions[stardewMod4.UniqueId] = stardewMod4.LatestVersion ?? "";
 				_settings.Save();
@@ -441,12 +448,12 @@ public partial class Form1
 					if (listUpdates.SelectedItem != null)
 					{
 						string itemText = listUpdates.SelectedItem.ToString() ?? "";
-						Speak($"Update ignored. {itemText}. {listUpdates.SelectedIndex + 1} of {listUpdates.Items.Count}");
+						Speak(Loc.T("modlist.updateIgnoredPos", itemText, listUpdates.SelectedIndex + 1, listUpdates.Items.Count));
 					}
 				}
 				else
 				{
-					Speak("Update ignored. List is empty.");
+					Speak(Loc.T("modlist.updateIgnoredEmpty"));
 				}
 			}
 			e.Handled = true;
@@ -462,7 +469,7 @@ public partial class Form1
 			}
 			if (e.KeyCode == Keys.Return)
 			{
-				if (MessageBox.Show("Restore backup " + backupItem.Name + "?", "Confirm Restore", MessageBoxButtons.YesNo) == DialogResult.Yes)
+				if (MessageBox.Show(Loc.T("modlist.restoreConfirm", backupItem.Name), Loc.T("modlist.restoreTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 				{
 					_ = InstallFromZip(backupItem.FullPath);
 				}
@@ -478,7 +485,7 @@ public partial class Form1
 			}
 			if (e.KeyCode == Keys.Delete)
 			{
-				if (MessageBox.Show("Delete profile '" + modProfile.Name + "'?", "Confirm Delete", MessageBoxButtons.YesNo) == DialogResult.Yes)
+				if (MessageBox.Show(Loc.T("modlist.deleteProfileConfirm", modProfile.Name), Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 				{
 					string path = Path.Combine(profilesPath, modProfile.Name + ".json");
 					if (File.Exists(path))
@@ -486,7 +493,7 @@ public partial class Form1
 						File.Delete(path);
 					}
 					RefreshProfilesList();
-					Speak("Profile deleted.");
+					Speak(Loc.T("modlist.profileDeleted"));
 				}
 				e.Handled = true;
 				e.SuppressKeyPress = true;
@@ -523,7 +530,7 @@ public partial class Form1
 				}
 				list.SelectedItem = logEntry;
 				list.EndUpdate();
-				Speak("Returned to filtered view. Scroll down to read more.");
+				Speak(Loc.T("modlist.returnedFiltered"));
 				e.Handled = true;
 				return;
 			}
@@ -532,9 +539,9 @@ public partial class Form1
 			string text5 = text4;
 			if (!string.IsNullOrEmpty(suggestedFix))
 			{
-				text5 = text5 + "\n\nSUGGESTED FIX:\n" + suggestedFix;
+				text5 = text5 + Loc.T("modlist.suggestedFixSuffix", suggestedFix);
 			}
-			MessageBox.Show(text5, "Log Detail");
+			MessageBox.Show(text5, Loc.T("modlist.logDetailTitle"));
 			e.Handled = true;
 		}
 		if (list.Name == "listLog" && IsShortcut(e, "Login"))
@@ -550,8 +557,8 @@ public partial class Form1
 		{
 			RefreshSmapiLog();
 			Speak(listLog.Items.Count > 0
-				? $"Log refreshed. {listLog.Items.Count} entries."
-				: "Log refreshed. No matching entries.");
+				? Loc.T("modlist.logRefreshed", listLog.Items.Count)
+				: Loc.T("modlist.logRefreshedEmpty"));
 			e.Handled = true;
 			e.SuppressKeyPress = true;
 		}
@@ -567,11 +574,11 @@ public partial class Form1
 			{
 				Clipboard.SetText(copied);
 				int count = copied.Split('\n').Length;
-				Speak(count == 1 ? "Copied line to clipboard." : $"Copied {count} lines to clipboard.");
+				Speak(count == 1 ? Loc.T("modlist.copiedOne") : Loc.T("modlist.copiedMany", count));
 			}
 			else
 			{
-				Speak("No log lines selected to copy.");
+				Speak(Loc.T("modlist.noLinesSelected"));
 			}
 			e.Handled = true;
 			e.SuppressKeyPress = true;

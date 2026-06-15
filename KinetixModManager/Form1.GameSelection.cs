@@ -163,11 +163,11 @@ public partial class Form1
 			_ => game
 		};
 
-		Speak($"The session you are trying to load is for {targetName}, a game that has not yet been installed on this PC.");
+		Speak(Loc.T("session.notInstalledSpeak", targetName));
 
 		DialogResult choice = MessageBox.Show(
-			$"The session you are trying to load is for {targetName}, which has not yet been installed on this PC.\n\nWould you like to purchase {targetName}?",
-			"Game Not Installed",
+			Loc.T("session.notInstalledBox", targetName),
+			Loc.T("session.notInstalledTitle"),
 			MessageBoxButtons.YesNo,
 			MessageBoxIcon.Warning);
 
@@ -214,11 +214,11 @@ public partial class Form1
 
 	private void ShowNoGamesInstalledFlow()
 	{
-		Speak("No supported games were detected on your PC. Kinetix Mod Manager supports Stardew Valley, Skyrim Special Edition, and Fallout 4.");
+		Speak(Loc.T("games.noneDetectedSpeak"));
 
 		DialogResult result = MessageBox.Show(
-			"No supported games were detected on your PC.\nKinetix Mod Manager supports:\n- Stardew Valley\n- Skyrim Special Edition\n- Fallout 4\n\nWould you like to purchase any of these games?",
-			"No Games Detected",
+			Loc.T("games.noneDetectedBox"),
+			Loc.T("games.noneDetectedTitle"),
 			MessageBoxButtons.YesNo,
 			MessageBoxIcon.Information
 		);
@@ -233,7 +233,7 @@ public partial class Form1
 	{
 		Form dialog = new Form
 		{
-			Text = "Select Game to Purchase - Escape to Close",
+			Text = Loc.T("store.purchaseDialogTitle"),
 			Size = new Size(400, 300),
 			StartPosition = FormStartPosition.CenterScreen,
 			KeyPreview = true
@@ -252,7 +252,7 @@ public partial class Form1
 
 		Label lbl = new Label
 		{
-			Text = "Select a game to view store links:",
+			Text = Loc.T("store.selectGameLabel"),
 			Font = new Font("Segoe UI", 11f, FontStyle.Bold),
 			Dock = DockStyle.Fill
 		};
@@ -262,7 +262,7 @@ public partial class Form1
 		{
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 11f),
-			AccessibleName = "Select game to purchase"
+			AccessibleName = Loc.T("store.selectGamePurchase")
 		};
 		// Listed alphabetically.
 		lstGames.Items.Add("Fallout 4");
@@ -272,7 +272,7 @@ public partial class Form1
 
 		Button btnSelect = new Button
 		{
-			Text = "View Stores",
+			Text = Loc.T("store.viewStores"),
 			Height = 40,
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 11f, FontStyle.Bold)
@@ -298,7 +298,7 @@ public partial class Form1
 		layout.Controls.Add(btnSelect, 0, 2);
 		dialog.Controls.Add(layout);
 
-		Speak("Select a game to view store links. Use arrow keys to navigate and press Enter to select.");
+		Speak(Loc.T("store.selectGameSpeak"));
 		dialog.Shown += (s, e) => { lstGames.Focus(); };
 		dialog.ShowDialog();
 	}
@@ -307,7 +307,7 @@ public partial class Form1
 	{
 		Form dialog = new Form
 		{
-			Text = $"Purchase {gameName} - Escape to Close",
+			Text = Loc.T("store.purchaseTitle", gameName),
 			Size = new Size(400, 300),
 			StartPosition = FormStartPosition.CenterScreen,
 			KeyPreview = true
@@ -326,7 +326,7 @@ public partial class Form1
 
 		Label lbl = new Label
 		{
-			Text = $"Where would you like to buy {gameName}?",
+			Text = Loc.T("store.whereBuyLabel", gameName),
 			Font = new Font("Segoe UI", 11f, FontStyle.Bold),
 			Dock = DockStyle.Fill
 		};
@@ -336,7 +336,7 @@ public partial class Form1
 		{
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 11f),
-			AccessibleName = "Select store page"
+			AccessibleName = Loc.T("store.selectStorePage")
 		};
 		lstStores.Items.Add("Steam");
 		lstStores.Items.Add("GOG (DRM-Free)");
@@ -344,7 +344,7 @@ public partial class Form1
 
 		Button btnOpen = new Button
 		{
-			Text = "Open Store Page",
+			Text = Loc.T("store.openStorePage"),
 			Height = 40,
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 11f, FontStyle.Bold)
@@ -387,11 +387,11 @@ public partial class Form1
 				try
 				{
 					Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-					Speak($"Opening store page for {gameName} on {store}.");
+					Speak(Loc.T("store.openingPage", gameName, store));
 				}
 				catch (Exception ex)
 				{
-					MessageBox.Show("Could not open link: " + ex.Message);
+					MessageBox.Show(Loc.T("store.couldNotOpenLink", ex.Message));
 				}
 			}
 			dialog.Close();
@@ -400,7 +400,7 @@ public partial class Form1
 		layout.Controls.Add(btnOpen, 0, 2);
 		dialog.Controls.Add(layout);
 
-		Speak($"Where would you like to buy {gameName}? Use arrow keys to navigate and press Enter to select.");
+		Speak(Loc.T("store.whereBuy", gameName));
 		dialog.Shown += (s, e) => { lstStores.Focus(); };
 		dialog.ShowDialog();
 	}
@@ -454,8 +454,8 @@ public partial class Form1
 					"Fallout4" => "Fallout 4",
 					_ => "Stardew Valley"
 				};
-				SetStatus($"Launching {gameName}...");
-				Speak($"Launching {gameName}...");
+				SetStatus(Loc.T("launch.launching", gameName));
+				Speak(Loc.T("launch.launching", gameName));
 
 				Process p = new Process();
 				p.StartInfo = new ProcessStartInfo(exePath)
@@ -465,9 +465,9 @@ public partial class Form1
 				p.EnableRaisingEvents = true;
 				p.Exited += async delegate
 				{
-					SetStatus("Game closed.");
+					SetStatus(Loc.T("launch.gameClosed"));
 					await Task.Delay(5000);
-					SetStatus("Connected as " + _nexusService.NexusUser);
+					SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser));
 				};
 				p.Start();
 				Task.Run(async delegate
@@ -475,18 +475,18 @@ public partial class Form1
 					await Task.Delay(3000);
 					if (!p.HasExited)
 					{
-						SetStatus("Game is loaded and running.");
+						SetStatus(Loc.T("launch.gameRunning"));
 					}
 				});
 			}
 			else
 			{
-				MessageBox.Show($"{exeName} or game executable not found at: {gamePath}. Please configure the correct Game Path in Settings.");
+				MessageBox.Show(Loc.T("launch.exeNotFound", exeName, gamePath));
 			}
 		}
 		catch (Exception ex)
 		{
-			MessageBox.Show("Launch failed: " + ex.Message);
+			MessageBox.Show(Loc.T("launch.failed", ex.Message));
 		}
 	}
 }

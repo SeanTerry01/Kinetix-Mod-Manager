@@ -34,7 +34,7 @@ public partial class Form1
 	/// </summary>
 	private void CreateProfileFromCurrent()
 	{
-		string text = Interaction.InputBox("Enter name for this profile:", "Save Profile");
+		string text = Interaction.InputBox(Loc.T("profiles.savePrompt"), Loc.T("profiles.saveTitle"));
 		if (string.IsNullOrEmpty(text))
 		{
 			return;
@@ -48,10 +48,19 @@ public partial class Form1
 		{
 			modProfile.ModStates[allInstalledMod.UniqueId] = allInstalledMod.IsEnabled;
 		}
+		// Capture the current Skyrim/Fallout 4 load order (mod priority and plugin order) so applying the
+		// profile restores both.
+		if (IsBethesdaGame)
+		{
+			EnsureModPriorityList();
+			modProfile.ModPriority = new List<string>(_settings.ModPriority[_settings.ActiveGame]);
+			if (_settings.PluginOrder.TryGetValue(_settings.ActiveGame, out List<string>? plugins) && plugins != null)
+				modProfile.PluginOrder = new List<string>(plugins);
+		}
 		string contents = JsonConvert.SerializeObject(modProfile, Formatting.Indented);
 		File.WriteAllText(Path.Combine(profilesPath, text + ".json"), contents);
 		RefreshProfilesList();
-		Speak("Profile saved.");
+		Speak(Loc.T("profiles.saved"));
 	}
 
 	/// <summary>Scans the profiles directory and repopulates <c>listProfiles</c>.</summary>
@@ -105,12 +114,12 @@ public partial class Form1
 
 			if (listProfiles.Focused && listProfiles.SelectedItem != null)
 			{
-				Speak($"{listProfiles.SelectedItem}. {listProfiles.SelectedIndex + 1} of {listProfiles.Items.Count}");
+				Speak(Loc.T("profiles.listItemPos", listProfiles.SelectedItem, listProfiles.SelectedIndex + 1, listProfiles.Items.Count));
 			}
 		}
 		else if (listProfiles.Focused && oldIndex != -1)
 		{
-			Speak("List is empty.");
+			Speak(Loc.T("common.listEmpty"));
 		}
 		listProfiles.EndUpdate();
 	}
@@ -121,13 +130,13 @@ public partial class Form1
 	/// </summary>
 	private void ApplyProfile(ModProfile profile)
 	{
-		if (MessageBox.Show("Apply profile '" + profile.Name + "'? This will enable and disable mods to match the saved setup.", "Apply Profile", MessageBoxButtons.YesNo) == DialogResult.No)
+		if (MessageBox.Show(Loc.T("profiles.applyConfirm", profile.Name), Loc.T("profiles.applyTitle"), MessageBoxButtons.YesNo) == DialogResult.No)
 		{
 			return;
 		}
 		try
 		{
-			SetStatus("Applying profile...");
+			SetStatus(Loc.T("profiles.applying"));
 			bool flag = false;
 			bool flag2 = false;
 			foreach (StardewMod allInstalledMod in _allInstalledMods)
@@ -139,26 +148,14 @@ public partial class Form1
 				bool flag3 = profile.ModStates[allInstalledMod.UniqueId];
 				if (allInstalledMod.IsEnabled != flag3)
 				{
-					if ((_settings.ActiveGame == "SkyrimSE" || _settings.ActiveGame == "Fallout4") && !flag3)
-					{
-						string gameData = Path.Combine(_settings.CurrentGamePath, "Data");
-						ModFileSystem.DeployModFiles(allInstalledMod.FolderPath, gameData, false, LogError);
-						ModFileSystem.SyncPluginsFile(allInstalledMod.FolderPath, _settings.ActiveGame, false, LogError);
-					}
-
+					// Asset deployment and plugins.txt are reconciled once by RefreshModList at the end
+					// (a profile can flip many mods at once), so only the folder enable/disable happens here.
 					string path = Path.GetDirectoryName(allInstalledMod.FolderPath) ?? "";
 					string fileName = Path.GetFileName(allInstalledMod.FolderPath);
 					string text = (flag3 ? Path.Combine(path, fileName.StartsWith(".") ? fileName.Substring(1) : fileName) : Path.Combine(path, "." + fileName));
 					Directory.Move(allInstalledMod.FolderPath, text);
 					allInstalledMod.FolderPath = text;
 					allInstalledMod.IsEnabled = flag3;
-
-					if ((_settings.ActiveGame == "SkyrimSE" || _settings.ActiveGame == "Fallout4") && flag3)
-					{
-						string gameData = Path.Combine(_settings.CurrentGamePath, "Data");
-						ModFileSystem.DeployModFiles(allInstalledMod.FolderPath, gameData, true, LogError);
-						ModFileSystem.SyncPluginsFile(allInstalledMod.FolderPath, _settings.ActiveGame, true, LogError);
-					}
 
 					if (flag3)
 					{
@@ -170,11 +167,22 @@ public partial class Form1
 					}
 				}
 			}
+			// Restore the profile's saved load order (mod priority and plugin order) for Skyrim/Fallout 4.
+			// The RefreshModList call below then reconciles assets and rewrites plugins.txt accordingly.
+			if (IsBethesdaGame)
+			{
+				if (profile.ModPriority != null)
+					_settings.ModPriority[_settings.ActiveGame] = new List<string>(profile.ModPriority);
+				if (profile.PluginOrder != null)
+					_settings.PluginOrder[_settings.ActiveGame] = new List<string>(profile.PluginOrder);
+				if (profile.ModPriority != null || profile.PluginOrder != null)
+					_settings.Save();
+			}
 			if (!string.IsNullOrEmpty(profile.ThemeOverride) && Directory.Exists(Path.Combine(themesPath, profile.ThemeOverride)))
 			{
 				_settings.CurrentTheme = profile.ThemeOverride;
 				_settings.Save();
-				Speak("Theme switched to: " + profile.ThemeOverride);
+				Speak(Loc.T("profiles.themeSwitched", profile.ThemeOverride));
 			}
 			_ = RefreshModList(checkUpdates: false);
 			if (flag)
@@ -189,11 +197,11 @@ public partial class Form1
 			{
 				_soundEngine.Play("connect");
 			}
-			SetStatus("Profile applied: " + profile.Name);
+			SetStatus(Loc.T("profiles.applied", profile.Name));
 		}
 		catch (Exception ex)
 		{
-			MessageBox.Show("Failed to apply profile: " + ex.Message);
+			MessageBox.Show(Loc.T("profiles.applyFailed", ex.Message));
 		}
 	}
 }

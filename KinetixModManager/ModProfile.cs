@@ -18,6 +18,20 @@ public class ModProfile
 	/// </summary>
 	public string? ThemeOverride { get; set; }
 
+	/// <summary>
+	/// Skyrim SE / Fallout 4 mod priority order captured when the profile was saved (mod folder names,
+	/// highest priority first). <c>null</c> for Stardew profiles or profiles saved before load-order
+	/// support; applying such a profile leaves the current priority order untouched.
+	/// </summary>
+	public List<string>? ModPriority { get; set; }
+
+	/// <summary>
+	/// Skyrim SE / Fallout 4 plugin load order captured when the profile was saved (plugin file names in
+	/// load order). <c>null</c> for Stardew profiles or profiles saved before plugin-order support; applying
+	/// such a profile leaves the current plugin order untouched.
+	/// </summary>
+	public List<string>? PluginOrder { get; set; }
+
 	/// <inheritdoc/>
 	public override string ToString() => Name;
 }

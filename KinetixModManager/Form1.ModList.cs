@@ -53,7 +53,7 @@ public partial class Form1
 		{
 			if (!_isSettingsOpen)
 			{
-				SetStatus("Authentication Required");
+				SetStatus(Loc.T("status.authRequired"));
 				_soundEngine.Play("disconnect");
 				ShowSettings();
 			}
@@ -65,20 +65,20 @@ public partial class Form1
 		// their completion (CheckForUpdates) or by the finally below when none get launched.
 		if (checkUpdates && Interlocked.CompareExchange(ref _updateCheckRunning, 1, 0) != 0)
 		{
-			Speak("Update check already in progress.");
+			Speak(Loc.T("modlist.updateInProgress"));
 			return;
 		}
 		bool launchedChecks = false;
 		try
 		{
-		SetStatus("Connecting to Nexus...");
+		SetStatus(Loc.T("status.connecting"));
 		if (!(await ValidateNexusConnection()))
 		{
-			SetStatus("Authentication Failed - Check API Key");
+			SetStatus(Loc.T("status.authFailed"));
 			_soundEngine.Play("error");
 			return;
 		}
-		SetStatus("Connected as " + _nexusService.NexusUser);
+		SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser));
 		_soundEngine.Play("connect");
 		Invoke(delegate
 		{
@@ -104,7 +104,7 @@ public partial class Form1
 					listUpdates.EndUpdate();
 				}
 			});
-			MessageBox.Show("Mods path invalid.");
+			MessageBox.Show(Loc.T("modlist.modsPathInvalid"));
 			return;
 		}
 		string idMapPath = Path.Combine(AppSettings.AppDataFolder, "mod_id_map.json");
@@ -120,6 +120,14 @@ public partial class Form1
 		JObject nexusIdMap = (File.Exists(idMapPath) ? JObject.Parse(File.ReadAllText(idMapPath)) : new JObject()) ?? new JObject();
 		_allInstalledMods = ModFileSystem.ScanMods(_settings.CurrentModsPath, nexusIdMap, _settings, _settings.ActiveGame, LogError);
 		ModFileSystem.ResolveDependencies(_allInstalledMods, IsNewerVersion);
+		// Reconcile Skyrim/Fallout 4 asset deployment to the current enabled set and priority order, and
+		// refresh the conflict scan. Cheap when nothing changed (only files whose winner changed relink),
+		// so it is safe to run on every list rebuild and keeps the manifest and conflict counts current.
+		if (IsBethesdaGame)
+		{
+			SyncBethesdaDeployment();
+			SyncBethesdaPlugins();
+		}
 		HashSet<string> hashSet = new HashSet<string>(_allInstalledMods.Select(m => m.Category));
 		Invoke(delegate
 		{
@@ -144,6 +152,8 @@ public partial class Form1
 		Invoke(delegate
 		{
 			RebuildInstalledListBox();
+			RefreshModPriorityList();
+			RefreshPluginOrderList();
 			listInstalled.EndUpdate();
 
 			int oldSelectedIndex = listUpdates.SelectedIndex;
@@ -184,12 +194,12 @@ public partial class Form1
 				if (listUpdates.Focused && listUpdates.SelectedItem != null)
 				{
 					string itemText = listUpdates.SelectedItem.ToString() ?? "";
-					Speak($"{itemText}. {listUpdates.SelectedIndex + 1} of {listUpdates.Items.Count}");
+					Speak(Loc.T("common.itemPos", itemText, listUpdates.SelectedIndex + 1, listUpdates.Items.Count));
 				}
 			}
 			else if (listUpdates.Focused && oldSelectedIndex != -1)
 			{
-				Speak("List is empty.");
+				Speak(Loc.T("common.listEmpty"));
 			}
 			listUpdates.EndUpdate();
 
@@ -214,12 +224,12 @@ public partial class Form1
 		{
 			_isLoading = false;
 			_soundEngine.Play("load_complete");
-			Speak("No mods found with update sources to check.");
+			Speak(Loc.T("modlist.noUpdateSources"));
 			return;
 		}
 		_isLoading = true;
 		Interlocked.Exchange(ref _activeChecks, unitCount);
-		Speak("Checking for updates.");
+		Speak(Loc.T("modlist.checkingUpdates"));
 		_ = RunLoadingLoop();
 		launchedChecks = true;
 		if (runSmapi)
@@ -326,7 +336,7 @@ public partial class Form1
 		if (listInstalled.Focused && listInstalled.SelectedItem != null && !_suppressRebuildSpeak)
 		{
 			string itemText = listInstalled.SelectedItem.ToString() ?? "";
-			Speak($"{itemText}. {listInstalled.SelectedIndex + 1} of {listInstalled.Items.Count}");
+			Speak(Loc.T("common.itemPos", itemText, listInstalled.SelectedIndex + 1, listInstalled.Items.Count));
 		}
 		listInstalled.EndUpdate();
 	}
@@ -380,12 +390,12 @@ public partial class Form1
 
 			if (listBackups.Focused && listBackups.SelectedItem != null)
 			{
-				Speak($"{listBackups.SelectedItem}. {listBackups.SelectedIndex + 1} of {listBackups.Items.Count}");
+				Speak(Loc.T("common.itemPos", listBackups.SelectedItem, listBackups.SelectedIndex + 1, listBackups.Items.Count));
 			}
 		}
 		else if (listBackups.Focused && oldIndex != -1)
 		{
-			Speak("List is empty.");
+			Speak(Loc.T("common.listEmpty"));
 		}
 		listBackups.EndUpdate();
 	}
@@ -400,7 +410,7 @@ public partial class Form1
 	/// <summary>Prompts the user to enter or replace their Nexus Mods API key, then refreshes the mod list.</summary>
 	private void PromptForApiKey()
 	{
-		string text = Interaction.InputBox("Paste API Key:", "Nexus Login", _settings.ApiKey);
+		string text = Interaction.InputBox(Loc.T("login.pasteApiKey"), Loc.T("login.title"), _settings.ApiKey);
 		if (!string.IsNullOrEmpty(text))
 		{
 			_settings.ApiKey = text.Trim();
@@ -419,8 +429,8 @@ public partial class Form1
 		{
 			string currentId = stardewMod3.NexusID ?? stardewMod3.GitHubRepo ?? "";
 			string input = Interaction.InputBox(
-				$"Enter the Nexus Mod ID or GitHub Repo (owner/repo) for \"{stardewMod3.Name}\":",
-				"Link Mod to Update Source",
+				Loc.T("link.prompt", stardewMod3.Name),
+				Loc.T("link.title"),
 				currentId
 			).Trim();
 
@@ -491,7 +501,7 @@ public partial class Form1
 					{
 						if (isGitHub)
 						{
-							Speak("Updating mod details from GitHub...");
+							Speak(Loc.T("link.updatingGitHub"));
 							using var req = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{val}");
 							req.Headers.UserAgent.ParseAdd($"KinetixModManager/{NexusService.AppVersion}");
 							using var resp = await NexusService.HttpClient.SendAsync(req);
@@ -516,7 +526,7 @@ public partial class Form1
 						}
 						else
 						{
-							Speak("Updating mod details from Nexus...");
+							Speak(Loc.T("link.updatingNexus"));
 							var details = await _nexusService.GetModDetailsAsync(val);
 							if (details != null)
 							{
@@ -535,13 +545,13 @@ public partial class Form1
 						}
 					}
 
-					Speak("Mod linked successfully.");
+					Speak(Loc.T("link.success"));
 					_ = RefreshModList(checkUpdates: false);
 				}
 				catch (Exception ex)
 				{
-					MessageBox.Show("Failed to save Update Source: " + ex.Message, "Error");
-					Speak("Failed to link mod.");
+					MessageBox.Show(Loc.T("link.saveFailedBox", ex.Message), Loc.T("common.error"));
+					Speak(Loc.T("link.failed"));
 				}
 			}
 		}

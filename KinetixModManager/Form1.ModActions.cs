@@ -33,13 +33,13 @@ public partial class Form1
 	{
 		if (listInstalled.SelectedItem is StardewMod stardewMod)
 		{
-			string text = Interaction.InputBox("Assign category for " + stardewMod.Name + ":", "Change Category", stardewMod.Category);
+			string text = Interaction.InputBox(Loc.T("modactions.changeCategoryPrompt", stardewMod.Name), Loc.T("modactions.changeCategoryTitle"), stardewMod.Category);
 			if (!string.IsNullOrEmpty(text))
 			{
 				_settings.ModCategories[stardewMod.UniqueId] = text.Trim();
 				_settings.Save();
 				_ = RefreshModList(checkUpdates: false);
-				Speak($"Category for {stardewMod.Name} set to {text}.");
+				Speak(Loc.T("modactions.categorySet", stardewMod.Name, text));
 			}
 		}
 	}
@@ -55,12 +55,12 @@ public partial class Form1
 	{
 		if (!(listInstalled.SelectedItem is StardewMod mod))
 		{
-			Speak("No mod selected.");
+			Speak(Loc.T("common.noModSelected"));
 			return;
 		}
 		if (mod.IsGroup)
 		{
-			Speak("This is a mod group. Expand it and select an individual mod first.");
+			Speak(Loc.T("common.modGroupFirst"));
 			return;
 		}
 
@@ -68,8 +68,8 @@ public partial class Form1
 		string manifestPath = Path.Combine(mod.FolderPath, manifestName);
 		if (!File.Exists(manifestPath))
 		{
-			Speak($"No manifest file found for {mod.Name}.");
-			MessageBox.Show($"No manifest file ({manifestName}) was found for {mod.Name}.", "Manifest Not Found");
+			Speak(Loc.T("modactions.noManifestSpeak", mod.Name));
+			MessageBox.Show(Loc.T("modactions.noManifestBox", manifestName, mod.Name), Loc.T("modactions.noManifestTitle"));
 			return;
 		}
 
@@ -79,7 +79,7 @@ public partial class Form1
 			// from the updates list when its version now matches the latest. checkUpdates:false avoids
 			// re-running the full Nexus/GitHub update query.
 			_ = RefreshModList(checkUpdates: false);
-		}, "Manifest");
+		}, Loc.T("config.labelManifest"));
 	}
 
 	/// <summary>
@@ -92,24 +92,24 @@ public partial class Form1
 	{
 		if (!(listInstalled.SelectedItem is StardewMod mod))
 		{
-			Speak("No mod selected.");
+			Speak(Loc.T("common.noModSelected"));
 			return;
 		}
 		if (mod.IsGroup)
 		{
-			Speak("This is a mod group. Expand it and select an individual mod first.");
+			Speak(Loc.T("common.modGroupFirst"));
 			return;
 		}
 
 		string configPath = Path.Combine(mod.FolderPath, "config.json");
 		if (!File.Exists(configPath))
 		{
-			Speak($"No config file found for {mod.Name}. Most mods create their config file the first time the game runs with the mod enabled.");
-			MessageBox.Show($"No config.json was found for {mod.Name}.\n\nMany mods only create their config file the first time you launch the game with the mod enabled. Run the game once, then try again.", "Config Not Found");
+			Speak(Loc.T("modactions.noConfigSpeak", mod.Name));
+			MessageBox.Show(Loc.T("modactions.noConfigBox", mod.Name), Loc.T("modactions.noConfigTitle"));
 			return;
 		}
 
-		OpenConfigEditor(mod.Name, configPath, delegate { }, "Configuration");
+		OpenConfigEditor(mod.Name, configPath, delegate { }, Loc.T("config.labelConfiguration"));
 	}
 
 	/// <summary>
@@ -122,10 +122,10 @@ public partial class Form1
 		List<StardewMod> list = _allInstalledMods.Where((StardewMod m) => category == "All Categories" || m.Category == category).ToList();
 		if (list.Count == 0)
 		{
-			Speak("No mods in this category.");
+			Speak(Loc.T("modactions.noModsInCategory"));
 			return;
 		}
-		DialogResult dialogResult = MessageBox.Show($"Batch Action for category '{category}':\n\nYES: Enable all {list.Count} mods.\nNO: Disable all {list.Count} mods.\nCANCEL: Do nothing.", "Batch Category Management", MessageBoxButtons.YesNoCancel);
+		DialogResult dialogResult = MessageBox.Show(Loc.T("modactions.batchBox", category, list.Count), Loc.T("modactions.batchTitle"), MessageBoxButtons.YesNoCancel);
 		if (dialogResult == DialogResult.Cancel)
 		{
 			return;
@@ -133,7 +133,7 @@ public partial class Form1
 		bool flag = dialogResult == DialogResult.Yes;
 		try
 		{
-			SetStatus($"Batch {(flag ? "Enabling" : "Disabling")} {list.Count} mods...");
+			SetStatus(Loc.T("modactions.batchStatus", flag ? Loc.T("modactions.batchEnabling") : Loc.T("modactions.batchDisabling"), list.Count));
 			foreach (StardewMod item in list)
 			{
 				if (item.IsEnabled != flag)
@@ -155,11 +155,11 @@ public partial class Form1
 			{
 				_soundEngine.Play("disable");
 			}
-			Speak($"Batch action complete. {list.Count} mods {(flag ? "Enabled" : "Disabled")}.");
+			Speak(Loc.T("modactions.batchComplete", list.Count, flag ? Loc.T("modactions.batchEnabled") : Loc.T("modactions.batchDisabled")));
 		}
 		catch (Exception ex)
 		{
-			MessageBox.Show("Batch action failed: " + ex.Message);
+			MessageBox.Show(Loc.T("modactions.batchFailedBox", ex.Message));
 		}
 	}
 
@@ -175,10 +175,10 @@ public partial class Form1
 		}
 		if (stardewMod.Dependencies.Count == 0)
 		{
-			MessageBox.Show("No dependencies.");
+			MessageBox.Show(Loc.T("modactions.noDependencies"));
 			return;
 		}
-		StringBuilder stringBuilder = new StringBuilder("Dependencies for " + stardewMod.Name + ":\n");
+		StringBuilder stringBuilder = new StringBuilder(Loc.T("modactions.dependenciesHeader", stardewMod.Name));
 		foreach (ModDependency dependency in stardewMod.Dependencies)
 		{
 			StringBuilder stringBuilder2 = stringBuilder;
@@ -186,13 +186,13 @@ public partial class Form1
 			handler.AppendLiteral("- ");
 			handler.AppendFormatted(dependency.UniqueId);
 			handler.AppendLiteral(": ");
-			handler.AppendFormatted(dependency.IsPresent ? (dependency.IsEnabled ? (dependency.IsNewEnough ? "OK" : "Old") : "Disabled") : "Missing");
+			handler.AppendFormatted(dependency.IsPresent ? (dependency.IsEnabled ? (dependency.IsNewEnough ? Loc.T("modactions.depOK") : Loc.T("modactions.depOld")) : Loc.T("modactions.disabled")) : Loc.T("modactions.depMissing"));
 			handler.AppendLiteral(" (");
-			handler.AppendFormatted(dependency.IsRequired ? "Req" : "Opt");
+			handler.AppendFormatted(dependency.IsRequired ? Loc.T("modactions.depReq") : Loc.T("modactions.depOpt"));
 			handler.AppendLiteral(")");
 			stringBuilder2.AppendLine(ref handler);
 		}
-		MessageBox.Show(stringBuilder.ToString(), "Dependencies");
+		MessageBox.Show(stringBuilder.ToString(), Loc.T("modactions.dependenciesTitle"));
 	}
 
 	/// <summary>
@@ -206,20 +206,20 @@ public partial class Form1
 			List<ModDependency> list = stardewMod.Dependencies.Where((ModDependency d) => d.IsRequired && !d.IsPresent).ToList();
 			if (list.Count == 0)
 			{
-				Speak("No missing required dependencies for this mod.");
+				Speak(Loc.T("modactions.noMissingDeps"));
 				return;
 			}
 			ModDependency modDependency = list[0];
-			if (MessageBox.Show("Search for missing dependency: " + modDependency.UniqueId + "?", "Quick-Fix", MessageBoxButtons.YesNo) == DialogResult.Yes)
+			if (MessageBox.Show(Loc.T("modactions.searchDepConfirm", modDependency.UniqueId), Loc.T("modactions.quickFixTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 			{
-				mainTabs.SelectedIndex = (int)AppTab.Discovery;
+				SelectTab(AppTab.Discovery);
 				txtSearch.Text = modDependency.UniqueId;
 				_ = RunDiscovery();
 			}
 		}
 		else
 		{
-			if (mainTabs.SelectedIndex != (int)AppTab.SmapiLog || listLog.SelectedItem == null)
+			if (CurrentTab() != AppTab.SmapiLog || listLog.SelectedItem == null)
 			{
 				return;
 			}
@@ -228,9 +228,9 @@ public partial class Form1
 			string text = LogAnalyzer.ExtractMissingModId(line);
 			if (!string.IsNullOrEmpty(text))
 			{
-				if (MessageBox.Show("Search for missing dependency: " + text + "?", "Quick-Fix from Log", MessageBoxButtons.YesNo) == DialogResult.Yes)
+				if (MessageBox.Show(Loc.T("modactions.searchDepConfirm", text), Loc.T("modactions.quickFixLogTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 				{
-					mainTabs.SelectedIndex = (int)AppTab.Discovery;
+					SelectTab(AppTab.Discovery);
 					txtSearch.Text = text;
 					_ = RunDiscovery();
 				}
@@ -238,8 +238,8 @@ public partial class Form1
 			}
 			// Otherwise explain what the line means and how to fix it.
 			string diagnosis = LogAnalyzer.Diagnose(line);
-			Speak("Diagnosing log entry.");
-			MessageBox.Show(diagnosis, "Diagnose Log Entry");
+			Speak(Loc.T("modactions.diagnosing"));
+			MessageBox.Show(diagnosis, Loc.T("modactions.diagnoseTitle"));
 		}
 	}
 
@@ -258,25 +258,13 @@ public partial class Form1
 			string path = Path.GetDirectoryName(stardewMod.FolderPath) ?? "";
 			string fileName = Path.GetFileName(stardewMod.FolderPath);
 			string text = (stardewMod.IsEnabled ? Path.Combine(path, "." + fileName) : Path.Combine(path, fileName.StartsWith(".") ? fileName.Substring(1) : fileName));
-			
-			if ((_settings.ActiveGame == "SkyrimSE" || _settings.ActiveGame == "Fallout4") && stardewMod.IsEnabled)
-			{
-				string gameData = Path.Combine(_settings.CurrentGamePath, "Data");
-				ModFileSystem.DeployModFiles(stardewMod.FolderPath, gameData, false, LogError);
-				ModFileSystem.SyncPluginsFile(stardewMod.FolderPath, _settings.ActiveGame, false, LogError);
-			}
 
 			Directory.Move(stardewMod.FolderPath, text);
 			stardewMod.FolderPath = text;
 			stardewMod.IsEnabled = !stardewMod.IsEnabled;
 
-			if ((_settings.ActiveGame == "SkyrimSE" || _settings.ActiveGame == "Fallout4") && stardewMod.IsEnabled)
-			{
-				string gameData = Path.Combine(_settings.CurrentGamePath, "Data");
-				ModFileSystem.DeployModFiles(stardewMod.FolderPath, gameData, true, LogError);
-				ModFileSystem.SyncPluginsFile(stardewMod.FolderPath, _settings.ActiveGame, true, LogError);
-			}
-
+			// Asset deployment and plugins.txt are reconciled inside RefreshModList, which re-scans the
+			// toggled enabled set and rewrites both for Skyrim/Fallout 4.
 			_ = RefreshModList(checkUpdates: false);
 			if (stardewMod.IsEnabled)
 			{
@@ -286,11 +274,11 @@ public partial class Form1
 			{
 				_soundEngine.Play("disable");
 			}
-			SetStatus(stardewMod.Name + " is now " + (stardewMod.IsEnabled ? "Enabled" : "Disabled"));
+			SetStatus(Loc.T("modactions.toggleStatus", stardewMod.Name, stardewMod.IsEnabled ? Loc.T("modactions.enabled") : Loc.T("modactions.disabled")));
 		}
 		catch (Exception ex)
 		{
-			MessageBox.Show("Toggle failed: " + ex.Message);
+			MessageBox.Show(Loc.T("modactions.toggleFailedBox", ex.Message));
 		}
 	}
 
@@ -300,28 +288,23 @@ public partial class Form1
 	/// </summary>
 	private void DeleteSelectedMod()
 	{
-		if (listInstalled.SelectedItem is StardewMod stardewMod && MessageBox.Show("Are you sure you want to PERMANENTLY DELETE " + stardewMod.Name + "?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation) == DialogResult.Yes)
+		if (listInstalled.SelectedItem is StardewMod stardewMod && MessageBox.Show(Loc.T("modactions.deleteConfirm", stardewMod.Name), Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation) == DialogResult.Yes)
 		{
 			try
 			{
 				BackupMod(stardewMod.FolderPath, stardewMod.Name + "_Delete");
-				
-				if (_settings.ActiveGame == "SkyrimSE" || _settings.ActiveGame == "Fallout4")
-				{
-					string gameData = Path.Combine(_settings.CurrentGamePath, "Data");
-					ModFileSystem.DeployModFiles(stardewMod.FolderPath, gameData, false, LogError);
-					ModFileSystem.SyncPluginsFile(stardewMod.FolderPath, _settings.ActiveGame, false, LogError);
-				}
 
 				Directory.Delete(stardewMod.FolderPath, recursive: true);
+				// RefreshModList below re-scans without the deleted mod and reconciles deployment and
+				// plugins.txt, pruning its files/plugins and restoring any provider it had overridden.
 				_soundEngine.Play("disable");
-				SetStatus("Deleted " + stardewMod.Name);
+				SetStatus(Loc.T("modactions.deletedStatus", stardewMod.Name));
 				_ = RefreshModList(checkUpdates: false);
 			}
 			catch (Exception ex)
 			{
 				_soundEngine.Play("error");
-				MessageBox.Show("Failed to delete mod: " + ex.Message);
+				MessageBox.Show(Loc.T("modactions.deleteFailedBox", ex.Message));
 			}
 		}
 	}
@@ -329,7 +312,7 @@ public partial class Form1
 	/// <summary>Permanently deletes the selected backup archive after user confirmation.</summary>
 	private void DeleteSelectedBackup()
 	{
-		if (listBackups.SelectedItem is BackupItem backupItem && MessageBox.Show("Permanently delete backup " + backupItem.Name + "?", "Confirm Delete", MessageBoxButtons.YesNo) == DialogResult.Yes)
+		if (listBackups.SelectedItem is BackupItem backupItem && MessageBox.Show(Loc.T("modactions.deleteBackupConfirm", backupItem.Name), Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 		{
 			try
 			{
@@ -339,7 +322,7 @@ public partial class Form1
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show("Delete failed: " + ex.Message);
+				MessageBox.Show(Loc.T("modactions.deleteBackupFailedBox", ex.Message));
 			}
 		}
 	}

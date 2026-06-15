@@ -44,6 +44,8 @@ Source: "bin\Release\net10.0-windows\win-x64\publish\*.dll"; DestDir: "{app}"; F
 Source: "bin\Release\net10.0-windows\win-x64\publish\MANUAL.md"; DestDir: "{app}"; Flags: ignoreversion
 ; Changelog / release notes
 Source: "bin\Release\net10.0-windows\win-x64\publish\CHANGELOG.md"; DestDir: "{app}"; Flags: ignoreversion
+; UI language files (en.json plus any community translations)
+Source: "bin\Release\net10.0-windows\win-x64\publish\lang\*"; DestDir: "{app}\lang"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 ; Sound themes and initial folders - using skipifsourcedoesntexist to allow empty folders
 Source: "bin\Release\net10.0-windows\win-x64\publish\sounds\*"; DestDir: "{app}\sounds"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "bin\Release\net10.0-windows\win-x64\publish\profiles\*"; DestDir: "{app}\profiles"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist

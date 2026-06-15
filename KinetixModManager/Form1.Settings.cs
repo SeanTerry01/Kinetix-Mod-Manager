@@ -41,7 +41,7 @@ public partial class Form1
 		_isSettingsOpen = true;
 		Form f = new Form
 		{
-			Text = "Settings - Escape to Cancel",
+			Text = Loc.T("settings.title"),
 			Size = new Size(500, 800),
 			StartPosition = FormStartPosition.CenterScreen,
 			KeyPreview = true
@@ -50,12 +50,12 @@ public partial class Form1
 		{
 			Dock = DockStyle.Fill,
 			Padding = new Padding(15),
-			RowCount = 14
+			RowCount = 15
 		};
 
 		tableLayoutPanel.Controls.Add(new Label
 		{
-			Text = "Configure Paths for Game:",
+			Text = Loc.T("settings.configurePaths") + ":",
 			AutoSize = true
 		}, 0, 0);
 
@@ -64,7 +64,7 @@ public partial class Form1
 			DropDownStyle = ComboBoxStyle.DropDownList,
 			Width = 350,
 			Font = new Font("Segoe UI", 10f),
-			AccessibleName = "Configure Paths for Game"
+			AccessibleName = Loc.T("settings.configurePaths")
 		};
 		cmbSettingsGame.Items.AddRange(new string[] { "Stardew Valley", "Skyrim Special Edition", "Fallout 4" });
 		cmbSettingsGame.SelectedItem = _settings.ActiveGame switch
@@ -77,7 +77,7 @@ public partial class Form1
 
 		tableLayoutPanel.Controls.Add(new Label
 		{
-			Text = "Mods Folder Path:",
+			Text = Loc.T("settings.modsPath") + ":",
 			AutoSize = true,
 			Padding = new Padding(0, 10, 0, 0)
 		}, 0, 2);
@@ -91,11 +91,11 @@ public partial class Form1
 		{
 			Width = 350,
 			Font = new Font("Segoe UI", 10f),
-			AccessibleName = "Mods Folder Path"
+			AccessibleName = Loc.T("settings.modsPath")
 		};
 		Button btnBrowseMods = new Button
 		{
-			Text = "Browse",
+			Text = Loc.T("common.browse"),
 			Left = 360,
 			Width = 80
 		};
@@ -112,7 +112,7 @@ public partial class Form1
 
 		Label lblGamePath = new Label
 		{
-			Text = "Game Install Directory:",
+			Text = Loc.T("settings.gamePath") + ":",
 			AutoSize = true,
 			Padding = new Padding(0, 10, 0, 0)
 		};
@@ -127,11 +127,11 @@ public partial class Form1
 		{
 			Width = 350,
 			Font = new Font("Segoe UI", 10f),
-			AccessibleName = "Game Install Directory"
+			AccessibleName = Loc.T("settings.gamePath")
 		};
 		Button btnBrowseGame = new Button
 		{
-			Text = "Browse",
+			Text = Loc.T("common.browse"),
 			Left = 360,
 			Width = 80
 		};
@@ -179,12 +179,12 @@ public partial class Form1
 			tGamePath.Text = tempGamePaths.TryGetValue(newGameKey, out string? gp) ? gp : "";
 			
 			updateVisibility();
-			Speak($"Editing paths for {cmbSettingsGame.SelectedItem}");
+			Speak(Loc.T("settings.editingPaths", cmbSettingsGame.SelectedItem));
 		};
 
 		tableLayoutPanel.Controls.Add(new Label
 		{
-			Text = "Nexus API Key:",
+			Text = Loc.T("settings.apiKey") + ":",
 			AutoSize = true,
 			Padding = new Padding(0, 10, 0, 0)
 		}, 0, 6);
@@ -193,7 +193,7 @@ public partial class Form1
 			Text = _settings.ApiKey,
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 10f),
-			AccessibleName = "Nexus API Key"
+			AccessibleName = Loc.T("settings.apiKey")
 		};
 		tableLayoutPanel.Controls.Add(tKey, 0, 7);
 
@@ -206,45 +206,45 @@ public partial class Form1
 		};
 		CheckBox cSplash = new CheckBox
 		{
-			Text = "Show Splash Screen on Startup",
+			Text = Loc.T("settings.showSplash"),
 			Checked = _settings.ShowSplashScreen,
 			AutoSize = true,
-			AccessibleName = "Show Splash Screen"
+			AccessibleName = Loc.T("settings.showSplashName")
 		};
 		CheckBox cRandomLogo = new CheckBox
 		{
-			Text = "Random Logo at Startup",
+			Text = Loc.T("settings.randomLogo"),
 			Checked = _settings.RandomLogoStartup,
 			AutoSize = true,
-			AccessibleName = "Random Logo Startup",
+			AccessibleName = Loc.T("settings.randomLogoName"),
 			Visible = _settings.ShowSplashScreen
 		};
 		CheckBox cUpdates = new CheckBox
 		{
-			Text = "Check for Mod Updates at Startup",
+			Text = Loc.T("settings.checkUpdates"),
 			Checked = _settings.CheckForUpdatesAtStartup,
 			AutoSize = true,
-			AccessibleName = "Check Updates at Startup"
+			AccessibleName = Loc.T("settings.checkUpdatesName")
 		};
 		cSplash.CheckedChanged += delegate
 		{
-			Speak(cSplash.Checked ? "Splash Screen Enabled" : "Splash Screen Disabled");
+			Speak(cSplash.Checked ? Loc.T("settings.splashOn") : Loc.T("settings.splashOff"));
 			cRandomLogo.Visible = cSplash.Checked;
 		};
 		cRandomLogo.CheckedChanged += delegate
 		{
-			Speak(cRandomLogo.Checked ? "Random Logo Enabled" : "Random Logo Disabled");
+			Speak(cRandomLogo.Checked ? Loc.T("settings.randomLogoOn") : Loc.T("settings.randomLogoOff"));
 		};
 		cUpdates.CheckedChanged += delegate
 		{
-			Speak(cUpdates.Checked ? "Auto-updates Enabled" : "Auto-updates Disabled");
+			Speak(cUpdates.Checked ? Loc.T("settings.updatesOn") : Loc.T("settings.updatesOff"));
 		};
 		flowLayoutPanel.Controls.AddRange(cSplash, cRandomLogo, cUpdates);
 		tableLayoutPanel.Controls.Add(flowLayoutPanel, 0, 8);
 
 		tableLayoutPanel.Controls.Add(new Label
 		{
-			Text = "Select Specific Logo:",
+			Text = Loc.T("settings.selectLogo") + ":",
 			AutoSize = true,
 			Padding = new Padding(0, 5, 0, 0)
 		}, 0, 9);
@@ -256,7 +256,7 @@ public partial class Form1
 		{
 			DropDownStyle = ComboBoxStyle.DropDownList,
 			Width = 300,
-			AccessibleName = "Select Specific Logo"
+			AccessibleName = Loc.T("settings.selectLogo")
 		};
 		cmbLogo.SelectedIndexChanged += delegate
 		{
@@ -283,7 +283,7 @@ public partial class Form1
 		};
 		flowLayoutPanel2.Controls.Add(new Label
 		{
-			Text = "Sound Volume (0-100):",
+			Text = Loc.T("settings.volume"),
 			AutoSize = true,
 			Padding = new Padding(0, 5, 0, 0)
 		});
@@ -304,7 +304,7 @@ public partial class Form1
 		};
 		flowLayoutPanel3.Controls.Add(new Label
 		{
-			Text = "Max Backups per Mod:",
+			Text = Loc.T("settings.maxBackups"),
 			AutoSize = true,
 			Padding = new Padding(0, 5, 0, 0)
 		});
@@ -325,7 +325,7 @@ public partial class Form1
 		};
 		flowLayoutPanel4.Controls.Add(new Label
 		{
-			Text = "Current Audio Theme:",
+			Text = Loc.T("settings.currentTheme"),
 			AutoSize = true,
 			Padding = new Padding(0, 5, 0, 0)
 		});
@@ -346,11 +346,11 @@ public partial class Form1
 		// dropdown is disabled. When checked, the dropdown selection is honoured and persists.
 		CheckBox cManualTheme = new CheckBox
 		{
-			Text = "Set theme manually",
+			Text = Loc.T("settings.manualTheme"),
 			AutoSize = true,
 			Checked = _settings.AllowManualTheme,
 			Padding = new Padding(10, 4, 0, 0),
-			AccessibleName = "Set sound theme manually instead of following the loaded game"
+			AccessibleName = Loc.T("settings.manualThemeName")
 		};
 		cTheme.Enabled = _settings.AllowManualTheme;
 		cManualTheme.CheckedChanged += delegate
@@ -364,8 +364,8 @@ public partial class Form1
 				RefreshLogoList(gameTheme);
 			}
 			Speak(cManualTheme.Checked
-				? "Set theme manually, checked. You can now choose a sound theme."
-				: "Set theme manually, unchecked. Sound theme follows the loaded game.");
+				? Loc.T("settings.manualThemeOn")
+				: Loc.T("settings.manualThemeOff"));
 		};
 		// Checkbox sits before the theme dropdown so it reads and tabs first.
 		flowLayoutPanel4.Controls.Add(cManualTheme);
@@ -373,6 +373,42 @@ public partial class Form1
 
 		tableLayoutPanel.Controls.Add(flowLayoutPanel4, 0, 13);
 		RefreshLogoList(_settings.CurrentTheme);
+
+		FlowLayoutPanel flowLang = new FlowLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			FlowDirection = FlowDirection.LeftToRight,
+			Padding = new Padding(0, 5, 0, 0),
+			AutoSize = true
+		};
+		flowLang.Controls.Add(new Label
+		{
+			Text = Loc.T("settings.language") + ":",
+			AutoSize = true,
+			Padding = new Padding(0, 5, 0, 0)
+		});
+		ComboBox cmbLanguage = new ComboBox
+		{
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			Width = 220,
+			AccessibleName = Loc.T("settings.language")
+		};
+		// "Automatic (follow Windows)" first, then every language file shipped in the lang/ folder.
+		cmbLanguage.Items.Add(new LanguageChoice { Code = "", Display = Loc.T("settings.languageAuto") });
+		foreach (LanguageChoice choice in Loc.AvailableLanguages())
+			cmbLanguage.Items.Add(choice);
+		cmbLanguage.SelectedIndex = 0;
+		for (int i = 1; i < cmbLanguage.Items.Count; i++)
+		{
+			if (cmbLanguage.Items[i] is LanguageChoice lc &&
+				lc.Code.Equals(_settings.Language, StringComparison.OrdinalIgnoreCase))
+			{
+				cmbLanguage.SelectedIndex = i;
+				break;
+			}
+		}
+		flowLang.Controls.Add(cmbLanguage);
+		tableLayoutPanel.Controls.Add(flowLang, 0, 14);
 
 		FlowLayoutPanel flowLayoutPanel5 = new FlowLayoutPanel
 		{
@@ -382,7 +418,7 @@ public partial class Form1
 		};
 		Button button3 = new Button
 		{
-			Text = "Save Settings",
+			Text = Loc.T("settings.save"),
 			Width = 120,
 			Height = 35
 		};
@@ -396,16 +432,16 @@ public partial class Form1
 				string activeMods = tempModsPaths[_settings.ActiveGame];
 				if (!string.IsNullOrEmpty(activeMods) && !Directory.Exists(activeMods))
 				{
-					Speak("Error: Active game mods folder path is invalid.");
-					MessageBox.Show("The active game mods path does not exist.");
+					Speak(Loc.T("settings.errModsInvalidSpeak"));
+					MessageBox.Show(Loc.T("settings.errModsInvalidBox"));
 					return;
 				}
 
 				string activeGamePath = tempGamePaths[_settings.ActiveGame];
 				if (_settings.ActiveGame != "StardewValley" && !string.IsNullOrEmpty(activeGamePath) && !Directory.Exists(activeGamePath))
 				{
-					Speak("Error: Active game install directory is invalid.");
-					MessageBox.Show("The active game install directory does not exist.");
+					Speak(Loc.T("settings.errGameInvalidSpeak"));
+					MessageBox.Show(Loc.T("settings.errGameInvalidBox"));
 					return;
 				}
 			}
@@ -413,8 +449,8 @@ public partial class Form1
 			string text2 = tKey.Text.Trim();
 			if (string.IsNullOrEmpty(text2))
 			{
-				Speak("Error: API Key is required.");
-				MessageBox.Show("Please enter your Nexus API Key.");
+				Speak(Loc.T("settings.errApiKeySpeak"));
+				MessageBox.Show(Loc.T("settings.errApiKeyBox"));
 			}
 			else
 			{
@@ -432,6 +468,9 @@ public partial class Form1
 				_settings.CheckForUpdatesAtStartup = cUpdates.Checked;
 				_settings.SoundVolume = (int)nVol.Value;
 				_settings.MaxBackupsPerMod = (int)nPrune.Value;
+				string chosenLang = (cmbLanguage.SelectedItem as LanguageChoice)?.Code ?? "";
+				bool langChanged = !chosenLang.Equals(_settings.Language, StringComparison.OrdinalIgnoreCase);
+				_settings.Language = chosenLang;
 				_settings.AllowManualTheme = cManualTheme.Checked;
 				_settings.CurrentTheme = cManualTheme.Checked
 					? (cTheme.SelectedItem?.ToString() ?? "Default")
@@ -446,18 +485,20 @@ public partial class Form1
 						_ = RefreshModList(checkUpdates: false);
 					});
 				});
-				Speak("Settings saved.");
+				Speak(langChanged
+					? Loc.T("settings.saved") + " " + Loc.T("settings.languageRestart")
+					: Loc.T("settings.saved"));
 			}
 		};
 		Button button4 = new Button
 		{
-			Text = "Cancel",
+			Text = Loc.T("common.cancel"),
 			Width = 100,
 			Height = 35
 		};
 		button4.Click += delegate
 		{
-			Speak("Changes cancelled.");
+			Speak(Loc.T("common.changesCancelled"));
 			f.Close();
 		};
 		flowLayoutPanel5.Controls.AddRange(button3, button4);
@@ -471,7 +512,7 @@ public partial class Form1
 		{
 			if (pe.KeyCode == Keys.Escape)
 			{
-				Speak("Changes cancelled.");
+				Speak(Loc.T("common.changesCancelled"));
 				f.Close();
 			}
 		};
