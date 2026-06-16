@@ -84,7 +84,7 @@ public partial class Form1
 
 		if (game == "StardewValley")
 		{
-			string gameFolder = DetectGameFolder("StardewValley");
+			string gameFolder = ResolveStardewFolder();
 			string smapiPath = Path.Combine(gameFolder, "StardewModdingAPI.exe");
 			loaderInstalled = File.Exists(smapiPath);
 
@@ -218,7 +218,7 @@ public partial class Form1
 				// handled inside the loop via the script-extender installer.
 				if (!loaderInstalled && game == "StardewValley")
 				{
-					loaderInstalled = await InstallSmapiAsync(DetectGameFolder("StardewValley"));
+					loaderInstalled = await InstallSmapiAsync(ResolveStardewFolder());
 				}
 
 				foreach (var item in suiteItems)
@@ -520,9 +520,28 @@ public partial class Form1
 		}
 	}
 
+	/// <summary>
+	/// Resolves the Stardew Valley install folder. SMAPI's Mods folder lives inside the game folder, so
+	/// the parent of the configured mods path is the most reliable source — it's correct even when the
+	/// game is on a non-default Steam library drive, where registry/Steam-default detection can miss it.
+	/// Falls back to registry/default detection only when the mods-path parent isn't a real game folder.
+	/// </summary>
+	private string ResolveStardewFolder()
+	{
+		string parent = Path.GetDirectoryName(_settings.CurrentModsPath) ?? "";
+		if (!string.IsNullOrEmpty(parent) && File.Exists(Path.Combine(parent, "Stardew Valley.exe")))
+			return parent;
+		return DetectGameFolder("StardewValley");
+	}
+
 	private bool HasModUniqueId(string uniqueId)
 	{
-		return _allInstalledMods.Any(m => m.UniqueId.Equals(uniqueId, StringComparison.OrdinalIgnoreCase));
+		// SMAPI mod IDs are namespaced as "Author.ModName" (e.g. "shoaib.stardewaccess",
+		// "Shockah.Kokoro", "Shockah.ProjectFluent"), so an exact match against a bare key like
+		// "StardewAccess" never succeeds. Match either the full ID or its trailing "<Author>." segment.
+		return _allInstalledMods.Any(m =>
+			m.UniqueId.Equals(uniqueId, StringComparison.OrdinalIgnoreCase) ||
+			m.UniqueId.EndsWith("." + uniqueId, StringComparison.OrdinalIgnoreCase));
 	}
 
 	private bool HasModNameContains(string subStr)
