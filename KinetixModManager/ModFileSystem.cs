@@ -800,7 +800,8 @@ public static class ModFileSystem
 		string? nexusId = null,
 		NexusService? nexusService = null,
 		string? gitHubRepo = null,
-		string? currentGamePath = null)
+		string? currentGamePath = null,
+		Func<FomodConfig, Task<FomodSelection?>>? fomodSelector = null)
 	{
 		string tempDir = Path.Combine(Path.GetTempPath(), "Extract_" + Path.GetRandomFileName());
 		try
@@ -835,105 +836,32 @@ public static class ModFileSystem
 
 			if (activeGame != "StardewValley")
 			{
-				string targetFolderName = Path.GetFileNameWithoutExtension(zipPath);
-				string sourceFolder = FindEffectiveModRoot(tempDir);
-				string destModFolder = Path.Combine(modsPath, targetFolderName);
-
-				// Backup and remove old version
-				GameMod? existing = null;
-				if (!string.IsNullOrEmpty(nexusId))
+				// FOMOD scripted installers (e.g. Immersive Sounds Compendium) carry a fomod/ModuleConfig.xml
+				// describing option groups and conditional file copies. When one is present, run it through the
+				// FOMOD pipeline (the caller-supplied wizard, or auto-selected defaults) instead of the flat copy.
+				if (FomodInstaller.TryFindFomod(tempDir, out string moduleConfigPath, out string? infoXmlPath, out string fomodRoot))
 				{
-					existing = installedMods.FirstOrDefault(m => m.NexusID == nexusId);
-				}
-				if (existing == null)
-				{
-					existing = installedMods.FirstOrDefault(m => m.Name.Equals(targetFolderName, StringComparison.OrdinalIgnoreCase) ||
-																	  m.UniqueId.Equals(targetFolderName, StringComparison.OrdinalIgnoreCase));
-				}
+					FomodConfig fomodConfig = FomodParser.ParseFile(moduleConfigPath);
+					FomodInfo fomodInfo = infoXmlPath != null ? FomodParser.ParseInfo(infoXmlPath) : new FomodInfo();
+					Func<string, FomodFileState> fileState = BuildFomodFileStateProvider(installedMods);
 
-				if (existing != null && Directory.Exists(existing.FolderPath))
-				{
-					// Remove the old version's plugin entries; its deployed asset files are reconciled by
-					// the caller's SyncDeployment pass after extraction (which relinks the new contents and
-					// prunes any files this version drops), so no per-file asset undeploy is needed here.
-					if (activeGame != "StardewValley" && !string.IsNullOrEmpty(currentGamePath))
-					{
-						SyncPluginsFile(existing.FolderPath, activeGame, false, logError);
-					}
+					FomodSelection? selection = fomodSelector != null
+						? await fomodSelector(fomodConfig)
+						: FomodInstaller.ComputeDefaultSelection(fomodConfig, fileState);
+					if (selection == null)
+						throw new OperationCanceledException("FOMOD installation was cancelled.");
 
-					CreateBackup(existing.FolderPath, targetFolderName, backupsPath);
-					PruneBackups(targetFolderName, backupsPath, maxBackups);
-					Directory.Delete(existing.FolderPath, recursive: true);
+					string stagingDir = Path.Combine(tempDir, "__fomod_stage__");
+					FomodInstaller.BuildStaging(fomodConfig, selection, fomodRoot, stagingDir, fileState);
+
+					return await FinalizeBethesdaModAsync(
+						stagingDir, Path.GetFileNameWithoutExtension(zipPath), zipPath, modsPath, installedMods,
+						backupsPath, maxBackups, activeGame, logError, nexusId, nexusService, gitHubRepo, currentGamePath, fomodInfo);
 				}
 
-				if (Directory.Exists(destModFolder))
-					Directory.Delete(destModFolder, recursive: true);
-
-				Directory.CreateDirectory(destModFolder);
-				bool treatAsRoot = false;
-				string[] rootDLLs = { "d3dx9_42.dll", "tbb.dll", "tbbmalloc.dll", "binkw64.dll" };
-				foreach (string dll in rootDLLs)
-				{
-					if (File.Exists(Path.Combine(sourceFolder, dll)))
-					{
-						treatAsRoot = true;
-						break;
-					}
-				}
-
-				if (treatAsRoot && !Directory.Exists(Path.Combine(sourceFolder, "Root")))
-				{
-					string rootDest = Path.Combine(destModFolder, "Root");
-					Directory.CreateDirectory(rootDest);
-					foreach (string dir in Directory.GetDirectories(sourceFolder, "*", SearchOption.AllDirectories))
-						Directory.CreateDirectory(dir.Replace(sourceFolder, rootDest));
-					foreach (string file in Directory.GetFiles(sourceFolder, "*.*", SearchOption.AllDirectories))
-						File.Copy(file, file.Replace(sourceFolder, rootDest), overwrite: true);
-				}
-				else
-				{
-					foreach (string dir in Directory.GetDirectories(sourceFolder, "*", SearchOption.AllDirectories))
-						Directory.CreateDirectory(dir.Replace(sourceFolder, destModFolder));
-					foreach (string file in Directory.GetFiles(sourceFolder, "*.*", SearchOption.AllDirectories))
-						File.Copy(file, file.Replace(sourceFolder, destModFolder), overwrite: true);
-				}
-
-				// Generate manifest
-				string manifestPath = Path.Combine(destModFolder, ".manager_manifest.json");
-				string mName = targetFolderName;
-				string mVersion = ExtractVersionFromFileName(zipPath, nexusId) ?? "1.0.0";
-				string mAuthor = "Unknown";
-				string mDesc = "Installed local mod.";
-
-				if (!string.IsNullOrEmpty(nexusId) && nexusService != null)
-				{
-					try
-					{
-						var details = await nexusService.GetModDetailsAsync(nexusId);
-						if (details != null)
-						{
-							mName = details["name"]?.ToString() ?? mName;
-							mVersion = details["version"]?.ToString() ?? mVersion;
-							mAuthor = details["author"]?.ToString() ?? mAuthor;
-							mDesc = details["summary"]?.ToString() ?? mDesc;
-						}
-					}
-					catch { }
-				}
-
-				var manifest = new JObject
-				{
-					["Name"] = mName,
-					["Version"] = mVersion,
-					["Author"] = mAuthor,
-					["UniqueID"] = targetFolderName,
-					["Description"] = mDesc,
-					["NexusID"] = nexusId,
-					["GitHubRepo"] = gitHubRepo
-				};
-				File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
-
-				return targetFolderName;
+				return await FinalizeBethesdaModAsync(
+					FindEffectiveModRoot(tempDir), Path.GetFileNameWithoutExtension(zipPath), zipPath, modsPath, installedMods,
+					backupsPath, maxBackups, activeGame, logError, nexusId, nexusService, gitHubRepo, currentGamePath, null);
 			}
 
 			// Stardew Valley Manifest logic
@@ -1002,6 +930,148 @@ public static class ModFileSystem
 		{
 			try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, recursive: true); } catch { }
 		}
+	}
+
+	/// <summary>
+	/// Finalises a prepared Bethesda mod folder: backs up and removes any prior version, copies the
+	/// prepared <paramref name="sourceFolder"/> into the mods directory, and writes the manager manifest.
+	/// Shared by the normal flat-copy install and the FOMOD pipeline. When <paramref name="fomodInfo"/>
+	/// is supplied its Name/Author/Version seed the manifest (a Nexus lookup still overrides when available).
+	/// </summary>
+	private static async Task<string> FinalizeBethesdaModAsync(
+		string sourceFolder, string targetFolderName, string zipPath, string modsPath, List<GameMod> installedMods,
+		string backupsPath, int maxBackups, string activeGame, Action<string, string> logError,
+		string? nexusId, NexusService? nexusService, string? gitHubRepo, string? currentGamePath, FomodInfo? fomodInfo)
+	{
+		string destModFolder = Path.Combine(modsPath, targetFolderName);
+
+		// Backup and remove old version
+		GameMod? existing = null;
+		if (!string.IsNullOrEmpty(nexusId))
+			existing = installedMods.FirstOrDefault(m => m.NexusID == nexusId);
+		if (existing == null)
+			existing = installedMods.FirstOrDefault(m => m.Name.Equals(targetFolderName, StringComparison.OrdinalIgnoreCase) ||
+														 m.UniqueId.Equals(targetFolderName, StringComparison.OrdinalIgnoreCase));
+
+		if (existing != null && Directory.Exists(existing.FolderPath))
+		{
+			// Remove the old version's plugin entries; its deployed asset files are reconciled by the
+			// caller's SyncDeployment pass after extraction, so no per-file asset undeploy is needed here.
+			if (!string.IsNullOrEmpty(currentGamePath))
+				SyncPluginsFile(existing.FolderPath, activeGame, false, logError);
+
+			CreateBackup(existing.FolderPath, targetFolderName, backupsPath);
+			PruneBackups(targetFolderName, backupsPath, maxBackups);
+			Directory.Delete(existing.FolderPath, recursive: true);
+		}
+
+		if (Directory.Exists(destModFolder))
+			Directory.Delete(destModFolder, recursive: true);
+
+		Directory.CreateDirectory(destModFolder);
+		bool treatAsRoot = false;
+		string[] rootDLLs = { "d3dx9_42.dll", "tbb.dll", "tbbmalloc.dll", "binkw64.dll" };
+		foreach (string dll in rootDLLs)
+		{
+			if (File.Exists(Path.Combine(sourceFolder, dll)))
+			{
+				treatAsRoot = true;
+				break;
+			}
+		}
+
+		if (treatAsRoot && !Directory.Exists(Path.Combine(sourceFolder, "Root")))
+		{
+			string rootDest = Path.Combine(destModFolder, "Root");
+			Directory.CreateDirectory(rootDest);
+			foreach (string dir in Directory.GetDirectories(sourceFolder, "*", SearchOption.AllDirectories))
+				Directory.CreateDirectory(dir.Replace(sourceFolder, rootDest));
+			foreach (string file in Directory.GetFiles(sourceFolder, "*.*", SearchOption.AllDirectories))
+				File.Copy(file, file.Replace(sourceFolder, rootDest), overwrite: true);
+		}
+		else
+		{
+			foreach (string dir in Directory.GetDirectories(sourceFolder, "*", SearchOption.AllDirectories))
+				Directory.CreateDirectory(dir.Replace(sourceFolder, destModFolder));
+			foreach (string file in Directory.GetFiles(sourceFolder, "*.*", SearchOption.AllDirectories))
+				File.Copy(file, file.Replace(sourceFolder, destModFolder), overwrite: true);
+		}
+
+		// Generate manifest
+		string manifestPath = Path.Combine(destModFolder, ".manager_manifest.json");
+		string mName = targetFolderName;
+		string mVersion = ExtractVersionFromFileName(zipPath, nexusId) ?? "1.0.0";
+		string mAuthor = "Unknown";
+		string mDesc = "Installed local mod.";
+
+		// FOMOD info.xml seeds the metadata for locally-installed scripted mods that have no Nexus id.
+		if (fomodInfo != null)
+		{
+			if (!string.IsNullOrWhiteSpace(fomodInfo.Name)) mName = fomodInfo.Name!;
+			if (!string.IsNullOrWhiteSpace(fomodInfo.Version)) mVersion = fomodInfo.Version!;
+			if (!string.IsNullOrWhiteSpace(fomodInfo.Author)) mAuthor = fomodInfo.Author!;
+		}
+
+		if (!string.IsNullOrEmpty(nexusId) && nexusService != null)
+		{
+			try
+			{
+				var details = await nexusService.GetModDetailsAsync(nexusId);
+				if (details != null)
+				{
+					mName = details["name"]?.ToString() ?? mName;
+					mVersion = details["version"]?.ToString() ?? mVersion;
+					mAuthor = details["author"]?.ToString() ?? mAuthor;
+					mDesc = details["summary"]?.ToString() ?? mDesc;
+				}
+			}
+			catch { }
+		}
+
+		var manifest = new JObject
+		{
+			["Name"] = mName,
+			["Version"] = mVersion,
+			["Author"] = mAuthor,
+			["UniqueID"] = targetFolderName,
+			["Description"] = mDesc,
+			["NexusID"] = nexusId,
+			["GitHubRepo"] = gitHubRepo
+		};
+		File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
+
+		return targetFolderName;
+	}
+
+	/// <summary>
+	/// Builds a plugin-state lookup for FOMOD <c>fileDependency</c> checks: base-game masters count as
+	/// Active, a plugin found in an installed mod reflects that mod's enabled state, and anything else is
+	/// Missing. Good enough for default selection; richer load-order awareness can refine it later.
+	/// </summary>
+	internal static Func<string, FomodFileState> BuildFomodFileStateProvider(List<GameMod> installedMods)
+	{
+		var baseMasters = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+		{
+			"Skyrim.esm", "Update.esm", "Dawnguard.esm", "HearthFires.esm", "Dragonborn.esm",
+			"Fallout4.esm", "DLCRobot.esm", "DLCworkshop01.esm", "DLCCoast.esm", "DLCworkshop02.esm",
+			"DLCworkshop03.esm", "DLCNukaWorld.esm"
+		};
+		return file =>
+		{
+			if (string.IsNullOrEmpty(file)) return FomodFileState.Missing;
+			if (baseMasters.Contains(file)) return FomodFileState.Active;
+			foreach (GameMod m in installedMods)
+			{
+				if (string.IsNullOrEmpty(m.FolderPath) || !Directory.Exists(m.FolderPath)) continue;
+				try
+				{
+					if (Directory.EnumerateFiles(m.FolderPath, file, SearchOption.AllDirectories).Any())
+						return m.IsEnabled ? FomodFileState.Active : FomodFileState.Inactive;
+				}
+				catch { }
+			}
+			return FomodFileState.Missing;
+		};
 	}
 
 	// -------------------------------------------------------------------------

@@ -308,7 +308,8 @@ public partial class Form1
 		{
 			string name = await ModFileSystem.ExtractModAsync(
 				zipPath, _settings.CurrentModsPath, _allInstalledMods,
-				backupsPath, _settings.MaxBackupsPerMod, _settings.ActiveGame, LogError, nexusId, _nexusService, null, _settings.CurrentGamePath);
+				backupsPath, _settings.MaxBackupsPerMod, _settings.ActiveGame, LogError, nexusId, _nexusService, null, _settings.CurrentGamePath,
+				ShowFomodWizardAsync);
 			_soundEngine.Play("connect");
 
 			await RefreshModList(checkUpdates: false);
@@ -322,6 +323,10 @@ public partial class Form1
 				RefreshModPriorityList();
 			}
 			MessageBox.Show(Loc.T("install.installed", name));
+		}
+		catch (OperationCanceledException)
+		{
+			// User cancelled the FOMOD option wizard; it already announced the cancellation.
 		}
 		catch (Exception ex)
 		{

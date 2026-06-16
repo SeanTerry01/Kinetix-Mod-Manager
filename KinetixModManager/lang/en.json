@@ -613,5 +613,23 @@
   "ui.categoriesLabel": "Categories:",
   "ui.searchWikiSkyrim": "Search Skyrim Wiki",
   "ui.searchWikiFallout": "Search Fallout 4 Wiki",
-  "ui.searchWikiStardew": "Search Stardew Wiki"
+  "ui.searchWikiStardew": "Search Stardew Wiki",
+
+  "fomod.wizardTitle": "{0} - Installation Options - Escape to Cancel",
+  "fomod.windowTitle": "Installing {0}. Step {1} of {2}. {3}",
+  "fomod.stepAnnounce": "{0}. Step {1} of {2}.",
+  "fomod.checked": "checked",
+  "fomod.unchecked": "unchecked",
+  "fomod.back": "Back",
+  "fomod.next": "Next",
+  "fomod.install": "Install",
+  "fomod.cancel": "Cancel",
+  "fomod.none": "None - install nothing from this group",
+  "fomod.optionRequired": "{0}, required",
+  "fomod.optionRecommended": "{0}, recommended",
+  "fomod.optionNotUsable": "{0}, not available",
+  "fomod.errorExactlyOne": "Please choose exactly one option in the group: {0}.",
+  "fomod.errorAtLeastOne": "Please choose at least one option in the group: {0}.",
+  "fomod.installing": "Installing your selected options.",
+  "fomod.cancelled": "Mod installation cancelled."
 }
