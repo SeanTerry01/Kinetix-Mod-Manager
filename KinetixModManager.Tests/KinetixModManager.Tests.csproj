@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <!-- Compile the self-contained FOMOD logic directly instead of referencing the WinForms app.
+       These four files depend only on the BCL and System.Xml.Linq, so the test project pulls in
+       none of the app's heavy runtime (WebView2, NAudio, Tolk) - keeping the build tiny. -->
+  <ItemGroup>
+    <Compile Include="..\KinetixModManager\FomodConfig.cs" />
+    <Compile Include="..\KinetixModManager\FomodParser.cs" />
+    <Compile Include="..\KinetixModManager\FomodConditionEvaluator.cs" />
+    <Compile Include="..\KinetixModManager\FomodInstaller.cs" />
+  </ItemGroup>
+
+</Project>

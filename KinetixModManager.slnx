@@ -6,4 +6,5 @@
   <Project Path="KinetixModManager/KinetixModManager.csproj">
     <Platform Solution="*|x64" Project="x64" />
   </Project>
+  <Project Path="KinetixModManager.Tests/KinetixModManager.Tests.csproj" />
 </Solution>
