@@ -787,6 +787,30 @@ public static class ModFileSystem
 	}
 
 	/// <summary>
+	/// Returns a writable temp-extraction base directory on the same volume as <paramref name="modsPath"/>,
+	/// so extraction/staging don't consume space on the system drive. Falls back to the system temp folder
+	/// when the mods drive can't be resolved or isn't writable.
+	/// </summary>
+	private static string GetExtractionTempRoot(string modsPath)
+	{
+		try
+		{
+			if (!string.IsNullOrEmpty(modsPath))
+			{
+				string? root = Path.GetPathRoot(Path.GetFullPath(modsPath));
+				if (!string.IsNullOrEmpty(root) && Directory.Exists(root))
+				{
+					string candidate = Path.Combine(root, "KinetixModManager.tmp");
+					Directory.CreateDirectory(candidate);
+					return candidate;
+				}
+			}
+		}
+		catch { /* unresolved/unwritable mods drive: fall back to system temp below */ }
+		return Path.GetTempPath();
+	}
+
+	/// <summary>
 	/// Extracts a .zip archive, backs up older version, and creates manifests for non-Stardew games.
 	/// </summary>
 	public static async Task<string> ExtractModAsync(
@@ -803,7 +827,11 @@ public static class ModFileSystem
 		string? currentGamePath = null,
 		Func<FomodConfig, Task<FomodSelection?>>? fomodSelector = null)
 	{
-		string tempDir = Path.Combine(Path.GetTempPath(), "Extract_" + Path.GetRandomFileName());
+		// Extract on the same volume as the destination mods folder so a full system drive (C:) never
+		// blocks an install whose mods live elsewhere (e.g. D:). The staging copy and the final move stay
+		// on one drive too, which keeps the move cheap. Falls back to the system temp folder if the mods
+		// drive can't be resolved or written to.
+		string tempDir = Path.Combine(GetExtractionTempRoot(modsPath), "Extract_" + Path.GetRandomFileName());
 		try
 		{
 			await Task.Run(async () =>
