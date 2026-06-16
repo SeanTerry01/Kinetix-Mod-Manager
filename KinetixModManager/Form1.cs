@@ -42,7 +42,9 @@ public partial class Form1 : Form, IMessageFilter
 		Profiles  = 6,
 		SmapiLog  = 7,
 		ModPriority = 8,
-		PluginOrder = 9
+		PluginOrder = 9,
+		Creations = 10,
+		GameLog = 11
 	}
 
 	/// <summary>
@@ -61,6 +63,8 @@ public partial class Form1 : Form, IMessageFilter
 		if (t == tabProfiles) return AppTab.Profiles;
 		if (t == tabModPriority) return AppTab.ModPriority;
 		if (t == tabPluginOrder) return AppTab.PluginOrder;
+		if (t == tabCreations) return AppTab.Creations;
+		if (t == tabGameLog) return AppTab.GameLog;
 		if (t == tabSmapiLog) return AppTab.SmapiLog;
 		return AppTab.Installed;
 	}
@@ -79,6 +83,8 @@ public partial class Form1 : Form, IMessageFilter
 			AppTab.Profiles     => tabProfiles,
 			AppTab.ModPriority  => tabModPriority,
 			AppTab.PluginOrder  => tabPluginOrder,
+			AppTab.Creations    => tabCreations,
+			AppTab.GameLog      => tabGameLog,
 			AppTab.SmapiLog     => tabSmapiLog,
 			_                   => null
 		};
@@ -154,6 +160,16 @@ public partial class Form1 : Form, IMessageFilter
 
 	private int _currentDiscoveryPage = 1;
 
+	/// <summary>
+	/// Page size locked in at the start of the current Discovery search series. Captured on a fresh
+	/// search and reused for every "Load more" so the page/offset maths stay aligned even if the user
+	/// changes the results-per-load selector mid-session (the change then takes effect on the next search).
+	/// </summary>
+	private int _currentDiscoveryPageSize = 20;
+
+	/// <summary>The selectable "results per load" values, shared by the Discovery tab and Settings combos.</summary>
+	private static readonly int[] DiscoveryPageSizeOptions = { 10, 20, 30, 50, 100 };
+
 	private bool _isLoading;
 
 	// Set while expanding/collapsing a mod group so RebuildInstalledListBox does not speak the selected
@@ -196,6 +212,8 @@ public partial class Form1 : Form, IMessageFilter
 	private TabPage tabProfiles = null!;
 	private TabPage tabModPriority = null!;
 	private TabPage tabPluginOrder = null!;
+	private TabPage tabCreations = null!;
+	private TabPage tabGameLog = null!;
 	private TabPage tabSmapiLog = null!;
 	private TabPage tabWiki = null!;
 	private TabPage tabWalkthroughs = null!;
@@ -206,18 +224,28 @@ public partial class Form1 : Form, IMessageFilter
 	private ListBox listProfiles = null!;
 	private ListBox listModPriority = null!;
 	private ListBox listPluginOrder = null!;
+	private ListBox listCreations = null!;
+	private ListBox listGameLog = null!;
+	private ComboBox cmbGameLog = null!;
+	private ComboBox cmbGameLogFilter = null!;
+	private TextBox txtSearchGameLog = null!;
+	/// <summary>All lines of the currently selected game log, before filter/search are applied.</summary>
+	private List<string> _gameLogLines = new List<string>();
 	private ListBox listLog = null!;
 	private TextBox txtSearch = null!;
 	private TextBox txtSearchInstalled = null!;
 	private TextBox txtSearchLog = null!;
 	private ComboBox cmbDiscoveryType = null!;
 	private ComboBox cmbDiscoveryLanguage = null!;
+	// Results-per-load selector on the Discovery tab. Seeded from the saved
+	// DiscoverySearchPageSize but its own changes are session-only (not persisted); only the
+	// matching combo in Settings persists. See AppSettings.DiscoverySearchPageSize.
+	private ComboBox cmbDiscoveryPageSize = null!;
 	// Suppresses the language combo's change handler while its list is rebuilt (e.g. on game switch).
 	private bool _suppressDiscoveryLanguageEvent;
 	private ComboBox cmbLogFilter = null!;
 	private ComboBox cmbCategoryFilter = null!;
 	private Button btnSearch = null!;
-	private Button btnLoadMoreDiscovery = null!;
 	private Button btnPruneBackups = null!;
 	private TextBox txtWikiSearch = null!;
 	private ComboBox cmbWikiCategories = null!;

@@ -125,6 +125,7 @@ public partial class Form1
 			loaderInstalled = File.Exists(Path.Combine(gameFolder, "f4se_loader.exe"));
 
 			suiteItems.Add(new SuiteItem("F4SE (Script Extender)", loaderInstalled, "Loader", "https://f4se.silverlock.org"));
+			suiteItems.Add(new SuiteItem("Address Library for F4SE Plugins", HasModNameContains("Address Library") || HasModNameContains("AddressLibrary"), "Nexus", "47327"));
 			suiteItems.Add(new SuiteItem("Mod Configuration Menu (MCM)", HasModNameContains("Mod Configuration Menu") || HasModNameContains("MCM"), "Nexus", "21497"));
 			suiteItems.Add(new SuiteItem("Fallout 4 Access", HasModNameContains("Fallout4Access") || HasModNameContains("Fallout 4 Access"), "Nexus", "100314"));
 		}

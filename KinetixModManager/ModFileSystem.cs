@@ -7,6 +7,8 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using SharpCompress.Archives;
+using SharpCompress.Common;
 
 namespace KinetixModManager;
 
@@ -813,6 +815,11 @@ public static class ModFileSystem
 					string exePath = await Ensure7ZipCommandLineTool(dataBasePath, nexusService);
 					Run7ZipExtract(exePath, zipPath, tempDir);
 				}
+				else if (ext == ".rar")
+				{
+					// The bundled 7za and .NET's ZipFile cannot read RAR, so use SharpCompress (managed).
+					ExtractWithSharpCompress(zipPath, tempDir);
+				}
 				else
 				{
 					ZipFile.ExtractToDirectory(zipPath, tempDir);
@@ -1101,6 +1108,19 @@ public static class ModFileSystem
 		try { File.Delete(zipPath); } catch {}
 
 		return exePath;
+	}
+
+	/// <summary>
+	/// Extracts a RAR (or other SharpCompress-supported) archive to <paramref name="outputDir"/>, preserving
+	/// folder structure. Used for <c>.rar</c> mods, which neither .NET's ZipFile nor the bundled 7za can read.
+	/// The caller's post-extraction path-escape check (in <see cref="ExtractModAsync"/>) still guards against
+	/// malicious entries.
+	/// </summary>
+	private static void ExtractWithSharpCompress(string archivePath, string outputDir)
+	{
+		// ArchiveFactory auto-detects the format (RAR4/RAR5) and extracts every entry, preserving paths.
+		ArchiveFactory.WriteToDirectory(archivePath, outputDir,
+			new ExtractionOptions { ExtractFullPath = true, Overwrite = true });
 	}
 
 	private static void Run7ZipExtract(string exePath, string archivePath, string outputDir)

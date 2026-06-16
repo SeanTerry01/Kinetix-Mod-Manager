@@ -112,7 +112,10 @@ public partial class Form1
 		// item first — putting "X of Y" at the end, matching the arrow-key path (List_SelectedIndexChanged).
 		await Task.Delay(100);
 		if (!listBox.Focused) return;
-		Speak(Loc.T("common.position", listBox.SelectedIndex + 1, listBox.Items.Count));
+		// The Discovery "Load more" row carries no position; its row text is read by the screen reader.
+		if (listBox.SelectedItem is DiscoveryLoadMoreRow) return;
+		int itemCount = listBox.Name == "listDiscovery" ? DiscoveryResultCount() : listBox.Items.Count;
+		Speak(Loc.T("common.position", listBox.SelectedIndex + 1, itemCount));
 	}
 
 	[System.Runtime.InteropServices.DllImport("user32.dll")]
@@ -167,7 +170,12 @@ public partial class Form1
 		}
 		await Task.Delay(100);
 		if (!list.Focused) return;
-		string text = Loc.T("common.position", list.SelectedIndex + 1, list.Items.Count);
+		// The Discovery list's inline "Load more" row is an action, not a numbered result: the screen
+		// reader already reads its row text on focus, so add no position announcement.
+		if (list.SelectedItem is DiscoveryLoadMoreRow) return;
+		// Exclude that row from the Discovery count so positions read "20 of 20", not "20 of 21".
+		int itemCount = list.Name == "listDiscovery" ? DiscoveryResultCount() : list.Items.Count;
+		string text = Loc.T("common.position", list.SelectedIndex + 1, itemCount);
 		if (list.Name == "listLog")
 		{
 			string lineText = list.SelectedItem.ToString() ?? "";
@@ -232,6 +240,12 @@ public partial class Form1
 		case AppTab.PluginOrder:
 			text = Loc.T("help.pluginOrder", GetShortcutString("AutoSort"));
 			break;
+		case AppTab.Creations:
+			text = Loc.T("help.creations");
+			break;
+		case AppTab.GameLog:
+			text = Loc.T("help.gameLog", GetShortcutString("RefreshLog"), GetShortcutString("OpenLogFile"));
+			break;
 		case AppTab.SmapiLog:
 			text = Loc.T("help.smapiLog", GetShortcutString("QuickFix"), GetShortcutString("RefreshLog"), GetShortcutString("Login"), GetShortcutString("OpenLogFile"));
 			break;
@@ -241,6 +255,36 @@ public partial class Form1
 			Speak(text);
 		}
 	}
+
+	/// <summary>
+	/// Sentinel placeholder for the inline "Load more" row pinned to the bottom of the Discovery
+	/// results list. It is never a real search result: it is excluded from the spoken "X of Y"
+	/// position count, and pressing Enter on it loads the next page rather than opening a mod page.
+	/// Its <see cref="ToString"/> is what the screen reader reads when the row is focused.
+	/// </summary>
+	private sealed class DiscoveryLoadMoreRow
+	{
+		public override string ToString() => Loc.T("discovery.loadMoreRow");
+	}
+
+	/// <summary>True when the Discovery list currently ends with the inline "Load more" row.</summary>
+	private bool DiscoveryHasLoadMoreRow() =>
+		listDiscovery.Items.Count > 0 &&
+		listDiscovery.Items[listDiscovery.Items.Count - 1] is DiscoveryLoadMoreRow;
+
+	/// <summary>Removes the inline "Load more" row if present (it is always the last item).</summary>
+	private void RemoveDiscoveryLoadMoreRow()
+	{
+		if (DiscoveryHasLoadMoreRow())
+			listDiscovery.Items.RemoveAt(listDiscovery.Items.Count - 1);
+	}
+
+	/// <summary>
+	/// The number of real search results in the Discovery list, i.e. the item count minus the inline
+	/// "Load more" row if it is present. Used so the row is not counted in the spoken "X of Y".
+	/// </summary>
+	private int DiscoveryResultCount() =>
+		listDiscovery.Items.Count - (DiscoveryHasLoadMoreRow() ? 1 : 0);
 
 	/// <summary>
 	/// Queries the Nexus Mods GraphQL API for the current search text and populates
@@ -254,7 +298,14 @@ public partial class Form1
 			Speak(Loc.T("discovery.loginFirst"));
 			return;
 		}
-		if (!loadMore) { _currentDiscoveryPage = 1; listDiscovery.Items.Clear(); }
+		if (!loadMore)
+		{
+			_currentDiscoveryPage = 1;
+			listDiscovery.Items.Clear();
+			// Lock the page size for this whole search series; honour the tab's session-only
+			// selector, falling back to the persisted default.
+			_currentDiscoveryPageSize = cmbDiscoveryPageSize.SelectedItem is int n ? n : _settings.DiscoverySearchPageSize;
+		}
 		else _currentDiscoveryPage++;
 
 		string searchType = cmbDiscoveryType.SelectedItem?.ToString() ?? "Search";
@@ -264,15 +315,26 @@ public partial class Form1
 		SetStatus(loadMore ? Loc.T("discovery.loadingMore", searchType) : Loc.T("discovery.statusRunning", searchType));
 		try
 		{
-			const int pageSize = 20;
+			int pageSize = _currentDiscoveryPageSize;
 			var (results, total) = await _nexusService.SearchModsAsync(searchType, searchTerm, _currentDiscoveryPage, pageSize, language);
 			int offset = (_currentDiscoveryPage - 1) * pageSize;
+
+			// Drop the old inline "Load more" row (always last) before appending; firstNewIndex is then
+			// the slot of the first freshly loaded result, which we select so focus lands on it.
+			RemoveDiscoveryLoadMoreRow();
+			int firstNewIndex = listDiscovery.Items.Count;
 			foreach (var mod in results) listDiscovery.Items.Add(mod);
-			btnLoadMoreDiscovery.Visible = (offset + results.Count) < total;
+
+			// Re-add the inline "Load more" row only while this page returned results AND more remain.
+			// It is excluded from the spoken "X of Y" count and, on Enter, triggers RunDiscovery(loadMore: true).
+			if (results.Count > 0 && (offset + results.Count) < total)
+				listDiscovery.Items.Add(new DiscoveryLoadMoreRow());
+
 			if (results.Count > 0)
 			{
 				Speak(loadMore ? Loc.T("discovery.added", results.Count) : Loc.T("discovery.found", results.Count));
-				if (!loadMore) listDiscovery.SelectedIndex = 0;
+				// Fresh search lands on the first result; Load more lands on the first new result.
+				listDiscovery.SelectedIndex = loadMore ? firstNewIndex : 0;
 			}
 			else
 			{

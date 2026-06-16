@@ -79,15 +79,26 @@ public partial class Form1
 		{
 			lb.Items.Add(key2);
 		}
-		lb.SelectedIndexChanged += async delegate
+		// The list item text (the sound name) is already read by the screen reader on focus, so
+		// our announcement is just the description plus list position to avoid speaking the name
+		// twice. Spoken both when the selection changes by arrow key and when focus first lands on
+		// the list (Enter), so tabbing to the list reads the full description, not just the name.
+		Func<Task> announceSound = async () =>
 		{
 			if (lb.SelectedItem != null)
 			{
 				string key = lb.SelectedItem.ToString() ?? "";
 				await Task.Delay(100);
-				Speak(Loc.T("soundDemo.announce", key, Loc.T("sound." + key), lb.SelectedIndex + 1, lb.Items.Count));
+				Speak(Loc.T("soundDemo.announce", Loc.T("sound." + key), lb.SelectedIndex + 1, lb.Items.Count));
 			}
 		};
+		lb.SelectedIndexChanged += async delegate
+		{
+			// Gate on focus so seeding the initial selection (while focus is still on the theme
+			// combo) does not speak over the dialog opening.
+			if (lb.Focused) await announceSound();
+		};
+		lb.Enter += async delegate { await announceSound(); };
 		lb.KeyDown += delegate(object? s, KeyEventArgs pe)
 		{
 			if (pe.KeyCode == Keys.Return && lb.SelectedItem != null)
@@ -105,6 +116,9 @@ public partial class Form1
 		};
 		tableLayoutPanel.Controls.Add(lb, 0, 2);
 		demoForm.Controls.Add(tableLayoutPanel);
+		// Select the first sound on open so the list lands on a real item (and announces it)
+		// rather than an empty selection.
+		if (lb.Items.Count > 0) lb.SelectedIndex = 0;
 		demoForm.ShowDialog();
 	}
 

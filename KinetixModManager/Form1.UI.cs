@@ -124,6 +124,18 @@ public partial class Form1
 		{
 			RebuildDeployment();
 		}).Name = "menuRebuildDeploy";
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.exportLoadOrder"), null, delegate
+		{
+			ExportLoadOrder();
+		}).Name = "menuExportLoadOrder";
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.importLoadOrder"), null, delegate
+		{
+			ImportLoadOrder();
+		}).Name = "menuImportLoadOrder";
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.importMO2"), null, delegate
+		{
+			ImportFromMO2();
+		}).Name = "menuImportMO2";
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.editConfig", GetShortcutString("OpenConfig")), null, delegate
 		{
 			OpenSelectedModConfig();
@@ -144,8 +156,8 @@ public partial class Form1
 		});
 		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.openSmapiLog", GetShortcutString("OpenLogFile")), null, delegate
 		{
-			OpenRawSmapiLog();
-		});
+			OpenGameLog();
+		}).Name = "menuOpenLog";
 		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.openErrorLog", GetShortcutString("OpenErrorLog")), null, delegate
 		{
 			if (File.Exists(errorLogPath))
@@ -160,6 +172,10 @@ public partial class Form1
 		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.userManual", GetShortcutString("Manual")), null, delegate
 		{
 			ShowManual();
+		});
+		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.changeLog", GetShortcutString("ChangeLog")), null, delegate
+		{
+			ShowChangeLog();
 		});
 		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.accessibilityControls", GetShortcutString("ControlsHelp")), null, delegate
 		{
@@ -351,6 +367,17 @@ public partial class Form1
 				_settings.Save();
 			}
 		};
+		cmbDiscoveryPageSize = new ComboBox
+		{
+			Width = 70,
+			Font = new Font("Segoe UI", 12f),
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			AccessibleName = Loc.T("ui.resultsPerLoad")
+		};
+		cmbDiscoveryPageSize.Items.AddRange(DiscoveryPageSizeOptions.Cast<object>().ToArray());
+		// Seed from the saved default; changes made here are session-only and never written back.
+		cmbDiscoveryPageSize.SelectedItem = _settings.DiscoverySearchPageSize;
+		if (cmbDiscoveryPageSize.SelectedIndex < 0) cmbDiscoveryPageSize.SelectedItem = 20;
 		btnSearch = new Button
 		{
 			Text = Loc.T("ui.go"),
@@ -360,18 +387,6 @@ public partial class Form1
 		btnSearch.Click += async delegate
 		{
 			await RunDiscovery();
-		};
-		btnLoadMoreDiscovery = new Button
-		{
-			Text = Loc.T("ui.loadMoreBtn"),
-			Height = 30,
-			Width = 100,
-			Visible = false,
-			AccessibleName = Loc.T("ui.loadMore")
-		};
-		btnLoadMoreDiscovery.Click += async delegate
-		{
-			await RunDiscovery(loadMore: true);
 		};
 		txtSearch.KeyDown += async delegate(object? s, KeyEventArgs e)
 		{
@@ -390,8 +405,9 @@ public partial class Form1
 		flowLayoutPanel2.Controls.Add(cmbDiscoveryType);
 		flowLayoutPanel2.Controls.Add(new Label { Text = Loc.T("ui.languageLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
 		flowLayoutPanel2.Controls.Add(cmbDiscoveryLanguage);
+		flowLayoutPanel2.Controls.Add(new Label { Text = Loc.T("ui.resultsPerLoadLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
+		flowLayoutPanel2.Controls.Add(cmbDiscoveryPageSize);
 		flowLayoutPanel2.Controls.Add(btnSearch);
-		flowLayoutPanel2.Controls.Add(btnLoadMoreDiscovery);
 		listDiscovery = new ListBox
 		{
 			Dock = DockStyle.Fill,
@@ -399,18 +415,16 @@ public partial class Form1
 			Font = new Font("Segoe UI", 12f)
 		};
 		listDiscovery.AccessibleName = Loc.T("ui.discoveryList");
-		
-		// Adjust table layout for 3 rows
-		tableLayoutPanel4.RowCount = 3;
+
+		// Two rows: the search bar and the results list. "Load more" is an inline row at the bottom
+		// of the list itself (see DiscoveryLoadMoreRow), so there is no separate button row.
+		tableLayoutPanel4.RowCount = 2;
 		tableLayoutPanel4.RowStyles.Clear();
 		tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f)); // Search bar
 		tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Percent, 100f)); // List
-		tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Absolute, 40f)); // Load More button
-		
+
 		tableLayoutPanel4.Controls.Add(flowLayoutPanel2, 0, 0);
 		tableLayoutPanel4.Controls.Add(listDiscovery, 0, 1);
-		tableLayoutPanel4.Controls.Add(btnLoadMoreDiscovery, 0, 2);
-		btnLoadMoreDiscovery.Dock = DockStyle.Fill;
 
 		tabDiscovery.Controls.Add(tableLayoutPanel4);
 		tabProfiles = new TabPage(Loc.T("tab.profiles"));
@@ -442,6 +456,16 @@ public partial class Form1
 			AccessibleDescription = Loc.T("ui.pluginOrderDesc")
 		};
 		tabPluginOrder.Controls.Add(listPluginOrder);
+		tabCreations = new TabPage(Loc.T("tab.creations"));
+		listCreations = new ListBox
+		{
+			Dock = DockStyle.Fill,
+			Name = "listCreations",
+			Font = new Font("Segoe UI", 12f),
+			AccessibleName = Loc.T("ui.creationsList"),
+			AccessibleDescription = Loc.T("ui.creationsDesc")
+		};
+		tabCreations.Controls.Add(listCreations);
 		tabSmapiLog = new TabPage(Loc.T("tab.smapiLog"));
 		TableLayoutPanel tableLayoutPanel5 = new TableLayoutPanel
 		{
@@ -466,9 +490,23 @@ public partial class Form1
 		items2 = new string[4] { "Errors and Warnings", "Errors Only", "Full Log", "Links Only" };
 		items3.AddRange(items2);
 		cmbLogFilter.SelectedIndex = 0;
-		cmbLogFilter.SelectedIndexChanged += delegate
+		cmbLogFilter.SelectedIndexChanged += async delegate
 		{
 			RefreshSmapiLog();
+			// Announce how many lines the chosen filter shows, as the Bethesda Log tab does. The screen
+			// reader reads the filter name itself, so only the count is spoken — after a short delay so it
+			// comes after the name, not before.
+			if (cmbLogFilter.Focused)
+			{
+				await Task.Delay(100);
+				if (cmbLogFilter.Focused) Speak(Loc.T("gamelog.foundResults", listLog.Items.Count));
+			}
+		};
+		// Tabbing onto the filter does not raise SelectedIndexChanged, so announce the count on focus too.
+		cmbLogFilter.GotFocus += async delegate
+		{
+			await Task.Delay(100);
+			if (cmbLogFilter.Focused) Speak(Loc.T("gamelog.foundResults", listLog.Items.Count));
 		};
 		txtSearchLog = new TextBox
 		{
@@ -511,6 +549,102 @@ public partial class Form1
 		tableLayoutPanel5.Controls.Add(flowLayoutPanel3, 0, 0);
 		tableLayoutPanel5.Controls.Add(listLog, 0, 1);
 		tabSmapiLog.Controls.Add(tableLayoutPanel5);
+
+		// Game Log tab (Skyrim SE / Fallout 4): a picker over every .log in the script-extender folder,
+		// plus a keyword filter and search. Mirrors the SMAPI log tab's layout and keyboard conventions.
+		tabGameLog = new TabPage(Loc.T("tab.gameLog"));
+		TableLayoutPanel tableLayoutGameLog = new TableLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			RowCount = 2,
+			ColumnCount = 1
+		};
+		tableLayoutGameLog.RowStyles.Add(new RowStyle(SizeType.Absolute, 40f));
+		tableLayoutGameLog.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+		FlowLayoutPanel flowGameLog = new FlowLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			FlowDirection = FlowDirection.LeftToRight
+		};
+		cmbGameLog = new ComboBox
+		{
+			Width = 200,
+			Font = new Font("Segoe UI", 12f),
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			AccessibleName = Loc.T("ui.gameLogPicker")
+		};
+		cmbGameLog.SelectedIndexChanged += async delegate
+		{
+			LoadSelectedGameLog();
+			// Announce only the line count (the screen reader already reads the file name), after a short
+			// delay so the name is spoken first and the count comes after it, not before.
+			if (cmbGameLog.Focused)
+			{
+				await Task.Delay(100);
+				if (cmbGameLog.Focused) Speak(Loc.T("gamelog.foundResults", listGameLog.Items.Count));
+			}
+		};
+		// Tabbing onto the combo does not raise SelectedIndexChanged, so announce the current log's line
+		// count on focus too, after the screen reader has read the selected file name.
+		cmbGameLog.GotFocus += async delegate
+		{
+			await Task.Delay(100);
+			if (cmbGameLog.Focused) Speak(Loc.T("gamelog.foundResults", listGameLog.Items.Count));
+		};
+		cmbGameLogFilter = new ComboBox
+		{
+			Width = 180,
+			Font = new Font("Segoe UI", 12f),
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			AccessibleName = Loc.T("ui.gameLogFilterName")
+		};
+		cmbGameLogFilter.Items.AddRange(new object[] { Loc.T("gamelog.filterAll"), Loc.T("gamelog.filterErrors") });
+		cmbGameLogFilter.SelectedIndex = 0;
+		cmbGameLogFilter.SelectedIndexChanged += async delegate
+		{
+			ApplyGameLogView();
+			if (cmbGameLogFilter.Focused)
+			{
+				await Task.Delay(100);
+				if (cmbGameLogFilter.Focused) Speak(Loc.T("gamelog.foundResults", listGameLog.Items.Count));
+			}
+		};
+		cmbGameLogFilter.GotFocus += async delegate
+		{
+			await Task.Delay(100);
+			if (cmbGameLogFilter.Focused) Speak(Loc.T("gamelog.foundResults", listGameLog.Items.Count));
+		};
+		txtSearchGameLog = new TextBox
+		{
+			Width = 180,
+			Font = new Font("Segoe UI", 12f),
+			AccessibleName = Loc.T("ui.searchGameLog")
+		};
+		txtSearchGameLog.KeyDown += delegate(object? s, KeyEventArgs e)
+		{
+			if (e.KeyCode == Keys.Return)
+			{
+				e.SuppressKeyPress = true;
+				SearchGameLog();
+			}
+		};
+		flowGameLog.Controls.Add(new Label { Text = Loc.T("ui.logFileLabel"), AutoSize = true, Padding = new Padding(5, 8, 0, 0) });
+		flowGameLog.Controls.Add(cmbGameLog);
+		flowGameLog.Controls.Add(new Label { Text = Loc.T("ui.filterLabel"), AutoSize = true, Padding = new Padding(10, 8, 0, 0) });
+		flowGameLog.Controls.Add(cmbGameLogFilter);
+		flowGameLog.Controls.Add(new Label { Text = Loc.T("ui.searchLabel"), AutoSize = true, Padding = new Padding(10, 8, 0, 0) });
+		flowGameLog.Controls.Add(txtSearchGameLog);
+		listGameLog = new ListBox
+		{
+			Dock = DockStyle.Fill,
+			Name = "listGameLog",
+			Font = new Font("Segoe UI", 12f),
+			SelectionMode = SelectionMode.MultiExtended,
+			AccessibleName = Loc.T("ui.gameLogList")
+		};
+		tableLayoutGameLog.Controls.Add(flowGameLog, 0, 0);
+		tableLayoutGameLog.Controls.Add(listGameLog, 0, 1);
+		tabGameLog.Controls.Add(tableLayoutGameLog);
 
 		string initialWikiTitle = _settings.ActiveGame switch
 		{
@@ -701,6 +835,10 @@ public partial class Form1
 		{
 			mainTabs.TabPages.Add(tabSmapiLog);
 		}
+		else if (IsBethesdaGame)
+		{
+			mainTabs.TabPages.Add(tabGameLog);
+		}
 
 		tableLayoutPanel.Controls.Add(mainTabs, 0, 0);
 
@@ -755,6 +893,12 @@ public partial class Form1
 		listPluginOrder.KeyDown += ListPluginOrder_KeyDown;
 		listPluginOrder.SelectedIndexChanged += ListModPriority_SelectedIndexChanged;
 		listPluginOrder.GotFocus += List_Enter;
+		listCreations.KeyDown += ListCreations_KeyDown;
+		listCreations.SelectedIndexChanged += ListModPriority_SelectedIndexChanged;
+		listCreations.GotFocus += List_Enter;
+		listGameLog.KeyDown += ListGameLog_KeyDown;
+		listGameLog.SelectedIndexChanged += List_SelectedIndexChanged;
+		listGameLog.GotFocus += List_Enter;
 		_searchTimer.Tick += delegate
 		{
 			_searchTimer.Stop();

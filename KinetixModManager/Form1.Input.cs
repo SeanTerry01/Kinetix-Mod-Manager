@@ -45,6 +45,11 @@ public partial class Form1
 			e.SuppressKeyPress = true;
 			ShowManual();
 		}
+		if (IsShortcut(e, "ChangeLog"))
+		{
+			e.SuppressKeyPress = true;
+			ShowChangeLog();
+		}
 		if (IsShortcut(e, "ContextHelp"))
 		{
 			e.SuppressKeyPress = true;
@@ -63,7 +68,7 @@ public partial class Form1
 		if (IsShortcut(e, "OpenLogFile"))
 		{
 			e.SuppressKeyPress = true;
-			OpenRawSmapiLog();
+			OpenGameLog();
 		}
 		if (IsShortcut(e, "Settings"))
 		{
@@ -270,6 +275,8 @@ public partial class Form1
 				case AppTab.Profiles:     listProfiles.Focus();    break;
 				case AppTab.ModPriority:  listModPriority.Focus(); break;
 				case AppTab.PluginOrder:  listPluginOrder.Focus(); break;
+				case AppTab.Creations:    listCreations.Focus();   break;
+				case AppTab.GameLog:      listGameLog.Focus();     break;
 				case AppTab.SmapiLog:     listLog.Focus();         break;
 			}
 		}
@@ -585,7 +592,16 @@ public partial class Form1
 		}
 		if (e.KeyCode == Keys.Return && (list.Name == "listUpdates" || list.Name == "listDiscovery"))
 		{
-			OpenModPage();
+			// On the Discovery list's inline "Load more" row, Enter loads the next page of results;
+			// on any real result it opens the Nexus page as usual.
+			if (list.Name == "listDiscovery" && list.SelectedItem is DiscoveryLoadMoreRow)
+			{
+				_ = RunDiscovery(loadMore: true);
+			}
+			else
+			{
+				OpenModPage();
+			}
 			e.Handled = true;
 		}
 	}

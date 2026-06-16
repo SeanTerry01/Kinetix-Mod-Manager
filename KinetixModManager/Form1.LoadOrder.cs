@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Newtonsoft.Json;
 using StardewMod = KinetixModManager.GameMod;
 
 namespace KinetixModManager;
@@ -148,6 +149,157 @@ public partial class Form1
 
 		_soundEngine.Play("connect");
 		Speak(Loc.T("loadorder.rebuilt", forceAll.Count, conflicts.Count));
+	}
+
+	// -------------------------------------------------------------------------
+	// Load-order export / import
+	// -------------------------------------------------------------------------
+
+	/// <summary>Serializable snapshot of a game's load order: the mod priority order and the plugin order.</summary>
+	private sealed class LoadOrderExport
+	{
+		/// <summary>Bumped if the file shape ever changes incompatibly, so old files can be detected.</summary>
+		public string FormatVersion { get; set; } = "1";
+		/// <summary>Game id this order belongs to ("SkyrimSE" / "Fallout4"), so it is not applied to the wrong game.</summary>
+		public string Game { get; set; } = "";
+		/// <summary>App version that produced the file (informational only).</summary>
+		public string AppVersion { get; set; } = "";
+		public DateTime ExportedAtUtc { get; set; }
+		/// <summary>Mod folder keys, highest conflict priority first. Mirrors <see cref="AppSettings.ModPriority"/>.</summary>
+		public List<string> ModPriority { get; set; } = new List<string>();
+		/// <summary>Active plugin file names in load order. Mirrors <see cref="AppSettings.PluginOrder"/>.</summary>
+		public List<string> PluginOrder { get; set; } = new List<string>();
+	}
+
+	/// <summary>Friendly game name for messages. Falls back to the raw id for anything unexpected.</summary>
+	private static string GameDisplayName(string game) => game switch
+	{
+		"SkyrimSE" => "Skyrim Special Edition",
+		"Fallout4" => "Fallout 4",
+		"StardewValley" => "Stardew Valley",
+		_ => game
+	};
+
+	/// <summary>
+	/// Writes the active game's load order (mod priority + plugin order) to a JSON file the user chooses, so it
+	/// can be backed up or shared. Skyrim SE / Fallout 4 only; mods themselves are not exported, only their order.
+	/// </summary>
+	private void ExportLoadOrder()
+	{
+		if (!IsBethesdaGame)
+		{
+			Speak(Loc.T("loadorder.ioNotApplicable"));
+			return;
+		}
+		string game = _settings.ActiveGame;
+		EnsureModPriorityList();
+
+		var data = new LoadOrderExport
+		{
+			Game = game,
+			AppVersion = NexusService.AppVersion,
+			ExportedAtUtc = DateTime.UtcNow,
+			ModPriority = new List<string>(_settings.ModPriority.GetValueOrDefault(game) ?? new List<string>()),
+			PluginOrder = new List<string>(_settings.PluginOrder.GetValueOrDefault(game) ?? new List<string>())
+		};
+
+		using var dlg = new SaveFileDialog
+		{
+			Title = Loc.T("loadorder.exportTitle"),
+			Filter = Loc.T("loadorder.fileFilter"),
+			FileName = $"{game}-loadorder-{DateTime.Now:yyyy-MM-dd}.json"
+		};
+		if (dlg.ShowDialog() != DialogResult.OK)
+		{
+			Speak(Loc.T("common.changesCancelled"));
+			return;
+		}
+
+		try
+		{
+			File.WriteAllText(dlg.FileName, JsonConvert.SerializeObject(data, Formatting.Indented));
+			_soundEngine.Play("connect");
+			Speak(Loc.T("loadorder.exported", data.ModPriority.Count, data.PluginOrder.Count));
+		}
+		catch (Exception ex)
+		{
+			_soundEngine.Play("error");
+			MessageBox.Show(Loc.T("loadorder.exportError", ex.Message));
+		}
+	}
+
+	/// <summary>
+	/// Replaces the active game's load order with one read from a JSON file, then reconciles it against the
+	/// installed mods and re-applies it (deployment sync + plugins.txt). Mods are never added or removed; entries
+	/// for mods/plugins that are not installed are dropped, and anything installed but missing from the file is
+	/// folded back in. Refuses files exported for a different game. Skyrim SE / Fallout 4 only.
+	/// </summary>
+	private void ImportLoadOrder()
+	{
+		if (!IsBethesdaGame)
+		{
+			Speak(Loc.T("loadorder.ioNotApplicable"));
+			return;
+		}
+		string game = _settings.ActiveGame;
+
+		using var dlg = new OpenFileDialog
+		{
+			Title = Loc.T("loadorder.importTitle"),
+			Filter = Loc.T("loadorder.fileFilter"),
+			CheckFileExists = true
+		};
+		if (dlg.ShowDialog() != DialogResult.OK)
+		{
+			Speak(Loc.T("common.changesCancelled"));
+			return;
+		}
+
+		LoadOrderExport? data;
+		try
+		{
+			data = JsonConvert.DeserializeObject<LoadOrderExport>(File.ReadAllText(dlg.FileName));
+		}
+		catch (Exception ex)
+		{
+			_soundEngine.Play("error");
+			MessageBox.Show(Loc.T("loadorder.importError", ex.Message));
+			return;
+		}
+
+		if (data == null || (data.ModPriority.Count == 0 && data.PluginOrder.Count == 0))
+		{
+			_soundEngine.Play("error");
+			MessageBox.Show(Loc.T("loadorder.importInvalid"));
+			return;
+		}
+
+		if (!string.IsNullOrEmpty(data.Game) && !string.Equals(data.Game, game, StringComparison.OrdinalIgnoreCase))
+		{
+			_soundEngine.Play("error");
+			MessageBox.Show(Loc.T("loadorder.importGameMismatch", GameDisplayName(data.Game), GameDisplayName(game)));
+			return;
+		}
+
+		if (MessageBox.Show(Loc.T("loadorder.importConfirm"), Loc.T("loadorder.importTitle"),
+				MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+			return;
+
+		_settings.ModPriority[game] = new List<string>(data.ModPriority);
+		_settings.PluginOrder[game] = new List<string>(data.PluginOrder);
+		_settings.Save();
+
+		// Reconcile the imported order against what is actually installed, then re-apply it to disk.
+		SetStatus(Loc.T("loadorder.importing"));
+		EnsureModPriorityList();
+		List<FileConflict> conflicts = SyncBethesdaDeployment();
+		SyncBethesdaPlugins();
+		RefreshModPriorityList();
+		RefreshPluginOrderList();
+
+		_soundEngine.Play("connect");
+		Speak(Loc.T("loadorder.imported",
+			_settings.ModPriority[game].Count, _settings.PluginOrder[game].Count, conflicts.Count));
 	}
 
 	/// <summary>One row of the Mod Priority list: a mod and its current conflict standing.</summary>
@@ -596,5 +748,148 @@ public partial class Form1
 		foreach (string p in group)
 			if (!result.Contains(p, StringComparer.OrdinalIgnoreCase)) result.Add(p);
 		return result;
+	}
+
+	// -------------------------------------------------------------------------
+	// Creations (Bethesda Creation Club content)
+	// -------------------------------------------------------------------------
+	//
+	// Creations are acquired in-game (the Creations menu) or queued from the Bethesda.net website, never by a
+	// mod manager. The game downloads them straight into its Data folder, where they appear as plugin files
+	// prefixed "cc" (e.g. ccBGSSSE001-Fish.esm). This tab simply lists what is installed and lets the user
+	// activate/deactivate each one; ordering is done on the Plugin Order tab. We never delete Creation files.
+
+	/// <summary>One row of the Creations list: an installed Creation plugin and its current state.</summary>
+	private sealed class CreationEntry
+	{
+		/// <summary>The Creation's plugin file name in the game Data folder (e.g. ccBGSSSE001-Fish.esm).</summary>
+		public string File = "";
+		public bool Master;
+		public bool Light;
+		public bool Active;
+		public string Summary = "";
+		public override string ToString() => Summary;
+	}
+
+	/// <summary>
+	/// A readable name for a Creation derived from its plugin file name: the part after the
+	/// "ccDEVgame###-" prefix, with underscores turned into spaces (e.g. ccBGSSSE001-Fish.esm -> "Fish").
+	/// Falls back to the bare file stem when there is no prefix dash.
+	/// </summary>
+	private static string CreationFriendlyName(string fileName)
+	{
+		string stem = Path.GetFileNameWithoutExtension(fileName);
+		int dash = stem.IndexOf('-');
+		string name = (dash >= 0 && dash < stem.Length - 1) ? stem.Substring(dash + 1) : stem;
+		return name.Replace('_', ' ').Trim();
+	}
+
+	/// <summary>
+	/// Finds the Creations installed in the active game's Data folder: plugin files whose name starts with
+	/// "cc" (the Bethesda Creation Club convention), with their master/light classification and whether they
+	/// are currently active in plugins.txt. Returns an empty list outside Skyrim/FO4 or with no game path.
+	/// </summary>
+	private List<CreationEntry> ScanCreations()
+	{
+		var list = new List<CreationEntry>();
+		if (!IsBethesdaGame) return list;
+		string gameRoot = _settings.CurrentGamePath;
+		if (string.IsNullOrEmpty(gameRoot)) return list;
+		string dataDir = Path.Combine(gameRoot, "Data");
+		if (!Directory.Exists(dataDir)) return list;
+
+		var active = new HashSet<string>(
+			ModFileSystem.ReadActivePlugins(_settings.ActiveGame), StringComparer.OrdinalIgnoreCase);
+
+		foreach (string file in Directory.GetFiles(dataDir))
+		{
+			string name = Path.GetFileName(file);
+			if (!name.StartsWith("cc", StringComparison.OrdinalIgnoreCase)) continue;
+			if (!ModFileSystem.IsPluginFile(name)) continue;
+			var flags = ModFileSystem.ReadPluginFlags(file);
+			list.Add(new CreationEntry
+			{
+				File = name,
+				Master = flags.IsMaster,
+				Light = flags.IsLight,
+				Active = active.Contains(name)
+			});
+		}
+		return list.OrderBy(c => c.File, StringComparer.OrdinalIgnoreCase).ToList();
+	}
+
+	/// <summary>
+	/// Rebuilds the Creations list from the Data folder scan. Each row reads the Creation's friendly name,
+	/// master/light classification, and whether it is active, so a screen-reader user can judge it by ear.
+	/// </summary>
+	private void RefreshCreationsList()
+	{
+		if (listCreations == null || !IsBethesdaGame) return;
+
+		string? restore = (listCreations.SelectedItem as CreationEntry)?.File;
+		_suppressPrioritySpeak = true;
+		listCreations.BeginUpdate();
+		listCreations.Items.Clear();
+		foreach (CreationEntry c in ScanCreations())
+		{
+			string tag = c.Light ? Loc.T("loadorder.lightTag") : (c.Master ? Loc.T("loadorder.masterTag") : "");
+			string state = c.Active ? Loc.T("creations.activeSuffix") : Loc.T("creations.inactiveSuffix");
+			c.Summary = $"{CreationFriendlyName(c.File)}{tag}{state}";
+			listCreations.Items.Add(c);
+		}
+		if (restore != null)
+		{
+			for (int i = 0; i < listCreations.Items.Count; i++)
+			{
+				if (listCreations.Items[i] is CreationEntry e && string.Equals(e.File, restore, StringComparison.OrdinalIgnoreCase))
+				{
+					listCreations.SelectedIndex = i;
+					break;
+				}
+			}
+		}
+		if (listCreations.SelectedIndex == -1 && listCreations.Items.Count > 0)
+			listCreations.SelectedIndex = 0;
+		listCreations.EndUpdate();
+		_suppressPrioritySpeak = false;
+	}
+
+	/// <summary>Space toggles the selected Creation's active state in plugins.txt.</summary>
+	private void ListCreations_KeyDown(object? sender, KeyEventArgs e)
+	{
+		if (e.KeyCode != Keys.Space) return;
+		e.Handled = true;
+		e.SuppressKeyPress = true;
+		ToggleSelectedCreation();
+	}
+
+	/// <summary>
+	/// Activates or deactivates the selected Creation by adding/removing its plugin from plugins.txt, then
+	/// reconciles the plugin order (<see cref="SyncBethesdaPlugins"/> adopts active Creations and normalizes
+	/// masters-first) and refreshes the lists. The Creation's files in the Data folder are never touched, so
+	/// the action is fully reversible.
+	/// </summary>
+	private void ToggleSelectedCreation()
+	{
+		if (!IsBethesdaGame) return;
+		if (listCreations.SelectedItem is not CreationEntry entry) return;
+		string game = _settings.ActiveGame;
+
+		List<string> active = ModFileSystem.ReadActivePlugins(game);
+		bool wasActive = active.Any(n => string.Equals(n, entry.File, StringComparison.OrdinalIgnoreCase));
+		if (wasActive)
+			active.RemoveAll(n => string.Equals(n, entry.File, StringComparison.OrdinalIgnoreCase));
+		else
+			active.Add(entry.File);
+
+		// Write the toggled active set, then let the normal plugin sync adopt/drop it and re-normalise the
+		// order. Writing first means the sync reads the new state as the source of truth for externals.
+		ModFileSystem.WritePluginsTxt(game, active, LogError);
+		SyncBethesdaPlugins();
+		RefreshPluginOrderList();
+		RefreshCreationsList();
+
+		_soundEngine.Play(wasActive ? "disable" : "enable");
+		Speak(Loc.T(wasActive ? "creations.deactivated" : "creations.activated", CreationFriendlyName(entry.File)));
 	}
 }

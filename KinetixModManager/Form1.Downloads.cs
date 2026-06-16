@@ -126,40 +126,14 @@ public partial class Form1
 		return "https://skse.silverlock.org/beta/skse64_2_02_06.7z"; // Fallback
 	}
 
-	private async Task<string?> GetF4seDownloadUrl()
-	{
-		try
-		{
-			using var req = new HttpRequestMessage(HttpMethod.Get, "https://f4se.silverlock.org/");
-			req.Headers.UserAgent.ParseAdd($"KinetixModManager/{NexusService.AppVersion}");
-			using var resp = await NexusService.HttpClient.SendAsync(req);
-			if (!resp.IsSuccessStatusCode) return null;
-
-			string html = await resp.Content.ReadAsStringAsync();
-			int idx = html.IndexOf("f4se_", StringComparison.OrdinalIgnoreCase);
-			if (idx != -1)
-			{
-				int start = html.LastIndexOf("href=\"", idx, StringComparison.OrdinalIgnoreCase);
-				if (start != -1)
-				{
-					start += 6;
-					int end = html.IndexOf("\"", start, StringComparison.OrdinalIgnoreCase);
-					if (end != -1)
-					{
-						string relUrl = html.Substring(start, end - start);
-						if (relUrl.EndsWith(".7z", StringComparison.OrdinalIgnoreCase))
-						{
-							if (!relUrl.StartsWith("http"))
-							{
-								return "https://f4se.silverlock.org/" + relUrl.TrimStart('/');
-							}
-							return relUrl;
-						}
-					}
-				}
-			}
-		}
-		catch { }
-		return "https://www.nexusmods.com/fallout4/mods/42147?tab=files"; // Fallback to Nexus
-	}
+	/// <summary>
+	/// Resolves where to get F4SE from. Unlike SKSE, silverlock.org no longer hosts the current-generation
+	/// F4SE build directly — its only direct downloads are the old-gen (game 1.10.163) and VR archives, so
+	/// scraping it would hand back an F4SE that does not match an up-to-date Fallout 4 and refuses to run.
+	/// The current build (matching the latest Steam runtime) is published on Nexus, so we always route there:
+	/// the caller's Nexus path downloads the latest main file (premium) or opens the page for the user to pick
+	/// the build that matches their game version, then installs it into the game root via InstallScriptExtenderAsync.
+	/// </summary>
+	private Task<string?> GetF4seDownloadUrl() =>
+		Task.FromResult<string?>("https://www.nexusmods.com/fallout4/mods/42147?tab=files");
 }

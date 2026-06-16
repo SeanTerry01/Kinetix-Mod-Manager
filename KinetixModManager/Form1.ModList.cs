@@ -39,6 +39,7 @@ public partial class Form1
 		RefreshBackupsList();
 		RefreshProfilesList();
 		RefreshSmapiLog();
+		RefreshGameLog();
 	}
 
 	/// <summary>
@@ -154,6 +155,7 @@ public partial class Form1
 			RebuildInstalledListBox();
 			RefreshModPriorityList();
 			RefreshPluginOrderList();
+			RefreshCreationsList();
 			listInstalled.EndUpdate();
 
 			int oldSelectedIndex = listUpdates.SelectedIndex;

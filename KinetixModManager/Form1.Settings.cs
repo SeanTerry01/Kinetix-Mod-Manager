@@ -50,7 +50,7 @@ public partial class Form1
 		{
 			Dock = DockStyle.Fill,
 			Padding = new Padding(15),
-			RowCount = 15
+			RowCount = 16
 		};
 
 		tableLayoutPanel.Controls.Add(new Label
@@ -410,6 +410,31 @@ public partial class Form1
 		flowLang.Controls.Add(cmbLanguage);
 		tableLayoutPanel.Controls.Add(flowLang, 0, 14);
 
+		FlowLayoutPanel flowPageSize = new FlowLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			FlowDirection = FlowDirection.LeftToRight,
+			Padding = new Padding(0, 5, 0, 0),
+			AutoSize = true
+		};
+		flowPageSize.Controls.Add(new Label
+		{
+			Text = Loc.T("settings.resultsPerLoad"),
+			AutoSize = true,
+			Padding = new Padding(0, 5, 0, 0)
+		});
+		ComboBox cmbPageSize = new ComboBox
+		{
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			Width = 70,
+			AccessibleName = Loc.T("settings.resultsPerLoadName")
+		};
+		cmbPageSize.Items.AddRange(DiscoveryPageSizeOptions.Cast<object>().ToArray());
+		cmbPageSize.SelectedItem = _settings.DiscoverySearchPageSize;
+		if (cmbPageSize.SelectedIndex < 0) cmbPageSize.SelectedItem = 20;
+		flowPageSize.Controls.Add(cmbPageSize);
+		tableLayoutPanel.Controls.Add(flowPageSize, 0, 15);
+
 		FlowLayoutPanel flowLayoutPanel5 = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Bottom,
@@ -468,6 +493,12 @@ public partial class Form1
 				_settings.CheckForUpdatesAtStartup = cUpdates.Checked;
 				_settings.SoundVolume = (int)nVol.Value;
 				_settings.MaxBackupsPerMod = (int)nPrune.Value;
+				if (cmbPageSize.SelectedItem is int pageSize)
+				{
+					_settings.DiscoverySearchPageSize = pageSize;
+					// Reflect the newly saved default in the Discovery tab's selector so it stays in sync.
+					if (cmbDiscoveryPageSize != null) cmbDiscoveryPageSize.SelectedItem = pageSize;
+				}
 				string chosenLang = (cmbLanguage.SelectedItem as LanguageChoice)?.Code ?? "";
 				bool langChanged = !chosenLang.Equals(_settings.Language, StringComparison.OrdinalIgnoreCase);
 				_settings.Language = chosenLang;
@@ -516,6 +547,9 @@ public partial class Form1
 				f.Close();
 			}
 		};
+		// Land focus on the first real setting (the game selector) instead of the Save button,
+		// which Windows would otherwise pick as the default focus.
+		f.Shown += delegate { cmbSettingsGame.Focus(); };
 		f.ShowDialog();
 		void PreviewLogo()
 		{

@@ -1,3 +1,42 @@
+# Release Notes & Changelog: Version 1.3.0
+
+A major update for Skyrim Special Edition and Fallout 4 modders: full load-order management with import and export, a Creations manager, one-click importing from Mod Organizer 2, and an in-app game-log viewer — alongside `.rar` support, a "results per load" control for mod searches, an in-app Change Log you can open with F2, and a range of accessibility refinements. The manual has been fully updated to cover everything.
+
+---
+
+## ✨ New in Version 1.3.0
+
+### 🎮 Load order management (Skyrim & Fallout 4)
+*   **Mod Priority tab**: Decide which mod wins when two of them change the same file. Reorder with **Ctrl+Up / Ctrl+Down**, and each mod reads how many files it overrides or is overridden in, so you can judge its standing by ear.
+*   **Plugin Order tab**: View and reorder your active plugins (the `plugins.txt` load order). Masters load first automatically, and **F8 auto-sorts** the whole order so every plugin loads after the masters it needs — using LOOT's community rules when they're available.
+*   **Export and Import Load Order**: From the **Mods** menu, save your mod priority and plugin order to a file and restore it later — handy as a backup or to move a setup between computers.
+
+### 📥 Import from Mod Organizer 2 (Skyrim & Fallout 4)
+*   **Bring your MO2 setup across**: From the **Mods** menu choose "Import from Mod Organizer 2", pick your MO2 folder and profile, and the manager copies your mods, applies their priority and plugin order, and activates the same plugins — all without changing your MO2 setup.
+*   **Nexus IDs filled in automatically**: MO2 doesn't store them, so after importing the manager matches your mods to their Nexus pages by name, which makes update checks and "open mod page" work for them.
+
+### 🧩 Creations manager (Skyrim & Fallout 4)
+*   **A new Creations tab** lists the Bethesda Creations installed in your game, whether each one is active, and whether it's a master or light master. Press **Space** to activate or deactivate the selected Creation. (Creations are still downloaded inside the game, from its Creations menu — no mod manager downloads them.)
+
+### 🪵 In-app game logs (Skyrim & Fallout 4)
+*   **A new Log tab** — "Skyrim Logs" or "Fallout 4 Logs" — lets you read the logs your script extender and its plugins write, including `f4se.log` / `skse64.log`, the per-mod logs, crash logs, and your accessibility mod's log. Choose a log from the dropdown, filter to "Errors and Warnings", search it, and press **Ctrl+Shift+R** to refresh it live — even while the game is running. This is where you'll spot a plugin that stopped loading after a game update.
+
+### 🔍 Finding mods
+*   **Choose how many results load at a time**: A new **Results** dropdown on the renamed **Search for Mods** tab (10, 20, 30, 50, or 100). Set a default that sticks across sessions in **Settings**.
+*   **"Load more results" is now part of the list**: Instead of tabbing to a separate button, a row at the bottom of the results loads the next batch when you press **Enter**, then drops you on the first newly loaded result. It isn't counted in the "X of Y" position announcements.
+
+### 🛠️ Other improvements & fixes
+*   **Install `.rar` and `.7z` mods**: The installer now extracts `.rar` and `.7z` archives, not just `.zip`.
+*   **In-app Change Log**: Press **F2** (or Help → View Change Log) to read what's new, in the same navigable window as the manual.
+*   **The log menu now matches the game**: The View menu's log option opens the right log for the active game — the SMAPI log for Stardew Valley, or the script-extender log for Skyrim and Fallout 4 — instead of always offering the SMAPI log.
+*   **Sound Demo**: The first sound is now selected when the demo opens, and each sound's name is no longer spoken twice.
+*   **Settings focus**: The Settings window now lands on the first field instead of the Save button.
+*   **Clearer dropdown announcements**: Tabbing onto a log or filter dropdown now tells you how many lines it shows, and the name is spoken before the count — on the SMAPI log filter as well.
+*   **Fallout 4 suite & F4SE installer**: The Address Library is now part of the Fallout 4 accessibility suite, and the built-in F4SE installer fetches the current build from Nexus (Silverlock no longer hosts the up-to-date version).
+*   **Fully updated manual** covering all of the above.
+
+---
+
 # Release Notes & Changelog: Version 1.2.5
 
 A big update: a new Mod Wikis browser with per-wiki search, a language filter for finding mods, an easier way to install the accessibility suite one mod at a time, an About dialog, support for installing on Windows 11 on ARM, and a fully refreshed manual — alongside fixes for the SMAPI log viewer and mod-group announcements.

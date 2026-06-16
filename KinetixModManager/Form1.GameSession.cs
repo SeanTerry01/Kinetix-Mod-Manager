@@ -114,6 +114,16 @@ public partial class Form1
 				suiteItem.Text = Loc.T("menu.installSuite", gameName);
 		}
 
+		// The View menu's "Open Log" item targets a different log per game (SMAPI for Stardew, the
+		// script extender log for Skyrim/FO4), so relabel it to match — found by its stable Name.
+		if (MainMenuStrip?.Items["menuView"] is ToolStripMenuItem viewMenu &&
+			viewMenu.DropDownItems["menuOpenLog"] is ToolStripItem logItem)
+		{
+			logItem.Text = game == "StardewValley"
+				? Loc.T("menu.openSmapiLog", GetShortcutString("OpenLogFile"))
+				: Loc.T("menu.openGameLog", GetShortcutString("OpenLogFile"));
+		}
+
 		tabWiki.Text = game switch
 		{
 			"SkyrimSE" => Loc.T("tab.wikiSkyrim"),
@@ -126,6 +136,13 @@ public partial class Form1
 			"SkyrimSE" => Loc.T("tab.walkSkyrim"),
 			"Fallout4" => Loc.T("tab.walkFallout"),
 			_ => Loc.T("tab.walkStardew")
+		};
+
+		tabGameLog.Text = game switch
+		{
+			"SkyrimSE" => Loc.T("tab.logsSkyrim"),
+			"Fallout4" => Loc.T("tab.logsFallout"),
+			_ => Loc.T("tab.gameLog")
 		};
 
 		if (txtWikiSearch != null)
@@ -149,14 +166,19 @@ public partial class Form1
 				mainTabs.TabPages.Remove(tabSmapiLog);
 		}
 
-		// The Mod Priority and Plugin Order (load order) tabs apply only to Skyrim SE / Fallout 4, and sit
-		// right after the Installed tab (indexes 1 and 2) so the load order is next to the mod list.
+		// The Mod Priority, Plugin Order, and Creations tabs apply only to Skyrim SE / Fallout 4, and sit
+		// right after the Installed tab (indexes 1, 2, 3) so the load order is next to the mod list.
 		if (game == "SkyrimSE" || game == "Fallout4")
 		{
 			if (!mainTabs.TabPages.Contains(tabModPriority))
 				mainTabs.TabPages.Insert(1, tabModPriority);
 			if (!mainTabs.TabPages.Contains(tabPluginOrder))
 				mainTabs.TabPages.Insert(2, tabPluginOrder);
+			if (!mainTabs.TabPages.Contains(tabCreations))
+				mainTabs.TabPages.Insert(3, tabCreations);
+			// The Log tab sits at the end (parallel to Stardew's SMAPI Log tab).
+			if (!mainTabs.TabPages.Contains(tabGameLog))
+				mainTabs.TabPages.Add(tabGameLog);
 		}
 		else
 		{
@@ -164,6 +186,10 @@ public partial class Form1
 				mainTabs.TabPages.Remove(tabModPriority);
 			if (mainTabs.TabPages.Contains(tabPluginOrder))
 				mainTabs.TabPages.Remove(tabPluginOrder);
+			if (mainTabs.TabPages.Contains(tabCreations))
+				mainTabs.TabPages.Remove(tabCreations);
+			if (mainTabs.TabPages.Contains(tabGameLog))
+				mainTabs.TabPages.Remove(tabGameLog);
 		}
 
 		RefreshWikiCategories();

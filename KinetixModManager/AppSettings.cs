@@ -77,6 +77,13 @@ public class AppSettings
 	public string DiscoveryLanguage { get; set; } = "English";
 
 	/// <summary>
+	/// How many search results to fetch per page in the Discovery tab, both for the initial search and
+	/// each "Load more". This is the persisted default; the Discovery tab's own selector starts from this
+	/// value but its in-session changes are not saved back here — only the Settings dialog persists it.
+	/// </summary>
+	public int DiscoverySearchPageSize { get; set; } = 20;
+
+	/// <summary>
 	/// UI language for the whole program, as a two-letter code (e.g. "es"). Empty string means
 	/// "follow the Windows display language". English is always the fallback. See <see cref="Loc"/>.
 	/// </summary>
@@ -235,6 +242,10 @@ public class AppSettings
 			{
 				"Manual",
 				Keys.F1
+			},
+			{
+				"ChangeLog",
+				Keys.F2
 			},
 			{
 				"ContextHelp",

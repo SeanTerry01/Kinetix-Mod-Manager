@@ -37,47 +37,67 @@ public partial class Form1
 			MessageBox.Show(Loc.T("manual.notFound"));
 			return;
 		}
-		string[] array = File.ReadAllLines(path);
+		Dictionary<string, string> sections = ParseMarkdownSections(File.ReadAllLines(path));
+
+		// Append a live "Current Key Mappings" section reflecting the user's actual (possibly remapped) shortcuts.
+		StringBuilder mappings = new StringBuilder();
+		foreach (KeyValuePair<string, Keys> shortcut in _settings.Shortcuts)
+			mappings.AppendLine($"* **{shortcut.Key}**: {GetShortcutString(shortcut.Key)}");
+		sections["Current Key Mappings"] = mappings.ToString();
+
+		ShowDocViewer(sections, Loc.T("manual.windowTitle"), Loc.T("manual.toc"), Loc.T("manual.topicInfo"));
+	}
+
+	/// <summary>Opens a modal window that displays CHANGELOG.md, navigable by version exactly like the manual.</summary>
+	private void ShowChangeLog()
+	{
+		string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CHANGELOG.md");
+		if (!File.Exists(path))
+		{
+			MessageBox.Show(Loc.T("changelog.notFound"));
+			return;
+		}
+		Dictionary<string, string> sections = ParseMarkdownSections(File.ReadAllLines(path));
+		ShowDocViewer(sections, Loc.T("changelog.windowTitle"), Loc.T("changelog.toc"), Loc.T("changelog.topicInfo"));
+	}
+
+	/// <summary>
+	/// Splits Markdown lines into a section map keyed by heading text (any line starting with '#'), preserving
+	/// document order. Content before the first heading is collected under "General".
+	/// </summary>
+	private static Dictionary<string, string> ParseMarkdownSections(string[] lines)
+	{
 		Dictionary<string, string> sections = new Dictionary<string, string>();
 		string key = "General";
-		StringBuilder stringBuilder = new StringBuilder();
-		string[] array2 = array;
-		foreach (string text in array2)
+		StringBuilder body = new StringBuilder();
+		foreach (string line in lines)
 		{
-			if (text.StartsWith("#"))
+			if (line.StartsWith("#"))
 			{
-				if (stringBuilder.Length > 0)
-				{
-					sections[key] = stringBuilder.ToString();
-				}
-				key = text.TrimStart('#').Trim();
-				stringBuilder.Clear();
+				if (body.Length > 0) sections[key] = body.ToString();
+				key = line.TrimStart('#').Trim();
+				body.Clear();
 			}
 			else
 			{
-				stringBuilder.AppendLine(text);
+				body.AppendLine(line);
 			}
 		}
-		if (stringBuilder.Length > 0)
-		{
-			sections[key] = stringBuilder.ToString();
-		}
-		StringBuilder stringBuilder2 = new StringBuilder();
-		foreach (KeyValuePair<string, Keys> shortcut in _settings.Shortcuts)
-		{
-			StringBuilder stringBuilder3 = stringBuilder2;
-			StringBuilder.AppendInterpolatedStringHandler handler = new StringBuilder.AppendInterpolatedStringHandler(8, 2, stringBuilder3);
-			handler.AppendLiteral("* **");
-			handler.AppendFormatted(shortcut.Key);
-			handler.AppendLiteral("**: ");
-			handler.AppendFormatted(GetShortcutString(shortcut.Key));
-			stringBuilder3.AppendLine(ref handler);
-		}
-		sections["Current Key Mappings"] = stringBuilder2.ToString();
+		if (body.Length > 0) sections[key] = body.ToString();
+		return sections;
+	}
+
+	/// <summary>
+	/// Shows the shared, screen-reader-friendly document viewer: a table-of-contents list on the left and the
+	/// selected section's text on the right. Hides the main window while open and restores it on close. Used by
+	/// both the manual and the changelog so they look and operate identically.
+	/// </summary>
+	private void ShowDocViewer(Dictionary<string, string> sections, string windowTitle, string tocName, string contentName)
+	{
 		Hide();
-		Form manualForm = new Form
+		Form docForm = new Form
 		{
-			Text = Loc.T("manual.windowTitle"),
+			Text = windowTitle,
 			Size = new Size(800, 600),
 			StartPosition = FormStartPosition.CenterScreen,
 			KeyPreview = true
@@ -93,11 +113,11 @@ public partial class Form1
 		{
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 12f),
-			AccessibleName = Loc.T("manual.toc")
+			AccessibleName = tocName
 		};
-		foreach (string key3 in sections.Keys)
+		foreach (string sectionKey in sections.Keys)
 		{
-			lbToc.Items.Add(key3);
+			lbToc.Items.Add(sectionKey);
 		}
 		TextBox tbContent = new TextBox
 		{
@@ -106,37 +126,37 @@ public partial class Form1
 			ReadOnly = true,
 			ScrollBars = ScrollBars.Vertical,
 			Font = new Font("Segoe UI", 12f),
-			AccessibleName = Loc.T("manual.topicInfo")
+			AccessibleName = contentName
 		};
 		lbToc.SelectedIndexChanged += async delegate
 		{
 			if (lbToc.SelectedItem != null)
 			{
-				string key2 = lbToc.SelectedItem.ToString() ?? "";
-				tbContent.Text = sections[key2].Trim();
+				string selected = lbToc.SelectedItem.ToString() ?? "";
+				tbContent.Text = sections[selected].Trim();
 				await Task.Delay(150);
 				Speak(Loc.T("common.position", lbToc.SelectedIndex + 1, lbToc.Items.Count));
 			}
 		};
-		manualForm.KeyDown += delegate(object? s, KeyEventArgs pe)
+		docForm.KeyDown += delegate(object? s, KeyEventArgs pe)
 		{
 			if (pe.KeyCode == Keys.Escape)
 			{
-				manualForm.Close();
+				docForm.Close();
 			}
 		};
-		manualForm.FormClosing += delegate
+		docForm.FormClosing += delegate
 		{
 			Show();
 		};
 		tableLayoutPanel.Controls.Add(lbToc, 0, 0);
 		tableLayoutPanel.Controls.Add(tbContent, 1, 0);
-		manualForm.Controls.Add(tableLayoutPanel);
+		docForm.Controls.Add(tableLayoutPanel);
 		if (lbToc.Items.Count > 0)
 		{
 			lbToc.SelectedIndex = 0;
 		}
-		manualForm.ShowDialog();
+		docForm.ShowDialog();
 	}
 
 	/// <summary>

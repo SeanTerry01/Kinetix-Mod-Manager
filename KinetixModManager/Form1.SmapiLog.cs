@@ -28,6 +28,41 @@ namespace KinetixModManager;
 /// <summary>SMAPI log viewing, searching, and uploading for Form1.</summary>
 public partial class Form1
 {
+	/// <summary>
+	/// Opens the active game's primary log in Notepad: SMAPI-latest.txt for Stardew Valley, or the script
+	/// extender log (<c>f4se.log</c> / <c>skse64.log</c>) for Fallout 4 / Skyrim SE. If the primary log has
+	/// not been written yet, opens its folder so the user can browse the other logs that may be there.
+	/// </summary>
+	private void OpenGameLog()
+	{
+		if (_settings.ActiveGame == "StardewValley") { OpenRawSmapiLog(); return; }
+		if (!IsBethesdaGame) { MessageBox.Show(Loc.T("log.notFound")); return; }
+
+		string folder = BethesdaLogFolder();
+		string primary = Path.Combine(folder, _settings.ActiveGame == "SkyrimSE" ? "skse64.log" : "f4se.log");
+		if (File.Exists(primary))
+			Process.Start(new ProcessStartInfo("notepad.exe", primary) { UseShellExecute = true });
+		else if (Directory.Exists(folder))
+			Process.Start("explorer.exe", folder);
+		else
+			MessageBox.Show(Loc.T("log.notFound"));
+	}
+
+	/// <summary>
+	/// The folder where the script extender (and most F4SE/SKSE plugins) write their logs for the active
+	/// Bethesda game: <c>Documents\My Games\&lt;game&gt;\F4SE</c> or <c>\SKSE</c>. Empty outside Skyrim/FO4.
+	/// </summary>
+	private string BethesdaLogFolder()
+	{
+		string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+		return _settings.ActiveGame switch
+		{
+			"Fallout4" => Path.Combine(docs, "My Games", "Fallout4", "F4SE"),
+			"SkyrimSE" => Path.Combine(docs, "My Games", "Skyrim Special Edition", "SKSE"),
+			_          => ""
+		};
+	}
+
 	/// <summary>Opens the SMAPI log file in Notepad for manual inspection.</summary>
 	private void OpenRawSmapiLog()
 	{

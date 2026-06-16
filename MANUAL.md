@@ -12,6 +12,7 @@ You choose which game you're managing from the **Games** menu (press **Alt**, th
 4.  **Closing Settings**: If you aren't ready to configure everything yet, you can press **Escape** or click **Cancel** to close the settings and browse the app. You can reopen this screen at any time by pressing **Ctrl + P**.
 5.  **Getting Help**: 
     *   Press **F1** at any time to open this manual.
+    *   Press **F2** at any time to open the **Change Log**, which lists what's new and fixed in each version. It opens in the same navigable window as this manual — a list of versions on the left and the details on the right.
     *   Press **Shift + F1** while on any tab to hear a context-sensitive list of shortcuts for that specific area.
 6.  **Splash Screen**: On every startup, an audio logo plays. You can press **Enter** to skip it and go straight to the main window.
 
@@ -78,13 +79,16 @@ Kinetix Mod Manager is fully keyboard-driven. The shortcuts are grouped by where
 *   **Profiles Tab Shortcuts**: Applying and deleting saved mod setups.
 *   **Backups Tab Shortcuts**: Restoring, deleting, and pruning your automatic mod backups.
 *   **SMAPI Log Tab Shortcuts (Stardew Valley only)**: Searching the SMAPI log, jumping to a line, diagnosing issues, and uploading the log for help. This tab appears only when Stardew Valley is the active game.
-*   **Discovery & Updates Tabs**: Opening mod pages, ignoring an update, updating all mods, and reading summaries.
+*   **Search & Updates Tabs**: Opening mod pages, loading more search results, ignoring an update, updating all mods, and reading summaries.
+*   **Load Order Tabs (Skyrim & Fallout 4 only)**: Reordering mod priority and plugin load order, auto-sorting plugins, and activating or deactivating Creations. These tabs appear only for Skyrim Special Edition and Fallout 4.
+*   **Log Tab (Skyrim & Fallout 4 only)**: Viewing the game's script-extender and plugin logs, filtering and searching them, and refreshing them live.
 *   **Wiki Tab Shortcuts**: Searching the active game's wiki, opening pages and categories, and moving between the search box, dropdowns, results list, and the web view.
 
 You can also press **Shift + F1** on any tab at any time to hear the shortcuts for just that tab.
 
 ### Global Shortcuts
 *   **F1**: Open this User Manual (Internal Window).
+*   **F2**: Open the **Change Log** (what's new and fixed in each version).
 *   **Shift + F1**: **Context Help** - Speaks the shortcuts for your current tab.
 *   **F5**: Launch the active game through its mod loader (SMAPI for Stardew Valley, SKSE for Skyrim Special Edition, F4SE for Fallout 4).
 *   **F6**: **Cycle Focus** - Jump between the tab headers and the primary list in each tab (and the web view in the Wiki tab).
@@ -108,7 +112,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Ctrl + Y**: View a detailed list of dependencies.
 *   **Ctrl + Q**: **Quick-Fix** - Instantly search for a missing dependency.
 *   **Ctrl + K**: Manually assign a Nexus ID.
-*   **Ctrl + I**: Install a mod from a `.zip` file.
+*   **Ctrl + I**: Install a mod from an archive file. **`.zip`, `.7z`, and `.rar`** archives are all supported.
 *   **Ctrl + R**: **Read Description** - Speaks the full summary of the mod.
 *   **Apps Key**: View mod details.
 
@@ -130,13 +134,25 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Ctrl + L**: Upload log to SMAPI.io for troubleshooting help.
 *   **F4**: Open the raw log file in Notepad.
 
-### Discovery & Updates Tabs
+### Search & Updates Tabs
 *   **Enter**: 
     *   In **Updates**: Open the Nexus page for the update.
-    *   In **Discovery**: Open the Nexus page for the selected mod.
+    *   In **Search for Mods**: Open the Nexus page for the selected mod — **or**, on the **"Load more results"** row at the bottom of the list, load the next batch of results.
 *   **Delete**: (In Updates tab) **Ignore Update** - Hides this specific version from the updates list.
 *   **Ctrl + U**: **Update All** mods (Premium only).
 *   **Ctrl + R**: Read the mod's summary.
+
+### Load Order Tabs (Skyrim & Fallout 4 only)
+*These tabs — **Mod Priority**, **Plugin Order**, and **Creations** — appear only for Skyrim Special Edition and Fallout 4. See the "Load Order Management" section below for what they do.*
+*   **Ctrl + Up / Ctrl + Down**: Move the selected mod (Mod Priority tab) or plugin (Plugin Order tab) higher or lower in the order.
+*   **F8**: **Auto-sort** the plugin load order (Plugin Order tab), arranging every plugin to load after the masters it needs, using LOOT rules when available.
+*   **Space**: (Creations tab) Activate or deactivate the selected Creation.
+
+### Log Tab Shortcuts (Skyrim & Fallout 4 only)
+*The **Log** tab (shown as "Fallout 4 Logs" or "Skyrim Logs") appears only for those games. See the "Game Logs" section below.*
+*   **Ctrl + Shift + R**: **Refresh** the log — re-reads it live, even while the game is running.
+*   **F4**: Open the currently selected log file in Notepad.
+*   **Ctrl + C**: Copy the selected line(s) to the clipboard.
 
 ### Wiki Tab Shortcuts
 *   **Enter (in Search bar)**: Search the active game's wiki for the entered text.
@@ -188,12 +204,14 @@ The Walkthroughs tab (e.g. **Stardew Walkthroughs**, **Skyrim Walkthroughs**, or
 
 ---
 
-## Mod Discovery (Find New Mods)
-The **Find New Mods** tab allows you to browse and search for mods without leaving the app.
+## Searching for Mods
+The **Search for Mods** tab allows you to browse and search for mods on Nexus Mods without leaving the app.
 1.  **Search**: Type a mod name in the search box and press Enter.
 2.  **Types**: Use the **Type** dropdown to see **Trending**, **Most Popular**, or **Recent** mods.
 3.  **Language Filter**: Use the **Language** dropdown to restrict results to a single language. It defaults to **English**, and your choice is remembered between sessions. The list is built from the languages that actually have mods for the game you're currently managing, with a count beside each — for example "English (16362)". Choose **"Any language"** at the top of the list to turn the filter off and see results in every language. The filter applies to keyword searches and to the Trending, Most Popular, and Recent lists alike.
     *   *Note:* The language comes from how each mod's author tagged it on Nexus Mods, so on rare occasions a mod tagged incorrectly by its author may still appear. Switching to "Any language" always shows the complete results.
+4.  **Results per load**: Use the **Results** dropdown to choose how many results to load at a time (10, 20, 30, 50, or 100). Changing it here applies to your current searches only; to make a number stick between sessions, set **"Search Results per Load"** in **Settings** instead — the Search tab then starts from your saved choice.
+5.  **Loading more results**: When more results are available than were loaded, a **"Load more results"** row sits at the very bottom of the results list. Arrow down to it and press **Enter** to load the next batch — the new results are added to the list, your focus lands on the first new one, and the "Load more results" row moves to the new bottom. It isn't counted in the "X of Y" position announcements, so the real results still read "1 of 20", "2 of 20", and so on.
 
 ---
 
@@ -220,7 +238,7 @@ After you activate either button, Nexus sometimes shows a page that lists the mo
 ## Accessibility Suite Installer
 Each supported game needs a set of foundation mods to be accessible (its mod loader plus the screen-reader and helper mods). The **Accessibility Suite Installer** gathers them all in one place. Open it from the **Mods** menu → **"Install [Game] Accessibility Suite"** (the exact name reflects the active game).
 
-The dialog shows a **status list**, with one line per required mod telling you whether it is **Installed** or **Not Installed**. The suite differs per game — for example SMAPI and Stardew Access for Stardew Valley; SKSE64, SkyUI, and others for Skyrim Special Edition; and F4SE, the Mod Configuration Menu, and Fallout 4 Access for Fallout 4.
+The dialog shows a **status list**, with one line per required mod telling you whether it is **Installed** or **Not Installed**. The suite differs per game — for example SMAPI and Stardew Access for Stardew Valley; SKSE64, the Address Library, SkyUI, and others for Skyrim Special Edition; and F4SE, the Address Library, the Mod Configuration Menu, and Fallout 4 Access for Fallout 4.
 
 There are two ways to get the missing mods:
 
@@ -255,6 +273,52 @@ The manager does more than just launch the game:
 *   It announces when it starts launching the game through its mod loader (SMAPI for Stardew Valley, SKSE for Skyrim Special Edition, F4SE for Fallout 4).
 *   It speaks and displays *"Game is loaded and running"* once the game is active.
 *   It instantly detects when you close the game and announces *"Game closed."*
+
+---
+
+## Load Order Management (Skyrim & Fallout 4)
+
+Skyrim Special Edition and Fallout 4 decide how mods combine using **load order**, and the manager gives you dedicated tabs for it. They appear automatically for those games, right after the Installed Mods tab. Stardew Valley does not use load order, so these tabs don't appear for it.
+
+### Mod Priority
+When two mods provide the same loose file, the one with **higher priority wins**. The **Mod Priority** tab lists your mods highest-priority-first (the top of the list wins conflicts). Each row also tells you how many files that mod **overrides** or **is overridden in**, so you can judge its standing by ear. Press **Ctrl + Up** or **Ctrl + Down** to move the selected mod higher or lower; the change is applied immediately and the new position is announced.
+
+### Plugin Order
+The **Plugin Order** tab is the load order of your plugin files (the `.esp`, `.esm`, and `.esl` files), written to `plugins.txt`. Plugins higher in the list load first. Masters and light masters always load before regular plugins, and the base game and its add-ons are handled automatically and not listed. Press **Ctrl + Up / Ctrl + Down** to move a plugin (it can't cross the boundary between masters and regular plugins). Press **F8** to **auto-sort**: the manager arranges every plugin to load after the masters it needs, using LOOT's community rules when it can reach them, and a master-dependency sort otherwise.
+
+### Creations
+**Creations** (formerly Creation Club content) are official add-ons you download **inside the game**, from its **Creations** menu — or queue from the Bethesda.net website to your linked account. No mod manager downloads them for you; the game installs them into its own folder. The **Creations** tab lists the Creations already installed in your game, whether each is **Active**, and whether it's a master or light master. Press **Space** to activate or deactivate the selected one. To change where a Creation loads, use the Plugin Order tab.
+
+### Exporting and Importing Your Load Order
+From the **Mods** menu you can **Export Load Order** to save your current mod priority and plugin order to a file, and **Import Load Order** to apply a saved file later — for example as a backup, or to move a setup between computers. Importing replaces the current order and re-applies it; it never adds or removes your mods, and it only accepts a file that was exported for the same game.
+
+---
+
+## Importing from Mod Organizer 2 (Skyrim & Fallout 4)
+
+If you're moving to Kinetix Mod Manager from **Mod Organizer 2 (MO2)**, you can bring your existing setup across. Open the **Mods** menu and choose **"Import from Mod Organizer 2"**.
+
+1.  Pick your MO2 folder — the one that contains the `mods` and `profiles` folders. (On most setups this is under `...\AppData\Local\ModOrganizer\<your game>`.)
+2.  Choose which **profile** to import from the list, which shows each profile's mod count and how many are enabled.
+3.  Confirm. The manager **copies** each mod into its own mods folder (your MO2 setup is never changed), applies the mod priority and plugin order, and activates the same plugins — including any Creations you had active.
+
+Importing copies the mods, so it can take a while for large lists, and any mods you already have in the manager are skipped. Afterwards, the manager automatically fills in the Nexus IDs for the imported mods (MO2 doesn't store them), so update checks and "open mod page" work for them.
+
+> **Note:** This manager deploys real files into the game's folder, whereas MO2 uses a virtual overlay. After importing, launch the game through this manager or directly — not through MO2 at the same time.
+
+---
+
+## Game Logs (Skyrim & Fallout 4)
+
+For Skyrim Special Edition and Fallout 4, a **Log** tab — shown as **"Skyrim Logs"** or **"Fallout 4 Logs"** — lets you read the logs the game's **script extender** and its plugins write, without leaving the app. This is where you find out, for example, that a plugin failed to load because the game updated.
+
+*   **Log dropdown**: Choose which log file to view. It lists every log in the script-extender folder, newest first — such as `f4se.log` (or `skse64.log`), the per-mod logs, crash logs, and your accessibility mod's log.
+*   **Filter dropdown**: Choose **Full Log**, or **Errors and Warnings** to keep only the lines that look like problems. As you move through the choices, the manager tells you how many lines each one shows.
+*   **Search box**: Type text and press **Enter** to keep only matching lines.
+*   **Refresh**: Press **Ctrl + Shift + R** to re-read the log at any time, even while the game is running — handy right after a crash.
+*   **Open or copy**: Press **F4** to open the selected log in Notepad, or **Ctrl + C** to copy the selected line(s) to the clipboard.
+
+(For Stardew Valley, the equivalent is the **SMAPI Log** tab described elsewhere in this manual.)
 
 ---
 
