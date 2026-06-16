@@ -134,9 +134,20 @@ public partial class Form1
 			{
 				string selected = lbToc.SelectedItem.ToString() ?? "";
 				tbContent.Text = sections[selected].Trim();
+				// Reset the caret and scroll to the top of the new topic, so it doesn't sit at the end.
+				tbContent.SelectionStart = 0;
+				tbContent.SelectionLength = 0;
+				tbContent.ScrollToCaret();
 				await Task.Delay(150);
 				Speak(Loc.T("common.position", lbToc.SelectedIndex + 1, lbToc.Items.Count));
 			}
+		};
+		// Tabbing into the content box should land the cursor at the start of the topic, not the bottom.
+		tbContent.GotFocus += delegate
+		{
+			tbContent.SelectionStart = 0;
+			tbContent.SelectionLength = 0;
+			tbContent.ScrollToCaret();
 		};
 		docForm.KeyDown += delegate(object? s, KeyEventArgs pe)
 		{

@@ -21,6 +21,9 @@ A major update for Skyrim Special Edition and Fallout 4 modders: full load-order
 ### 🪵 In-app game logs (Skyrim & Fallout 4)
 *   **A new Log tab** — "Skyrim Logs" or "Fallout 4 Logs" — lets you read the logs your script extender and its plugins write, including `f4se.log` / `skse64.log`, the per-mod logs, crash logs, and your accessibility mod's log. Choose a log from the dropdown, filter to "Errors and Warnings", search it, and press **Ctrl+Shift+R** to refresh it live — even while the game is running. This is where you'll spot a plugin that stopped loading after a game update.
 
+### 🌐 Translatable interface
+*   **The whole app is now translatable**: Every piece of text the program shows or speaks lives in language files, and a **Language** option has been added to Settings, so the manager is ready for translators to add new languages without any code changes. *Only English is included for now* — other languages will be added over time as translations are completed, so you won't see new language choices until those translations exist.
+
 ### 🔍 Finding mods
 *   **Choose how many results load at a time**: A new **Results** dropdown on the renamed **Search for Mods** tab (10, 20, 30, 50, or 100). Set a default that sticks across sessions in **Settings**.
 *   **"Load more results" is now part of the list**: Instead of tabbing to a separate button, a row at the bottom of the results loads the next batch when you press **Enter**, then drops you on the first newly loaded result. It isn't counted in the "X of Y" position announcements.
