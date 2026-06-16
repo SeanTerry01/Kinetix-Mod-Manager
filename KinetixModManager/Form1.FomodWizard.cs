@@ -163,6 +163,20 @@ public partial class Form1
 			};
 		}
 
+		// Keeps the Next/Install button label, its accessible name, and the title-bar step counter in sync
+		// with the current selection. Re-run after any option toggle, because a flag-setting choice can show
+		// or hide a later step — so the button must read "Install" once the current step is the last visible
+		// one, and the title bar's "Step N of M" must reflect the new visible-step count. The title also
+		// drives what NVDA+T announces; ordinary (non-FOMOD) installs never open this dialog.
+		void UpdateNav()
+		{
+			bool isLast = NextVisible(current) == -1;
+			btnNext.Text = isLast ? Loc.T("fomod.install") : Loc.T("fomod.next");
+			btnNext.AccessibleName = btnNext.Text;
+			dialog.Text = Loc.T("fomod.windowTitle", config.ModuleName,
+				VisiblePosition(current), VisibleCount(), config.InstallSteps[current].Name);
+		}
+
 		void Render()
 		{
 			content.SuspendLayout();
@@ -170,10 +184,6 @@ public partial class Form1
 
 			FomodInstallStep step = config.InstallSteps[current];
 			header.Text = step.Name;
-			// Reflect the mod, progress, and step name in the title bar so NVDA+T announces exactly where
-			// the user is (e.g. "Installing Immersive Sounds Compendium. Step 4 of 7. <step name>"). This
-			// only applies to the FOMOD wizard; ordinary installs never open this dialog.
-			dialog.Text = Loc.T("fomod.windowTitle", config.ModuleName, VisiblePosition(current), VisibleCount(), step.Name);
 			Dictionary<string, string> flags = BuildFlags(current - 1);
 			int boxWidth = content.ClientSize.Width - 28;
 
@@ -207,7 +217,7 @@ public partial class Form1
 						Checked = group.Plugins.All(p => !selected[p])
 					};
 					FomodGroup capturedGroup = group;
-					none.CheckedChanged += (s, e) => { if (none.Checked) foreach (FomodPlugin p in capturedGroup.Plugins) selected[p] = false; };
+					none.CheckedChanged += (s, e) => { if (none.Checked) { foreach (FomodPlugin p in capturedGroup.Plugins) selected[p] = false; UpdateNav(); } };
 					inner.Controls.Add(none);
 				}
 
@@ -217,34 +227,55 @@ public partial class Form1
 				{
 					FomodPluginType type = FomodConditionEvaluator.ResolveType(plugin, flags, fileState);
 					ButtonBase ctrl = isRadio ? new RadioButton() : new CheckBox();
-					ctrl.Text = plugin.Name;
-					ctrl.AutoSize = true;
-					ctrl.Tag = plugin;
-					ctrl.AccessibleName = type switch
+					// Status goes in both the visible text and the accessible name: the visible suffix replaces
+					// the grey-out cue (forced options are no longer disabled, see below), and the accessible
+					// name ensures the screen reader announces "required" / "recommended" / "not available".
+					string label = type switch
 					{
 						FomodPluginType.Required => Loc.T("fomod.optionRequired", plugin.Name),
 						FomodPluginType.Recommended => Loc.T("fomod.optionRecommended", plugin.Name),
 						FomodPluginType.NotUsable => Loc.T("fomod.optionNotUsable", plugin.Name),
 						_ => plugin.Name
 					};
+					ctrl.Text = label;
+					ctrl.AutoSize = true;
+					ctrl.Tag = plugin;
+					ctrl.AccessibleName = label;
 					inner.Controls.Add(ctrl);
 					controls.Add((ctrl, plugin, type));
 				}
 
-				// Second pass: apply forced state, set initial checked, then wire change + focus handlers.
+				// Second pass: apply forced state and wire handlers. Forced options (SelectAll / Required /
+				// NotUsable) are deliberately NOT disabled — a disabled WinForms control is skipped by the
+				// keyboard and silent to NVDA, which would hide Required and unavailable options from a blind
+				// user entirely. They stay enabled (focusable + readable, status in the label) and are simply
+				// made non-toggleable via AutoCheck=false, with a revert guard for the radio-sibling case.
 				foreach ((ButtonBase ctrl, FomodPlugin plugin, FomodPluginType type) in controls)
 				{
 					bool forcedOn = group.Type == FomodGroupType.SelectAll || type == FomodPluginType.Required;
 					bool forcedOff = type == FomodPluginType.NotUsable;
-					if (forcedOn) selected[plugin] = true;
-					if (forcedOff) selected[plugin] = false;
+					bool locked = forcedOn || forcedOff;
+					bool fixedState = forcedOn && !forcedOff;
+					if (locked) selected[plugin] = fixedState;
 
 					SetChecked(ctrl, selected[plugin]);
-					ctrl.Enabled = !(forcedOn || forcedOff);
 
 					FomodPlugin capturedPlugin = plugin;
-					if (ctrl is RadioButton rb)
-						rb.CheckedChanged += (s, e) => selected[capturedPlugin] = rb.Checked;
+					if (locked)
+					{
+						if (ctrl is RadioButton rbL)
+						{
+							rbL.AutoCheck = false;
+							rbL.CheckedChanged += (s, e) => { if (rbL.Checked != fixedState) rbL.Checked = fixedState; };
+						}
+						else if (ctrl is CheckBox cbL)
+						{
+							cbL.AutoCheck = false;
+							cbL.CheckedChanged += (s, e) => { if (cbL.Checked != fixedState) cbL.Checked = fixedState; };
+						}
+					}
+					else if (ctrl is RadioButton rb)
+						rb.CheckedChanged += (s, e) => { selected[capturedPlugin] = rb.Checked; UpdateNav(); };
 					else if (ctrl is CheckBox cb)
 						cb.CheckedChanged += (s, e) =>
 						{
@@ -253,6 +284,7 @@ public partial class Form1
 							// AccessibleName is toggled with Space, so speak it ourselves. Only user toggles
 							// reach here — seeding via SetChecked happens before this handler is attached.
 							Speak(Loc.T(cb.Checked ? "fomod.checked" : "fomod.unchecked"));
+							UpdateNav();
 						};
 
 					AttachAnnounce(ctrl, plugin.Description);
@@ -262,9 +294,7 @@ public partial class Form1
 			}
 
 			btnBack.Enabled = history.Count > 0;
-			bool isLast = NextVisible(current) == -1;
-			btnNext.Text = isLast ? Loc.T("fomod.install") : Loc.T("fomod.next");
-			btnNext.AccessibleName = btnNext.Text;
+			UpdateNav();
 
 			content.ResumeLayout();
 
