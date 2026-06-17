@@ -286,17 +286,16 @@ public partial class Form1
 		// box), since the selection itself hasn't changed in those cases.
 		list.GotFocus += delegate { AnnounceSelection(); };
 
-		// Right/Enter opens the selected heading's sub-topics; Left/Backspace goes up a level.
+		// Right/Enter opens the selected heading's sub-topics; Left/Backspace goes up a level. Right/Left are
+		// always swallowed (even on a leaf or at the root) so the ListBox never falls back to its default of
+		// treating them like Down/Up; only up/down move the list.
 		list.KeyDown += delegate(object? s, KeyEventArgs pe)
 		{
 			if (pe.KeyCode == Keys.Right || pe.KeyCode == Keys.Enter)
 			{
-				if (Selected() is DocNode n && n.Children.Count > 0)
-				{
-					pe.Handled = true;
-					pe.SuppressKeyPress = true;
-					DrillIn();
-				}
+				pe.Handled = true;
+				pe.SuppressKeyPress = true;
+				DrillIn();   // no-op on a leaf
 			}
 			else if (pe.KeyCode == Keys.Left || pe.KeyCode == Keys.Back)
 			{
@@ -914,17 +913,15 @@ public partial class Form1
 		list.GotFocus += delegate { AnnounceSelection(); };
 
 		// Right/Enter opens the selected group; Left/Backspace goes up a level; Ctrl+E edits the owning
-		// mod's config (also on the button). Plain Enter on a leaf does nothing.
+		// mod's config (also on the button). Right/Left are always swallowed (even on a leaf or at the root) so
+		// the ListBox never falls back to its default of treating them like Down/Up; only up/down move the list.
 		list.KeyDown += delegate(object? s, KeyEventArgs pe)
 		{
 			if (pe.KeyCode == Keys.Right || pe.KeyCode == Keys.Enter)
 			{
-				if (Selected() is NavNode n && n.Children.Count > 0)
-				{
-					pe.Handled = true;
-					pe.SuppressKeyPress = true;
-					DrillIn();
-				}
+				pe.Handled = true;
+				pe.SuppressKeyPress = true;
+				DrillIn();   // no-op on a leaf
 			}
 			else if (pe.KeyCode == Keys.Left || pe.KeyCode == Keys.Back)
 			{
@@ -1017,12 +1014,195 @@ public partial class Form1
 				if (flat.Entries.Count > 0) mod.Sections.Add(flat);
 				if (!string.IsNullOrEmpty(configPath)) mod.ConfigPath = configPath;
 
+				// Skyrim/Fallout 4 mods expose their keybinds through MCM Helper, not a README, so read those too.
+				mod.Sections.AddRange(ParseMcmKeybinds(dir));
+
 				if (mod.HasContent) sources.Add(mod);
 			}
 		}
 		catch { }
 
 		return sources;
+	}
+
+	/// <summary>
+	/// Reads keybinds a mod exposes through MCM Helper (used by Skyrim and Fallout 4 mods such as Fallout 4 Access
+	/// and XDI) into structured sections — the same shape README-sourced controls use, so they fold into the same
+	/// drill-down. Each <c>MCM\Config\&lt;mod&gt;\config.json</c> lists <c>keyinput</c> controls grouped by
+	/// <c>section</c> headings; the actual key for each is read from the INI (the user's in-game remap in
+	/// <c>&lt;game&gt;\Data\MCM\Settings\&lt;mod&gt;.ini</c> if present, otherwise the mod's shipped default
+	/// <c>settings.ini</c>) and decoded from its "virtual-key,modifier" pair into a readable combo. Read-only:
+	/// the keys reflect exactly what MCM has, so they stay correct even after the user remaps in-game.
+	/// </summary>
+	private List<KbSection> ParseMcmKeybinds(string modDir)
+	{
+		var sections = new List<KbSection>();
+		string mcmConfigRoot = Path.Combine(modDir, "MCM", "Config");
+		if (!Directory.Exists(mcmConfigRoot)) return sections;
+
+		foreach (string configDir in Directory.GetDirectories(mcmConfigRoot))
+		{
+			string configPath = Path.Combine(configDir, "config.json");
+			if (!File.Exists(configPath)) continue;
+			try
+			{
+				JObject root = JObject.Parse(File.ReadAllText(configPath));
+				string modName = root.Value<string>("modName") ?? Path.GetFileName(configDir);
+
+				// Key values live in the INI; defaults load first, then the user's override wins.
+				var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+				LoadIniInto(Path.Combine(configDir, "settings.ini"), values);
+				if (!string.IsNullOrEmpty(_settings.CurrentGamePath))
+					LoadIniInto(Path.Combine(_settings.CurrentGamePath, "Data", "MCM", "Settings", modName + ".ini"), values);
+
+				// Controls live under pages[].content[] (Fallout 4 Access) or a top-level content[] (XDI).
+				var contentArrays = new List<JArray>();
+				if (root["pages"] is JArray pages)
+					foreach (JToken page in pages)
+						if (page["content"] is JArray pc) contentArrays.Add(pc);
+				if (root["content"] is JArray topContent) contentArrays.Add(topContent);
+
+				KbSection? current = null;
+				void Push()
+				{
+					if (current != null && current.Entries.Count > 0) sections.Add(current);
+				}
+
+				foreach (JArray content in contentArrays)
+				{
+					foreach (JToken item in content)
+					{
+						string type = item.Value<string>("type") ?? "";
+						if (type == "section")
+						{
+							Push();
+							current = new KbSection { Name = item.Value<string>("text")?.Trim() ?? "" };
+						}
+						else if (type == "keyinput")
+						{
+							string label = item.Value<string>("text")?.Trim() ?? "";
+							if (label.Length == 0) continue;
+							current ??= new KbSection();
+							current.Entries.Add(new KbEntry { Key = ResolveMcmKey(item.Value<string>("id") ?? "", values), Text = label });
+						}
+					}
+				}
+				Push();
+			}
+			catch { }
+		}
+		return sections;
+	}
+
+	/// <summary>Loads an MCM INI into <paramref name="values"/> keyed by "section|name" (case-insensitive), so a
+	/// later call (the user override) overwrites the defaults for the same setting. Comments and blanks ignored.</summary>
+	private static void LoadIniInto(string path, Dictionary<string, string> values)
+	{
+		if (!File.Exists(path)) return;
+		try
+		{
+			string section = "";
+			foreach (string raw in File.ReadAllLines(path))
+			{
+				string line = raw.Trim();
+				if (line.Length == 0 || line.StartsWith(";") || line.StartsWith("#")) continue;
+				if (line.StartsWith("[") && line.EndsWith("]"))
+				{
+					section = line.Substring(1, line.Length - 2).Trim();
+					continue;
+				}
+				int eq = line.IndexOf('=');
+				if (eq <= 0) continue;
+				values[section + "|" + line.Substring(0, eq).Trim()] = line.Substring(eq + 1).Trim();
+			}
+		}
+		catch { }
+	}
+
+	/// <summary>Resolves an MCM keyinput's "settingName:iniSection" id to a readable key combo by looking the
+	/// "virtual-key,modifier" pair up in the loaded INI values. Returns "Unassigned" when no key is bound.</summary>
+	private static string ResolveMcmKey(string id, Dictionary<string, string> values)
+	{
+		int colon = id.IndexOf(':');
+		string settingName = colon >= 0 ? id.Substring(0, colon) : id;
+		string iniSection = colon >= 0 ? id.Substring(colon + 1) : "";
+		if (!values.TryGetValue(iniSection + "|" + settingName, out string? raw) || string.IsNullOrWhiteSpace(raw))
+			return "Unassigned";
+
+		string[] parts = raw.Split(',');
+		if (!int.TryParse(parts[0].Trim(), out int vk) || vk <= 0) return "Unassigned";
+		int mods = parts.Length > 1 && int.TryParse(parts[1].Trim(), out int m) ? m : 0;
+		return DecodeVirtualKey(vk, mods);
+	}
+
+	/// <summary>Decodes a Windows virtual-key code plus an MCM modifier bitfield (1=shift, 2=ctrl, 4=alt) into a
+	/// readable combo like "Ctrl + Shift + Page Down".</summary>
+	private static string DecodeVirtualKey(int vk, int modifiers)
+	{
+		var parts = new List<string>();
+		if ((modifiers & 2) != 0) parts.Add("Ctrl");
+		if ((modifiers & 1) != 0) parts.Add("Shift");
+		if ((modifiers & 4) != 0) parts.Add("Alt");
+		parts.Add(VirtualKeyName(vk));
+		return string.Join(" + ", parts);
+	}
+
+	/// <summary>Maps a Windows virtual-key code to a readable key name, covering the keys mods actually bind.</summary>
+	private static string VirtualKeyName(int vk)
+	{
+		if (vk >= 0x41 && vk <= 0x5A) return ((char)vk).ToString();          // A-Z
+		if (vk >= 0x30 && vk <= 0x39) return ((char)vk).ToString();          // 0-9 (top row)
+		if (vk >= 0x60 && vk <= 0x69) return "Numpad " + (vk - 0x60);        // Numpad 0-9
+		if (vk >= 0x70 && vk <= 0x87) return "F" + (vk - 0x6F);              // F1-F24
+
+		return vk switch
+		{
+			0x01 => "Left Mouse Button",
+			0x02 => "Right Mouse Button",
+			0x04 => "Middle Mouse Button",
+			0x05 => "Mouse Button 4",
+			0x06 => "Mouse Button 5",
+			0x08 => "Backspace",
+			0x09 => "Tab",
+			0x0D => "Enter",
+			0x10 => "Shift",
+			0x11 => "Ctrl",
+			0x12 => "Alt",
+			0x13 => "Pause",
+			0x14 => "Caps Lock",
+			0x1B => "Escape",
+			0x20 => "Space",
+			0x21 => "Page Up",
+			0x22 => "Page Down",
+			0x23 => "End",
+			0x24 => "Home",
+			0x25 => "Left Arrow",
+			0x26 => "Up Arrow",
+			0x27 => "Right Arrow",
+			0x28 => "Down Arrow",
+			0x2C => "Print Screen",
+			0x2D => "Insert",
+			0x2E => "Delete",
+			0x6A => "Numpad Multiply",
+			0x6B => "Numpad Plus",
+			0x6D => "Numpad Minus",
+			0x6E => "Numpad Decimal",
+			0x6F => "Numpad Divide",
+			0x90 => "Num Lock",
+			0x91 => "Scroll Lock",
+			0xBA => ";",
+			0xBB => "=",
+			0xBC => ",",
+			0xBD => "-",
+			0xBE => ".",
+			0xBF => "/",
+			0xC0 => "`",
+			0xDB => "[",
+			0xDC => "\\",
+			0xDD => "]",
+			0xDE => "'",
+			_ => "Key " + vk
+		};
 	}
 
 	/// <summary>Builds the drill-down forest for the active game: one root node per control source.</summary>
