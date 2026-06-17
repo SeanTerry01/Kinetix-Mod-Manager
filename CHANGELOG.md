@@ -1,4 +1,4 @@
-# Release Notes & Changelog: Version 1.3.0
+# Version 1.3.0
 
 A major update for Skyrim Special Edition and Fallout 4 modders: full load-order management with import and export, a Creations manager, one-click importing from Mod Organizer 2, and an in-app game-log viewer — alongside `.rar` support, a "results per load" control for mod searches, an in-app Change Log you can open with F2, and a range of accessibility refinements. The manual has been fully updated to cover everything.
 
@@ -40,7 +40,7 @@ A major update for Skyrim Special Edition and Fallout 4 modders: full load-order
 
 ---
 
-# Release Notes & Changelog: Version 1.2.5
+# Version 1.2.5
 
 A big update: a new Mod Wikis browser with per-wiki search, a language filter for finding mods, an easier way to install the accessibility suite one mod at a time, an About dialog, support for installing on Windows 11 on ARM, and a fully refreshed manual — alongside fixes for the SMAPI log viewer and mod-group announcements.
 
@@ -87,7 +87,7 @@ A big update: a new Mod Wikis browser with per-wiki search, a language filter fo
 
 ---
 
-# Release Notes & Changelog: Version 1.2.4
+# Version 1.2.4
 
 Overhauls the Stardew Valley SMAPI log viewer so errors are easier to find, understand, and act on — plus a small accessibility-suite cleanup.
 
@@ -107,7 +107,7 @@ Overhauls the Stardew Valley SMAPI log viewer so errors are easier to find, unde
 
 ---
 
-# Release Notes & Changelog: Version 1.2.3
+# Version 1.2.3
 
 Automates SMAPI for Stardew Valley — installing it, and keeping it up to date — so a new modder never has to use SMAPI's console installer or a download page.
 
@@ -122,7 +122,7 @@ Automates SMAPI for Stardew Valley — installing it, and keeping it up to date 
 
 ---
 
-# Release Notes & Changelog: Version 1.2.2
+# Version 1.2.2
 
 Adds the ability to edit a mod's config and manifest files directly inside the manager, building on the 1.2.1 fixes.
 
@@ -137,7 +137,7 @@ Adds the ability to edit a mod's config and manifest files directly inside the m
 
 ---
 
-# Release Notes & Changelog: Version 1.2.1
+# Version 1.2.1
 
 A small bug-fix release addressing two issues found when running the manager on a PC where not every supported game is installed.
 
@@ -154,7 +154,7 @@ A small bug-fix release addressing two issues found when running the manager on 
 
 ---
 
-# Release Notes & Changelog: Version 1.2.0
+# Version 1.2.0
 
 This release builds on the 1.1.0 multi-game foundation with a game-aware audio theme system, broad accessibility and keyboard-focus fixes, and a smoother Skyrim Engine Fixes install.
 
@@ -186,7 +186,7 @@ This release builds on the 1.1.0 multi-game foundation with a game-aware audio t
 
 ---
 
-# Release Notes & Changelog: Version 1.1.0 (Major Release)
+# Version 1.1.0 (Major Release)
 
 This release marks a major milestone, transforming the application from a Stardew Valley-specific manager into a multi-game accessible modding suite renamed **Kinetix Mod Manager**, while adding critical performance, stability, and installation fixes.
 

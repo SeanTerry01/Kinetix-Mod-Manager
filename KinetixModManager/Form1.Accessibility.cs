@@ -28,7 +28,7 @@ namespace KinetixModManager;
 /// <summary>Manual viewer, keybind parsing, accessibility controls, and config editor for Form1.</summary>
 public partial class Form1
 {
-	/// <summary>Opens a modal window that displays MANUAL.md content, split into navigable sections.</summary>
+	/// <summary>Opens the navigable manual: MANUAL.md as a drill-down of sections and their sub-topics.</summary>
 	private void ShowManual()
 	{
 		string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "MANUAL.md");
@@ -37,18 +37,20 @@ public partial class Form1
 			MessageBox.Show(Loc.T("manual.notFound"));
 			return;
 		}
-		Dictionary<string, string> sections = ParseMarkdownSections(File.ReadAllLines(path));
+		// The manual is one '#' title with '##' sections beneath it; surface those sections as the top level.
+		List<DocNode> roots = NormalizeDocRoots(ParseDocTree(File.ReadAllLines(path)));
+		CollapseRedundantLevels(roots);
 
-		// Append a live "Current Key Mappings" section reflecting the user's actual (possibly remapped) shortcuts.
+		// Append a live "Current Key Mappings" entry reflecting the user's actual (possibly remapped) shortcuts.
 		StringBuilder mappings = new StringBuilder();
 		foreach (KeyValuePair<string, Keys> shortcut in _settings.Shortcuts)
-			mappings.AppendLine($"* **{shortcut.Key}**: {GetShortcutString(shortcut.Key)}");
-		sections["Current Key Mappings"] = mappings.ToString();
+			mappings.AppendLine($"* {shortcut.Key}: {GetShortcutString(shortcut.Key)}");
+		roots.Add(new DocNode(Loc.T("manual.currentKeyMappings")) { Content = mappings.ToString() });
 
-		ShowDocViewer(sections, Loc.T("manual.windowTitle"), Loc.T("manual.toc"), Loc.T("manual.topicInfo"));
+		ShowDocDrilldown(roots, Loc.T("manual.windowTitle"), Loc.T("manual.toc"), Loc.T("manual.topicInfo"));
 	}
 
-	/// <summary>Opens a modal window that displays CHANGELOG.md, navigable by version exactly like the manual.</summary>
+	/// <summary>Opens the navigable change log: each version is a top-level entry you open to read its changes.</summary>
 	private void ShowChangeLog()
 	{
 		string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CHANGELOG.md");
@@ -57,68 +59,126 @@ public partial class Form1
 			MessageBox.Show(Loc.T("changelog.notFound"));
 			return;
 		}
-		Dictionary<string, string> sections = ParseMarkdownSections(File.ReadAllLines(path));
-		ShowDocViewer(sections, Loc.T("changelog.windowTitle"), Loc.T("changelog.toc"), Loc.T("changelog.topicInfo"));
+		// Each version is its own '#' heading; the "New in Version X" '##' under it is a redundant wrapper that
+		// CollapseRedundantLevels removes, so opening a version lists its change categories directly.
+		List<DocNode> roots = ParseDocTree(File.ReadAllLines(path));
+		CollapseRedundantLevels(roots);
+		ShowDocDrilldown(roots, Loc.T("changelog.windowTitle"), Loc.T("changelog.toc"), Loc.T("changelog.topicInfo"));
+	}
+
+	/// <summary>One heading in a document: its title, the body text directly beneath it (before any sub-heading),
+	/// and its sub-headings as children. Built into a tree by <see cref="ParseDocTree"/>.</summary>
+	private class DocNode
+	{
+		public string Label { get; }
+		public string Content { get; set; } = "";
+		public List<DocNode> Children { get; } = new();
+
+		public DocNode(string label) { Label = label; }
+
+		public override string ToString() => Label;
 	}
 
 	/// <summary>
-	/// Splits Markdown lines into a section map keyed by heading text (any line starting with '#'), preserving
-	/// document order. Content before the first heading is collected under "General".
+	/// Parses Markdown into a tree keyed by heading level (one '#' is a parent of '##', and so on). Each heading
+	/// becomes a node; the lines beneath it, up to the next heading of any level, become that node's own content.
+	/// Lines before the first heading are dropped (the manual and change log both open with a heading).
 	/// </summary>
-	private static Dictionary<string, string> ParseMarkdownSections(string[] lines)
+	private static List<DocNode> ParseDocTree(string[] lines)
 	{
-		Dictionary<string, string> sections = new Dictionary<string, string>();
-		string key = "General";
-		StringBuilder body = new StringBuilder();
-		foreach (string line in lines)
+		var roots = new List<DocNode>();
+		var stack = new List<(int level, DocNode node)>();
+		foreach (string raw in lines)
 		{
-			if (line.StartsWith("#"))
+			Match h = Regex.Match(raw, @"^(#{1,6})\s+(.*\S)\s*$");
+			if (h.Success)
 			{
-				if (body.Length > 0) sections[key] = body.ToString();
-				key = line.TrimStart('#').Trim();
-				body.Clear();
+				int level = h.Groups[1].Value.Length;
+				var node = new DocNode(h.Groups[2].Value.Trim());
+				// A new heading closes any open headings at the same or deeper level, then nests under whatever
+				// shallower heading remains (or becomes a root if none does).
+				while (stack.Count > 0 && stack[^1].level >= level) stack.RemoveAt(stack.Count - 1);
+				if (stack.Count == 0) roots.Add(node);
+				else stack[^1].node.Children.Add(node);
+				stack.Add((level, node));
 			}
-			else
+			else if (stack.Count > 0)
 			{
-				body.AppendLine(line);
+				stack[^1].node.Content += raw + "\n";
 			}
 		}
-		if (body.Length > 0) sections[key] = body.ToString();
-		return sections;
+		return roots;
+	}
+
+	/// <summary>If a document has a single top-level node (the manual's one title), surfaces its children as the
+	/// roots so the list doesn't open on a pointless one-item level. The title's own intro text, if any, becomes a
+	/// leading "Introduction" entry so nothing is lost.</summary>
+	private static List<DocNode> NormalizeDocRoots(List<DocNode> roots)
+	{
+		if (roots.Count != 1 || roots[0].Children.Count == 0) return roots;
+
+		DocNode title = roots[0];
+		var result = new List<DocNode>();
+		if (!string.IsNullOrWhiteSpace(title.Content))
+			result.Add(new DocNode(Loc.T("doc.intro")) { Content = title.Content });
+		result.AddRange(title.Children);
+		return result;
+	}
+
+	/// <summary>Removes redundant single-child wrapper levels: when a node has exactly one child that carries no
+	/// text of its own, that wrapper is dropped and its children are promoted up (e.g. a change log version whose
+	/// only child is "New in Version X" then lists categories — the wrapper just adds a needless extra step).</summary>
+	private static void CollapseRedundantLevels(List<DocNode> nodes)
+	{
+		foreach (DocNode node in nodes)
+		{
+			while (node.Children.Count == 1 && string.IsNullOrWhiteSpace(node.Children[0].Content) && node.Children[0].Children.Count > 0)
+			{
+				List<DocNode> grandchildren = node.Children[0].Children;
+				node.Children.Clear();
+				node.Children.AddRange(grandchildren);
+			}
+			CollapseRedundantLevels(node.Children);
+		}
 	}
 
 	/// <summary>
-	/// Shows the shared, screen-reader-friendly document viewer: a table-of-contents list on the left and the
-	/// selected section's text on the right. Hides the main window while open and restores it on close. Used by
-	/// both the manual and the changelog so they look and operate identically.
+	/// Shows the shared, screen-reader-friendly document viewer: a drill-down list of headings on the left and the
+	/// selected heading's text on the right. Up/Down move; Right or Enter opens a heading that has sub-topics;
+	/// Left or Backspace goes back up; Tab reads the text; Escape closes. Hides the main window while open and
+	/// restores it on close. Used by both the manual and the change log so they look and operate identically.
+	/// The drill-down mirrors the Ctrl+H controls viewer (focus bounce on level change, breadcrumb as the list
+	/// title, position spoken just after the item) so the two navigate the same way.
 	/// </summary>
-	private void ShowDocViewer(Dictionary<string, string> sections, string windowTitle, string tocName, string contentName)
+	private void ShowDocDrilldown(List<DocNode> roots, string windowTitle, string tocName, string contentName)
 	{
 		Hide();
 		Form docForm = new Form
 		{
 			Text = windowTitle,
-			Size = new Size(800, 600),
+			Size = new Size(900, 600),
 			StartPosition = FormStartPosition.CenterScreen,
-			KeyPreview = true
+			KeyPreview = true,
+			// Drilling between levels briefly bounces focus through the form to force a clean list re-read; a
+			// blank accessible name keeps the screen reader from announcing the window title on every bounce.
+			AccessibleName = " "
 		};
-		TableLayoutPanel tableLayoutPanel = new TableLayoutPanel
+
+		TableLayoutPanel layout = new TableLayoutPanel
 		{
 			Dock = DockStyle.Fill,
-			ColumnCount = 2
+			ColumnCount = 2,
+			RowCount = 1
 		};
-		tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30f));
-		tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70f));
-		ListBox lbToc = new ListBox
+		layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35f));
+		layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 65f));
+
+		ListBox list = new ListBox
 		{
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 12f),
 			AccessibleName = tocName
 		};
-		foreach (string sectionKey in sections.Keys)
-		{
-			lbToc.Items.Add(sectionKey);
-		}
 		TextBox tbContent = new TextBox
 		{
 			Dock = DockStyle.Fill,
@@ -128,20 +188,124 @@ public partial class Form1
 			Font = new Font("Segoe UI", 12f),
 			AccessibleName = contentName
 		};
-		lbToc.SelectedIndexChanged += async delegate
+
+		layout.Controls.Add(list, 0, 0);
+		layout.Controls.Add(tbContent, 1, 0);
+		docForm.Controls.Add(layout);
+
+		// --- Drill-down navigation state ---------------------------------------------------------------
+		List<DocNode> currentNodes = new List<DocNode>();
+		string currentCrumb = "";
+		var backStack = new Stack<(List<DocNode> nodes, int index, string crumb)>();
+		bool suppressIndexAnnounce = false;
+
+		DocNode? Selected() => list.SelectedItem as DocNode;
+
+		// "x of y" for the selected item, noting whether it opens into sub-topics so the user knows Right will drill.
+		string PositionText(int i)
 		{
-			if (lbToc.SelectedItem != null)
+			if (i < 0 || i >= currentNodes.Count) return "";
+			bool hasChildren = currentNodes[i].Children.Count > 0;
+			return Loc.T(hasChildren ? "doc.posGroup" : "common.position", i + 1, currentNodes.Count);
+		}
+
+		// Mirror the selected heading's own text into the content pane (silently — the pane isn't focused).
+		void UpdateContent()
+		{
+			DocNode? n = Selected();
+			tbContent.Text = n != null ? n.Content.Trim() : "";
+			tbContent.SelectionStart = 0;
+			tbContent.SelectionLength = 0;
+		}
+
+		// Speak the position just after the screen reader reads the item text — when arrowing within a level and
+		// when focus returns to the list.
+		async void AnnounceSelection()
+		{
+			int i = list.SelectedIndex;
+			if (i < 0) return;
+			await Task.Delay(100);
+			if (!list.Focused || list.SelectedIndex != i) return;
+			string pos = PositionText(i);
+			if (pos.Length > 0) Speak(pos);
+		}
+
+		void ShowLevel(List<DocNode> nodes, string crumb, int selectIndex)
+		{
+			currentNodes = nodes;
+			currentCrumb = crumb;
+			// The breadcrumb path is the list's title, so the screen reader reads it on focus / tab-back.
+			list.AccessibleName = string.IsNullOrEmpty(crumb) ? tocName : crumb;
+
+			list.BeginUpdate();
+			list.Items.Clear();
+			foreach (DocNode n in nodes) list.Items.Add(n);
+			list.EndUpdate();
+
+			// Set the selection without letting the per-item handler announce it; focus handling announces.
+			suppressIndexAnnounce = true;
+			if (list.Items.Count > 0)
+				list.SelectedIndex = Math.Clamp(selectIndex, 0, list.Items.Count - 1);
+			suppressIndexAnnounce = false;
+		}
+
+		// Moves to a new level by rebuilding the list while it is briefly unfocused, then refocusing it, so the
+		// screen reader gives its normal "list title (breadcrumb), then selected item" readout exactly once.
+		void GoToLevel(List<DocNode> nodes, string crumb, int selectIndex)
+		{
+			docForm.ActiveControl = null;
+			ShowLevel(nodes, crumb, selectIndex);
+			list.Focus();
+		}
+
+		void DrillIn()
+		{
+			if (Selected() is DocNode n && n.Children.Count > 0)
 			{
-				string selected = lbToc.SelectedItem.ToString() ?? "";
-				tbContent.Text = sections[selected].Trim();
-				// Reset the caret and scroll to the top of the new topic, so it doesn't sit at the end.
-				tbContent.SelectionStart = 0;
-				tbContent.SelectionLength = 0;
-				tbContent.ScrollToCaret();
-				await Task.Delay(150);
-				Speak(Loc.T("common.position", lbToc.SelectedIndex + 1, lbToc.Items.Count));
+				backStack.Push((currentNodes, list.SelectedIndex, currentCrumb));
+				string crumb = string.IsNullOrEmpty(currentCrumb) ? n.Label : $"{currentCrumb}, {n.Label}";
+				GoToLevel(n.Children, crumb, 0);
+			}
+		}
+
+		void DrillUp()
+		{
+			if (backStack.Count == 0) return;
+			var (nodes, index, crumb) = backStack.Pop();
+			GoToLevel(nodes, crumb, index);
+		}
+
+		list.SelectedIndexChanged += delegate
+		{
+			UpdateContent();
+			if (suppressIndexAnnounce) return;
+			if (list.Focused) AnnounceSelection();
+		};
+
+		// Re-announce the current item whenever the list regains focus (on open, or returning from the content
+		// box), since the selection itself hasn't changed in those cases.
+		list.GotFocus += delegate { AnnounceSelection(); };
+
+		// Right/Enter opens the selected heading's sub-topics; Left/Backspace goes up a level.
+		list.KeyDown += delegate(object? s, KeyEventArgs pe)
+		{
+			if (pe.KeyCode == Keys.Right || pe.KeyCode == Keys.Enter)
+			{
+				if (Selected() is DocNode n && n.Children.Count > 0)
+				{
+					pe.Handled = true;
+					pe.SuppressKeyPress = true;
+					DrillIn();
+				}
+			}
+			else if (pe.KeyCode == Keys.Left || pe.KeyCode == Keys.Back)
+			{
+				pe.Handled = true;
+				pe.SuppressKeyPress = true;
+				DrillUp();
 			}
 		};
+
 		// Tabbing into the content box should land the cursor at the start of the topic, not the bottom.
 		tbContent.GotFocus += delegate
 		{
@@ -149,24 +313,29 @@ public partial class Form1
 			tbContent.SelectionLength = 0;
 			tbContent.ScrollToCaret();
 		};
+
 		docForm.KeyDown += delegate(object? s, KeyEventArgs pe)
 		{
 			if (pe.KeyCode == Keys.Escape)
 			{
 				docForm.Close();
 			}
+			else if (pe.KeyCode == Keys.F1 && pe.Shift)
+			{
+				pe.Handled = true;
+				pe.SuppressKeyPress = true;
+				Speak(Loc.T("doc.help"));
+			}
 		};
-		docForm.FormClosing += delegate
+
+		docForm.FormClosing += delegate { Show(); };
+
+		ShowLevel(roots, "", 0);
+		docForm.Shown += delegate
 		{
-			Show();
+			list.Focus();
+			Speak(Loc.T("doc.navHint"));
 		};
-		tableLayoutPanel.Controls.Add(lbToc, 0, 0);
-		tableLayoutPanel.Controls.Add(tbContent, 1, 0);
-		docForm.Controls.Add(tableLayoutPanel);
-		if (lbToc.Items.Count > 0)
-		{
-			lbToc.SelectedIndex = 0;
-		}
 		docForm.ShowDialog();
 	}
 

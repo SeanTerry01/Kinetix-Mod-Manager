@@ -106,11 +106,17 @@
   "manual.toc": "Table of Contents",
   "manual.topicInfo": "Topic Information",
   "manual.windowTitle": "User Manual - Press Escape to Close",
+  "manual.currentKeyMappings": "Current Key Mappings",
 
   "changelog.notFound": "Change log not found.",
   "changelog.toc": "Versions",
   "changelog.topicInfo": "Change Details",
   "changelog.windowTitle": "Change Log - Press Escape to Close",
+
+  "doc.intro": "Introduction",
+  "doc.posGroup": "{0} of {1}, has sub-topics",
+  "doc.navHint": "Press right arrow or Enter to open a section that has sub-topics, left arrow or Backspace to go back, and Tab to read the text. Press Shift plus F1 for help.",
+  "doc.help": "Document viewer. Use up and down arrows to move through the list of sections. When a section has sub-topics, press right arrow or Enter to open it and move into the deeper list, and press left arrow or Backspace to go back to the previous list. Press Tab to move to the text area and read the selected section line by line, then Shift plus Tab to return to the list. Press Escape to close.",
 
   "about.title": "About Kinetix Mod Manager",
   "about.close": "Close About dialog",
