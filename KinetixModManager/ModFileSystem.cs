@@ -522,6 +522,11 @@ public static class ModFileSystem
 					continue;
 
 				string relativePath = Path.GetFullPath(sourceFile).Substring(canonical.Length);
+				// The manager's own captured documentation lives in .kinetix_docs and must never deploy to the game.
+				if (relativePath.StartsWith(DocsFolderName + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+					relativePath.StartsWith(DocsFolderName + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+					continue;
+
 				bool isRootFile = relativePath.StartsWith("Root" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
 								  relativePath.StartsWith("Root" + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
 				string destRel = isRootFile ? relativePath.Substring(5) : Path.Combine("Data", relativePath);
@@ -884,12 +889,14 @@ public static class ModFileSystem
 
 					return await FinalizeBethesdaModAsync(
 						stagingDir, Path.GetFileNameWithoutExtension(zipPath), zipPath, modsPath, installedMods,
-						backupsPath, maxBackups, activeGame, logError, nexusId, nexusService, gitHubRepo, currentGamePath, fomodInfo);
+						backupsPath, maxBackups, activeGame, logError, nexusId, nexusService, gitHubRepo, currentGamePath, fomodInfo,
+						docsSourceRoot: tempDir);
 				}
 
 				return await FinalizeBethesdaModAsync(
 					FindEffectiveModRoot(tempDir), Path.GetFileNameWithoutExtension(zipPath), zipPath, modsPath, installedMods,
-					backupsPath, maxBackups, activeGame, logError, nexusId, nexusService, gitHubRepo, currentGamePath, null);
+					backupsPath, maxBackups, activeGame, logError, nexusId, nexusService, gitHubRepo, currentGamePath, null,
+					docsSourceRoot: tempDir);
 			}
 
 			// Stardew Valley Manifest logic
@@ -966,10 +973,57 @@ public static class ModFileSystem
 	/// Shared by the normal flat-copy install and the FOMOD pipeline. When <paramref name="fomodInfo"/>
 	/// is supplied its Name/Author/Version seed the manifest (a Nexus lookup still overrides when available).
 	/// </summary>
+	/// <summary>
+	/// Reserved subfolder inside a mod where the manager keeps the mod's own documentation (README, guides,
+	/// keybind lists). Deployment skips it, so it never reaches the game's Data folder.
+	/// </summary>
+	public const string DocsFolderName = ".kinetix_docs";
+
+	/// <summary>
+	/// Copies documentation files (markdown, readme/guide/keybind text, keybind HTML) found anywhere under
+	/// <paramref name="archiveRoot"/> into <c>&lt;mod&gt;\.kinetix_docs\</c>, preserving relative paths.
+	/// Bounded (skips large files, caps total) and best-effort: never throws into the install.
+	/// </summary>
+	private static void CaptureModDocs(string archiveRoot, string destModFolder)
+	{
+		try
+		{
+			if (!Directory.Exists(archiveRoot)) return;
+			string docsDest = Path.Combine(destModFolder, DocsFolderName);
+			string canonical = Path.GetFullPath(archiveRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+			int count = 0;
+			long total = 0;
+			foreach (string file in Directory.EnumerateFiles(archiveRoot, "*.*", SearchOption.AllDirectories))
+			{
+				string name = Path.GetFileName(file);
+				string ext = Path.GetExtension(name).ToLowerInvariant();
+				bool isDoc =
+					ext == ".md" ||
+					(ext == ".txt" && System.Text.RegularExpressions.Regex.IsMatch(name, "readme|guide|control|keybind|lisezmoi", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) ||
+					((ext == ".html" || ext == ".htm") && System.Text.RegularExpressions.Regex.IsMatch(name, "keybind|control", System.Text.RegularExpressions.RegexOptions.IgnoreCase));
+				if (!isDoc) continue;
+
+				var info = new FileInfo(file);
+				if (info.Length > 2 * 1024 * 1024) continue;          // skip oversized "docs"
+				if (count >= 50 || total > 10L * 1024 * 1024) break;   // overall safety cap
+
+				string rel = Path.GetFullPath(file).Substring(canonical.Length);
+				string dest = Path.Combine(docsDest, rel);
+				Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+				File.Copy(file, dest, overwrite: true);
+				count++;
+				total += info.Length;
+			}
+		}
+		catch { /* documentation capture is best-effort; it must never fail the install */ }
+	}
+
 	private static async Task<string> FinalizeBethesdaModAsync(
 		string sourceFolder, string targetFolderName, string zipPath, string modsPath, List<GameMod> installedMods,
 		string backupsPath, int maxBackups, string activeGame, Action<string, string> logError,
-		string? nexusId, NexusService? nexusService, string? gitHubRepo, string? currentGamePath, FomodInfo? fomodInfo)
+		string? nexusId, NexusService? nexusService, string? gitHubRepo, string? currentGamePath, FomodInfo? fomodInfo,
+		string? docsSourceRoot = null)
 	{
 		string destModFolder = Path.Combine(modsPath, targetFolderName);
 
@@ -1024,6 +1078,12 @@ public static class ModFileSystem
 			foreach (string file in Directory.GetFiles(sourceFolder, "*.*", SearchOption.AllDirectories))
 				File.Copy(file, file.Replace(sourceFolder, destModFolder), overwrite: true);
 		}
+
+		// Preserve the mod's documentation (README/guide/keybind files) so the accessibility-controls
+		// viewer can read its keybindings straight from what the author shipped. These often sit outside
+		// the data files (e.g. a README.md at the archive root) and would otherwise be discarded.
+		if (!string.IsNullOrEmpty(docsSourceRoot))
+			CaptureModDocs(docsSourceRoot, destModFolder);
 
 		// Generate manifest
 		string manifestPath = Path.Combine(destModFolder, ".manager_manifest.json");
