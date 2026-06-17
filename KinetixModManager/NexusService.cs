@@ -220,10 +220,36 @@ public class NexusService
 	/// A list of <see cref="GameMod"/> search result objects and the total result count.
 	/// Returns an empty list on failure.
 	/// </returns>
+	/// <summary>The Nexus GraphQL <c>mods</c> query silently caps <c>count</c> at 80 per request, so a larger
+	/// requested page size (e.g. 100) has to be assembled from several requests or it returns only 80.</summary>
+	private const int MaxModsPerRequest = 80;
+
 	public async Task<(List<GameMod> Results, int Total)> SearchModsAsync(
 		string searchType, string searchTerm, int page, int pageSize, string? language = null)
 	{
-		int offset = (page - 1) * pageSize;
+		int baseOffset = (page - 1) * pageSize;
+		var all = new List<GameMod>();
+		int total = 0;
+
+		// Fetch in chunks no larger than the API cap until we've gathered the requested page size or run out.
+		while (all.Count < pageSize)
+		{
+			int chunk = Math.Min(MaxModsPerRequest, pageSize - all.Count);
+			var (results, t) = await FetchModsPageAsync(searchType, searchTerm, baseOffset + all.Count, chunk, language);
+			if (t > 0) total = t;               // keep a known total if a later chunk fails/returns nothing
+			all.AddRange(results);
+			if (results.Count < chunk) break;   // reached the end of the available results
+		}
+
+		return (all, total);
+	}
+
+	/// <summary>Runs a single Nexus GraphQL search request for <paramref name="count"/> mods starting at
+	/// <paramref name="offset"/> (<paramref name="count"/> must not exceed <see cref="MaxModsPerRequest"/>).</summary>
+	private async Task<(List<GameMod> Results, int Total)> FetchModsPageAsync(
+		string searchType, string searchTerm, int offset, int count, string? language = null)
+	{
+		int pageSize = count;
 		string gqlQuery;
 		object variables;
 
