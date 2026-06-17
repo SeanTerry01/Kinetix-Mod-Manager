@@ -1,3 +1,30 @@
+# Version 1.4.0
+
+A big step for accessible mod installing: configurable "FOMOD" mods now open a fully keyboard-driven, spoken installer wizard instead of failing, and the controls window (Ctrl+H) has been rebuilt into an easy drill-down list that reads each mod's real, documented keybinds — including Fallout 4 and Skyrim mods that set their keys through MCM. The manual and change log are now navigable in the same way, plus a handful of fixes.
+
+---
+
+## ✨ New in Version 1.4.0
+
+### 🧩 Accessible FOMOD installer (Skyrim & Fallout 4)
+*   **Configurable mods now install correctly**: Mods that ship a guided "FOMOD" installer — such as Immersive Sounds Compendium — used to install wrong because their option menus couldn't be read. They now open a fully keyboard-driven, screen-reader-friendly wizard: each option's description is spoken as you move through it, the step and your progress ("Step 2 of 6") are announced, checkboxes and radio buttons read their checked state, and your picks install exactly as a sighted user's would.
+*   **Smart options are handled properly**: Options the mod marks as required, recommended, or not-usable are read out with their status and can't be toggled into an invalid state, and any conditional files are installed only when their conditions are met.
+
+### ⌨️ Reworked controls viewer (Ctrl+H)
+*   **A clear drill-down list**: The accessibility-controls window is now a single navigable list. Use **Up/Down** to move, **Right or Enter** to open a group, and **Left or Backspace** to go back. Press **Ctrl+E** to edit a mod's configuration when one is available, and **Shift+F1** for help.
+*   **Controls come from each mod, so they're always current**: Instead of a hardcoded list that could go stale, the manager reads the controls each mod actually documents — its README or guide, or its config — captured when the mod is installed.
+*   **MCM keybinds for Fallout 4 and Skyrim**: Mods that set their keys through MCM (such as Fallout 4 Access and Extended Dialogue Interface) now have those keybinds read straight from MCM, showing the real key each action is bound to — including any you've changed in-game.
+
+### 📖 Navigable manual and change log
+*   **Open and read by section**: The User Manual (**F1**) and Change Log (**F2**) now use the same drill-down — a list of sections on the left that you open to read the text on the right. In the change log, each version opens to its own list of changes, so you can jump straight to what's new in a release.
+
+### 🛠️ Other improvements & fixes
+*   **"100 results" now really loads 100**: Choosing 100 results per load in mod search returned only 80, because Nexus limits each request to 80. The manager now fetches the rest automatically so you get the full amount you asked for.
+*   **Installs no longer blocked by a full system drive**: Mods now extract on the same drive as your mods folder, so a full C: drive won't stop an install when your mods live on another drive.
+*   **Steadier list navigation**: In the controls, manual, and change-log lists, the Left and Right arrows only move between levels now — they no longer occasionally move the selection the way Up and Down do.
+
+---
+
 # Version 1.3.0
 
 A major update for Skyrim Special Edition and Fallout 4 modders: full load-order management with import and export, a Creations manager, one-click importing from Mod Organizer 2, and an in-app game-log viewer — alongside `.rar` support, a "results per load" control for mod searches, an in-app Change Log you can open with F2, and a range of accessibility refinements. The manual has been fully updated to cover everything.
