@@ -394,7 +394,14 @@ public partial class Form1
 	/// Sends <paramref name="text"/> to the active screen reader via Tolk.
 	/// Auto-reloads Tolk if it has been externally unloaded since the last call.
 	/// </summary>
-	private void Speak(string text)
+	private void Speak(string text) => Speak(text, interrupt: false);
+
+	/// <summary>
+	/// Sends <paramref name="text"/> to the active screen reader via Tolk. When <paramref name="interrupt"/>
+	/// is true, it cuts off any in-progress/queued speech first — used to take full control of the wording
+	/// and ordering of an announcement (e.g. so a list's title is spoken before its first item).
+	/// </summary>
+	private void Speak(string text, bool interrupt)
 	{
 		// If the screen reader was unloaded externally (e.g., NVDA restarted),
 		// attempt a silent reload before speaking so users don't lose announcements.
@@ -404,7 +411,7 @@ public partial class Form1
 		}
 		if (Tolk.IsLoaded())
 		{
-			Tolk.Output(text);
+			Tolk.Output(text, interrupt);
 		}
 	}
 

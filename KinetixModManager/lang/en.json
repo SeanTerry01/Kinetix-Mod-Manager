@@ -120,6 +120,12 @@
 
   "controls.availableMods": "Available Mods and Guides",
   "controls.descriptions": "Controls and Descriptions",
+  "controls.treeName": "Controls",
+  "controls.rootLevel": "Controls",
+  "controls.levelEntered": "{0}. {1} items.",
+  "controls.navHint": "Press right arrow or Enter to open an item, left arrow or Backspace to go back. Press Shift plus F1 for help.",
+  "controls.help": "Controls list. Use up and down arrows to move through the list. Press right arrow or Enter to open a group and move into the deeper list. Press left arrow or Backspace to collapse back to the previous list. Press Control plus E to edit a mod's configuration when available. Press Escape to close.",
+  "controls.posGroup": "{0} of {1}, group",
   "controls.editConfig": "Edit Selected Mod Configuration",
   "controls.close": "Close Controls Guide",
   "controls.windowTitle": "Accessibility Controls for {0} - Press Escape to Close",
