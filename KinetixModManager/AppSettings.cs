@@ -83,6 +83,10 @@ public class AppSettings
 	/// </summary>
 	public int DiscoverySearchPageSize { get; set; } = 20;
 
+	/// <summary>When true, mod text searches are recorded to a per-game history the user can browse and re-run.
+	/// Off by default; toggled in Settings. See <see cref="SearchHistoryStore"/>.</summary>
+	public bool SaveSearchHistory { get; set; } = false;
+
 	/// <summary>
 	/// UI language for the whole program, as a two-letter code (e.g. "es"). Empty string means
 	/// "follow the Windows display language". English is always the fallback. See <see cref="Loc"/>.
@@ -358,6 +362,10 @@ public class AppSettings
 			{
 				"AutoSort",
 				Keys.F8
+			},
+			{
+				"SearchHistory",
+				Keys.H | Keys.Shift | Keys.Control
 			}
 		})
 		{

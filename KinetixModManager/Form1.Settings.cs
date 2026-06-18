@@ -50,7 +50,7 @@ public partial class Form1
 		{
 			Dock = DockStyle.Fill,
 			Padding = new Padding(15),
-			RowCount = 16
+			RowCount = 17
 		};
 
 		tableLayoutPanel.Controls.Add(new Label
@@ -435,6 +435,20 @@ public partial class Form1
 		flowPageSize.Controls.Add(cmbPageSize);
 		tableLayoutPanel.Controls.Add(flowPageSize, 0, 15);
 
+		CheckBox cSearchHistory = new CheckBox
+		{
+			Text = Loc.T("settings.saveSearchHistory"),
+			Checked = _settings.SaveSearchHistory,
+			AutoSize = true,
+			Padding = new Padding(0, 5, 0, 0),
+			AccessibleName = Loc.T("settings.saveSearchHistoryName")
+		};
+		cSearchHistory.CheckedChanged += delegate
+		{
+			Speak(cSearchHistory.Checked ? Loc.T("settings.searchHistoryOn") : Loc.T("settings.searchHistoryOff"));
+		};
+		tableLayoutPanel.Controls.Add(cSearchHistory, 0, 16);
+
 		FlowLayoutPanel flowLayoutPanel5 = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Bottom,
@@ -491,6 +505,7 @@ public partial class Form1
 				_settings.RandomLogoStartup = cRandomLogo.Checked;
 				_settings.SelectedLogoFile = cmbLogo.SelectedItem?.ToString() ?? "";
 				_settings.CheckForUpdatesAtStartup = cUpdates.Checked;
+				_settings.SaveSearchHistory = cSearchHistory.Checked;
 				_settings.SoundVolume = (int)nVol.Value;
 				_settings.MaxBackupsPerMod = (int)nPrune.Value;
 				if (cmbPageSize.SelectedItem is int pageSize)

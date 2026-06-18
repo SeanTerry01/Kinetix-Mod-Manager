@@ -60,6 +60,11 @@ public partial class Form1
 			e.SuppressKeyPress = true;
 			ShowAccessibilityControls();
 		}
+		if (IsShortcut(e, "SearchHistory"))
+		{
+			e.SuppressKeyPress = true;
+			ShowSearchHistoryDialog();
+		}
 		if (IsShortcut(e, "LaunchGame"))
 		{
 			e.SuppressKeyPress = true;
