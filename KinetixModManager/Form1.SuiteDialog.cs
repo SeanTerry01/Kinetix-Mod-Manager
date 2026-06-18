@@ -117,7 +117,6 @@ public partial class Form1
 			suiteItems.Add(new SuiteItem("Media Keys Fix", HasModNameContains("Media Keys Fix") || HasModNameContains("MediaKeysFix"), "Nexus", "92948"));
 			suiteItems.Add(new SuiteItem("Stay At The System Page - AE", HasModNameContains("Stay At The System Page") || HasModNameContains("StayAtTheSystemPage"), "Nexus", "67883"));
 			suiteItems.Add(new SuiteItem("Skyrim Access", HasModNameContains("Skyrim Access") || HasModNameContains("SkyrimAccess") || HasModNameContains("SkyrimTTS"), "Nexus", "181131"));
-			suiteItems.Add(new SuiteItem("SkyrimAccessibility", HasModNameContains("SkyrimAccessibility") || HasModNameContains("Skyrim Accessibility"), "GitHub", "DioKyrie-Git/SkyrimAccessibility"));
 		}
 		else
 		{
@@ -172,7 +171,16 @@ public partial class Form1
 					return $"https://www.nexusmods.com/{domain}/mods/{item.Source}?tab=files";
 				case "GitHub":
 					return $"https://github.com/{item.Source}/releases";
-				default: // "Loader" (site URL) and "GitHubStatic" (direct zip link)
+				case "Loader":
+					// The Skyrim/Fallout script extenders are on Nexus now; open their Nexus Files page rather
+					// than the legacy Silverlock site. Stardew's loader (SMAPI) keeps its own site URL.
+					return game switch
+					{
+						"SkyrimSE" => "https://www.nexusmods.com/skyrimspecialedition/mods/30379?tab=files",
+						"Fallout4" => "https://www.nexusmods.com/fallout4/mods/42147?tab=files",
+						_          => item.Source
+					};
+				default: // "GitHubStatic" (direct zip link)
 					return item.Source;
 			}
 		}
@@ -359,6 +367,8 @@ public partial class Form1
 				btnInstall.Enabled = true;
 				btnInstall.Text = Loc.T("suite.installMissing");
 				isInstalling = false;
+				// Whatever happened, don't leave "Installing..." / "Downloading..." stuck in the title.
+				ResetStatus();
 			}
 		};
 
@@ -430,6 +440,53 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// Confirms, then removes the installed Skyrim/Fallout 4 script extender (SKSE/F4SE) and the files it placed
+	/// in the game folder. Uses the recorded install manifest for an exact removal when present; otherwise falls
+	/// back to removing the unambiguous loader and versioned DLLs and tells the user that some script files may
+	/// remain. Triggered from the Mods menu (Skyrim/FO4 only).
+	/// </summary>
+	private void UninstallScriptExtenderCommand()
+	{
+		string game = _settings.ActiveGame;
+		if (game != "SkyrimSE" && game != "Fallout4")
+		{
+			Speak(Loc.T("se.uninstallWrongGame"));
+			return;
+		}
+
+		string gamePath = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder(game) : _settings.CurrentGamePath;
+		string seName = game == "SkyrimSE" ? "SKSE" : "F4SE";
+
+		if (!ModFileSystem.IsScriptExtenderInstalled(game, gamePath))
+		{
+			Speak(Loc.T("se.uninstallNotInstalled", seName));
+			MessageBox.Show(Loc.T("se.uninstallNotInstalledBox", seName), Loc.T("se.uninstallTitle", seName),
+				MessageBoxButtons.OK, MessageBoxIcon.Information);
+			return;
+		}
+
+		var confirm = MessageBox.Show(Loc.T("se.uninstallConfirm", seName), Loc.T("se.uninstallTitle", seName),
+			MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+		if (confirm != DialogResult.Yes) { Speak(Loc.T("se.uninstallCancelled")); return; }
+
+		try
+		{
+			var (removed, usedManifest) = ModFileSystem.UninstallScriptExtender(game, gamePath, LogError);
+			string msg = usedManifest
+				? Loc.T("se.uninstallDone", seName, removed)
+				: Loc.T("se.uninstallDonePartial", seName, removed);
+			Speak(msg);
+			MessageBox.Show(msg, Loc.T("se.uninstallTitle", seName), MessageBoxButtons.OK, MessageBoxIcon.Information);
+		}
+		catch (Exception ex)
+		{
+			Speak(Loc.T("se.uninstallFailed", seName));
+			MessageBox.Show(Loc.T("se.uninstallFailedBox", ex.Message), Loc.T("common.error"),
+				MessageBoxButtons.OK, MessageBoxIcon.Error);
+		}
+	}
+
+	/// <summary>
 	/// Downloads the latest SMAPI installer from its GitHub release and runs it unattended against the
 	/// detected Stardew Valley folder, so the user never has to drive SMAPI's interactive console
 	/// installer. SMAPI's installer accepts <c>--install</c>, <c>--game-path</c> and <c>--no-prompt</c>
@@ -459,10 +516,19 @@ public partial class Form1
 			string? url = await GetSmapiInstallerZipUrl();
 			if (string.IsNullOrEmpty(url)) throw new Exception("Could not resolve the SMAPI download URL.");
 
-			byte[] bytes = await _nexusService.DownloadBytesAsync(url);
 			Directory.CreateDirectory(tempDir);
 			string zipPath = Path.Combine(tempDir, "SMAPI-installer.zip");
-			File.WriteAllBytes(zipPath, bytes);
+			int lastPct = 0;
+			var progress = new Progress<double>(pct =>
+			{
+				int percent = (int)Math.Round(pct);
+				if (percent >= lastPct + 10 && percent < 100)
+				{
+					lastPct = (percent / 10) * 10;
+					SetStatus(Loc.T("suite.smapiDownloadingPct", lastPct));
+				}
+			});
+			await _nexusService.DownloadFileWithProgressAsync(url, zipPath, progress);
 
 			string extractDir = Path.Combine(tempDir, "extracted");
 			await Task.Run(() => ZipFile.ExtractToDirectory(zipPath, extractDir));

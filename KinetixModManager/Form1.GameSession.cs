@@ -112,6 +112,9 @@ public partial class Form1
 				launchItem.Text = Loc.T("menu.launch", gameName, GetShortcutString("LaunchGame"));
 			if (modsMenu.DropDownItems["menuSuite"] is ToolStripItem suiteItem)
 				suiteItem.Text = Loc.T("menu.installSuite", gameName);
+			// Uninstalling the script extender only applies to Skyrim SE / Fallout 4.
+			if (modsMenu.DropDownItems["menuUninstallSE"] is ToolStripItem seItem)
+				seItem.Visible = game == "SkyrimSE" || game == "Fallout4";
 		}
 
 		// The View menu's "Open Log" item targets a different log per game (SMAPI for Stardew, the

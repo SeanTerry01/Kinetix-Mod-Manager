@@ -454,6 +454,20 @@ public partial class Form1
 					"Fallout4" => "Fallout 4",
 					_ => "Stardew Valley"
 				};
+				// Warn if the installed script extender won't load because it doesn't match the game's build —
+				// the common reason MCM and other SKSE/F4SE features disappear after a game update.
+				var seVer = ModFileSystem.CheckScriptExtenderVersion(game, gamePath);
+				if (seVer.HasValue && !seVer.Value.Match)
+				{
+					string seName = game == "SkyrimSE" ? "SKSE" : "F4SE";
+					Speak(Loc.T("launch.seMismatchSpeak", seName));
+					var choice = MessageBox.Show(
+						Loc.T("launch.seMismatchBox", seName, seVer.Value.ExtenderVersion, seVer.Value.GameVersion),
+						Loc.T("launch.seMismatchTitle", seName),
+						MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+					if (choice == DialogResult.No) { SetStatus(Loc.T("launch.cancelled")); return; }
+				}
+
 				SetStatus(Loc.T("launch.launching", gameName));
 				Speak(Loc.T("launch.launching", gameName));
 
