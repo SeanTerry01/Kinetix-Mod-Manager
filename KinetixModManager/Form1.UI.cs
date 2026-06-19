@@ -112,6 +112,10 @@ public partial class Form1
 		{
 			ShowAccessibilitySuiteDialog();
 		}).Name = "menuSuite";
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.uninstallScriptExtender"), null, delegate
+		{
+			UninstallScriptExtenderCommand();
+		}).Name = "menuUninstallSE";
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.autoMatch"), null, async delegate
 		{
 			await AutoMatchNexusIDs();
@@ -388,6 +392,14 @@ public partial class Form1
 		{
 			await RunDiscovery();
 		};
+		Button btnHistory = new Button
+		{
+			Text = Loc.T("ui.historyBtn"),
+			Height = 30,
+			Width = 90,
+			AccessibleName = Loc.T("ui.historyName")
+		};
+		btnHistory.Click += delegate { ShowSearchHistoryDialog(); };
 		txtSearch.KeyDown += async delegate(object? s, KeyEventArgs e)
 		{
 			if (e.KeyCode == Keys.Return)
@@ -408,6 +420,7 @@ public partial class Form1
 		flowLayoutPanel2.Controls.Add(new Label { Text = Loc.T("ui.resultsPerLoadLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
 		flowLayoutPanel2.Controls.Add(cmbDiscoveryPageSize);
 		flowLayoutPanel2.Controls.Add(btnSearch);
+		flowLayoutPanel2.Controls.Add(btnHistory);
 		listDiscovery = new ListBox
 		{
 			Dock = DockStyle.Fill,

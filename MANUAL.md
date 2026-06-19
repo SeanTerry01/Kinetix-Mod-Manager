@@ -11,8 +11,8 @@ You choose which game you're managing from the **Games** menu (press **Alt**, th
 3.  **Nexus Integration**: To search for mods or check for updates, you **must** provide a **Nexus Mods API Key** (sometimes called a Nexus ID). This is a standard requirement for all mod managers. See the **"Nexus Mods Setup"** section below for instructions on how to get yours for free.
 4.  **Closing Settings**: If you aren't ready to configure everything yet, you can press **Escape** or click **Cancel** to close the settings and browse the app. You can reopen this screen at any time by pressing **Ctrl + P**.
 5.  **Getting Help**: 
-    *   Press **F1** at any time to open this manual.
-    *   Press **F2** at any time to open the **Change Log**, which lists what's new and fixed in each version. It opens in the same navigable window as this manual — a list of versions on the left and the details on the right.
+    *   Press **F1** at any time to open this manual. It opens as a navigable list: arrow **Up / Down** through the sections, press **Right Arrow or Enter** to open a section that has sub-topics, **Left Arrow or Backspace** to go back, and **Tab** to move into the text on the right and read it line by line.
+    *   Press **F2** at any time to open the **Change Log**. It uses the same navigable window — a list of versions you open (with **Right Arrow or Enter**) to read what changed in each one.
     *   Press **Shift + F1** while on any tab to hear a context-sensitive list of shortcuts for that specific area.
 6.  **Splash Screen**: On every startup, an audio logo plays. You can press **Enter** to skip it and go straight to the main window.
 
@@ -98,7 +98,8 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Ctrl + D**: Open your `downloads` folder.
 *   **Ctrl + B**: Open your `backups` folder.
 *   **Ctrl + Shift + L**: Open the error log.
-*   **Ctrl + H**: Open the **Accessibility Controls** guide for the selected game.
+*   **Ctrl + H**: Open the **Accessibility Controls** viewer for the active game (a navigable drill-down of every control — see "Accessibility Controls Viewer" below).
+*   **Ctrl + Shift + H**: Open your **Search History** for the active game (see "Searching for Mods" below).
 *   **Escape**: Close the Manual, Settings, or Sound Demo windows.
 
 ### Mod List Shortcuts (Installed Mods Tab)
@@ -212,6 +213,11 @@ The **Search for Mods** tab allows you to browse and search for mods on Nexus Mo
     *   *Note:* The language comes from how each mod's author tagged it on Nexus Mods, so on rare occasions a mod tagged incorrectly by its author may still appear. Switching to "Any language" always shows the complete results.
 4.  **Results per load**: Use the **Results** dropdown to choose how many results to load at a time (10, 20, 30, 50, or 100). Changing it here applies to your current searches only; to make a number stick between sessions, set **"Search Results per Load"** in **Settings** instead — the Search tab then starts from your saved choice.
 5.  **Loading more results**: When more results are available than were loaded, a **"Load more results"** row sits at the very bottom of the results list. Arrow down to it and press **Enter** to load the next batch — the new results are added to the list, your focus lands on the first new one, and the "Load more results" row moves to the new bottom. It isn't counted in the "X of Y" position announcements, so the real results still read "1 of 20", "2 of 20", and so on.
+6.  **Search History**: The manager can remember the searches you run so you can browse and repeat them. It is **off by default** — turn on **"Save Mod Search History"** in **Settings** to start recording. Once it's on, open your history with the **History** button beside the search box, or by pressing **Ctrl + Shift + H** anywhere. In the history window:
+    *   Choose **"All searches"** or a specific **date** from the **Show** dropdown (most recent first), then press **Tab** to move into the list of terms.
+    *   Press **Enter** on a term to run that search again — the manager fills the search box and searches straight away.
+    *   Press **Clear History** to erase it (you'll be asked to confirm first).
+    *   History is kept **per game**, so a Skyrim session shows only Skyrim searches, Fallout 4 only Fallout 4, and Stardew Valley only Stardew searches.
 
 ---
 
@@ -235,6 +241,44 @@ After you activate either button, Nexus sometimes shows a page that lists the mo
 
 ---
 
+## Installing Configurable Mods (FOMOD Installer)
+
+Some mods — especially larger Skyrim Special Edition and Fallout 4 mods like **Immersive Sounds Compendium** — don't simply unpack into your game. They ship a built-in **installer (called a FOMOD)** that asks you to choose options, such as which features, patches, or sound sets you want. Kinetix Mod Manager runs these in a fully keyboard-driven, screen-reader-friendly **wizard**.
+
+When you install such a mod (with **Ctrl + I**, or after a Mod Manager Download), the wizard opens automatically. You don't have to do anything special — and a mod with no options simply installs as before.
+
+Using the wizard:
+
+*   **Read the options**: Each step presents a group of options as **radio buttons** (pick one) or **checkboxes** (pick any number). Arrow or Tab to each one and its **description is spoken**, so you know what it does before choosing.
+*   **Make your choices**: Press **Space** to select a radio button or check/uncheck a checkbox; the manager announces "checked" or "unchecked" as you toggle. Sensible defaults are pre-selected, so if you're unsure you can just move forward.
+*   **Required and unavailable options**: Options the mod marks as **required** stay selected, and options that are **not usable** with your current setup can't be selected — but both are still read aloud with their status, so nothing is hidden from you.
+*   **Track your progress**: The window title shows where you are, such as "Step 2 of 6" (read it any time with your screen reader's title command, e.g. **NVDA + T**).
+*   **Move through the steps**: Tab to the **Next** button to continue; some choices reveal or hide later steps, and the button reads **Install** on the final step. Press **Cancel** or **Escape** at any point to stop without installing anything.
+
+Your selections are installed exactly as a sighted user's would be, including any extra files the mod adds based on the options you picked.
+
+---
+
+## Accessibility Controls Viewer (Ctrl + H)
+
+Press **Ctrl + H** at any time to open the **Accessibility Controls** viewer for the active game. It gathers, in one place, the keyboard and gamepad controls you actually have — so you can look up "what does this key do" without leaving the manager.
+
+It is a single **drill-down list**:
+
+*   **Up / Down Arrow**: Move through the current list.
+*   **Right Arrow or Enter**: Open the selected item when it's a group — for example a mod, or a "Keyboard Controls" / "Gamepad Controls" category — moving into its deeper list.
+*   **Left Arrow or Backspace**: Go back up to the previous list.
+*   **Ctrl + E**: Edit the selected mod's configuration file, when it has one.
+*   **Shift + F1**: Hear help for this window. **Escape** closes it.
+
+What it shows:
+
+*   **Base Game Controls (Vanilla Defaults)**: the standard controls for the active game.
+*   **Each installed mod's own controls**: read straight from what the mod documents — its README or guide, or its config file — captured when the mod was installed. Because they come from the mod itself, they stay correct even when the mod updates; nothing is hard-coded.
+*   **MCM keybinds (Skyrim & Fallout 4)**: mods that set their keys through the **Mod Configuration Menu** (such as Fallout 4 Access and Extended Dialogue Interface) have those keybinds read directly from MCM, showing the real key each action is bound to — including any you've changed in-game.
+
+---
+
 ## Accessibility Suite Installer
 Each supported game needs a set of foundation mods to be accessible (its mod loader plus the screen-reader and helper mods). The **Accessibility Suite Installer** gathers them all in one place. Open it from the **Mods** menu → **"Install [Game] Accessibility Suite"** (the exact name reflects the active game).
 
@@ -246,6 +290,8 @@ There are two ways to get the missing mods:
 2.  **Get them one at a time, at your own pace**: Select a mod in the status list and press **Enter**. The manager opens just that one mod's download page — the **Files** tab on Nexus Mods, or the official site / GitHub releases page for other mods. From there you can download it with **either** the **Mod Manager Download** button (the manager will then offer to install it for you) **or** the **Manual Download** button (then press **Ctrl + I** to install the ZIP) — see **"Downloading Mods from Nexus Mods"** above for the full steps. Repeat for each mod whenever you're ready. This is handy when several mods are needed and opening them all together would be overwhelming.
 
 You can mix the two approaches freely, and you can re-open the installer at any time to check what's still missing.
+
+**Uninstalling the script extender (Skyrim & Fallout 4):** SKSE and F4SE install into the game folder itself rather than as normal mods, so they don't show up in your mod list. To remove one cleanly, open the **Mods** menu and choose **"Uninstall Script Extender (SKSE/F4SE)"**. The manager removes the files it installed (asking you to confirm first). Remember that anything relying on the script extender — including the Mod Configuration Menu — stops working until you reinstall it, so only do this if you mean to.
 
 ---
 
@@ -273,6 +319,7 @@ The manager does more than just launch the game:
 *   It announces when it starts launching the game through its mod loader (SMAPI for Stardew Valley, SKSE for Skyrim Special Edition, F4SE for Fallout 4).
 *   It speaks and displays *"Game is loaded and running"* once the game is active.
 *   It instantly detects when you close the game and announces *"Game closed."*
+*   **Script-extender version check (Skyrim & Fallout 4):** before launching, it checks that the installed **SKSE/F4SE matches your game's version**. SKSE and F4SE only work when built for the exact game build, so if your game has updated and the script extender no longer matches, it silently won't load — which is the usual reason the **Mod Configuration Menu** and other script-extender features suddenly disappear. When this happens the manager **warns you and asks whether to launch anyway**; to fix it, reinstall the script extender from the Accessibility Suite so it matches your game.
 
 ---
 
