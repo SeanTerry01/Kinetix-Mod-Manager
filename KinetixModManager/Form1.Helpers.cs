@@ -136,6 +136,18 @@ public partial class Form1
 	}
 
 	/// <summary>Updates the bottom status-bar label with <paramref name="text"/>.</summary>
+	/// <summary>The status the title bar should rest at between operations: the Nexus connection when logged in,
+	/// otherwise a neutral "Ready". Only this should linger in the title — transient operation statuses
+	/// (installing, rebuilding, downloading, …) reset to it when they finish so the title never shows a stale
+	/// message long after the work is done.</summary>
+	private string RestingStatus() =>
+		!string.IsNullOrEmpty(_nexusService.NexusUser) && _nexusService.NexusUser != "Unknown User"
+			? Loc.T("status.connectedAs", _nexusService.NexusUser)
+			: Loc.T("status.ready");
+
+	/// <summary>Returns the title bar to the resting status after a transient operation, without speaking it.</summary>
+	private void ResetStatus() => SetStatus(RestingStatus(), speak: false);
+
 	private void SetStatus(string text, bool speak = true)
 	{
 		if (base.InvokeRequired)
@@ -311,6 +323,10 @@ public partial class Form1
 		string searchType = cmbDiscoveryType.SelectedItem?.ToString() ?? "Search";
 		string searchTerm = txtSearch.Text.Trim();
 		string language = (cmbDiscoveryLanguage?.SelectedItem as LanguageOption)?.Name ?? _settings.DiscoveryLanguage;
+
+		// Record real text searches (not "load more" pages or the browse modes) to the active game's history.
+		if (!loadMore && searchType == "Search" && searchTerm.Length > 0 && _settings.SaveSearchHistory)
+			SearchHistoryStore.Add(_settings.ActiveGame, searchTerm);
 		Speak(loadMore ? Loc.T("discovery.loadingMore", searchType) : Loc.T("discovery.startingSearch", searchType));
 		SetStatus(loadMore ? Loc.T("discovery.loadingMore", searchType) : Loc.T("discovery.statusRunning", searchType));
 		try

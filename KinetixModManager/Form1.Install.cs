@@ -227,23 +227,68 @@ public partial class Form1
 		}
 	}
 
+	[System.Runtime.InteropServices.DllImport("user32.dll")]
+	private static extern IntPtr GetForegroundWindow();
+	[System.Runtime.InteropServices.DllImport("user32.dll")]
+	private static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr processId);
+	[System.Runtime.InteropServices.DllImport("kernel32.dll")]
+	private static extern uint GetCurrentThreadId();
+	[System.Runtime.InteropServices.DllImport("user32.dll")]
+	private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+	[System.Runtime.InteropServices.DllImport("user32.dll")]
+	private static extern bool SetForegroundWindow(IntPtr hWnd);
+	[System.Runtime.InteropServices.DllImport("user32.dll")]
+	private static extern bool BringWindowToTop(IntPtr hWnd);
+	[System.Runtime.InteropServices.DllImport("user32.dll")]
+	private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+	[System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SystemParametersInfoW", SetLastError = true)]
+	private static extern bool SystemParametersInfoGet(uint uiAction, uint uiParam, ref uint pvParam, uint fWinIni);
+	[System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SystemParametersInfoW", SetLastError = true)]
+	private static extern bool SystemParametersInfoSet(uint uiAction, uint uiParam, IntPtr pvParam, uint fWinIni);
+
+	private const uint SPI_GETFOREGROUNDLOCKTIMEOUT = 0x2000;
+	private const uint SPI_SETFOREGROUNDLOCKTIMEOUT = 0x2001;
+	private const uint SPIF_SENDCHANGE = 0x0002;
+	private const int SW_SHOW = 5;
+
 	/// <summary>
 	/// Forces the main window to the foreground and gives it focus. Needed when something the user did in
-	/// another app (e.g. clicking "Mod Manager Download" in their browser) hands control back to us and we
-	/// need to show a prompt: a background app can't simply <c>Activate()</c> itself, so we restore it if
-	/// minimised and use the well-known TopMost flip to pull the window — and any dialog we then open — to
-	/// the front where it receives keyboard and screen-reader focus.
+	/// another app (e.g. clicking "Mod Manager Download" in their browser) hands control back to us and we need
+	/// to show a prompt. A background process normally <b>cannot</b> steal focus — Windows' "focus stealing
+	/// prevention" silently ignores <c>Activate()</c>/<c>SetForegroundWindow</c> on many machines (it depends on
+	/// the per-PC <c>ForegroundLockTimeout</c> and which app sent the last input), which is why the old TopMost
+	/// flip worked on some computers but not others. To make it reliable everywhere we (1) temporarily zero the
+	/// foreground-lock timeout and (2) attach our input thread to the current foreground window's thread, so the
+	/// system treats our <c>SetForegroundWindow</c> as legitimate. Both changes are undone afterward.
 	/// </summary>
 	private void ForceToForeground()
 	{
 		try
 		{
+			IntPtr hWnd = Handle;
 			if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
-			bool wasTopMost = TopMost;
-			TopMost = true;
-			Activate();
-			BringToFront();
-			TopMost = wasTopMost;
+
+			IntPtr foreground = GetForegroundWindow();
+			uint foreThread = GetWindowThreadProcessId(foreground, IntPtr.Zero);
+			uint thisThread = GetCurrentThreadId();
+
+			uint origTimeout = 0;
+			bool gotTimeout = SystemParametersInfoGet(SPI_GETFOREGROUNDLOCKTIMEOUT, 0, ref origTimeout, 0);
+			SystemParametersInfoSet(SPI_SETFOREGROUNDLOCKTIMEOUT, 0, IntPtr.Zero, SPIF_SENDCHANGE);
+
+			bool attached = foreThread != 0 && foreThread != thisThread && AttachThreadInput(thisThread, foreThread, true);
+			try
+			{
+				ShowWindow(hWnd, SW_SHOW);
+				BringWindowToTop(hWnd);
+				SetForegroundWindow(hWnd);
+				Activate();
+			}
+			finally
+			{
+				if (attached) AttachThreadInput(thisThread, foreThread, false);
+				if (gotTimeout) SystemParametersInfoSet(SPI_SETFOREGROUNDLOCKTIMEOUT, 0, new IntPtr(origTimeout), SPIF_SENDCHANGE);
+			}
 			Focus();
 		}
 		catch { /* foreground hint is best-effort */ }
@@ -331,6 +376,11 @@ public partial class Form1
 		catch (Exception ex)
 		{
 			MessageBox.Show(Loc.T("install.failed", ex.Message));
+		}
+		finally
+		{
+			// Don't leave a "Downloading..." / "Installing..." status sitting in the title afterward.
+			ResetStatus();
 		}
 	}
 }

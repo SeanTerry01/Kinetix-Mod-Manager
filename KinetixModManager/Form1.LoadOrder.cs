@@ -149,6 +149,8 @@ public partial class Form1
 
 		_soundEngine.Play("connect");
 		Speak(Loc.T("loadorder.rebuilt", forceAll.Count, conflicts.Count));
+		// Don't leave "Rebuilding mod deployment" sitting in the title after it's finished.
+		ResetStatus();
 	}
 
 	// -------------------------------------------------------------------------

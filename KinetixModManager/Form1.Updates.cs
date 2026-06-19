@@ -261,6 +261,8 @@ public partial class Form1
 	/// </summary>
     private async Task DownloadAndInstallUpdate(StardewMod mod, bool silent = false)
     {
+        // Updates install the mod enabled; remember if it was disabled so we can turn it back off afterward.
+        bool wasDisabled = !mod.IsEnabled;
         if (!string.IsNullOrEmpty(mod.GitHubRepo))
         {
             try
@@ -321,11 +323,14 @@ public partial class Form1
                     Invoke(delegate { RefreshModPriorityList(); });
                 }
 
+                await ReapplyDisabledIfNeeded(mod, wasDisabled);
+
                 if (!silent)
                 {
                     _soundEngine.Play("connect");
                     Speak(Loc.T("updates.githubSuccess", mod.Name));
                     SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser));
+                    AnnounceUpdatesListEmptyIfFocused();
                 }
                 return;
             }
@@ -389,13 +394,15 @@ public partial class Form1
                         listUpdates.Items.RemoveAt(i);
                 }
                 listUpdates.EndUpdate();
-                _ = RefreshModList(checkUpdates: false);
             });
+            await RefreshModList(checkUpdates: false);
+            await ReapplyDisabledIfNeeded(mod, wasDisabled);
             if (!silent)
             {
                 _soundEngine.Play("connect");
                 Speak(Loc.T("updates.success", mod.Name));
                 SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser));
+                AnnounceUpdatesListEmptyIfFocused();
             }
         }
         catch (Exception ex)
@@ -405,6 +412,48 @@ public partial class Form1
             Invoke(delegate { MessageBox.Show(Loc.T("updates.failBox", mod.Name, ex.Message)); });
         }
     }
+
+	/// <summary>
+	/// Announces "List is empty" when the Updates list has just been emptied in place while it is focused. A
+	/// screen reader only re-reads a list's state on a focus change, so removing the last item programmatically
+	/// would otherwise stay silent until the user tabbed away and back.
+	/// </summary>
+	private void AnnounceUpdatesListEmptyIfFocused()
+	{
+		if (listUpdates.Items.Count == 0 && listUpdates.Focused && !_isLoading)
+			Speak(Loc.T("common.listEmpty"));
+	}
+
+	/// <summary>
+	/// If <paramref name="original"/> was disabled before being updated, re-disables the freshly installed copy
+	/// (updates always install a mod enabled), so updating never silently turns a mod back on. The new copy is
+	/// matched by Nexus ID or GitHub repo; its folder is renamed to the disabled form (a leading dot) and the mod
+	/// list re-reconciled so deployment and plugins.txt reflect the disabled state.
+	/// </summary>
+	private async Task ReapplyDisabledIfNeeded(StardewMod original, bool wasDisabled)
+	{
+		if (!wasDisabled) return;
+		StardewMod? updated = _allInstalledMods.FirstOrDefault(m => !m.IsGroup && m.IsEnabled &&
+			((!string.IsNullOrEmpty(original.NexusID) && original.NexusID.Equals(m.NexusID, StringComparison.OrdinalIgnoreCase)) ||
+			 (!string.IsNullOrEmpty(original.GitHubRepo) && original.GitHubRepo.Equals(m.GitHubRepo, StringComparison.OrdinalIgnoreCase))));
+		if (updated == null) return;
+		try
+		{
+			string dir = Path.GetDirectoryName(updated.FolderPath) ?? "";
+			string folderName = Path.GetFileName(updated.FolderPath);
+			if (folderName.StartsWith(".")) return;   // already disabled
+			string target = Path.Combine(dir, "." + folderName);
+			Directory.Move(updated.FolderPath, target);
+			updated.FolderPath = target;
+			updated.IsEnabled = false;
+			_soundEngine.Play("disable");
+			await RefreshModList(checkUpdates: false);
+		}
+		catch (Exception ex)
+		{
+			LogError(original.Name, "Could not re-disable after update: " + ex.Message);
+		}
+	}
 
 	private async Task<string?> GetGitHubLatestReleaseVersionAsync(string repo)
 	{
