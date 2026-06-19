@@ -1,3 +1,30 @@
+# Version 1.4.1
+
+A round of fixes and quality-of-life additions on top of 1.4.0: you can now uninstall the script extender and get warned when it no longer matches your game, mod searches can be remembered and re-run, and several rough edges around updating, status messages, and the install prompt have been smoothed out.
+
+---
+
+## ✨ New in Version 1.4.1
+
+### 🧩 Script extender management (Skyrim & Fallout 4)
+*   **Uninstall the script extender**: SKSE and F4SE install into the game folder rather than as normal mods, so there was no way to remove them. A new **Mods → "Uninstall Script Extender (SKSE/F4SE)"** command cleanly removes the files it installed (after a confirmation).
+*   **Version-mismatch warning**: SKSE/F4SE only load when built for your exact game version, so after a game update they silently stop working — which is the usual reason the **Mod Configuration Menu** disappears. The manager now checks this before launching and warns you (and tells you to reinstall it to match), instead of leaving you to wonder why your mods went quiet.
+*   **Links go to Nexus**: Opening the SKSE/F4SE entry in the Accessibility Suite now goes to its Nexus page.
+
+### 🔍 Search history
+*   **Remember and re-run your searches**: Turn on **"Save Mod Search History"** in **Settings** and the manager keeps the mod searches you run. Open them with the new **History** button on the Search for Mods tab or **Ctrl + Shift + H**: choose "All searches" or a specific date, then press **Enter** on any term to run it again. History is kept **per game**, and you can clear it at any time. It's **off by default**.
+
+### 🛠️ Improvements & fixes
+*   **SMAPI download shows progress**: Installing SMAPI now reports its download progress like other downloads.
+*   **Stale status messages cleared**: The window title now returns to your Nexus connection (or "Ready") after an operation finishes, so it no longer keeps showing "Installing…" or "Rebuilding deployment" long after it's done.
+*   **Disabled mods stay disabled after updating**: Updating a mod you'd turned off no longer silently turns it back on.
+*   **The install prompt reliably comes to the front**: After a Mod Manager Download, the "Install now?" question now takes focus on its own, instead of staying hidden behind the browser on some computers (you no longer have to Alt+Tab to find it).
+*   **"List is empty" is announced**: When you clear the last available update, the Updates list now says it's empty right away instead of waiting for you to move focus away and back.
+*   **Suite tidy-up**: Removed the standalone "SkyrimAccessibility" entry from the Skyrim suite — it's now part of Skyrim Access.
+*   **Manual updated** to cover the FOMOD installer, the controls viewer, the navigable manual and change log, search history, and the script-extender tools.
+
+---
+
 # Version 1.4.0
 
 A big step for accessible mod installing: configurable "FOMOD" mods now open a fully keyboard-driven, spoken installer wizard instead of failing, and the controls window (Ctrl+H) has been rebuilt into an easy drill-down list that reads each mod's real, documented keybinds — including Fallout 4 and Skyrim mods that set their keys through MCM. The manual and change log are now navigable in the same way, plus a handful of fixes.

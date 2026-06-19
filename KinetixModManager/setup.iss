@@ -4,7 +4,7 @@
 [Setup]
 AppId={{D37D0B2E-6D3F-4B1C-BD03-9A1D2E3F4B5C}
 AppName=Kinetix Mod Manager
-AppVersion=1.4.0
+AppVersion=1.4.1
 AppPublisher=Audi Venture Games
 AppPublisherURL=https://github.com/SeanTerry01/Kinetix-Mod-Manager
 AppSupportURL=https://github.com/SeanTerry01/Kinetix-Mod-Manager
