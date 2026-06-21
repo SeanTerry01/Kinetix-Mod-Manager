@@ -277,28 +277,17 @@ public partial class Form1
                 }
 
                 string destinationPath = Path.Combine(downloadsPath, $"{mod.UniqueId}_github_latest.zip");
-                
-                int lastPctSpoken = 0;
-                var progress = new Progress<double>(pct =>
-                {
-                    Invoke(delegate
-                    {
-                        Text = Loc.T("updates.titleDownloading", mod.Name, pct);
-                        int rounded = (int)(pct / 10.0) * 10;
-                        if (rounded > lastPctSpoken && rounded < 100)
-                        {
-                            lastPctSpoken = rounded;
-                            Speak(Loc.T("common.percent", rounded));
-                        }
-                    });
-                });
 
-                await _nexusService.DownloadFileWithProgressAsync(downloadUrl, destinationPath, progress);
-                
+                ProgressAnnouncer? dlProgress = silent ? null : NewProgress(mod.Name, installing: false);
+                await _nexusService.DownloadFileWithProgressAsync(downloadUrl, destinationPath, dlProgress);
+                dlProgress?.Complete();
+
+                ProgressAnnouncer? instProgress = silent ? null : NewProgress(mod.Name, installing: true);
                 string name = await ModFileSystem.ExtractModAsync(
                     destinationPath, _settings.CurrentModsPath, _allInstalledMods,
                     backupsPath, _settings.MaxBackupsPerMod, _settings.ActiveGame, LogError,
-                    mod.NexusID, _nexusService, mod.GitHubRepo, _settings.CurrentGamePath);
+                    mod.NexusID, _nexusService, mod.GitHubRepo, _settings.CurrentGamePath, null, instProgress);
+                instProgress?.Complete();
 
                 Invoke(delegate
                 {
@@ -353,36 +342,10 @@ public partial class Form1
             SetStatus(Loc.T("updates.updating", mod.Name));
             if (!silent) Speak(Loc.T("updates.downloading", mod.Name));
 
-            int lastReportedPercent = 0;
-            Progress<double>? progress = null;
-            if (!silent)
-            {
-                progress = new Progress<double>(pct =>
-                {
-                    int percent = (int)Math.Round(pct);
-                    if (percent >= lastReportedPercent + 10)
-                    {
-                        lastReportedPercent = (percent / 10) * 10;
-                        SetStatus(Loc.T("updates.downloadingPct", mod.Name, lastReportedPercent));
-                    }
-                    else
-                    {
-                        Invoke(delegate
-                        {
-                            string gameName = _settings.ActiveGame switch
-                            {
-                                "SkyrimSE" => "Skyrim Special Edition",
-                                "Fallout4" => "Fallout 4",
-                                _ => "Stardew Valley"
-                            };
-                            Text = Loc.T("download.titleStatus", gameName, mod.Name, percent);
-                        });
-                    }
-                });
-            }
-
+            ProgressAnnouncer? progress = silent ? null : NewProgress(mod.Name, installing: false);
             string tempPath = await _nexusService.DownloadModUpdateAsync(mod, downloadsPath, progress);
-            await InstallFromZip(tempPath, mod.NexusID);
+            progress?.Complete();
+            await InstallFromZip(tempPath, mod.NexusID, silent: silent);
             Invoke(delegate
             {
                 listUpdates.BeginUpdate();
@@ -414,14 +377,20 @@ public partial class Form1
     }
 
 	/// <summary>
-	/// Announces "List is empty" when the Updates list has just been emptied in place while it is focused. A
-	/// screen reader only re-reads a list's state on a focus change, so removing the last item programmatically
-	/// would otherwise stay silent until the user tabbed away and back.
+	/// Announces "List is empty" after the last available update has been installed and removed in place. A screen
+	/// reader only re-reads a list's state on a focus change, so emptying it programmatically would otherwise stay
+	/// silent. We put focus on the now-empty Updates list (so the reader speaks its name) and then add the empty
+	/// status, but only while the Updates tab is showing — we never yank focus if the user has moved on.
 	/// </summary>
 	private void AnnounceUpdatesListEmptyIfFocused()
 	{
-		if (listUpdates.Items.Count == 0 && listUpdates.Focused && !_isLoading)
-			Speak(Loc.T("common.listEmpty"));
+		if (_isLoading || listUpdates.Items.Count != 0 || CurrentTab() != AppTab.Updates)
+			return;
+		// Focusing fires GotFocus -> List_Enter -> AnnounceListEmpty; if it is already focused that path does not
+		// fire, so call the announcer directly too. AnnounceListEmpty de-dupes, so this never doubles up.
+		if (!listUpdates.Focused)
+			listUpdates.Focus();
+		AnnounceListEmpty(listUpdates);
 	}
 
 	/// <summary>
@@ -637,23 +606,10 @@ public partial class Form1
 			}
 
 			string destinationPath = Path.Combine(downloadsPath, release.FileName);
-			
-			int lastPctSpoken = 0;
-			var progress = new Progress<double>(pct =>
-			{
-				Invoke(delegate
-				{
-					Text = Loc.T("updates.titleManagerUpdate", pct);
-					int rounded = (int)(pct / 10.0) * 10;
-					if (rounded > lastPctSpoken && rounded < 100)
-					{
-						lastPctSpoken = rounded;
-						Speak(Loc.T("common.percent", rounded));
-					}
-				});
-			});
 
+			ProgressAnnouncer progress = NewProgress(Loc.T("updates.appUpdateName"), installing: false);
 			await _nexusService.DownloadFileWithProgressAsync(release.DownloadUrl, destinationPath, progress);
+			progress.Complete();
 
 			_isLoading = false;
 			Speak(Loc.T("updates.downloadComplete"));

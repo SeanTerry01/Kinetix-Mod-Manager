@@ -49,13 +49,9 @@ public partial class Form1
 		}
 		_settings.Save();
 
-		string gameName = game switch
-		{
-			"SkyrimSE" => "Skyrim Special Edition",
-			"Fallout4" => "Fallout 4",
-			"StardewValley" => "Stardew Valley",
-			_ => ""
-		};
+		// ActiveGame has just been set to the new game above, so GameDisplayName() reflects it (with the detected
+		// Skyrim/Fallout edition + build). "None" has no game name and shows the bare app title.
+		string gameName = game == "None" ? "" : GameDisplayName();
 		Text = string.IsNullOrEmpty(gameName) ? Loc.T("ui.appTitle") : Loc.T("ui.appTitleGame", gameName);
 
 		bool noGame = game == "None";

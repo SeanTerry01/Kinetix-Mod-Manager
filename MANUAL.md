@@ -239,6 +239,17 @@ After you activate either button, Nexus sometimes shows a page that lists the mo
 
 ("Slow Download" is the free option. "Fast Download" is only for Nexus Premium members.)
 
+### Hearing progress while it downloads and installs
+
+Large mods (200 MB and up) can take a while to download **and** to install, so the manager gives you audible progress for both steps. By default it does two things at once: it plays a short tone that **rises in pitch** as the percentage climbs, and it **speaks** the name once — "Downloading *mod name*, 0 percent" — then just the bare numbers after that ("10 percent", "20 percent", and so on). The window title also shows the live percentage.
+
+You choose how much of this you hear with the **"Download and install feedback"** setting in **Settings** (Ctrl + P):
+
+*   **Both** (default) — rising tones and spoken deciles.
+*   **Tones** — only the rising tones, no speech.
+*   **Speech** — only the spoken percentages, no tones.
+*   **Off** — neither. Pick this if you'd rather rely on your screen reader's own progress-bar feedback (for example NVDA's **Progress bar output** beeps), so you don't hear two sets of cues at once.
+
 ---
 
 ## Installing Configurable Mods (FOMOD Installer)
@@ -338,6 +349,24 @@ The **Plugin Order** tab is the load order of your plugin files (the `.esp`, `.e
 
 ### Exporting and Importing Your Load Order
 From the **Mods** menu you can **Export Load Order** to save your current mod priority and plugin order to a file, and **Import Load Order** to apply a saved file later — for example as a backup, or to move a setup between computers. Importing replaces the current order and re-applies it; it never adds or removes your mods, and it only accepts a file that was exported for the same game.
+
+---
+
+## Checking Your Mods: Conflicts and Requirements
+
+Two reports on the **Mods** menu help you spot problems. Both open as a simple list you can arrow through, and **Escape** closes them.
+
+### File Conflict Report (Ctrl + Shift + F)
+This shows where your mods collide.
+
+*   **Skyrim & Fallout 4:** it lists every loose file that **more than one enabled mod provides**. Each line names the file, the mod whose copy **wins**, and the mods it **overrides**. This is the detailed view behind the "overrides / overridden in" counts on the Mod Priority tab — use it to decide whether your priority order is putting the right mod on top.
+*   **Stardew Valley:** Stardew mods each load from their own folder and never overwrite each other, so there are no file conflicts. Instead the report lists any mods that **share a UniqueID**, which stops SMAPI from loading them — something you'd want to fix by removing the duplicate.
+
+### Check Mod Requirements (Ctrl + Shift + Q)
+This scans your **enabled** mods and lists anything they need but don't have. Press **Enter** on a line to act on it.
+
+*   **Stardew Valley:** required mods that are **missing, disabled, or older** than a mod asks for — including the host mod a content pack (such as a Content Patcher pack) needs. Enter offers to **search** for the missing mod in the Find New Mods tab.
+*   **Skyrim & Fallout 4:** plugins whose **master file isn't installed** (a missing master stops a plugin loading), a **missing script extender** (SKSE/F4SE), and each mod's **Nexus "Requirements"** that you don't have installed. Enter opens the missing mod's page. Because the Nexus part checks each mod online, a large load order can take a moment — the title bar shows the progress.
 
 ---
 

@@ -22,6 +22,10 @@
     <Compile Include="..\KinetixModManager\FomodParser.cs" />
     <Compile Include="..\KinetixModManager\FomodConditionEvaluator.cs" />
     <Compile Include="..\KinetixModManager\FomodInstaller.cs" />
+    <!-- Self-contained mod-health checks (depend only on GameMod metadata, no app runtime). -->
+    <Compile Include="..\KinetixModManager\GameMod.cs" />
+    <Compile Include="..\KinetixModManager\ModDependency.cs" />
+    <Compile Include="..\KinetixModManager\ModHealth.cs" />
   </ItemGroup>
 
 </Project>

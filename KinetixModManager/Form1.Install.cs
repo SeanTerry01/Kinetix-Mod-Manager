@@ -175,34 +175,12 @@ public partial class Form1
 
 			SetStatus(Loc.T("download.parsingLink"));
 			var (dlUri, realName) = await _nexusService.ResolveNxmUrlAsync(url);
-			SetStatus(Loc.T("download.downloading", realName));
+			SetStatus(Loc.T("download.downloading", realName), speak: false);
 			string path = Path.Combine(downloadsPath, realName);
 
-			int lastReportedPercent = 0;
-			var progress = new Progress<double>(pct =>
-			{
-				int percent = (int)Math.Round(pct);
-				if (percent >= lastReportedPercent + 10)
-				{
-					lastReportedPercent = (percent / 10) * 10;
-					SetStatus(Loc.T("download.downloadingPct", realName, lastReportedPercent));
-				}
-				else
-				{
-					Invoke(delegate
-					{
-						string gameName = _settings.ActiveGame switch
-						{
-							"SkyrimSE" => "Skyrim Special Edition",
-							"Fallout4" => "Fallout 4",
-							_ => "Stardew Valley"
-						};
-						Text = Loc.T("download.titleStatus", gameName, realName, percent);
-					});
-				}
-			});
-
+			ProgressAnnouncer progress = NewProgress(realName, installing: false);
 			await _nexusService.DownloadFileWithProgressAsync(dlUri, path, progress);
+			progress.Complete();
 			_soundEngine.Play("connect");
 			string? nexusId = null;
 			try
@@ -219,7 +197,7 @@ public partial class Form1
 			// open behind the browser and never receive keyboard / screen-reader focus.
 			ForceToForeground();
 			if (MessageBox.Show(this, Loc.T("download.installNow", realName), Loc.T("download.successTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
-				_ = InstallFromZip(path, nexusId);
+				_ = InstallFromZip(path, nexusId, confirmReinstall: true);
 		}
 		catch (Exception ex)
 		{
@@ -304,8 +282,26 @@ public partial class Form1
 		};
 		if (openFileDialog.ShowDialog() == DialogResult.OK)
 		{
-			_ = InstallFromZip(openFileDialog.FileName);
+			_ = InstallFromZip(openFileDialog.FileName, confirmReinstall: true);
 		}
+	}
+
+	/// <summary>
+	/// Confirmation shown by <see cref="InstallFromZip"/> when an install would overwrite a mod that's already
+	/// installed. Returns true to overwrite. On decline it announces that the existing copy was kept. Marshals to
+	/// the UI thread since the install pipeline may call it from a background continuation.
+	/// </summary>
+	private bool ConfirmOverwrite(string modName, string version)
+	{
+		bool Ask()
+		{
+			bool yes = MessageBox.Show(this,
+				Loc.T("install.reinstallConfirm", modName, string.IsNullOrWhiteSpace(version) ? "?" : version),
+				Loc.T("install.reinstallTitle"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
+			if (!yes) Speak(Loc.T("install.reinstallKept", modName));
+			return yes;
+		}
+		return InvokeRequired ? (bool)Invoke(Ask) : Ask();
 	}
 
 	/// <summary>
@@ -347,14 +343,21 @@ public partial class Form1
 	/// to prevent path traversal, then moves the contents into the Mods directory.
 	/// Temp files are cleaned up in a <c>finally</c> block regardless of success or failure.
 	/// </summary>
-	private async Task InstallFromZip(string zipPath, string? nexusId = null)
+	private async Task InstallFromZip(string zipPath, string? nexusId = null, bool silent = false, bool confirmReinstall = false)
 	{
+		// In a silent batch (e.g. Update All) we skip the per-mod install tones/speech; the batch reports its
+		// own "Updating (i/n)" status instead. Interactive installs get the full progress announcer.
+		ProgressAnnouncer? installProgress = silent ? null : NewProgress(Path.GetFileNameWithoutExtension(zipPath), installing: true);
+		// Only interactive installs (manual Ctrl+I, Mod Manager Download) ask before overwriting; updates
+		// deliberately overwrite without prompting.
+		Func<string, string, bool>? confirmOverwrite = confirmReinstall ? ConfirmOverwrite : null;
 		try
 		{
 			string name = await ModFileSystem.ExtractModAsync(
 				zipPath, _settings.CurrentModsPath, _allInstalledMods,
 				backupsPath, _settings.MaxBackupsPerMod, _settings.ActiveGame, LogError, nexusId, _nexusService, null, _settings.CurrentGamePath,
-				ShowFomodWizardAsync);
+				ShowFomodWizardAsync, installProgress, confirmOverwrite);
+			installProgress?.Complete();
 			_soundEngine.Play("connect");
 
 			await RefreshModList(checkUpdates: false);

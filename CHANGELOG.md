@@ -1,3 +1,48 @@
+# Version 1.4.2
+
+Long downloads and installs now tell you how far along they are — by ear. Big mods (200 MB and up) can take a while, so the manager now plays a rising tone and/or speaks the percentage as they download **and** as they install, and you can choose which in Settings.
+
+---
+
+## ✨ New in Version 1.4.2
+
+### 🔊 Audible progress for downloads and installs
+*   **Installing now has its own progress.** Previously only downloads reported progress; the install/extract step was silent, which felt frozen on large mods. Installs now report a real percentage too (extracted from the archive as it unpacks).
+*   **Rising tones.** During any download or install, a short tone climbs in pitch from 0% to 100%, so you can hear progress moving without it talking over you. The tones are generated on the fly — no extra sound files.
+*   **Spoken percentages, kept light.** When speech is on, the manager says the name once — "Downloading *mod name*, 0 percent" — then just the bare deciles after that: "10 percent", "20 percent", and so on, rather than repeating the mod name every time.
+*   **Pick what you hear.** A new **"Download and install feedback"** setting lets you choose **Tones**, **Speech**, **Both** (the default), or **Off**. Off is handy if you already rely on your screen reader's own progress-bar beeps (for example NVDA's "Progress bar output").
+*   **Everywhere it matters.** The same feedback is used for Mod Manager Downloads, manual installs, single-mod updates, the SMAPI/script-extender setup, and the manager's own self-update.
+
+### 🏷️ Skyrim & Fallout 4 show their version
+*   The title bar now includes the **detected game version** of the loaded Bethesda game — for example **"Skyrim Special Edition (1.6.1170)"** or **"Fallout 4 (1.11.191)"** — read from the game's executable. The version is what decides which mod files are compatible (e.g. Skyrim 1.6+ uses the files Nexus labels "AE"). The name matches what Steam shows; if the version can't be read, just the plain name is shown. *(It deliberately doesn't print "Anniversary Edition" / "Next-Gen": those are paid DLC bundles whose ownership can't be detected — Bethesda's free updates make every copy report the same version regardless of which you bought.)*
+
+### 🔎 Mod health: conflicts and requirements
+*   **File Conflict Report** (Mods menu, or **Ctrl + Shift + F**). On Skyrim and Fallout 4 it lists every loose file that more than one enabled mod provides, telling you which mod **wins** and which are **overridden** — arrow through them to judge your load order by ear. On Stardew Valley (where each mod loads from its own folder and nothing overwrites) it instead lists any mods that **share a UniqueID**, which breaks SMAPI.
+*   **Check Mod Requirements** (Mods menu, or **Ctrl + Shift + Q**). Scans your enabled mods for problems and lists them:
+    *   **Stardew:** required dependencies (now including a content pack's host mod) that are **missing, disabled, or too old**. Press **Enter** on one to search for it.
+    *   **Skyrim / Fallout 4:** plugins whose **master file isn't installed** (the classic missing-master that stops a plugin loading), a **missing script extender**, and each mod's **Nexus "Requirements"** that you don't have installed. Press **Enter** to open the missing mod's page.
+
+### ♻️ Reinstall confirmation
+*   Installing a mod you **already have** — whether by **Ctrl + I** or a **Mod Manager Download** — now asks first: *"{mod} (version X) is already installed. Overwrite it with this copy?"* Choose No and your existing copy is left untouched. Mod *updates* still overwrite without prompting, as before. (Deleting a mod already asks for confirmation and makes a safety backup first.)
+
+### 🙈 Hide requirement warnings that don't apply
+*   In the **Check Mod Requirements** report, press **Delete** on any warning to hide it for good — for the false positives the manager can't auto-detect (a Nexus requirement that's actually optional, or one satisfied by an alternative like SKSE standing in for a DLL loader). Hidden warnings are remembered per game, and **Mods → Reset Hidden Requirement Warnings** brings them all back.
+
+### 🛠️ Fixes
+*   **Manually installing SKSE/F4SE now lands in the game root.** Installing the script extender as a regular mod (Ctrl+I, a Mod Manager Download, or the manual route many non-premium users take for F4SE) used to drop the loader and DLLs entirely — the installer mistook the extender's `Data` sub-folder for the whole mod and only copied the scripts. It now recognizes the script extender and places its loader/DLLs in the game folder and its scripts in `Data`, exactly like the Accessibility Suite already did.
+*   **Accessibility Suite installs keep your focus.** While the Accessibility Suite installer is open, the main window is now hidden, so each "installed" confirmation returns you to the suite panel instead of bouncing focus to the main window behind it. The main window comes back when you close the suite. (Ordinary installs from Find New Mods or Ctrl+I are unchanged.)
+*   **First-launch setup actually opens now.** On a brand-new install the Settings window opens on its own so you can enter your Nexus key and game/mod folders straight away — previously it only appeared after you'd already picked a game, leaving nowhere obvious to start. It happens only once, and existing users aren't nagged after updating.
+*   **Requirements check is less noisy.** It no longer flags **VR-only** requirements (like "VR Address Library for SKSEVR") for the flat games, it now shows the **mod author's note** about a requirement when there is one, and it spells out that a listed Nexus requirement may be optional or have an alternative — so it reads as "worth checking" rather than a hard error.
+*   **Active Creations are protected from cleanup.** Creation Club / Anniversary content (including `_ResourcePack.esl`) is never treated as a removable "ghost" plugin, so it isn't dropped during the plugin sync.
+*   **Requirements check now understands Creations.** The master-file check used to look only inside mod folders, so it wrongly reported Creation Club masters (and other plugins that live in the game's Data folder) as "not installed" even when they were active. It now checks against the real load order and the Data folder, and distinguishes *"not installed"* from *"installed but not enabled"* (e.g. a Creation toggled off that another mod needs).
+*   **`_ResourcePack.esl` now appears on the Creations tab.** The Anniversary-edition resource pack — which USSEP, Alternate Start, and many AE mods require as a master — couldn't be toggled before because it doesn't start with "cc". It's now listed alongside the Creations so you can enable it.
+*   **The Creations tab no longer goes missing.** When the app started straight into a Skyrim/Fallout 4 session, the Creations tab could be absent (it was only added when you switched games, not at startup). It's now built in from the start, so it's always there for those games.
+*   **Uninstalled mods no longer leave "ghost" plugins.** When a Skyrim/Fallout 4 mod was removed, its plugin could linger in the Plugin Order list (and `plugins.txt`) because the manager re-adopted the leftover entry even though the file was gone. It now only keeps plugins whose file is actually present in the game's Data folder, so a removed mod's plugin clears on the next refresh.
+*   **"Loading more results" no longer sticks.** After loading another page of search results, the title returns to your Nexus connection status instead of staying on "Loading more…" indefinitely.
+*   **Empty lists announce reliably.** "List is empty" is now spoken in the right order (list name first), when the last available update is cleared, and when you Alt+Tab back to an empty list.
+
+---
+
 # Version 1.4.1
 
 A round of fixes and quality-of-life additions on top of 1.4.0: you can now uninstall the script extender and get warned when it no longer matches your game, mod searches can be remembered and re-run, and several rough edges around updating, status messages, and the install prompt have been smoothed out.

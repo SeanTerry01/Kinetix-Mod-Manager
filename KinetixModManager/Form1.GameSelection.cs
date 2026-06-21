@@ -448,12 +448,7 @@ public partial class Form1
 
 			if (File.Exists(exePath))
 			{
-				string gameName = game switch
-				{
-					"SkyrimSE" => "Skyrim Special Edition",
-					"Fallout4" => "Fallout 4",
-					_ => "Stardew Valley"
-				};
+				string gameName = GameDisplayName();
 				// Warn if the installed script extender won't load because it doesn't match the game's build —
 				// the common reason MCM and other SKSE/F4SE features disappear after a game update.
 				var seVer = ModFileSystem.CheckScriptExtenderVersion(game, gamePath);

@@ -444,7 +444,23 @@ public partial class Form1 : Form, IMessageFilter
 			bool falloutInstalled = form.IsGameInstalled("Fallout4");
 			bool anyInstalled = stardewInstalled || skyrimInstalled || falloutInstalled;
 
-			if (form._settings!.ActiveGame == "None")
+			// First launch: open Settings (modal) so a brand-new user can set their game folders and Nexus key
+			// right away — the Settings dialog works without a game loaded, and previously you had to pick a game
+			// first before it would appear. Only for a genuinely fresh setup; existing users are marked done
+			// silently so they aren't nagged after upgrading.
+			if (!form._settings!.HasCompletedFirstRun)
+			{
+				bool fresh = string.IsNullOrEmpty(form._settings.ApiKey) && form._settings.ActiveGame == "None";
+				form._settings.HasCompletedFirstRun = true;
+				form._settings.Save();
+				if (fresh)
+				{
+					Speak(Loc.T("app.firstRunSettings"));
+					form.ShowSettings();
+				}
+			}
+
+			if (form._settings.ActiveGame == "None")
 			{
 				if (form._lstGames != null)
 				{

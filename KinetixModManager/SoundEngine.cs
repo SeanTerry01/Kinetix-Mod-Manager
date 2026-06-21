@@ -84,6 +84,58 @@ public class SoundEngine
 	}
 
 	/// <summary>
+	/// Plays a short synthesized tone whose pitch rises with <paramref name="percent"/> (0–100), used as
+	/// non-verbal progress feedback during downloads and installs. The tone is generated on the fly — no audio
+	/// files are needed — so any percentage maps to its own pitch. Fire-and-forget on a background thread;
+	/// rapid successive calls overlap briefly, which gives the climbing "sweep" feel as progress advances.
+	/// Honours <see cref="AppSettings.SoundVolume"/>.
+	/// </summary>
+	/// <param name="percent">Progress percentage, clamped to 0–100. Higher = higher pitch.</param>
+	public void PlayTone(int percent)
+	{
+		Task.Run(() =>
+		{
+			try
+			{
+				if (percent < 0) percent = 0;
+				else if (percent > 100) percent = 100;
+
+				const int sampleRate = 44100;
+				const double durationSec = 0.09;
+				int sampleCount = (int)(sampleRate * durationSec);
+
+				// Map 0–100% to a roughly even-sounding pitch ramp (logarithmic so each step feels equal).
+				double freq = 300.0 * Math.Pow(1400.0 / 300.0, percent / 100.0);
+
+				// Tones sit a little under the named-event volume so they don't fatigue on long downloads.
+				double volume = (_settings.SoundVolume / 100.0) * 0.45;
+				int fade = (int)(sampleRate * 0.006); // ~6 ms fade in/out to avoid clicks
+				short[] samples = new short[sampleCount];
+				for (int i = 0; i < sampleCount; i++)
+				{
+					double env = 1.0;
+					if (i < fade) env = (double)i / fade;
+					else if (i > sampleCount - fade) env = (double)(sampleCount - i) / fade;
+					double s = Math.Sin(2.0 * Math.PI * freq * i / sampleRate) * env * volume;
+					samples[i] = (short)(s * short.MaxValue);
+				}
+
+				byte[] bytes = new byte[sampleCount * 2];
+				Buffer.BlockCopy(samples, 0, bytes, 0, bytes.Length);
+
+				using var ms = new MemoryStream(bytes);
+				var raw = new RawSourceWaveStream(ms, new WaveFormat(sampleRate, 16, 1));
+				using WaveOutEvent output = new WaveOutEvent();
+				output.Init(raw);
+				output.Play();
+				while (output.PlaybackState == PlaybackState.Playing)
+					Thread.Sleep(10);
+			}
+			catch { /* audio failures are non-fatal */ }
+		});
+	}
+
+	/// <summary>
 	/// Plays a logo sound file on a background thread.
 	/// Used to preview startup logo sounds in the Settings dialog.
 	/// </summary>

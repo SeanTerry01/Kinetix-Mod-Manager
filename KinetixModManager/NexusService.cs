@@ -588,6 +588,65 @@ public class NexusService
 		finally { _apiSemaphore.Release(); }
 	}
 
+	/// <summary>One mod listed on another mod's Nexus "Requirements" tab.</summary>
+	public sealed class ModRequirementInfo
+	{
+		/// <summary>Nexus numeric mod id of the required mod (empty for off-Nexus/external requirements).</summary>
+		public string ModId { get; set; } = "";
+		/// <summary>Display name of the required mod.</summary>
+		public string ModName { get; set; } = "";
+		/// <summary>Page/download URL for the requirement.</summary>
+		public string Url { get; set; } = "";
+		/// <summary>The mod author's note about this requirement (e.g. "only for VR" or "or SKSE"); may be empty.</summary>
+		public string Notes { get; set; } = "";
+		/// <summary>True when the requirement is hosted off Nexus (we can't check whether it's installed).</summary>
+		public bool External { get; set; }
+	}
+
+	/// <summary>
+	/// Reads the mods listed on <paramref name="nexusId"/>'s Nexus "Requirements" tab via the v2 GraphQL
+	/// <c>modRequirements.nexusRequirements</c> field. Returns an empty list on any failure (no key, network
+	/// error, or a mod with no declared requirements), so callers can treat it as best-effort.
+	/// </summary>
+	public async Task<List<ModRequirementInfo>> GetModRequirementsAsync(string nexusId)
+	{
+		var result = new List<ModRequirementInfo>();
+		if (string.IsNullOrEmpty(nexusId) || string.IsNullOrEmpty(_settings.ApiKey)) return result;
+		if (!int.TryParse(nexusId, out int modIdNum) || !int.TryParse(CurrentGameId, out int gameIdNum)) return result;
+
+		// modId/gameId are integers we control, so inline them — no user input, no injection surface.
+		string query = $"query {{ mod(modId: {modIdNum}, gameId: {gameIdNum}) {{ modRequirements {{ nexusRequirements {{ nodes {{ modId modName url externalRequirement notes }} }} }} }} }}";
+
+		await _apiSemaphore.WaitAsync();
+		try
+		{
+			using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.nexusmods.com/v2/graphql");
+			req.Headers.Add("apikey", _settings.ApiKey);
+			req.Headers.Add("User-Agent", $"KinetixModManager/{AppVersion}");
+			req.Content = new StringContent(JsonConvert.SerializeObject(new { query }), Encoding.UTF8, "application/json");
+
+			var resp = await HttpClient.SendAsync(req);
+			if (!resp.IsSuccessStatusCode) return result;
+
+			JObject data = JObject.Parse(await resp.Content.ReadAsStringAsync());
+			JArray nodes = (data["data"]?["mod"]?["modRequirements"]?["nexusRequirements"]?["nodes"] as JArray) ?? new JArray();
+			foreach (JToken n in nodes)
+			{
+				result.Add(new ModRequirementInfo
+				{
+					ModId    = n["modId"]?.ToString() ?? "",
+					ModName  = n["modName"]?.ToString() ?? "",
+					Url      = n["url"]?.ToString() ?? "",
+					Notes    = n["notes"]?.ToString() ?? "",
+					External = ((bool?)n["externalRequirement"]) ?? false
+				});
+			}
+		}
+		catch { /* best-effort: a failed requirements lookup just yields no rows */ }
+		finally { _apiSemaphore.Release(); }
+		return result;
+	}
+
 	// -------------------------------------------------------------------------
 	// App self-update
 	// -------------------------------------------------------------------------

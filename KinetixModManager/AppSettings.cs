@@ -5,8 +5,23 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Forms;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 namespace KinetixModManager;
+
+/// <summary>
+/// How the manager gives audible progress feedback during long downloads and installs.
+/// <see cref="Tones"/> plays a rising synthesized pitch, <see cref="Speech"/> speaks the name once
+/// then bare deciles ("10 percent", ...). <see cref="Off"/> is useful for users who already rely on
+/// their screen reader's own progress-bar beeps (e.g. NVDA's "Progress bar output").
+/// </summary>
+public enum ProgressFeedback
+{
+	Off,
+	Tones,
+	Speech,
+	Both
+}
 
 public class AppSettings
 {
@@ -61,6 +76,13 @@ public class AppSettings
 	/// </summary>
 	public string ApiKeyEncrypted { get; set; } = "";
 
+	/// <summary>
+	/// False until the manager has shown its one-time first-launch setup (the Settings dialog, so a brand-new
+	/// user can enter their game folders and Nexus key before anything else). Set true after the first run so it
+	/// never nags again. Existing users who upgrade are marked done silently without the popup.
+	/// </summary>
+	public bool HasCompletedFirstRun { get; set; } = false;
+
 	public bool ShowSplashScreen { get; set; } = true;
 
 	public bool RandomLogoStartup { get; set; } = true;
@@ -70,6 +92,13 @@ public class AppSettings
 	public bool CheckForUpdatesAtStartup { get; set; } = true;
 
 	public int SoundVolume { get; set; } = 80;
+
+	/// <summary>
+	/// Audible progress feedback mode for downloads and installs. Defaults to <see cref="ProgressFeedback.Both"/>
+	/// (rising tones plus spoken deciles). Serialized as a readable string. See <see cref="ProgressAnnouncer"/>.
+	/// </summary>
+	[JsonConverter(typeof(StringEnumConverter))]
+	public ProgressFeedback ProgressFeedback { get; set; } = ProgressFeedback.Both;
 
 	public int MaxBackupsPerMod { get; set; } = 5;
 
@@ -118,6 +147,13 @@ public class AppSettings
 	};
 
 	public Dictionary<string, string> IgnoredVersions { get; set; } = new Dictionary<string, string>();
+
+	/// <summary>
+	/// Requirement-check warnings the user has chosen to hide, per game (keyed by active-game id). Each entry is a
+	/// stable "ignore key" identifying one warning (e.g. a mod's Nexus requirement that's actually optional or
+	/// satisfied by an alternative the manager can't detect). See the requirements report and <c>ResetIgnoredRequirements</c>.
+	/// </summary>
+	public Dictionary<string, List<string>> IgnoredRequirements { get; set; } = new Dictionary<string, List<string>>();
 
 	public Dictionary<string, string> ModCategories { get; set; } = new Dictionary<string, string>();
 
@@ -239,6 +275,7 @@ public class AppSettings
 
 		if (ModPriority == null) ModPriority = new Dictionary<string, List<string>>();
 		if (PluginOrder == null) PluginOrder = new Dictionary<string, List<string>>();
+		if (IgnoredRequirements == null) IgnoredRequirements = new Dictionary<string, List<string>>();
 
 		if (string.IsNullOrEmpty(ActiveGame)) ActiveGame = "None";
 		foreach (KeyValuePair<string, Keys> item in new Dictionary<string, Keys>
@@ -366,6 +403,14 @@ public class AppSettings
 			{
 				"SearchHistory",
 				Keys.H | Keys.Shift | Keys.Control
+			},
+			{
+				"FileConflicts",
+				Keys.F | Keys.Shift | Keys.Control
+			},
+			{
+				"CheckRequirements",
+				Keys.Q | Keys.Shift | Keys.Control
 			}
 		})
 		{

@@ -476,13 +476,23 @@ public partial class Form1
 		// the order the game currently loads them (so an existing curated load order is not scrambled).
 		List<string> existingActive = ModFileSystem.ReadActivePlugins(game);
 
-		// Preserve external active entries (e.g. Creation Club) that no installed mod provides.
+		// Preserve external active entries (e.g. Creation Club) that no installed mod provides — but only if the
+		// plugin file is actually still in the Data folder. When the game folder is known and the file is gone
+		// (e.g. its mod was just uninstalled), drop the stale plugins.txt entry instead of re-adopting it;
+		// otherwise a removed mod's plugin would linger in the list and plugins.txt indefinitely.
 		foreach (string name in existingActive)
 		{
 			if (ModFileSystem.IsBaseMaster(game, name)) continue;
 			if (allModPlugins.Contains(name) || cls.ContainsKey(name)) continue;
 			string dataPath = string.IsNullOrEmpty(gameRoot) ? "" : Path.Combine(gameRoot, "Data", name);
-			bool hasData = !string.IsNullOrEmpty(dataPath) && File.Exists(dataPath);
+			bool canVerify = !string.IsNullOrEmpty(dataPath);
+			bool hasData = canVerify && File.Exists(dataPath);
+			// Creation Club / Anniversary content (cc*, _ResourcePack.esl) is managed by the game and stays active
+			// if it was active — never treat it as a ghost. Only a regular plugin whose file is gone (e.g. left by
+			// an uninstalled mod) is dropped.
+			bool isCreation = name.StartsWith("cc", StringComparison.OrdinalIgnoreCase) ||
+							  name.Equals("_ResourcePack.esl", StringComparison.OrdinalIgnoreCase);
+			if (canVerify && !hasData && !isCreation) continue; // ghost mod plugin -> drop; Creations preserved
 			cls[name] = hasData ? ModFileSystem.ReadPluginFlags(dataPath) : ModFileSystem.ReadPluginFlags(name);
 			if (hasData) paths[name] = dataPath;
 		}
@@ -806,7 +816,11 @@ public partial class Form1
 		foreach (string file in Directory.GetFiles(dataDir))
 		{
 			string name = Path.GetFileName(file);
-			if (!name.StartsWith("cc", StringComparison.OrdinalIgnoreCase)) continue;
+			// Creation Club plugins are "cc*"; _ResourcePack.esl is the Anniversary-edition resource pack that
+			// many AE mods (USSEP, Alternate Start, ...) master, so surface it here too so it can be toggled.
+			bool isCreation = name.StartsWith("cc", StringComparison.OrdinalIgnoreCase) ||
+							  name.Equals("_ResourcePack.esl", StringComparison.OrdinalIgnoreCase);
+			if (!isCreation) continue;
 			if (!ModFileSystem.IsPluginFile(name)) continue;
 			var flags = ModFileSystem.ReadPluginFlags(file);
 			list.Add(new CreationEntry

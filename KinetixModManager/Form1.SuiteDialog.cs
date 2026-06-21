@@ -274,7 +274,9 @@ public partial class Form1
 							try
 							{
 								var tempMod = new GameMod { NexusID = item.Source, Name = item.Name };
-								string tempPath = await _nexusService.DownloadModUpdateAsync(tempMod, downloadsPath);
+								ProgressAnnouncer dl = NewProgress(item.Name, installing: false);
+								string tempPath = await _nexusService.DownloadModUpdateAsync(tempMod, downloadsPath, dl);
+								dl.Complete();
 								await InstallFromZip(tempPath, item.Source);
 								continue;
 							}
@@ -306,10 +308,14 @@ public partial class Form1
 								try
 								{
 									var tempMod = new GameMod { NexusID = nexusId, Name = item.Name };
-									string tempPath = await _nexusService.DownloadModUpdateAsync(tempMod, downloadsPath);
+									ProgressAnnouncer dl = NewProgress(item.Name, installing: false);
+									string tempPath = await _nexusService.DownloadModUpdateAsync(tempMod, downloadsPath, dl);
+									dl.Complete();
 									if (item.Type == "Loader")
 									{
-										await ModFileSystem.InstallScriptExtenderAsync(tempPath, _settings.CurrentGamePath, game, LogError, _nexusService);
+										ProgressAnnouncer inst = NewProgress(item.Name, installing: true);
+										await ModFileSystem.InstallScriptExtenderAsync(tempPath, _settings.CurrentGamePath, game, LogError, _nexusService, inst);
+										inst.Complete();
 									}
 									else
 									{
@@ -337,9 +343,10 @@ public partial class Form1
 
 							if (item.Type == "Loader")
 							{
-								SetStatus(Loc.T("suite.installingItem", item.Name));
-								Speak(Loc.T("suite.installingItem", item.Name));
-								await ModFileSystem.InstallScriptExtenderAsync(tempPath, _settings.CurrentGamePath, game, LogError, _nexusService);
+								SetStatus(Loc.T("suite.installingItem", item.Name), speak: false);
+								ProgressAnnouncer inst = NewProgress(item.Name, installing: true);
+								await ModFileSystem.InstallScriptExtenderAsync(tempPath, _settings.CurrentGamePath, game, LogError, _nexusService, inst);
+								inst.Complete();
 							}
 							else
 							{
@@ -377,7 +384,25 @@ public partial class Form1
 		dialog.Shown += (s, e) => lstStatus.Focus();
 
 		dialog.Controls.Add(layout);
-		dialog.ShowDialog();
+
+		// Keep all screen-reader focus on the suite installer while it's open. Hiding the main window means the
+		// per-mod "installed" confirmations and progress return to this panel instead of flashing to the main
+		// window behind it, and the main window comes back when the panel closes. Scoped to the suite only —
+		// ordinary installs (Find New Mods, Ctrl+I) leave the main window in place as before.
+		bool wasVisible = Visible;
+		if (wasVisible) Hide();
+		try
+		{
+			dialog.ShowDialog();
+		}
+		finally
+		{
+			if (wasVisible)
+			{
+				Show();
+				Activate();
+			}
+		}
 	}
 
 	/// <summary>
@@ -518,17 +543,9 @@ public partial class Form1
 
 			Directory.CreateDirectory(tempDir);
 			string zipPath = Path.Combine(tempDir, "SMAPI-installer.zip");
-			int lastPct = 0;
-			var progress = new Progress<double>(pct =>
-			{
-				int percent = (int)Math.Round(pct);
-				if (percent >= lastPct + 10 && percent < 100)
-				{
-					lastPct = (percent / 10) * 10;
-					SetStatus(Loc.T("suite.smapiDownloadingPct", lastPct));
-				}
-			});
+			ProgressAnnouncer progress = NewProgress(Loc.T("suite.smapiName"), installing: false);
 			await _nexusService.DownloadFileWithProgressAsync(url, zipPath, progress);
+			progress.Complete();
 
 			string extractDir = Path.Combine(tempDir, "extracted");
 			await Task.Run(() => ZipFile.ExtractToDirectory(zipPath, extractDir));

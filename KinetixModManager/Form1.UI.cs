@@ -34,13 +34,8 @@ public partial class Form1
 	/// </summary>
 	private void SetupAccessibleUI()
 	{
-		string gameName = _settings.ActiveGame switch
-		{
-			"SkyrimSE" => "Skyrim Special Edition",
-			"Fallout4" => "Fallout 4",
-			"StardewValley" => "Stardew Valley",
-			_ => ""
-		};
+		// Startup title: the active game with its detected Skyrim/Fallout edition + build (see GameDisplayName).
+		string gameName = _settings.ActiveGame == "None" ? "" : GameDisplayName();
 		Text = string.IsNullOrEmpty(gameName) ? Loc.T("ui.appTitle") : Loc.T("ui.appTitleGame", gameName);
 		base.Size = new Size(1000, 700);
 		base.KeyPreview = true;
@@ -147,6 +142,22 @@ public partial class Form1
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.editManifest", GetShortcutString("OpenManifest")), null, delegate
 		{
 			OpenSelectedModManifest();
+		});
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.fileConflicts", GetShortcutString("FileConflicts")), null, delegate
+		{
+			ShowFileConflictsReport();
+		});
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.checkRequirements", GetShortcutString("CheckRequirements")), null, async delegate
+		{
+			await ShowRequirementsReport();
+		});
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.verifyDeployment"), null, delegate
+		{
+			VerifyModDeployment();
+		});
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.resetIgnoredReqs"), null, delegate
+		{
+			ResetIgnoredRequirements();
 		});
 
 		ToolStripMenuItem toolStripMenuItem3 = new ToolStripMenuItem(Loc.T("menu.view")) { Name = "menuView" };
@@ -831,12 +842,15 @@ public partial class Form1
 		tabWalkthroughs.Controls.Add(splitWalkthroughs);
 
 		mainTabs.TabPages.Add(tabInstalled);
-		// Mod Priority and Plugin Order sit right after Installed (Skyrim/Fallout 4 only) so the load order
-		// controls are next to the mod list.
+		// Mod Priority, Plugin Order, and Creations sit right after Installed (Skyrim/Fallout 4 only) so the load
+		// order controls are next to the mod list. This must match the order SwitchActiveGame inserts them in,
+		// otherwise the Creations tab would be missing when the app starts straight into a Bethesda session
+		// (startup calls RefreshAllData, not SwitchActiveGame).
 		if (IsBethesdaGame)
 		{
 			mainTabs.TabPages.Add(tabModPriority);
 			mainTabs.TabPages.Add(tabPluginOrder);
+			mainTabs.TabPages.Add(tabCreations);
 		}
 		mainTabs.TabPages.Add(tabUpdates);
 		mainTabs.TabPages.Add(tabBackups);
@@ -894,6 +908,9 @@ public partial class Form1
 		// GotFocus (not Enter) so the position is re-announced whenever focus lands on the list,
 		// including when it is restored after a modal dialog or menu closes — Enter does not fire
 		// in that case because the form's ActiveControl never changed while the dialog was open.
+		// Re-announce an empty list when the manager is brought back to the foreground (Alt+Tab), where the
+		// child control regains focus without reliably re-firing GotFocus.
+		Activated += Form1_Activated;
 		listInstalled.GotFocus += List_Enter;
 		listUpdates.GotFocus += List_Enter;
 		listDiscovery.GotFocus += List_Enter;

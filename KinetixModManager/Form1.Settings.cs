@@ -50,7 +50,7 @@ public partial class Form1
 		{
 			Dock = DockStyle.Fill,
 			Padding = new Padding(15),
-			RowCount = 17
+			RowCount = 18
 		};
 
 		tableLayoutPanel.Controls.Add(new Label
@@ -449,6 +449,44 @@ public partial class Form1
 		};
 		tableLayoutPanel.Controls.Add(cSearchHistory, 0, 16);
 
+		FlowLayoutPanel flowProgress = new FlowLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			FlowDirection = FlowDirection.LeftToRight,
+			Padding = new Padding(0, 5, 0, 0),
+			AutoSize = true
+		};
+		flowProgress.Controls.Add(new Label
+		{
+			Text = Loc.T("settings.progressFeedback"),
+			AutoSize = true,
+			Padding = new Padding(0, 5, 0, 0)
+		});
+		ComboBox cmbProgress = new ComboBox
+		{
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			Width = 140,
+			AccessibleName = Loc.T("settings.progressFeedbackName")
+		};
+		cmbProgress.Items.AddRange(new object[]
+		{
+			new ProgressFeedbackChoice(ProgressFeedback.Off,    Loc.T("progress.feedbackOff")),
+			new ProgressFeedbackChoice(ProgressFeedback.Tones,  Loc.T("progress.feedbackTones")),
+			new ProgressFeedbackChoice(ProgressFeedback.Speech, Loc.T("progress.feedbackSpeech")),
+			new ProgressFeedbackChoice(ProgressFeedback.Both,   Loc.T("progress.feedbackBoth"))
+		});
+		for (int i = 0; i < cmbProgress.Items.Count; i++)
+		{
+			if (cmbProgress.Items[i] is ProgressFeedbackChoice pc && pc.Value == _settings.ProgressFeedback)
+			{
+				cmbProgress.SelectedIndex = i;
+				break;
+			}
+		}
+		if (cmbProgress.SelectedIndex < 0) cmbProgress.SelectedIndex = cmbProgress.Items.Count - 1;
+		flowProgress.Controls.Add(cmbProgress);
+		tableLayoutPanel.Controls.Add(flowProgress, 0, 17);
+
 		FlowLayoutPanel flowLayoutPanel5 = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Bottom,
@@ -508,6 +546,10 @@ public partial class Form1
 				_settings.SaveSearchHistory = cSearchHistory.Checked;
 				_settings.SoundVolume = (int)nVol.Value;
 				_settings.MaxBackupsPerMod = (int)nPrune.Value;
+				if (cmbProgress.SelectedItem is ProgressFeedbackChoice pfc)
+				{
+					_settings.ProgressFeedback = pfc.Value;
+				}
 				if (cmbPageSize.SelectedItem is int pageSize)
 				{
 					_settings.DiscoverySearchPageSize = pageSize;
@@ -522,6 +564,8 @@ public partial class Form1
 					? (cTheme.SelectedItem?.ToString() ?? "Default")
 					: AppSettings.ThemeForGame(_settings.ActiveGame);
 				_settings.Save();
+				// A changed game path can change the detected edition/build, so drop the cached display name.
+				InvalidateGameDisplayName();
 				UpdateGamesMenu();
 				f.Close();
 				Task.Delay(100).ContinueWith(delegate

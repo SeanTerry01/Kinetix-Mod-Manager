@@ -98,7 +98,7 @@ public partial class Form1
 
 		if (listBox.Items.Count == 0)
 		{
-			if (!_isLoading) Speak(Loc.T("common.listEmpty"));
+			AnnounceListEmpty(listBox);
 			return;
 		}
 		if (listBox.SelectedIndex == -1)
@@ -120,6 +120,40 @@ public partial class Form1
 
 	[System.Runtime.InteropServices.DllImport("user32.dll")]
 	private static extern IntPtr GetFocus();
+
+	private ListBox? _lastEmptyList;
+	private long _lastEmptyTicks;
+
+	/// <summary>
+	/// Speaks "List is empty" for a focused, empty list. Two things make this reliable: it waits a moment first so
+	/// the screen reader reads the list's <em>name</em> before we add the empty status (otherwise an immediate Tolk
+	/// call wins the race and you hear "List is empty. Available updates list." in the wrong order); and it
+	/// de-duplicates, because a focus change and a window activation can both target the same empty list at once.
+	/// </summary>
+	private async void AnnounceListEmpty(ListBox list)
+	{
+		if (_isLoading) return;
+		await Task.Delay(120);
+		if (list.IsDisposed || !list.Focused || list.Items.Count != 0 || _isLoading) return;
+
+		long now = Environment.TickCount64;
+		if (ReferenceEquals(_lastEmptyList, list) && now - _lastEmptyTicks < 1000) return;
+		_lastEmptyList = list;
+		_lastEmptyTicks = now;
+		Speak(Loc.T("common.listEmpty"));
+	}
+
+	/// <summary>
+	/// When the manager regains the foreground (e.g. Alt+Tab back in), the child control gets focus again without
+	/// reliably re-firing GotFocus, so an empty list would never re-announce that it is empty. If focus has landed
+	/// on an empty list, announce it here. Non-empty lists are left to the screen reader, which reads them itself.
+	/// </summary>
+	private async void Form1_Activated(object? sender, EventArgs e)
+	{
+		await Task.Delay(50); // let Windows restore focus to the child control first
+		if (Control.FromHandle(GetFocus()) is ListBox { Items.Count: 0 } list && list.Focused)
+			AnnounceListEmpty(list);
+	}
 
 	/// <summary>
 	/// Re-announces the focused list's position by invoking <see cref="List_Enter"/> on it. Used
@@ -159,13 +193,7 @@ public partial class Form1
 		}
 		else
 		{
-			string gameName = _settings.ActiveGame switch
-			{
-				"SkyrimSE" => "Skyrim Special Edition",
-				"Fallout4" => "Fallout 4",
-				_ => "Stardew Valley"
-			};
-			string text2 = Loc.T("status.titleFormat", gameName, text);
+			string text2 = Loc.T("status.titleFormat", GameDisplayName(), text);
 			Text = text2;
 			if (speak)
 			{
@@ -360,6 +388,12 @@ public partial class Form1
 		catch (Exception ex)
 		{
 			MessageBox.Show(Loc.T("discovery.errorBox", ex.Message));
+		}
+		finally
+		{
+			// "Running search…" / "Loading more…" are transient; return the title to the resting status
+			// (Nexus connection or "Ready") so it never sits on a stale "Loading more…" forever.
+			ResetStatus();
 		}
 	}
 

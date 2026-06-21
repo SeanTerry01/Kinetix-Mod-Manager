@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SharpCompress.Archives;
+using SharpCompress.Archives.Rar;
 using SharpCompress.Common;
 
 namespace KinetixModManager;
@@ -88,6 +89,23 @@ public static class ModFileSystem
 								UniqueId       = ((string?)dep["UniqueID"])       ?? "Unknown",
 								MinimumVersion = (string?)dep["MinimumVersion"],
 								IsRequired     = ((bool?)dep["IsRequired"]) ?? true
+							});
+						}
+					}
+
+					// A content pack (e.g. a Content Patcher pack) declares its host mod in ContentPackFor and
+					// cannot load without it, so treat that host as a required dependency for the requirements check.
+					if (manifest["ContentPackFor"] is JObject cpFor)
+					{
+						string? hostId = (string?)cpFor["UniqueID"];
+						if (!string.IsNullOrEmpty(hostId) &&
+							!mod.Dependencies.Exists(d => d.UniqueId.Equals(hostId, StringComparison.OrdinalIgnoreCase)))
+						{
+							mod.Dependencies.Add(new ModDependency
+							{
+								UniqueId       = hostId,
+								MinimumVersion = (string?)cpFor["MinimumVersion"],
+								IsRequired     = true
 							});
 						}
 					}
@@ -280,6 +298,64 @@ public static class ModFileSystem
 				}
 			}
 		}
+	}
+
+	/// <summary>
+	/// Finds Skyrim/Fallout 4 plugins whose declared master files are not available among the supplied mods
+	/// (or the base game/DLC masters) — the classic "missing master" that stops a plugin loading. Each result
+	/// is the plugin, the mod that ships it, and the master that can't be found. Reads masters from the TES4
+	/// header via <see cref="ReadPluginMasters"/>; only considers the given (typically enabled) mods.
+	/// </summary>
+	/// <summary>A declared master that won't satisfy a plugin: missing entirely, or present but not active.</summary>
+	public sealed class MasterIssue
+	{
+		public string Plugin = "";
+		public string OwnerMod = "";
+		public string Master = "";
+		/// <summary>True when the master file is in the Data folder but isn't active (so enabling it fixes it);
+		/// false when the file isn't present at all.</summary>
+		public bool PresentButInactive;
+	}
+
+	/// <summary>
+	/// Finds active Skyrim/Fallout 4 plugins whose declared masters aren't satisfied. A master is satisfied when
+	/// it's a base-game/DLC master or is itself active in the load order (<paramref name="activePlugins"/>, the
+	/// plugins.txt set — which includes enabled mods' plugins AND active Creations in the Data folder). An
+	/// unsatisfied master is reported as either "installed but not enabled" (the file exists in Data, e.g. a
+	/// Creation that's toggled off) or "not installed" (no file at all). Only active plugins are checked, since
+	/// an inactive plugin isn't loading anyway.
+	/// </summary>
+	public static List<MasterIssue> FindMissingMasters(
+		string activeGame, IEnumerable<GameMod> mods, ISet<string> activePlugins, string? gameRoot)
+	{
+		var result = new List<MasterIssue>();
+		if (activeGame != "SkyrimSE" && activeGame != "Fallout4") return result;
+
+		string dataDir = string.IsNullOrEmpty(gameRoot) ? "" : Path.Combine(gameRoot, "Data");
+
+		foreach (GameMod mod in mods.Where(m => !m.IsGroup && !string.IsNullOrEmpty(m.FolderPath) && Directory.Exists(m.FolderPath)))
+		{
+			foreach (string file in EnumerateFilesSafe(mod.FolderPath))
+			{
+				string leaf = Path.GetFileName(file);
+				if (!IsPluginFile(leaf) || !activePlugins.Contains(leaf)) continue; // only active plugins load
+
+				foreach (string master in ReadPluginMasters(file))
+				{
+					if (IsBaseMaster(activeGame, master) || activePlugins.Contains(master)) continue;
+					bool inData = !string.IsNullOrEmpty(dataDir) && File.Exists(Path.Combine(dataDir, master));
+					result.Add(new MasterIssue { Plugin = leaf, OwnerMod = mod.Name, Master = master, PresentButInactive = inData });
+				}
+			}
+		}
+		return result;
+	}
+
+	/// <summary>Enumerates files under <paramref name="root"/> recursively, swallowing IO errors (returns what it can).</summary>
+	private static IEnumerable<string> EnumerateFilesSafe(string root)
+	{
+		try { return Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories); }
+		catch { return Enumerable.Empty<string>(); }
 	}
 
 	// -------------------------------------------------------------------------
@@ -830,8 +906,20 @@ public static class ModFileSystem
 		NexusService? nexusService = null,
 		string? gitHubRepo = null,
 		string? currentGamePath = null,
-		Func<FomodConfig, Task<FomodSelection?>>? fomodSelector = null)
+		Func<FomodConfig, Task<FomodSelection?>>? fomodSelector = null,
+		IProgress<double>? installProgress = null,
+		Func<string, string, bool>? confirmOverwrite = null)
 	{
+		// For Skyrim/Fallout 4 the mod's identity is known up front (its Nexus id or folder name), so a
+		// reinstall can be confirmed before we even extract. Stardew's identity lives in manifest.json inside
+		// the archive, so that prompt happens after extraction (below). A declined prompt cancels the install.
+		if (confirmOverwrite != null && activeGame != "StardewValley")
+		{
+			GameMod? existing = FindExistingInstall(installedMods, nexusId, Path.GetFileNameWithoutExtension(zipPath));
+			if (existing != null && Directory.Exists(existing.FolderPath) && !confirmOverwrite(existing.Name, existing.Version))
+				throw new OperationCanceledException("User declined to overwrite an existing mod.");
+		}
+
 		// Extract on the same volume as the destination mods folder so a full system drive (C:) never
 		// blocks an install whose mods live elsewhere (e.g. D:). The staging copy and the final move stay
 		// on one drive too, which keeps the move cheap. Falls back to the system temp folder if the mods
@@ -847,16 +935,16 @@ public static class ModFileSystem
 				{
 					string dataBasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AudiVentureGames", "KinetixModManager");
 					string exePath = await Ensure7ZipCommandLineTool(dataBasePath, nexusService);
-					Run7ZipExtract(exePath, zipPath, tempDir);
+					Run7ZipExtract(exePath, zipPath, tempDir, installProgress);
 				}
 				else if (ext == ".rar")
 				{
 					// The bundled 7za and .NET's ZipFile cannot read RAR, so use SharpCompress (managed).
-					ExtractWithSharpCompress(zipPath, tempDir);
+					ExtractWithSharpCompress(zipPath, tempDir, installProgress);
 				}
 				else
 				{
-					ZipFile.ExtractToDirectory(zipPath, tempDir);
+					ExtractZipWithProgress(zipPath, tempDir, installProgress);
 				}
 			});
 
@@ -869,6 +957,26 @@ public static class ModFileSystem
 
 			if (activeGame != "StardewValley")
 			{
+				// Script extender (SKSE/F4SE)? Its loader exe and DLLs belong in the GAME ROOT, with its scripts
+				// merging into Data. Detect it by the loader and install to the game folder directly — exactly like
+				// the Accessibility Suite does. Without this, a normal mod install mis-identifies the mod root as the
+				// Data sub-folder (it contains Scripts/SKSE) and drops the loader and DLLs entirely.
+				string seLoaderName = ScriptExtenderLoaderName(activeGame);
+				if (!string.IsNullOrEmpty(seLoaderName) && !string.IsNullOrEmpty(currentGamePath) && Directory.Exists(currentGamePath))
+				{
+					string[] seMatches = Directory.GetFiles(tempDir, seLoaderName, SearchOption.AllDirectories);
+					if (seMatches.Length > 0)
+					{
+						string seRoot = Path.GetDirectoryName(seMatches[0]) ?? tempDir;
+						CopyDirectoryRecursively(seRoot, currentGamePath);
+						var relPaths = Directory.GetFiles(seRoot, "*.*", SearchOption.AllDirectories)
+							.Select(f => f.Substring(seRoot.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+							.ToList();
+						SaveScriptExtenderManifest(activeGame, currentGamePath, relPaths);
+						return activeGame == "SkyrimSE" ? "Skyrim Script Extender (SKSE64)" : "Fallout 4 Script Extender (F4SE)";
+					}
+				}
+
 				// FOMOD scripted installers (e.g. Immersive Sounds Compendium) carry a fomod/ModuleConfig.xml
 				// describing option groups and conditional file copies. When one is present, run it through the
 				// FOMOD pipeline (the caller-supplied wizard, or auto-selected defaults) instead of the flat copy.
@@ -904,6 +1012,7 @@ public static class ModFileSystem
 			if (manifests.Length == 0)
 				throw new Exception("No manifest.json found.");
 
+			bool overwriteConfirmed = confirmOverwrite == null; // no callback => proceed without prompting
 			foreach (string mPath in manifests)
 			{
 				try
@@ -914,11 +1023,19 @@ public static class ModFileSystem
 					var existing = installedMods.FirstOrDefault(m => m.UniqueId == uid);
 					if (existing != null && Directory.Exists(existing.FolderPath))
 					{
+						// Confirm once before touching anything the user already has on disk.
+						if (!overwriteConfirmed)
+						{
+							if (!confirmOverwrite!(existing.Name, existing.Version))
+								throw new OperationCanceledException("User declined to overwrite an existing mod.");
+							overwriteConfirmed = true;
+						}
 						CreateBackup(existing.FolderPath, mName, backupsPath);
 						PruneBackups(mName, backupsPath, maxBackups);
 						Directory.Delete(existing.FolderPath, recursive: true);
 					}
 				}
+				catch (OperationCanceledException) { throw; } // a declined overwrite must cancel, not be swallowed
 				catch (Exception ex) { logError(mPath, "Pre-install backup error: " + ex.Message); }
 			}
 
@@ -1019,6 +1136,28 @@ public static class ModFileSystem
 		catch { /* documentation capture is best-effort; it must never fail the install */ }
 	}
 
+	/// <summary>
+	/// Finds the already-installed mod that a new archive would replace, matched first by Nexus id (extracted
+	/// from the file name when not supplied, e.g. "SkyUI-12604-5-2"), then by folder/UniqueID name. Used both to
+	/// prompt before overwriting and to back up/remove the old copy. Returns null when nothing matches.
+	/// </summary>
+	private static GameMod? FindExistingInstall(List<GameMod> installedMods, string? nexusId, string targetFolderName)
+	{
+		if (string.IsNullOrEmpty(nexusId))
+		{
+			var m = System.Text.RegularExpressions.Regex.Match(targetFolderName, @"-(\d{3,9})-");
+			if (m.Success) nexusId = m.Groups[1].Value;
+		}
+
+		GameMod? existing = null;
+		if (!string.IsNullOrEmpty(nexusId))
+			existing = installedMods.FirstOrDefault(x => x.NexusID == nexusId);
+		existing ??= installedMods.FirstOrDefault(x =>
+			x.Name.Equals(targetFolderName, StringComparison.OrdinalIgnoreCase) ||
+			x.UniqueId.Equals(targetFolderName, StringComparison.OrdinalIgnoreCase));
+		return existing;
+	}
+
 	private static async Task<string> FinalizeBethesdaModAsync(
 		string sourceFolder, string targetFolderName, string zipPath, string modsPath, List<GameMod> installedMods,
 		string backupsPath, int maxBackups, string activeGame, Action<string, string> logError,
@@ -1027,13 +1166,8 @@ public static class ModFileSystem
 	{
 		string destModFolder = Path.Combine(modsPath, targetFolderName);
 
-		// Backup and remove old version
-		GameMod? existing = null;
-		if (!string.IsNullOrEmpty(nexusId))
-			existing = installedMods.FirstOrDefault(m => m.NexusID == nexusId);
-		if (existing == null)
-			existing = installedMods.FirstOrDefault(m => m.Name.Equals(targetFolderName, StringComparison.OrdinalIgnoreCase) ||
-														 m.UniqueId.Equals(targetFolderName, StringComparison.OrdinalIgnoreCase));
+		// Backup and remove old version (the reinstall prompt, if any, already happened in ExtractModAsync).
+		GameMod? existing = FindExistingInstall(installedMods, nexusId, targetFolderName);
 
 		if (existing != null && Directory.Exists(existing.FolderPath))
 		{
@@ -1274,15 +1408,78 @@ public static class ModFileSystem
 	/// The caller's post-extraction path-escape check (in <see cref="ExtractModAsync"/>) still guards against
 	/// malicious entries.
 	/// </summary>
-	private static void ExtractWithSharpCompress(string archivePath, string outputDir)
+	/// <summary>
+	/// Extracts a .zip entry-by-entry so install progress can be reported as a true percentage of bytes written.
+	/// Mirrors <see cref="ZipFile.ExtractToDirectory(string,string)"/> including its path-traversal guard (an entry
+	/// whose resolved path escapes <paramref name="outputDir"/> is rejected before any bytes are written).
+	/// </summary>
+	private static void ExtractZipWithProgress(string archivePath, string outputDir, IProgress<double>? progress)
 	{
-		// ArchiveFactory auto-detects the format (RAR4/RAR5) and extracts every entry, preserving paths.
-		ArchiveFactory.WriteToDirectory(archivePath, outputDir,
-			new ExtractionOptions { ExtractFullPath = true, Overwrite = true });
+		using ZipArchive archive = ZipFile.OpenRead(archivePath);
+		string canonicalRoot = Path.GetFullPath(outputDir).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+		long total = 0;
+		foreach (ZipArchiveEntry e in archive.Entries) total += e.Length;
+		if (total <= 0) total = 1;
+
+		long done = 0;
+		foreach (ZipArchiveEntry entry in archive.Entries)
+		{
+			string destPath = Path.GetFullPath(Path.Combine(outputDir, entry.FullName));
+			if (!destPath.StartsWith(canonicalRoot, StringComparison.OrdinalIgnoreCase))
+				throw new InvalidOperationException($"Unsafe archive: entry escapes the extraction directory ({entry.FullName}).");
+
+			// Directory entries have an empty Name; create the folder and move on.
+			bool isDir = entry.FullName.EndsWith("/") || entry.FullName.EndsWith("\\") || string.IsNullOrEmpty(entry.Name);
+			if (isDir)
+			{
+				Directory.CreateDirectory(destPath);
+				continue;
+			}
+
+			Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
+			entry.ExtractToFile(destPath, overwrite: true);
+			done += entry.Length;
+			progress?.Report((double)done / total * 100.0);
+		}
+		progress?.Report(100.0);
 	}
 
-	private static void Run7ZipExtract(string exePath, string archivePath, string outputDir)
+	private static void ExtractWithSharpCompress(string archivePath, string outputDir, IProgress<double>? progress = null)
 	{
+		if (progress == null)
+		{
+			// ArchiveFactory auto-detects the format (RAR4/RAR5) and extracts every entry, preserving paths.
+			ArchiveFactory.WriteToDirectory(archivePath, outputDir,
+				new ExtractionOptions { ExtractFullPath = true, Overwrite = true });
+			return;
+		}
+
+		// Progress variant: extract entry-by-entry, reporting bytes written as a percentage of the total.
+		using IArchive archive = RarArchive.OpenArchive(archivePath, null);
+		var options = new ExtractionOptions { ExtractFullPath = true, Overwrite = true };
+		long total = 0;
+		foreach (IArchiveEntry e in archive.Entries)
+			if (!e.IsDirectory && e.Size > 0) total += e.Size;
+		if (total <= 0) total = 1;
+
+		long done = 0;
+		foreach (IArchiveEntry entry in archive.Entries)
+		{
+			if (entry.IsDirectory) continue;
+			entry.WriteToDirectory(outputDir, options);
+			if (entry.Size > 0) done += entry.Size;
+			progress.Report((double)done / total * 100.0);
+		}
+		progress.Report(100.0);
+	}
+
+	private static void Run7ZipExtract(string exePath, string archivePath, string outputDir, IProgress<double>? progress = null)
+	{
+		// Parsing 7za's in-place progress output is brittle across versions, so for install % we instead poll the
+		// bytes written to the output folder against the archive's known uncompressed size. The extraction command
+		// itself is left exactly as before, so progress can never break an install — it's purely observational.
+		long totalUncompressed = progress != null ? Try7ZipUncompressedSize(exePath, archivePath) : 0;
+
 		using var process = new System.Diagnostics.Process();
 		process.StartInfo.FileName = exePath;
 		process.StartInfo.Arguments = $"x \"{archivePath}\" -o\"{outputDir}\" -y";
@@ -1290,17 +1487,68 @@ public static class ModFileSystem
 		process.StartInfo.UseShellExecute = false;
 		process.StartInfo.RedirectStandardOutput = false;
 		process.StartInfo.RedirectStandardError = false;
-		
+
 		process.Start();
+
+		if (progress != null && totalUncompressed > 0)
+		{
+			while (!process.WaitForExit(250))
+			{
+				long written = DirectorySize(outputDir);
+				progress.Report(Math.Clamp((double)written / totalUncompressed * 100.0, 0, 99));
+			}
+		}
 		process.WaitForExit();
-		
+
 		if (process.ExitCode != 0)
 		{
 			throw new Exception($"7-Zip extraction failed with exit code {process.ExitCode}.");
 		}
+		progress?.Report(100.0);
 	}
 
-	public static async Task InstallScriptExtenderAsync(string archivePath, string gamePath, string activeGame, Action<string, string> logError, NexusService? nexusService = null)
+	/// <summary>Sums the uncompressed size of every file in a 7z archive via <c>7za l -slt</c>; 0 if it can't be read.</summary>
+	private static long Try7ZipUncompressedSize(string exePath, string archivePath)
+	{
+		try
+		{
+			using var p = new System.Diagnostics.Process();
+			p.StartInfo.FileName = exePath;
+			p.StartInfo.Arguments = $"l -slt \"{archivePath}\"";
+			p.StartInfo.CreateNoWindow = true;
+			p.StartInfo.UseShellExecute = false;
+			p.StartInfo.RedirectStandardOutput = true;
+			p.Start();
+			string output = p.StandardOutput.ReadToEnd();
+			p.WaitForExit();
+
+			long sum = 0;
+			foreach (System.Text.RegularExpressions.Match m in
+				System.Text.RegularExpressions.Regex.Matches(output, @"(?m)^Size = (\d+)\s*$"))
+			{
+				if (long.TryParse(m.Groups[1].Value, out long size)) sum += size;
+			}
+			return sum;
+		}
+		catch { return 0; }
+	}
+
+	/// <summary>Total size in bytes of all files currently under <paramref name="dir"/> (best-effort; 0 on error).</summary>
+	private static long DirectorySize(string dir)
+	{
+		try
+		{
+			long sum = 0;
+			foreach (string f in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
+			{
+				try { sum += new FileInfo(f).Length; } catch { }
+			}
+			return sum;
+		}
+		catch { return 0; }
+	}
+
+	public static async Task InstallScriptExtenderAsync(string archivePath, string gamePath, string activeGame, Action<string, string> logError, NexusService? nexusService = null, IProgress<double>? installProgress = null)
 	{
 		string tempDir = Path.Combine(Path.GetTempPath(), "Extender_" + Path.GetRandomFileName());
 		try
@@ -1311,11 +1559,11 @@ public static class ModFileSystem
 			{
 				string dataBasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AudiVentureGames", "KinetixModManager");
 				string exePath = await Ensure7ZipCommandLineTool(dataBasePath, nexusService);
-				await Task.Run(() => Run7ZipExtract(exePath, archivePath, tempDir));
+				await Task.Run(() => Run7ZipExtract(exePath, archivePath, tempDir, installProgress));
 			}
 			else
 			{
-				await Task.Run(() => ZipFile.ExtractToDirectory(archivePath, tempDir));
+				await Task.Run(() => ExtractZipWithProgress(archivePath, tempDir, installProgress));
 			}
 
 			string loaderExePattern = activeGame == "SkyrimSE" ? "skse64_loader.exe" : "f4se_loader.exe";

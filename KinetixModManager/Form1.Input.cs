@@ -149,6 +149,16 @@ public partial class Form1
 			e.SuppressKeyPress = true;
 			QuickFixDependencies();
 		}
+		if (IsShortcut(e, "FileConflicts"))
+		{
+			e.SuppressKeyPress = true;
+			ShowFileConflictsReport();
+		}
+		if (IsShortcut(e, "CheckRequirements"))
+		{
+			e.SuppressKeyPress = true;
+			_ = ShowRequirementsReport();
+		}
 		if (IsShortcut(e, "Search"))
 		{
 			e.SuppressKeyPress = true;
