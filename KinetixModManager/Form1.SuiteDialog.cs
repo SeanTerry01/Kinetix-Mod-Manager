@@ -74,9 +74,10 @@ public partial class Form1
 			AccessibleName = Loc.T("suite.statusName"),
 			AccessibleDescription = Loc.T("suite.statusDesc")
 		};
-		// Announce the position on focus the same way the main form's lists do (GotFocus so it
-		// also fires when focus returns to the list after another dialog closes).
+		// Announce the position on focus and on each arrow-key move, the same way the main form's lists do
+		// (GotFocus also fires when focus returns to the list after another dialog closes).
 		lstStatus.GotFocus += List_Enter;
+		lstStatus.SelectedIndexChanged += List_SelectedIndexChanged;
 
 		bool loaderInstalled = false;
 		bool allModsInstalled = true;
@@ -294,7 +295,7 @@ public partial class Form1
 						};
 						Speak(Loc.T("suite.manualDownloadSpeak", item.Name));
 						Process.Start(new ProcessStartInfo($"https://www.nexusmods.com/{gameDomain}/mods/{item.Source}?tab=files") { UseShellExecute = true });
-						MessageBox.Show(Loc.T("suite.manualDownloadBox1", item.Name), Loc.T("suite.manualDownloadTitle"));
+						SpeakBox(Loc.T("suite.manualDownloadBox1", item.Name), Loc.T("suite.manualDownloadTitle"));
 						continue;
 					}
 
@@ -331,7 +332,7 @@ public partial class Form1
 							
 							Speak(Loc.T("suite.manualDownloadSpeak", item.Name));
 							Process.Start(new ProcessStartInfo(downloadUrl) { UseShellExecute = true });
-							MessageBox.Show(Loc.T("suite.manualDownloadBox2", item.Name), Loc.T("suite.manualDownloadTitle"));
+							SpeakBox(Loc.T("suite.manualDownloadBox2", item.Name), Loc.T("suite.manualDownloadTitle"));
 							continue;
 						}
 
@@ -366,7 +367,7 @@ public partial class Form1
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show(Loc.T("suite.installErrorBox", ex.Message));
+				SpeakBox(Loc.T("suite.installErrorBox", ex.Message));
 			}
 			finally
 			{
@@ -379,9 +380,11 @@ public partial class Form1
 			}
 		};
 
-		// Focusing the list raises its Enter handler (List_Enter), which announces the position
-		// after the screen reader reads the list name and selected item — same as every other list.
-		dialog.Shown += (s, e) => lstStatus.Focus();
+		// Focusing the list raises its Enter handler (List_Enter), which announces the position after the screen
+		// reader reads the list name and selected item. Defer the focus to after the dialog's own open/foreground
+		// announcement (BeginInvoke) so the screen reader doesn't read the selected item twice — once for the
+		// foreground change and once for this synchronous focus call racing it.
+		dialog.Shown += (s, e) => dialog.BeginInvoke(new Action(() => lstStatus.Focus()));
 
 		dialog.Controls.Add(layout);
 
@@ -391,6 +394,7 @@ public partial class Form1
 		// ordinary installs (Find New Mods, Ctrl+I) leave the main window in place as before.
 		bool wasVisible = Visible;
 		if (wasVisible) Hide();
+		ApplyScreenReaderPauses(dialog);
 		try
 		{
 			dialog.ShowDialog();
@@ -459,7 +463,7 @@ public partial class Form1
 		// for whichever parts are still missing.
 		Speak(Loc.T("suite.engineFixesManualSpeak"));
 		Process.Start(new ProcessStartInfo("https://www.nexusmods.com/skyrimspecialedition/mods/17230?tab=files") { UseShellExecute = true });
-		MessageBox.Show(
+		SpeakBox(
 			Loc.T("suite.engineFixesManualBox"),
 			Loc.T("suite.manualDownloadTitle"));
 	}
@@ -485,12 +489,12 @@ public partial class Form1
 		if (!ModFileSystem.IsScriptExtenderInstalled(game, gamePath))
 		{
 			Speak(Loc.T("se.uninstallNotInstalled", seName));
-			MessageBox.Show(Loc.T("se.uninstallNotInstalledBox", seName), Loc.T("se.uninstallTitle", seName),
+			SpeakBox(Loc.T("se.uninstallNotInstalledBox", seName), Loc.T("se.uninstallTitle", seName),
 				MessageBoxButtons.OK, MessageBoxIcon.Information);
 			return;
 		}
 
-		var confirm = MessageBox.Show(Loc.T("se.uninstallConfirm", seName), Loc.T("se.uninstallTitle", seName),
+		var confirm = SpeakBox(Loc.T("se.uninstallConfirm", seName), Loc.T("se.uninstallTitle", seName),
 			MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
 		if (confirm != DialogResult.Yes) { Speak(Loc.T("se.uninstallCancelled")); return; }
 
@@ -501,12 +505,12 @@ public partial class Form1
 				? Loc.T("se.uninstallDone", seName, removed)
 				: Loc.T("se.uninstallDonePartial", seName, removed);
 			Speak(msg);
-			MessageBox.Show(msg, Loc.T("se.uninstallTitle", seName), MessageBoxButtons.OK, MessageBoxIcon.Information);
+			SpeakBox(msg, Loc.T("se.uninstallTitle", seName), MessageBoxButtons.OK, MessageBoxIcon.Information);
 		}
 		catch (Exception ex)
 		{
 			Speak(Loc.T("se.uninstallFailed", seName));
-			MessageBox.Show(Loc.T("se.uninstallFailedBox", ex.Message), Loc.T("common.error"),
+			SpeakBox(Loc.T("se.uninstallFailedBox", ex.Message), Loc.T("common.error"),
 				MessageBoxButtons.OK, MessageBoxIcon.Error);
 		}
 	}
@@ -526,7 +530,7 @@ public partial class Form1
 		{
 			Speak(Loc.T("suite.smapiNotFoundSpeak"));
 			Process.Start(new ProcessStartInfo("https://smapi.io") { UseShellExecute = true });
-			MessageBox.Show(
+			SpeakBox(
 				Loc.T("suite.smapiNotFoundBox"),
 				Loc.T("suite.smapiInstallTitle"));
 			return false;

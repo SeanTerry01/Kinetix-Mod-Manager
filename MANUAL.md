@@ -89,6 +89,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 ### Global Shortcuts
 *   **F1**: Open this User Manual (Internal Window).
 *   **F2**: Open the **Change Log** (what's new and fixed in each version).
+*   **F3**: Open the **Mod Documentation** viewer for the active game's accessibility mod (see "Mod Documentation Viewer" below).
 *   **Shift + F1**: **Context Help** - Speaks the shortcuts for your current tab.
 *   **F5**: Launch the active game through its mod loader (SMAPI for Stardew Valley, SKSE for Skyrim Special Edition, F4SE for Fallout 4).
 *   **F6**: **Cycle Focus** - Jump between the tab headers and the primary list in each tab (and the web view in the Wiki tab).
@@ -287,6 +288,28 @@ What it shows:
 *   **Base Game Controls (Vanilla Defaults)**: the standard controls for the active game.
 *   **Each installed mod's own controls**: read straight from what the mod documents — its README or guide, or its config file — captured when the mod was installed. Because they come from the mod itself, they stay correct even when the mod updates; nothing is hard-coded.
 *   **MCM keybinds (Skyrim & Fallout 4)**: mods that set their keys through the **Mod Configuration Menu** (such as Fallout 4 Access and Extended Dialogue Interface) have those keybinds read directly from MCM, showing the real key each action is bound to — including any you've changed in-game.
+
+---
+
+## Mod Documentation Viewer (F3)
+
+Press **F3** at any time (or choose **Help → Mod Documentation**) to open the how-to-play documentation for the accessibility mod that matches your current game — **Stardew Access** for Stardew Valley, **Skyrim Access** for Skyrim Special Edition, or **Fallout 4 Access** for Fallout 4. This saves you hunting for a README on your computer or searching for it on GitHub.
+
+It opens in the **same navigable window as the User Manual**:
+
+*   The window starts on a short list of the available documents (the **chooser**). **Up / Down Arrow** move through it.
+*   **Right Arrow or Enter**: Open the selected document — or, once inside, open a section that has sub-topics — moving into its deeper list.
+*   **Left Arrow or Backspace**: Go back up to the previous list.
+*   **Tab**: Move into the read-only text on the right and read the selected section line by line. **Shift + Tab** returns to the list.
+*   **Shift + F1**: Hear help for this window. **Escape** closes it.
+
+How it stays current and works offline:
+
+*   A copy of each guide **ships with the manager**, so the viewer opens instantly and works with no internet connection.
+*   In the background it also **refreshes from the source** — the live GitHub documentation for Stardew Access, or (when you are logged in to Nexus) the mod's current Nexus page for Skyrim Access and Fallout 4 Access. The refreshed copy is shown the **next** time you open the viewer.
+*   For exact, up-to-the-minute keybindings of an installed mod, the **Accessibility Controls** viewer (**Ctrl + H**) reads the live keys from the mod's config/MCM; the Mod Documentation viewer is the broader "how do I use this mod" guide.
+
+F3 is the default shortcut and can be remapped in **Settings → Shortcut Manager** (the action is named "ModDocs").
 
 ---
 

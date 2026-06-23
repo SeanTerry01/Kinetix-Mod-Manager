@@ -40,6 +40,11 @@ public partial class Form1
 			StartPosition = FormStartPosition.CenterScreen,
 			KeyPreview = true
 		};
+		// Escape closes from anywhere in the dialog (the form has KeyPreview), not only from the sound list.
+		demoForm.KeyDown += delegate (object? s, KeyEventArgs e)
+		{
+			if (e.KeyCode == Keys.Escape) demoForm.Close();
+		};
 		TableLayoutPanel tableLayoutPanel = new TableLayoutPanel
 		{
 			Dock = DockStyle.Fill,
@@ -119,6 +124,7 @@ public partial class Form1
 		// Select the first sound on open so the list lands on a real item (and announces it)
 		// rather than an empty selection.
 		if (lb.Items.Count > 0) lb.SelectedIndex = 0;
+		ApplyScreenReaderPauses(demoForm);
 		demoForm.ShowDialog();
 	}
 
@@ -223,9 +229,9 @@ public partial class Form1
 				string text = lb.SelectedItem.ToString() ?? "";
 				if (text == "Default")
 				{
-					MessageBox.Show(Loc.T("themeMgr.cannotDeleteDefault"));
+					SpeakBox(Loc.T("themeMgr.cannotDeleteDefault"));
 				}
-				else if (MessageBox.Show(Loc.T("themeMgr.confirmDelete", text), Loc.T("common.confirm"), MessageBoxButtons.YesNo) == DialogResult.Yes)
+				else if (SpeakBox(Loc.T("themeMgr.confirmDelete", text), Loc.T("common.confirm"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 				{
 					Directory.Delete(Path.Combine(themesPath, text), recursive: true);
 					if (tempActiveTheme == text)
@@ -283,6 +289,7 @@ public partial class Form1
 				f.Close();
 			}
 		};
+		ApplyScreenReaderPauses(f);
 		f.ShowDialog();
 		void RefreshList()
 		{
@@ -358,7 +365,7 @@ public partial class Form1
 		};
 		button2.Click += delegate
 		{
-			if (MessageBox.Show(Loc.T("shortcutMgr.resetConfirm"), Loc.T("common.confirm"), MessageBoxButtons.YesNo) == DialogResult.Yes)
+			if (SpeakBox(Loc.T("shortcutMgr.resetConfirm"), Loc.T("common.confirm"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 			{
 				tempShortcuts.Clear();
 				AppSettings appSettings = new AppSettings();
@@ -416,6 +423,7 @@ public partial class Form1
 				f.Close();
 			}
 		};
+		ApplyScreenReaderPauses(f);
 		f.ShowDialog();
 		void RefreshList()
 		{

@@ -42,22 +42,35 @@ public partial class Form1
 		Form f = new Form
 		{
 			Text = Loc.T("settings.title"),
-			Size = new Size(500, 800),
+			Size = new Size(540, 620),
 			StartPosition = FormStartPosition.CenterScreen,
 			KeyPreview = true
 		};
-		TableLayoutPanel tableLayoutPanel = new TableLayoutPanel
-		{
-			Dock = DockStyle.Fill,
-			Padding = new Padding(15),
-			RowCount = 18
-		};
 
-		tableLayoutPanel.Controls.Add(new Label
+		// Settings are grouped into tabs to keep the dialog readable as it grows. Each tab is a single-column
+		// TableLayoutPanel (same layout mechanics the dialog used when it was one long table), and the Save/Cancel
+		// buttons live outside the tabs so they're always reachable. Tab order within a tab follows add order.
+		TabControl tabs = new TabControl { Dock = DockStyle.Fill };
+		TableLayoutPanel NewTab(string title)
+		{
+			var page = new TabPage(title);
+			var tlp = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(12), ColumnCount = 1, AutoScroll = true };
+			page.Controls.Add(tlp);
+			tabs.TabPages.Add(page);
+			return tlp;
+		}
+		TableLayoutPanel tabPaths   = NewTab(Loc.T("settings.tabPaths"));
+		TableLayoutPanel tabStartup = NewTab(Loc.T("settings.tabStartup"));
+		TableLayoutPanel tabAudio   = NewTab(Loc.T("settings.tabAudio"));
+		TableLayoutPanel tabMods    = NewTab(Loc.T("settings.tabMods"));
+		TableLayoutPanel tabLang    = NewTab(Loc.T("settings.tabLanguage"));
+		int pr = 0, sr = 0, ar = 0, mr = 0, lr = 0; // per-tab row counters
+
+		tabPaths.Controls.Add(new Label
 		{
 			Text = Loc.T("settings.configurePaths") + ":",
 			AutoSize = true
-		}, 0, 0);
+		}, 0, pr++);
 
 		ComboBox cmbSettingsGame = new ComboBox
 		{
@@ -73,14 +86,14 @@ public partial class Form1
 			"Fallout4" => "Fallout 4",
 			_ => "Stardew Valley"
 		};
-		tableLayoutPanel.Controls.Add(cmbSettingsGame, 0, 1);
+		tabPaths.Controls.Add(cmbSettingsGame, 0, pr++);
 
-		tableLayoutPanel.Controls.Add(new Label
+		tabPaths.Controls.Add(new Label
 		{
 			Text = Loc.T("settings.modsPath") + ":",
 			AutoSize = true,
 			Padding = new Padding(0, 10, 0, 0)
-		}, 0, 2);
+		}, 0, pr++);
 
 		Panel panelMods = new Panel
 		{
@@ -108,7 +121,7 @@ public partial class Form1
 			}
 		};
 		panelMods.Controls.AddRange(tPath, btnBrowseMods);
-		tableLayoutPanel.Controls.Add(panelMods, 0, 3);
+		tabPaths.Controls.Add(panelMods, 0, pr++);
 
 		Label lblGamePath = new Label
 		{
@@ -116,7 +129,7 @@ public partial class Form1
 			AutoSize = true,
 			Padding = new Padding(0, 10, 0, 0)
 		};
-		tableLayoutPanel.Controls.Add(lblGamePath, 0, 4);
+		tabPaths.Controls.Add(lblGamePath, 0, pr++);
 
 		Panel panelGame = new Panel
 		{
@@ -144,7 +157,7 @@ public partial class Form1
 			}
 		};
 		panelGame.Controls.AddRange(tGamePath, btnBrowseGame);
-		tableLayoutPanel.Controls.Add(panelGame, 0, 5);
+		tabPaths.Controls.Add(panelGame, 0, pr++);
 
 		var tempModsPaths = new Dictionary<string, string>(_settings.GameModsPaths);
 		var tempGamePaths = new Dictionary<string, string>(_settings.GamePaths);
@@ -182,12 +195,12 @@ public partial class Form1
 			Speak(Loc.T("settings.editingPaths", cmbSettingsGame.SelectedItem));
 		};
 
-		tableLayoutPanel.Controls.Add(new Label
+		tabPaths.Controls.Add(new Label
 		{
 			Text = Loc.T("settings.apiKey") + ":",
 			AutoSize = true,
 			Padding = new Padding(0, 10, 0, 0)
-		}, 0, 6);
+		}, 0, pr++);
 		TextBox tKey = new TextBox
 		{
 			Text = _settings.ApiKey,
@@ -195,7 +208,7 @@ public partial class Form1
 			Font = new Font("Segoe UI", 10f),
 			AccessibleName = Loc.T("settings.apiKey")
 		};
-		tableLayoutPanel.Controls.Add(tKey, 0, 7);
+		tabPaths.Controls.Add(tKey, 0, pr++);
 
 		FlowLayoutPanel flowLayoutPanel = new FlowLayoutPanel
 		{
@@ -226,10 +239,20 @@ public partial class Form1
 			AutoSize = true,
 			AccessibleName = Loc.T("settings.checkUpdatesName")
 		};
+		CheckBox cManagerUpdates = new CheckBox
+		{
+			Text = Loc.T("settings.checkManagerUpdates"),
+			Checked = _settings.CheckForManagerUpdatesAtStartup,
+			AutoSize = true,
+			AccessibleName = Loc.T("settings.checkManagerUpdatesName")
+		};
+		cManagerUpdates.CheckedChanged += delegate
+		{
+			Speak(cManagerUpdates.Checked ? Loc.T("settings.managerUpdatesOn") : Loc.T("settings.managerUpdatesOff"));
+		};
 		cSplash.CheckedChanged += delegate
 		{
 			Speak(cSplash.Checked ? Loc.T("settings.splashOn") : Loc.T("settings.splashOff"));
-			cRandomLogo.Visible = cSplash.Checked;
 		};
 		cRandomLogo.CheckedChanged += delegate
 		{
@@ -239,15 +262,37 @@ public partial class Form1
 		{
 			Speak(cUpdates.Checked ? Loc.T("settings.updatesOn") : Loc.T("settings.updatesOff"));
 		};
-		flowLayoutPanel.Controls.AddRange(cSplash, cRandomLogo, cUpdates);
-		tableLayoutPanel.Controls.Add(flowLayoutPanel, 0, 8);
+		flowLayoutPanel.Controls.AddRange(cSplash, cUpdates, cManagerUpdates);
+		tabStartup.Controls.Add(flowLayoutPanel, 0, sr++);
 
-		tableLayoutPanel.Controls.Add(new Label
+		// Spoken-message toggles: the startup welcome/hint and the shutdown goodbye. Both default on.
+		CheckBox cStartupMsg = new CheckBox
 		{
-			Text = Loc.T("settings.selectLogo") + ":",
+			Text = Loc.T("settings.speakStartup"),
+			Checked = _settings.SpeakStartupMessage,
 			AutoSize = true,
-			Padding = new Padding(0, 5, 0, 0)
-		}, 0, 9);
+			Padding = new Padding(0, 8, 0, 0),
+			AccessibleName = Loc.T("settings.speakStartupName")
+		};
+		CheckBox cShutdownMsg = new CheckBox
+		{
+			Text = Loc.T("settings.speakShutdown"),
+			Checked = _settings.SpeakShutdownMessage,
+			AutoSize = true,
+			Padding = new Padding(0, 4, 0, 0),
+			AccessibleName = Loc.T("settings.speakShutdownName")
+		};
+		cStartupMsg.CheckedChanged += delegate
+		{
+			Speak(cStartupMsg.Checked ? Loc.T("settings.speakStartupOn") : Loc.T("settings.speakStartupOff"));
+		};
+		cShutdownMsg.CheckedChanged += delegate
+		{
+			Speak(cShutdownMsg.Checked ? Loc.T("settings.speakShutdownOn") : Loc.T("settings.speakShutdownOff"));
+		};
+		tabStartup.Controls.Add(cStartupMsg, 0, sr++);
+		tabStartup.Controls.Add(cShutdownMsg, 0, sr++);
+
 		// Suppress the logo audio preview while the list is repopulated programmatically (e.g.
 		// when the theme changes or the manual-theme box is unchecked); only a deliberate logo
 		// selection or Space press should play a logo.
@@ -256,7 +301,8 @@ public partial class Form1
 		{
 			DropDownStyle = ComboBoxStyle.DropDownList,
 			Width = 300,
-			AccessibleName = Loc.T("settings.selectLogo")
+			AccessibleName = Loc.T("settings.selectLogo"),
+			Visible = _settings.ShowSplashScreen
 		};
 		cmbLogo.SelectedIndexChanged += delegate
 		{
@@ -274,7 +320,24 @@ public partial class Form1
 				PreviewLogo();
 			}
 		};
-		tableLayoutPanel.Controls.Add(cmbLogo, 0, 10);
+		Label lblSelectLogo = new Label
+		{
+			Text = Loc.T("settings.selectLogo") + ":",
+			AutoSize = true,
+			Padding = new Padding(0, 5, 0, 0),
+			Visible = _settings.ShowSplashScreen
+		};
+		// The logo controls only matter when the splash screen is shown (it's what plays the logo sound), so they
+		// appear only while "Show Splash Screen" is checked and follow it live. Random comes before the selector.
+		tabAudio.Controls.Add(cRandomLogo, 0, ar++);
+		tabAudio.Controls.Add(lblSelectLogo, 0, ar++);
+		tabAudio.Controls.Add(cmbLogo, 0, ar++);
+		cSplash.CheckedChanged += delegate
+		{
+			cRandomLogo.Visible = cSplash.Checked;
+			lblSelectLogo.Visible = cSplash.Checked;
+			cmbLogo.Visible = cSplash.Checked;
+		};
 
 		FlowLayoutPanel flowLayoutPanel2 = new FlowLayoutPanel
 		{
@@ -287,15 +350,19 @@ public partial class Form1
 			AutoSize = true,
 			Padding = new Padding(0, 5, 0, 0)
 		});
-		NumericUpDown nVol = new NumericUpDown
+		// A dropdown rather than a NumericUpDown spinner: the WinForms spinner announces its name twice to screen
+		// readers (the control and its inner edit box both report it) and there's no reliable way to suppress it.
+		ComboBox nVol = new ComboBox
 		{
-			Value = _settings.SoundVolume,
-			Minimum = 0m,
-			Maximum = 100m,
-			Width = 60
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			Width = 70,
+			AccessibleName = Loc.T("settings.volumeName")
 		};
+		for (int v = 0; v <= 100; v++) nVol.Items.Add(v);
+		nVol.SelectedItem = Math.Clamp(_settings.SoundVolume, 0, 100);
+		if (nVol.SelectedIndex < 0) nVol.SelectedIndex = nVol.Items.Count - 1;
 		flowLayoutPanel2.Controls.Add(nVol);
-		tableLayoutPanel.Controls.Add(flowLayoutPanel2, 0, 11);
+		tabAudio.Controls.Add(flowLayoutPanel2, 0, ar++);
 
 		FlowLayoutPanel flowLayoutPanel3 = new FlowLayoutPanel
 		{
@@ -308,15 +375,17 @@ public partial class Form1
 			AutoSize = true,
 			Padding = new Padding(0, 5, 0, 0)
 		});
-		NumericUpDown nPrune = new NumericUpDown
+		ComboBox nPrune = new ComboBox
 		{
-			Value = _settings.MaxBackupsPerMod,
-			Minimum = 1m,
-			Maximum = 50m,
-			Width = 60
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			Width = 70,
+			AccessibleName = Loc.T("settings.maxBackupsName")
 		};
+		for (int v = 1; v <= 50; v++) nPrune.Items.Add(v);
+		nPrune.SelectedItem = Math.Clamp(_settings.MaxBackupsPerMod, 1, 50);
+		if (nPrune.SelectedIndex < 0) nPrune.SelectedIndex = 0;
 		flowLayoutPanel3.Controls.Add(nPrune);
-		tableLayoutPanel.Controls.Add(flowLayoutPanel3, 0, 12);
+		tabMods.Controls.Add(flowLayoutPanel3, 0, mr++);
 
 		FlowLayoutPanel flowLayoutPanel4 = new FlowLayoutPanel
 		{
@@ -371,7 +440,7 @@ public partial class Form1
 		flowLayoutPanel4.Controls.Add(cManualTheme);
 		flowLayoutPanel4.Controls.Add(cTheme);
 
-		tableLayoutPanel.Controls.Add(flowLayoutPanel4, 0, 13);
+		tabAudio.Controls.Add(flowLayoutPanel4, 0, ar++);
 		RefreshLogoList(_settings.CurrentTheme);
 
 		FlowLayoutPanel flowLang = new FlowLayoutPanel
@@ -408,7 +477,7 @@ public partial class Form1
 			}
 		}
 		flowLang.Controls.Add(cmbLanguage);
-		tableLayoutPanel.Controls.Add(flowLang, 0, 14);
+		tabLang.Controls.Add(flowLang, 0, lr++);
 
 		FlowLayoutPanel flowPageSize = new FlowLayoutPanel
 		{
@@ -433,7 +502,7 @@ public partial class Form1
 		cmbPageSize.SelectedItem = _settings.DiscoverySearchPageSize;
 		if (cmbPageSize.SelectedIndex < 0) cmbPageSize.SelectedItem = 20;
 		flowPageSize.Controls.Add(cmbPageSize);
-		tableLayoutPanel.Controls.Add(flowPageSize, 0, 15);
+		tabMods.Controls.Add(flowPageSize, 0, mr++);
 
 		CheckBox cSearchHistory = new CheckBox
 		{
@@ -447,7 +516,7 @@ public partial class Form1
 		{
 			Speak(cSearchHistory.Checked ? Loc.T("settings.searchHistoryOn") : Loc.T("settings.searchHistoryOff"));
 		};
-		tableLayoutPanel.Controls.Add(cSearchHistory, 0, 16);
+		tabMods.Controls.Add(cSearchHistory, 0, mr++);
 
 		FlowLayoutPanel flowProgress = new FlowLayoutPanel
 		{
@@ -485,7 +554,7 @@ public partial class Form1
 		}
 		if (cmbProgress.SelectedIndex < 0) cmbProgress.SelectedIndex = cmbProgress.Items.Count - 1;
 		flowProgress.Controls.Add(cmbProgress);
-		tableLayoutPanel.Controls.Add(flowProgress, 0, 17);
+		tabAudio.Controls.Add(flowProgress, 0, ar++);
 
 		FlowLayoutPanel flowLayoutPanel5 = new FlowLayoutPanel
 		{
@@ -510,7 +579,7 @@ public partial class Form1
 				if (!string.IsNullOrEmpty(activeMods) && !Directory.Exists(activeMods))
 				{
 					Speak(Loc.T("settings.errModsInvalidSpeak"));
-					MessageBox.Show(Loc.T("settings.errModsInvalidBox"));
+					SpeakBox(Loc.T("settings.errModsInvalidBox"));
 					return;
 				}
 
@@ -518,7 +587,7 @@ public partial class Form1
 				if (_settings.ActiveGame != "StardewValley" && !string.IsNullOrEmpty(activeGamePath) && !Directory.Exists(activeGamePath))
 				{
 					Speak(Loc.T("settings.errGameInvalidSpeak"));
-					MessageBox.Show(Loc.T("settings.errGameInvalidBox"));
+					SpeakBox(Loc.T("settings.errGameInvalidBox"));
 					return;
 				}
 			}
@@ -527,7 +596,7 @@ public partial class Form1
 			if (string.IsNullOrEmpty(text2))
 			{
 				Speak(Loc.T("settings.errApiKeySpeak"));
-				MessageBox.Show(Loc.T("settings.errApiKeyBox"));
+				SpeakBox(Loc.T("settings.errApiKeyBox"));
 			}
 			else
 			{
@@ -543,9 +612,12 @@ public partial class Form1
 				_settings.RandomLogoStartup = cRandomLogo.Checked;
 				_settings.SelectedLogoFile = cmbLogo.SelectedItem?.ToString() ?? "";
 				_settings.CheckForUpdatesAtStartup = cUpdates.Checked;
+				_settings.CheckForManagerUpdatesAtStartup = cManagerUpdates.Checked;
+				_settings.SpeakStartupMessage = cStartupMsg.Checked;
+				_settings.SpeakShutdownMessage = cShutdownMsg.Checked;
 				_settings.SaveSearchHistory = cSearchHistory.Checked;
-				_settings.SoundVolume = (int)nVol.Value;
-				_settings.MaxBackupsPerMod = (int)nPrune.Value;
+				if (nVol.SelectedItem is int volValue) _settings.SoundVolume = volValue;
+				if (nPrune.SelectedItem is int backupValue) _settings.MaxBackupsPerMod = backupValue;
 				if (cmbProgress.SelectedItem is ProgressFeedbackChoice pfc)
 				{
 					_settings.ProgressFeedback = pfc.Value;
@@ -597,7 +669,13 @@ public partial class Form1
 			_isSettingsOpen = false;
 		};
 		f.Controls.Add(flowLayoutPanel5);
-		f.Controls.Add(tableLayoutPanel);
+		f.Controls.Add(tabs);
+		// The buttons panel is added first (so the tabs dock-fill above it), which would otherwise make the Save
+		// button the first tab stop and the window's initial focus — the screen reader then announces "Save" even
+		// after we move focus to the tabs. Put the tab strip first in tab order so initial focus lands on it and
+		// the active tab is what gets announced.
+		tabs.TabIndex = 0;
+		flowLayoutPanel5.TabIndex = 1;
 		f.KeyDown += delegate(object? s, KeyEventArgs pe)
 		{
 			if (pe.KeyCode == Keys.Escape)
@@ -606,9 +684,11 @@ public partial class Form1
 				f.Close();
 			}
 		};
-		// Land focus on the first real setting (the game selector) instead of the Save button,
-		// which Windows would otherwise pick as the default focus.
-		f.Shown += delegate { cmbSettingsGame.Focus(); };
+		// Land focus on the tab strip so the screen reader announces the tabs (and the user can arrow between
+		// them) before tabbing into the first setting, rather than dropping straight onto one control.
+		f.Shown += delegate { tabs.Focus(); };
+		// Add the "name then pause then value" reading to every combo/checkbox/list in the dialog.
+		ApplyScreenReaderPauses(f);
 		f.ShowDialog();
 		void PreviewLogo()
 		{

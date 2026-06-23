@@ -50,6 +50,11 @@ public partial class Form1
 			e.SuppressKeyPress = true;
 			ShowChangeLog();
 		}
+		if (IsShortcut(e, "ModDocs"))
+		{
+			e.SuppressKeyPress = true;
+			ShowModDocs();
+		}
 		if (IsShortcut(e, "ContextHelp"))
 		{
 			e.SuppressKeyPress = true;
@@ -186,7 +191,7 @@ public partial class Form1
 			e.SuppressKeyPress = true;
 			ReadSelectedDescription();
 		}
-		if (IsShortcut(e, "PruneBackups"))
+		if (IsShortcut(e, "DeleteOldBackups"))
 		{
 			e.SuppressKeyPress = true;
 			PruneAllBackups();
@@ -446,7 +451,7 @@ public partial class Form1
 			}
 			if (e.KeyCode == Keys.Apps)
 			{
-				MessageBox.Show(Loc.T("modlist.detailsBox", stardewMod3.Name, stardewMod3.Author, stardewMod3.Description), Loc.T("modlist.detailsTitle"));
+				SpeakBox(Loc.T("modlist.detailsBox", stardewMod3.Name, stardewMod3.Author, stardewMod3.Description), Loc.T("modlist.detailsTitle"));
 				e.Handled = true;
 			}
 			if (e.KeyCode == Keys.L && e.Control)
@@ -458,7 +463,7 @@ public partial class Form1
 		}
 		if (list.Name == "listUpdates" && list.SelectedItem is StardewMod stardewMod4 && e.KeyCode == Keys.Delete)
 		{
-			if (MessageBox.Show(Loc.T("modlist.ignoreConfirm", stardewMod4.LatestVersion ?? "", stardewMod4.Name), Loc.T("modlist.ignoreTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
+			if (SpeakBox(Loc.T("modlist.ignoreConfirm", stardewMod4.LatestVersion ?? "", stardewMod4.Name), Loc.T("modlist.ignoreTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 			{
 				_settings.IgnoredVersions[stardewMod4.UniqueId] = stardewMod4.LatestVersion ?? "";
 				_settings.Save();
@@ -491,7 +496,7 @@ public partial class Form1
 			}
 			if (e.KeyCode == Keys.Return)
 			{
-				if (MessageBox.Show(Loc.T("modlist.restoreConfirm", backupItem.Name), Loc.T("modlist.restoreTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
+				if (SpeakBox(Loc.T("modlist.restoreConfirm", backupItem.Name), Loc.T("modlist.restoreTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 				{
 					_ = InstallFromZip(backupItem.FullPath);
 				}
@@ -507,7 +512,7 @@ public partial class Form1
 			}
 			if (e.KeyCode == Keys.Delete)
 			{
-				if (MessageBox.Show(Loc.T("modlist.deleteProfileConfirm", modProfile.Name), Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo) == DialogResult.Yes)
+				if (SpeakBox(Loc.T("modlist.deleteProfileConfirm", modProfile.Name), Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 				{
 					string path = Path.Combine(profilesPath, modProfile.Name + ".json");
 					if (File.Exists(path))
@@ -563,7 +568,7 @@ public partial class Form1
 			{
 				text5 = text5 + Loc.T("modlist.suggestedFixSuffix", suggestedFix);
 			}
-			MessageBox.Show(text5, Loc.T("modlist.logDetailTitle"));
+			SpeakBox(text5, Loc.T("modlist.logDetailTitle"));
 			e.Handled = true;
 		}
 		if (list.Name == "listLog" && IsShortcut(e, "Login"))

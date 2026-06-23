@@ -145,6 +145,12 @@ public partial class Form1
 		buttonRow.Controls.Add(btnCancel);
 		buttonRow.Controls.Add(btnNext);
 		buttonRow.Controls.Add(btnBack);
+		// Tab order is set explicitly (independent of the visual right-to-left add order) so a screen-reader user
+		// tabs Back -> Next/Install -> Cancel. Otherwise tab order follows add order and Cancel comes first, which
+		// put Cancel ahead of Install on the final step.
+		btnBack.TabIndex = 0;
+		btnNext.TabIndex = 1;
+		btnCancel.TabIndex = 2;
 
 		layout.Controls.Add(header, 0, 0);
 		layout.Controls.Add(content, 0, 1);
@@ -334,7 +340,7 @@ public partial class Form1
 			if (!ValidateStep(current, out string error))
 			{
 				Speak(error);
-				MessageBox.Show(dialog, error, Loc.T("fomod.wizardTitle", config.ModuleName), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				SpeakBox(dialog, error, Loc.T("fomod.wizardTitle", config.ModuleName), MessageBoxButtons.OK, MessageBoxIcon.Warning);
 				return;
 			}
 			int next = NextVisible(current);

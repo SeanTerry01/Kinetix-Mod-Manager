@@ -198,7 +198,7 @@ public partial class Form1
 	{
 		_soundEngine.Play("connect");
 		Speak(Loc.T("updates.smapiAvailableSpeak", current, latest));
-		if (MessageBox.Show(
+		if (SpeakBox(
 				Loc.T("updates.smapiBox", current, latest),
 				Loc.T("updates.smapiTitle"), MessageBoxButtons.YesNo, MessageBoxIcon.Information) != DialogResult.Yes)
 			return;
@@ -327,7 +327,7 @@ public partial class Form1
             {
                 _soundEngine.Play("error");
                 LogError(mod.Name, "GitHub Download/Install Failure: " + ex.Message);
-                MessageBox.Show(Loc.T("updates.githubFailBox", mod.Name, ex.Message));
+                SpeakBox(Loc.T("updates.githubFailBox", mod.Name, ex.Message));
                 return;
             }
         }
@@ -372,7 +372,7 @@ public partial class Form1
         {
             _soundEngine.Play("error");
             LogError(mod.Name, "Download/Install Failure: " + ex.Message);
-            Invoke(delegate { MessageBox.Show(Loc.T("updates.failBox", mod.Name, ex.Message)); });
+            Invoke(delegate { SpeakBox(Loc.T("updates.failBox", mod.Name, ex.Message)); });
         }
     }
 
@@ -542,7 +542,7 @@ public partial class Form1
 			_isLoading = false;
 			_soundEngine.Play("error");
 			LogError("AutoMatch", "Auto-match failed: " + ex.Message);
-			MessageBox.Show(Loc.T("updates.autoMatchFailBox", ex.Message), Loc.T("common.error"));
+			SpeakBox(Loc.T("updates.autoMatchFailBox", ex.Message), Loc.T("common.error"));
 			Speak(Loc.T("updates.autoMatchFailed"));
 		}
 	}
@@ -562,7 +562,7 @@ public partial class Form1
 				Speak(Loc.T("updates.newVersion", tag));
 				if (!string.IsNullOrEmpty(release.DownloadUrl))
 				{
-					if (MessageBox.Show(Loc.T("updates.versionAvailDownload", tag),
+					if (SpeakBox(Loc.T("updates.versionAvailDownload", tag),
 							Loc.T("updates.updateAvailTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 					{
 						await DownloadAndInstallAppUpdateAsync(release);
@@ -570,7 +570,7 @@ public partial class Form1
 				}
 				else
 				{
-					if (MessageBox.Show(Loc.T("updates.versionAvailNoInstaller", tag),
+					if (SpeakBox(Loc.T("updates.versionAvailNoInstaller", tag),
 							Loc.T("updates.updateAvailTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 					{
 						Process.Start(new ProcessStartInfo(
@@ -582,12 +582,12 @@ public partial class Form1
 			else if (manual)
 			{
 				Speak(Loc.T("updates.upToDate"));
-				MessageBox.Show(Loc.T("updates.upToDateBox"), Loc.T("updates.upToDateTitle"));
+				SpeakBox(Loc.T("updates.upToDateBox"), Loc.T("updates.upToDateTitle"));
 			}
 		}
 		catch (Exception ex)
 		{
-			if (manual) { Speak(Loc.T("updates.checkFailed")); MessageBox.Show(Loc.T("updates.checkFailBox", ex.Message)); }
+			if (manual) { Speak(Loc.T("updates.checkFailed")); SpeakBox(Loc.T("updates.checkFailBox", ex.Message)); }
 		}
 	}
 
@@ -642,7 +642,7 @@ public partial class Form1
 			}
 
 			Speak(Loc.T("updates.startingInstaller"));
-			MessageBox.Show(Loc.T("updates.installerBox"), Loc.T("updates.installingTitle"));
+			SpeakBox(Loc.T("updates.installerBox"), Loc.T("updates.installingTitle"));
 
 			Process.Start(new ProcessStartInfo(installerPath)
 			{
@@ -656,7 +656,7 @@ public partial class Form1
 			_isLoading = false;
 			Text = originalTitle;
 			LogError("AppUpdate", "Self-update failed: " + ex.Message);
-			MessageBox.Show(Loc.T("updates.selfUpdateFailBox", ex.Message), Loc.T("updates.updateErrorTitle"));
+			SpeakBox(Loc.T("updates.selfUpdateFailBox", ex.Message), Loc.T("updates.updateErrorTitle"));
 			Speak(Loc.T("updates.failed"));
 		}
 	}

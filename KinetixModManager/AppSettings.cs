@@ -91,6 +91,15 @@ public class AppSettings
 
 	public bool CheckForUpdatesAtStartup { get; set; } = true;
 
+	/// <summary>Check for a new version of the manager itself when the program starts.</summary>
+	public bool CheckForManagerUpdatesAtStartup { get; set; } = true;
+
+	/// <summary>Speak the welcome / shortcut-hint message at startup (and wait for it before loading).</summary>
+	public bool SpeakStartupMessage { get; set; } = true;
+
+	/// <summary>Speak the "shutting down" message (and wait for it) when the manager closes.</summary>
+	public bool SpeakShutdownMessage { get; set; } = true;
+
 	public int SoundVolume { get; set; } = 80;
 
 	/// <summary>
@@ -278,6 +287,21 @@ public class AppSettings
 		if (IgnoredRequirements == null) IgnoredRequirements = new Dictionary<string, List<string>>();
 
 		if (string.IsNullOrEmpty(ActiveGame)) ActiveGame = "None";
+		Shortcuts ??= new Dictionary<string, Keys>();
+
+		// The "Delete Old Backups" action's internal key was renamed from "PruneBackups" to "DeleteOldBackups" so
+		// it reads correctly in the Shortcut Manager. Carry any saved binding across to the new key (done before the
+		// defaults are filled in below so a custom binding survives), and bump the legacy defaults — Ctrl+B (which
+		// clashed with Open Backups Folder) and the later Ctrl+Shift+B — to the new Ctrl+Shift+D default.
+		if (Shortcuts.TryGetValue("PruneBackups", out Keys oldPruneKey))
+		{
+			Shortcuts.Remove("PruneBackups");
+			if (oldPruneKey == (Keys.B | Keys.Control) || oldPruneKey == (Keys.B | Keys.Shift | Keys.Control))
+				oldPruneKey = Keys.D | Keys.Shift | Keys.Control;
+			if (!Shortcuts.ContainsKey("DeleteOldBackups"))
+				Shortcuts["DeleteOldBackups"] = oldPruneKey;
+		}
+
 		foreach (KeyValuePair<string, Keys> item in new Dictionary<string, Keys>
 		{
 			{
@@ -287,6 +311,10 @@ public class AppSettings
 			{
 				"ChangeLog",
 				Keys.F2
+			},
+			{
+				"ModDocs",
+				Keys.F3
 			},
 			{
 				"ContextHelp",
@@ -373,8 +401,8 @@ public class AppSettings
 				Keys.M | Keys.Control
 			},
 			{
-				"PruneBackups",
-				Keys.B | Keys.Shift | Keys.Control
+				"DeleteOldBackups",
+				Keys.D | Keys.Shift | Keys.Control
 			},
 			{
 				"OpenErrorLog",

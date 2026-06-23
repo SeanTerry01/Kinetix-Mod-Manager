@@ -133,7 +133,7 @@ public partial class Form1
 
 		btnClear.Click += delegate
 		{
-			var confirm = MessageBox.Show(Loc.T("history.clearConfirm"), Loc.T("history.windowTitle"),
+			var confirm = SpeakBox(Loc.T("history.clearConfirm"), Loc.T("history.windowTitle"),
 				MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
 			if (confirm != DialogResult.Yes) return;
 			SearchHistoryStore.Clear(game);
@@ -156,6 +156,7 @@ public partial class Form1
 			cmbScope.Focus();
 			Speak(Loc.T("history.opened", lstTerms.Items.Count));
 		};
+		ApplyScreenReaderPauses(dialog);
 		dialog.ShowDialog();
 
 		// Re-run the chosen search after the dialog closes.

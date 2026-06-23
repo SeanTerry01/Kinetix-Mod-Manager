@@ -34,7 +34,7 @@ public partial class Form1
 		string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "MANUAL.md");
 		if (!File.Exists(path))
 		{
-			MessageBox.Show(Loc.T("manual.notFound"));
+			SpeakBox(Loc.T("manual.notFound"));
 			return;
 		}
 		// The manual is one '#' title with '##' sections beneath it; surface those sections as the top level.
@@ -56,7 +56,7 @@ public partial class Form1
 		string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CHANGELOG.md");
 		if (!File.Exists(path))
 		{
-			MessageBox.Show(Loc.T("changelog.notFound"));
+			SpeakBox(Loc.T("changelog.notFound"));
 			return;
 		}
 		// Each version is its own '#' heading; the "New in Version X" '##' under it is a redundant wrapper that
@@ -335,6 +335,7 @@ public partial class Form1
 			list.Focus();
 			Speak(Loc.T("doc.navHint"));
 		};
+		ApplyScreenReaderPauses(docForm);
 		docForm.ShowDialog();
 	}
 
@@ -380,7 +381,9 @@ public partial class Form1
 			ScrollBars = ScrollBars.Vertical,
 			Font = new Font("Segoe UI", 12f),
 			Text = about,
-			AccessibleName = Loc.T("about.title"),
+			// No AccessibleName: the window title already says "About Kinetix Mod Manager", so naming the text box
+			// the same would make the screen reader repeat it before reading the text. With no name it reads the
+			// field's role and then its content (which starts with "Kinetix Mod Manager").
 			TabStop = true
 		};
 		tbAbout.GotFocus += delegate { tbAbout.Select(0, 0); };
@@ -403,10 +406,26 @@ public partial class Form1
 		aboutForm.CancelButton = btnClose;
 		aboutForm.Shown += delegate
 		{
+			// Just land focus on the text. The window title is announced by the screen reader on open, and the
+			// version is in the text itself, so a separate spoken line would only repeat the title.
 			tbAbout.Focus();
-			Speak(Loc.T("about.spoken", NexusService.AppVersion));
 		};
-		aboutForm.ShowDialog();
+		// Hide the main window while the About window is open (it's a separate top-level window), and restore it
+		// when About closes — the same focus-keeping pattern the suite installer uses.
+		bool wasVisible = Visible;
+		if (wasVisible) Hide();
+		try
+		{
+			aboutForm.ShowDialog();
+		}
+		finally
+		{
+			if (wasVisible)
+			{
+				Show();
+				Activate();
+			}
+		}
 	}
 
 	/// <summary>One control line: a parsed key plus its description, or (when <see cref="Key"/> is null) a
@@ -973,6 +992,7 @@ public partial class Form1
 			list.Focus();
 			Speak(Loc.T("controls.navHint"));
 		};
+		ApplyScreenReaderPauses(controlsForm);
 		controlsForm.ShowDialog();
 	}
 
@@ -1465,7 +1485,7 @@ public partial class Form1
 			catch (Exception ex)
 			{
 				Speak(Loc.T("config.invalidJsonSpeak", ex.Message));
-				MessageBox.Show(Loc.T("config.invalidJsonBox", ex.Message), Loc.T("config.jsonValidationTitle"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+				SpeakBox(Loc.T("config.invalidJsonBox", ex.Message), Loc.T("config.jsonValidationTitle"), MessageBoxButtons.OK, MessageBoxIcon.Error);
 				return;
 			}
 
@@ -1480,7 +1500,7 @@ public partial class Form1
 			catch (Exception ex)
 			{
 				Speak(Loc.T("config.saveFailed"));
-				MessageBox.Show(Loc.T("config.saveFailedBox", ex.Message), Loc.T("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+				SpeakBox(Loc.T("config.saveFailedBox", ex.Message), Loc.T("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
 			}
 		};
 
@@ -1507,7 +1527,7 @@ public partial class Form1
 		{
 			if (editorForm.DialogResult != DialogResult.OK && tbJson.Text != originalJson)
 			{
-				var res = MessageBox.Show(Loc.T("config.discardConfirm"), Loc.T("config.confirmCancelTitle"), MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+				var res = SpeakBox(Loc.T("config.discardConfirm"), Loc.T("config.confirmCancelTitle"), MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 				if (res == DialogResult.No)
 				{
 					pe.Cancel = true;

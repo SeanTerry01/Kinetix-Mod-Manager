@@ -69,7 +69,7 @@ public partial class Form1
 		if (!File.Exists(manifestPath))
 		{
 			Speak(Loc.T("modactions.noManifestSpeak", mod.Name));
-			MessageBox.Show(Loc.T("modactions.noManifestBox", manifestName, mod.Name), Loc.T("modactions.noManifestTitle"));
+			SpeakBox(Loc.T("modactions.noManifestBox", manifestName, mod.Name), Loc.T("modactions.noManifestTitle"));
 			return;
 		}
 
@@ -105,7 +105,7 @@ public partial class Form1
 		if (!File.Exists(configPath))
 		{
 			Speak(Loc.T("modactions.noConfigSpeak", mod.Name));
-			MessageBox.Show(Loc.T("modactions.noConfigBox", mod.Name), Loc.T("modactions.noConfigTitle"));
+			SpeakBox(Loc.T("modactions.noConfigBox", mod.Name), Loc.T("modactions.noConfigTitle"));
 			return;
 		}
 
@@ -125,7 +125,7 @@ public partial class Form1
 			Speak(Loc.T("modactions.noModsInCategory"));
 			return;
 		}
-		DialogResult dialogResult = MessageBox.Show(Loc.T("modactions.batchBox", category, list.Count), Loc.T("modactions.batchTitle"), MessageBoxButtons.YesNoCancel);
+		DialogResult dialogResult = SpeakBox(Loc.T("modactions.batchBox", category, list.Count), Loc.T("modactions.batchTitle"), MessageBoxButtons.YesNoCancel);
 		if (dialogResult == DialogResult.Cancel)
 		{
 			return;
@@ -159,7 +159,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			MessageBox.Show(Loc.T("modactions.batchFailedBox", ex.Message));
+			SpeakBox(Loc.T("modactions.batchFailedBox", ex.Message));
 		}
 	}
 
@@ -175,7 +175,7 @@ public partial class Form1
 		}
 		if (stardewMod.Dependencies.Count == 0)
 		{
-			MessageBox.Show(Loc.T("modactions.noDependencies"));
+			SpeakBox(Loc.T("modactions.noDependencies"));
 			return;
 		}
 		StringBuilder stringBuilder = new StringBuilder(Loc.T("modactions.dependenciesHeader", stardewMod.Name));
@@ -192,7 +192,7 @@ public partial class Form1
 			handler.AppendLiteral(")");
 			stringBuilder2.AppendLine(ref handler);
 		}
-		MessageBox.Show(stringBuilder.ToString(), Loc.T("modactions.dependenciesTitle"));
+		SpeakBox(stringBuilder.ToString(), Loc.T("modactions.dependenciesTitle"));
 	}
 
 	/// <summary>
@@ -210,7 +210,7 @@ public partial class Form1
 				return;
 			}
 			ModDependency modDependency = list[0];
-			if (MessageBox.Show(Loc.T("modactions.searchDepConfirm", modDependency.UniqueId), Loc.T("modactions.quickFixTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
+			if (SpeakBox(Loc.T("modactions.searchDepConfirm", modDependency.UniqueId), Loc.T("modactions.quickFixTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 			{
 				SelectTab(AppTab.Discovery);
 				txtSearch.Text = modDependency.UniqueId;
@@ -228,7 +228,7 @@ public partial class Form1
 			string text = LogAnalyzer.ExtractMissingModId(line);
 			if (!string.IsNullOrEmpty(text))
 			{
-				if (MessageBox.Show(Loc.T("modactions.searchDepConfirm", text), Loc.T("modactions.quickFixLogTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
+				if (SpeakBox(Loc.T("modactions.searchDepConfirm", text), Loc.T("modactions.quickFixLogTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 				{
 					SelectTab(AppTab.Discovery);
 					txtSearch.Text = text;
@@ -239,7 +239,7 @@ public partial class Form1
 			// Otherwise explain what the line means and how to fix it.
 			string diagnosis = LogAnalyzer.Diagnose(line);
 			Speak(Loc.T("modactions.diagnosing"));
-			MessageBox.Show(diagnosis, Loc.T("modactions.diagnoseTitle"));
+			SpeakBox(diagnosis, Loc.T("modactions.diagnoseTitle"));
 		}
 	}
 
@@ -278,7 +278,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			MessageBox.Show(Loc.T("modactions.toggleFailedBox", ex.Message));
+			SpeakBox(Loc.T("modactions.toggleFailedBox", ex.Message));
 		}
 	}
 
@@ -288,7 +288,7 @@ public partial class Form1
 	/// </summary>
 	private void DeleteSelectedMod()
 	{
-		if (listInstalled.SelectedItem is StardewMod stardewMod && MessageBox.Show(Loc.T("modactions.deleteConfirm", stardewMod.Name), Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation) == DialogResult.Yes)
+		if (listInstalled.SelectedItem is StardewMod stardewMod && SpeakBox(Loc.T("modactions.deleteConfirm", stardewMod.Name), Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation) == DialogResult.Yes)
 		{
 			try
 			{
@@ -304,7 +304,7 @@ public partial class Form1
 			catch (Exception ex)
 			{
 				_soundEngine.Play("error");
-				MessageBox.Show(Loc.T("modactions.deleteFailedBox", ex.Message));
+				SpeakBox(Loc.T("modactions.deleteFailedBox", ex.Message));
 			}
 		}
 	}
@@ -312,7 +312,7 @@ public partial class Form1
 	/// <summary>Permanently deletes the selected backup archive after user confirmation.</summary>
 	private void DeleteSelectedBackup()
 	{
-		if (listBackups.SelectedItem is BackupItem backupItem && MessageBox.Show(Loc.T("modactions.deleteBackupConfirm", backupItem.Name), Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo) == DialogResult.Yes)
+		if (listBackups.SelectedItem is BackupItem backupItem && SpeakBox(Loc.T("modactions.deleteBackupConfirm", backupItem.Name), Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 		{
 			try
 			{
@@ -322,7 +322,7 @@ public partial class Form1
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show(Loc.T("modactions.deleteBackupFailedBox", ex.Message));
+				SpeakBox(Loc.T("modactions.deleteBackupFailedBox", ex.Message));
 			}
 		}
 	}

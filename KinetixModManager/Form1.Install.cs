@@ -41,11 +41,11 @@ public partial class Form1
 		if (!_nexusService.IsPremium)
 		{
 			Speak(Loc.T("updateAll.premiumSpeak"));
-			MessageBox.Show(Loc.T("updateAll.premiumBox"), Loc.T("updateAll.premiumTitle"), MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+			SpeakBox(Loc.T("updateAll.premiumBox"), Loc.T("updateAll.premiumTitle"), MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
 		}
 		else
 		{
-			if (MessageBox.Show(Loc.T("updateAll.confirm", listUpdates.Items.Count), Loc.T("common.confirm"), MessageBoxButtons.YesNo) == DialogResult.No)
+			if (SpeakBox(Loc.T("updateAll.confirm", listUpdates.Items.Count), Loc.T("common.confirm"), MessageBoxButtons.YesNo) == DialogResult.No)
 			{
 				return;
 			}
@@ -195,13 +195,36 @@ public partial class Form1
 			// The download was started from the browser (Mod Manager Download button), so the browser
 			// owns the foreground by now. Pull the manager to the front first, otherwise this prompt can
 			// open behind the browser and never receive keyboard / screen-reader focus.
+			// If this download is a newer version of a mod you already have, treat it as an update and skip the
+			// "overwrite the installed copy?" prompt — that confirmation is meant for re-installing the same (or an
+			// older) copy, not for a genuine upgrade.
+			bool isUpgrade = false;
+			if (!string.IsNullOrEmpty(nexusId))
+			{
+				GameMod? installed = _allInstalledMods.FirstOrDefault(m => m.NexusID == nexusId);
+				if (installed != null)
+				{
+					try
+					{
+						var details = await _nexusService.GetModDetailsAsync(nexusId);
+						isUpgrade = IsNewerVersion(installed.Version, details?["version"]?.ToString());
+					}
+					catch { /* version lookup is best-effort; fall back to prompting */ }
+				}
+			}
+
 			ForceToForeground();
-			if (MessageBox.Show(this, Loc.T("download.installNow", realName), Loc.T("download.successTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
-				_ = InstallFromZip(path, nexusId, confirmReinstall: true);
+			if (SpeakBox(this, Loc.T("download.installNow", realName), Loc.T("download.successTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
+				_ = InstallFromZip(path, nexusId, confirmReinstall: !isUpgrade);
+		}
+		catch (TimeoutException)
+		{
+			SetStatus(Loc.T("download.timedOut"), speak: false);
+			SpeakBox(Loc.T("download.timedOut"));
 		}
 		catch (Exception ex)
 		{
-			MessageBox.Show(Loc.T("download.nxmError", ex.Message));
+			SpeakBox(Loc.T("download.nxmError", ex.Message));
 		}
 	}
 
@@ -295,7 +318,7 @@ public partial class Form1
 	{
 		bool Ask()
 		{
-			bool yes = MessageBox.Show(this,
+			bool yes = SpeakBox(this,
 				Loc.T("install.reinstallConfirm", modName, string.IsNullOrWhiteSpace(version) ? "?" : version),
 				Loc.T("install.reinstallTitle"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
 			if (!yes) Speak(Loc.T("install.reinstallKept", modName));
@@ -370,15 +393,21 @@ public partial class Form1
 				SyncBethesdaDeployment(new HashSet<string>(new[] { name }, StringComparer.OrdinalIgnoreCase));
 				RefreshModPriorityList();
 			}
-			MessageBox.Show(Loc.T("install.installed", name));
+			SpeakBox(Loc.T("install.installed", name));
 		}
 		catch (OperationCanceledException)
 		{
 			// User cancelled the FOMOD option wizard; it already announced the cancellation.
 		}
+		catch (UnauthorizedAccessException ex)
+		{
+			// A denied path is almost always an external lock: the game still running, antivirus/Controlled Folder
+			// Access guarding the mods folder, or a file held open elsewhere. Say so rather than a bare path error.
+			SpeakBox(Loc.T("install.failedAccess", ex.Message));
+		}
 		catch (Exception ex)
 		{
-			MessageBox.Show(Loc.T("install.failed", ex.Message));
+			SpeakBox(Loc.T("install.failed", ex.Message));
 		}
 		finally
 		{

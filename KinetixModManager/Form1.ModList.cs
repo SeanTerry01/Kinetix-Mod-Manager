@@ -105,7 +105,7 @@ public partial class Form1
 					listUpdates.EndUpdate();
 				}
 			});
-			MessageBox.Show(Loc.T("modlist.modsPathInvalid"));
+			SpeakBox(Loc.T("modlist.modsPathInvalid"));
 			return;
 		}
 		string idMapPath = Path.Combine(AppSettings.AppDataFolder, "mod_id_map.json");
@@ -552,7 +552,7 @@ public partial class Form1
 				}
 				catch (Exception ex)
 				{
-					MessageBox.Show(Loc.T("link.saveFailedBox", ex.Message), Loc.T("common.error"));
+					SpeakBox(Loc.T("link.saveFailedBox", ex.Message), Loc.T("common.error"));
 					Speak(Loc.T("link.failed"));
 				}
 			}

@@ -165,7 +165,7 @@ public partial class Form1
 
 		Speak(Loc.T("session.notInstalledSpeak", targetName));
 
-		DialogResult choice = MessageBox.Show(
+		DialogResult choice = SpeakBox(
 			Loc.T("session.notInstalledBox", targetName),
 			Loc.T("session.notInstalledTitle"),
 			MessageBoxButtons.YesNo,
@@ -216,7 +216,7 @@ public partial class Form1
 	{
 		Speak(Loc.T("games.noneDetectedSpeak"));
 
-		DialogResult result = MessageBox.Show(
+		DialogResult result = SpeakBox(
 			Loc.T("games.noneDetectedBox"),
 			Loc.T("games.noneDetectedTitle"),
 			MessageBoxButtons.YesNo,
@@ -300,6 +300,7 @@ public partial class Form1
 
 		Speak(Loc.T("store.selectGameSpeak"));
 		dialog.Shown += (s, e) => { lstGames.Focus(); };
+		ApplyScreenReaderPauses(dialog);
 		dialog.ShowDialog();
 	}
 
@@ -391,7 +392,7 @@ public partial class Form1
 				}
 				catch (Exception ex)
 				{
-					MessageBox.Show(Loc.T("store.couldNotOpenLink", ex.Message));
+					SpeakBox(Loc.T("store.couldNotOpenLink", ex.Message));
 				}
 			}
 			dialog.Close();
@@ -402,6 +403,7 @@ public partial class Form1
 
 		Speak(Loc.T("store.whereBuy", gameName));
 		dialog.Shown += (s, e) => { lstStores.Focus(); };
+		ApplyScreenReaderPauses(dialog);
 		dialog.ShowDialog();
 	}
 
@@ -456,7 +458,7 @@ public partial class Form1
 				{
 					string seName = game == "SkyrimSE" ? "SKSE" : "F4SE";
 					Speak(Loc.T("launch.seMismatchSpeak", seName));
-					var choice = MessageBox.Show(
+					var choice = SpeakBox(
 						Loc.T("launch.seMismatchBox", seName, seVer.Value.ExtenderVersion, seVer.Value.GameVersion),
 						Loc.T("launch.seMismatchTitle", seName),
 						MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
@@ -490,12 +492,12 @@ public partial class Form1
 			}
 			else
 			{
-				MessageBox.Show(Loc.T("launch.exeNotFound", exeName, gamePath));
+				SpeakBox(Loc.T("launch.exeNotFound", exeName, gamePath));
 			}
 		}
 		catch (Exception ex)
 		{
-			MessageBox.Show(Loc.T("launch.failed", ex.Message));
+			SpeakBox(Loc.T("launch.failed", ex.Message));
 		}
 	}
 }

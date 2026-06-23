@@ -36,8 +36,7 @@ public partial class Form1
 		string game = _settings.ActiveGame;
 		if (string.IsNullOrEmpty(_settings.CurrentModsPath))
 		{
-			Speak(Loc.T("mo2.needModsPath"));
-			MessageBox.Show(Loc.T("mo2.needModsPath"));
+			SpeakBox(Loc.T("mo2.needModsPath"));
 			return;
 		}
 
@@ -54,8 +53,7 @@ public partial class Form1
 		string profilesDir = Mo2ResolveDir(ini, "Settings/profiles_directory", baseDir, "profiles");
 		if (!Directory.Exists(modsDir) || !Directory.Exists(profilesDir))
 		{
-			Speak(Loc.T("mo2.notFound"));
-			MessageBox.Show(Loc.T("mo2.notFound"));
+			SpeakBox(Loc.T("mo2.notFound"));
 			return;
 		}
 
@@ -63,8 +61,7 @@ public partial class Form1
 		string? iniGame = Mo2GameToInternal(Mo2GetValue(ini, "General/gameName"));
 		if (iniGame != null && !string.Equals(iniGame, game, StringComparison.OrdinalIgnoreCase))
 		{
-			Speak(Loc.T("mo2.gameMismatch", GameDisplayName(iniGame), GameDisplayName(game)));
-			MessageBox.Show(Loc.T("mo2.gameMismatch", GameDisplayName(iniGame), GameDisplayName(game)));
+			SpeakBox(Loc.T("mo2.gameMismatch", GameDisplayName(iniGame), GameDisplayName(game)));
 			return;
 		}
 
@@ -72,8 +69,7 @@ public partial class Form1
 		List<string> profiles = Mo2ListProfiles(profilesDir);
 		if (profiles.Count == 0)
 		{
-			Speak(Loc.T("mo2.noProfiles"));
-			MessageBox.Show(Loc.T("mo2.noProfiles"));
+			SpeakBox(Loc.T("mo2.noProfiles"));
 			return;
 		}
 		string? profileDir = Mo2ChooseProfile(profiles, Mo2GetValue(ini, "General/selected_profile"));
@@ -84,13 +80,12 @@ public partial class Form1
 		List<Mo2Mod> mods = Mo2ReadModlist(Path.Combine(profileDir, "modlist.txt"));
 		if (mods.Count == 0)
 		{
-			Speak(Loc.T("mo2.noMods"));
-			MessageBox.Show(Loc.T("mo2.noMods"));
+			SpeakBox(Loc.T("mo2.noMods"));
 			return;
 		}
 
 		int enabledCount = mods.Count(m => m.Enabled);
-		if (MessageBox.Show(Loc.T("mo2.confirm", profileName, mods.Count, enabledCount), Loc.T("mo2.title"),
+		if (SpeakBox(Loc.T("mo2.confirm", profileName, mods.Count, enabledCount), Loc.T("mo2.title"),
 				MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
 		{
 			Speak(Loc.T("common.changesCancelled"));
@@ -128,7 +123,7 @@ public partial class Form1
 		{
 			_soundEngine.Play("error");
 			SetStatus(Loc.T("mo2.error", ex.Message));
-			MessageBox.Show(Loc.T("mo2.error", ex.Message));
+			SpeakBox(Loc.T("mo2.error", ex.Message));
 			return;
 		}
 
@@ -381,6 +376,7 @@ public partial class Form1
 		dlg.CancelButton = btnCancel;
 		dlg.Shown += delegate { lb.Focus(); };
 
+		ApplyScreenReaderPauses(dlg);
 		return dlg.ShowDialog() == DialogResult.OK && lb.SelectedItem is Mo2ProfileEntry chosen ? chosen.Dir : null;
 	}
 

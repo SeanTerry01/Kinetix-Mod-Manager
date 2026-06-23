@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -1032,7 +1033,7 @@ public static class ModFileSystem
 						}
 						CreateBackup(existing.FolderPath, mName, backupsPath);
 						PruneBackups(mName, backupsPath, maxBackups);
-						Directory.Delete(existing.FolderPath, recursive: true);
+						ForceDeleteDirectory(existing.FolderPath);
 					}
 				}
 				catch (OperationCanceledException) { throw; } // a declined overwrite must cancel, not be swallowed
@@ -1178,11 +1179,11 @@ public static class ModFileSystem
 
 			CreateBackup(existing.FolderPath, targetFolderName, backupsPath);
 			PruneBackups(targetFolderName, backupsPath, maxBackups);
-			Directory.Delete(existing.FolderPath, recursive: true);
+			ForceDeleteDirectory(existing.FolderPath);
 		}
 
 		if (Directory.Exists(destModFolder))
-			Directory.Delete(destModFolder, recursive: true);
+			ForceDeleteDirectory(destModFolder);
 
 		Directory.CreateDirectory(destModFolder);
 		bool treatAsRoot = false;
@@ -1203,14 +1204,14 @@ public static class ModFileSystem
 			foreach (string dir in Directory.GetDirectories(sourceFolder, "*", SearchOption.AllDirectories))
 				Directory.CreateDirectory(dir.Replace(sourceFolder, rootDest));
 			foreach (string file in Directory.GetFiles(sourceFolder, "*.*", SearchOption.AllDirectories))
-				File.Copy(file, file.Replace(sourceFolder, rootDest), overwrite: true);
+				RobustCopy(file, file.Replace(sourceFolder, rootDest));
 		}
 		else
 		{
 			foreach (string dir in Directory.GetDirectories(sourceFolder, "*", SearchOption.AllDirectories))
 				Directory.CreateDirectory(dir.Replace(sourceFolder, destModFolder));
 			foreach (string file in Directory.GetFiles(sourceFolder, "*.*", SearchOption.AllDirectories))
-				File.Copy(file, file.Replace(sourceFolder, destModFolder), overwrite: true);
+				RobustCopy(file, file.Replace(sourceFolder, destModFolder));
 		}
 
 		// Preserve the mod's documentation (README/guide/keybind files) so the accessibility-controls
@@ -1824,7 +1825,59 @@ public static class ModFileSystem
 			{
 				Directory.CreateDirectory(destDir);
 			}
-			File.Copy(file, destFile, true);
+			RobustCopy(file, destFile);
+		}
+	}
+
+	/// <summary>Clears the read-only attribute on a file/directory tree. A single read-only file (some mods ship
+	/// their config or ESL files that way) makes <see cref="Directory.Delete(string, bool)"/> and an overwriting
+	/// <see cref="File.Copy(string, string, bool)"/> fail with "access to the path is denied", so we strip it first.</summary>
+	private static void ClearReadOnlyRecursive(string path)
+	{
+		try
+		{
+			var di = new DirectoryInfo(path);
+			if (!di.Exists) return;
+			if ((di.Attributes & FileAttributes.ReadOnly) != 0) di.Attributes &= ~FileAttributes.ReadOnly;
+			foreach (FileInfo file in di.GetFiles("*", SearchOption.AllDirectories))
+				if ((file.Attributes & FileAttributes.ReadOnly) != 0) file.Attributes &= ~FileAttributes.ReadOnly;
+			foreach (DirectoryInfo dir in di.GetDirectories("*", SearchOption.AllDirectories))
+				if ((dir.Attributes & FileAttributes.ReadOnly) != 0) dir.Attributes &= ~FileAttributes.ReadOnly;
+		}
+		catch { /* best effort — the delete/copy below will surface any real problem */ }
+	}
+
+	/// <summary>Deletes a directory tree robustly: clears read-only attributes first (the common cause of an
+	/// "access is denied" on delete) and retries a few times for a transient lock (e.g. an antivirus scanning a
+	/// freshly written file).</summary>
+	private static void ForceDeleteDirectory(string path)
+	{
+		if (!Directory.Exists(path)) return;
+		ClearReadOnlyRecursive(path);
+		for (int attempt = 0; ; attempt++)
+		{
+			try { Directory.Delete(path, recursive: true); return; }
+			catch (Exception) when (attempt < 3) { Thread.Sleep(200); }
+		}
+	}
+
+	/// <summary>An overwriting file copy that first clears a read-only destination (otherwise the copy fails with
+	/// "access is denied") and retries a few times for a transient lock.</summary>
+	private static void RobustCopy(string source, string dest)
+	{
+		for (int attempt = 0; ; attempt++)
+		{
+			try
+			{
+				if (File.Exists(dest))
+				{
+					FileAttributes attrs = File.GetAttributes(dest);
+					if ((attrs & FileAttributes.ReadOnly) != 0) File.SetAttributes(dest, attrs & ~FileAttributes.ReadOnly);
+				}
+				File.Copy(source, dest, overwrite: true);
+				return;
+			}
+			catch (Exception) when (attempt < 3) { Thread.Sleep(200); }
 		}
 	}
 }

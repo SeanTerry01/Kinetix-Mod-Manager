@@ -115,7 +115,28 @@ public partial class Form1
 		// The Discovery "Load more" row carries no position; its row text is read by the screen reader.
 		if (listBox.SelectedItem is DiscoveryLoadMoreRow) return;
 		int itemCount = listBox.Name == "listDiscovery" ? DiscoveryResultCount() : listBox.Items.Count;
-		Speak(Loc.T("common.position", listBox.SelectedIndex + 1, itemCount));
+		SpeakListPosition(listBox, Loc.T("common.position", listBox.SelectedIndex + 1, itemCount));
+	}
+
+	private ListBox? _lastPosList;
+	private int _lastPosIndex = -1;
+	private long _lastPosTicks;
+
+	/// <summary>
+	/// Speaks a list's "X of Y" position, skipping a repeat of the same list+index within a short window. This
+	/// stops a double announcement when a list receives focus twice in quick succession (e.g. a dialog that
+	/// explicitly focuses its list on top of the focus it gets naturally on open). Arrowing changes the index, so
+	/// normal navigation is never suppressed.
+	/// </summary>
+	private void SpeakListPosition(ListBox list, string text)
+	{
+		long now = Environment.TickCount64;
+		if (ReferenceEquals(_lastPosList, list) && _lastPosIndex == list.SelectedIndex && now - _lastPosTicks < 700)
+			return;
+		_lastPosList = list;
+		_lastPosIndex = list.SelectedIndex;
+		_lastPosTicks = now;
+		Speak(text);
 	}
 
 	[System.Runtime.InteropServices.DllImport("user32.dll")]
@@ -236,7 +257,7 @@ public partial class Form1
 				text = text + Loc.T("helpers.pressEnterChoose", linkCount);
 			}
 		}
-		Speak(text);
+		SpeakListPosition(list, text);
 	}
 
 	/// <summary>
@@ -254,7 +275,7 @@ public partial class Form1
 			text = Loc.T("help.updates", GetShortcutString("UpdateAll"), GetShortcutString("ReadDescription"), GetShortcutString("LaunchGame"));
 			break;
 		case AppTab.Backups:
-			text = Loc.T("help.backups", GetShortcutString("PruneBackups"), GetShortcutString("OpenBackups"));
+			text = Loc.T("help.backups", GetShortcutString("DeleteOldBackups"), GetShortcutString("OpenBackups"));
 			break;
 		case AppTab.Discovery:
 			text = Loc.T("help.discovery", GetShortcutString("ReadDescription"));
@@ -387,7 +408,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			MessageBox.Show(Loc.T("discovery.errorBox", ex.Message));
+			SpeakBox(Loc.T("discovery.errorBox", ex.Message));
 		}
 		finally
 		{
@@ -463,6 +484,89 @@ public partial class Form1
 		{
 			Tolk.Output(text, interrupt);
 		}
+	}
+
+	/// <summary>
+	/// Blocks briefly so a just-spoken announcement can finish before the caller tears down Tolk (used on exit).
+	/// Tolk only reports <see cref="Tolk.IsSpeaking"/> reliably for its own SAPI voice; most screen readers
+	/// return false even while talking, so we always wait a fixed minimum sized to a short sentence, then stop
+	/// early once speech is known to be done (or at the hard cap). Runs on the closing thread; the pause is
+	/// acceptable there.
+	/// </summary>
+	private static void WaitForSpeechToFinish(int minMs = 1800, int maxMs = 3000)
+	{
+		const int step = 50;
+		int elapsed = 0;
+		while (elapsed < maxMs)
+		{
+			Thread.Sleep(step);
+			elapsed += step;
+			bool speaking;
+			try { speaking = Tolk.IsSpeaking(); } catch { speaking = false; }
+			if (!speaking && elapsed >= minMs) break;
+		}
+	}
+
+	/// <summary>
+	/// Async sibling of <see cref="WaitForSpeechToFinish"/> for use on the UI thread without blocking it — waits
+	/// for a just-spoken announcement to finish before continuing (e.g. before the startup loading speaks). The
+	/// minimum is longer here because the startup welcome/hint is a full sentence; as with the sync version, only
+	/// SAPI reports <see cref="Tolk.IsSpeaking"/>, so screen readers simply wait the minimum.
+	/// </summary>
+	private static async Task WaitForSpeechAsync(int minMs = 2500, int maxMs = 12000)
+	{
+		const int step = 100;
+		int elapsed = 0;
+		while (elapsed < maxMs)
+		{
+			await Task.Delay(step);
+			elapsed += step;
+			bool speaking;
+			try { speaking = Tolk.IsSpeaking(); } catch { speaking = false; }
+			if (!speaking && elapsed >= minMs) break;
+		}
+	}
+
+	/// <summary>
+	/// Appends a sentence period to the accessible name of value/state-bearing controls (combo boxes, check boxes,
+	/// list boxes, radio buttons, sliders) anywhere under <paramref name="root"/>, so a screen reader pauses
+	/// between the field name and the value or state it reads next — "Sound volume. 100" rather than the two run
+	/// together. Controls with no explicit AccessibleName use their visible Text as the basis (the visible text is
+	/// left unchanged). Idempotent: a name already ending in a period is skipped, so it's safe to re-run.
+	/// </summary>
+	private static void ApplyScreenReaderPauses(Control root)
+	{
+		foreach (Control c in root.Controls)
+		{
+			switch (c)
+			{
+				case CheckBox:
+				case RadioButton:
+					// Text is a real label for these, so fall back to it when there's no explicit name.
+					AddReadingPause(c, !string.IsNullOrWhiteSpace(c.AccessibleName) ? c.AccessibleName : c.Text);
+					break;
+				case ComboBox:
+				case ListBox:
+				case TrackBar:
+					// Their Text is the current value/selection, NOT a label — only add the pause to an explicit
+					// accessible name, otherwise we'd name the field after its own value and a screen reader would
+					// then announce that value twice (the "name" and the selection).
+					if (!string.IsNullOrWhiteSpace(c.AccessibleName)) AddReadingPause(c, c.AccessibleName);
+					break;
+				default:
+					if (c.HasChildren) ApplyScreenReaderPauses(c);
+					break;
+			}
+		}
+	}
+
+	/// <summary>Trims trailing whitespace/colon from <paramref name="basis"/> and, if it isn't already a sentence,
+	/// sets <paramref name="c"/>'s accessible name to it followed by a period (the reading pause).</summary>
+	private static void AddReadingPause(Control c, string basis)
+	{
+		basis = (basis ?? "").TrimEnd().TrimEnd(':').TrimEnd();
+		if (basis.Length > 0 && !basis.EndsWith("."))
+			c.AccessibleName = basis + ".";
 	}
 
 	/// <summary>

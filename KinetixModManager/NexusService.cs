@@ -453,25 +453,49 @@ public class NexusService
 		using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(30) };
 		client.DefaultRequestHeaders.Add("User-Agent", $"KinetixModManager/{AppVersion}");
 
-		using var response = await client.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead);
-		response.EnsureSuccessStatusCode();
-
-		long? totalBytes = response.Content.Headers.ContentLength;
-		using var contentStream = await response.Content.ReadAsStreamAsync();
-		using var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
-
-		var buffer = new byte[8192];
-		long totalRead = 0;
-		int read;
-		while ((read = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+		try
 		{
-			await fileStream.WriteAsync(buffer, 0, read);
-			totalRead += read;
-			if (totalBytes.HasValue && progress != null)
+			using var response = await client.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead);
+			response.EnsureSuccessStatusCode();
+
+			long? totalBytes = response.Content.Headers.ContentLength;
+			using var contentStream = await response.Content.ReadAsStreamAsync();
+			using var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+
+			var buffer = new byte[8192];
+			long totalRead = 0;
+			// HttpClient.Timeout only covers receiving the response headers (we use ResponseHeadersRead); it does
+			// NOT cover reading the content stream. So a CDN that stalls mid-transfer would hang ReadAsync forever
+			// (the classic "stuck at 94%"). Enforce our own per-read watchdog: if no bytes arrive within this
+			// window, abort with a timeout the caller can report instead of hanging indefinitely.
+			TimeSpan stallTimeout = TimeSpan.FromSeconds(90);
+			while (true)
 			{
-				double pct = (double)totalRead / totalBytes.Value * 100.0;
-				progress.Report(pct);
+				int read;
+				using (var cts = new CancellationTokenSource(stallTimeout))
+				{
+					try { read = await contentStream.ReadAsync(buffer.AsMemory(0, buffer.Length), cts.Token); }
+					catch (OperationCanceledException)
+					{
+						throw new TimeoutException($"The download stalled — no data was received for {stallTimeout.TotalSeconds:0} seconds. Check your connection and try the download again.");
+					}
+				}
+				if (read <= 0) break;
+
+				await fileStream.WriteAsync(buffer.AsMemory(0, read));
+				totalRead += read;
+				if (totalBytes.HasValue && progress != null)
+				{
+					double pct = (double)totalRead / totalBytes.Value * 100.0;
+					progress.Report(pct);
+				}
 			}
+		}
+		catch
+		{
+			// Don't leave a half-written file behind for a later install to pick up as if it were complete.
+			try { if (File.Exists(destinationPath)) File.Delete(destinationPath); } catch { }
+			throw;
 		}
 	}
 
@@ -555,10 +579,23 @@ public class NexusService
 
 			var buffer = new byte[8192];
 			long totalRead = 0;
-			int read;
-			while ((read = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+			// As in DownloadFileWithProgressAsync: HttpClient.Timeout doesn't cover content-stream reads, so guard
+			// each read with a stall watchdog to avoid hanging forever on a stalled CDN connection.
+			TimeSpan stallTimeout = TimeSpan.FromSeconds(90);
+			while (true)
 			{
-				await fileStream.WriteAsync(buffer, 0, read);
+				int read;
+				using (var cts = new CancellationTokenSource(stallTimeout))
+				{
+					try { read = await contentStream.ReadAsync(buffer.AsMemory(0, buffer.Length), cts.Token); }
+					catch (OperationCanceledException)
+					{
+						throw new TimeoutException($"The download stalled — no data was received for {stallTimeout.TotalSeconds:0} seconds. Check your connection and try the update again.");
+					}
+				}
+				if (read <= 0) break;
+
+				await fileStream.WriteAsync(buffer.AsMemory(0, read));
 				totalRead += read;
 				if (totalBytes.HasValue && progress != null)
 				{

@@ -354,11 +354,12 @@ public partial class Form1 : Form, IMessageFilter
 		{
 			Tolk.Load();
 			Tolk.TrySAPI(trySAPI: true);
-			Speak(Loc.T("app.started"));
+			// The welcome / shortcut-hint announcement is spoken from the Shown handler (below) so we can wait
+			// for it to finish before the startup loading speaks over it.
 		}
 		catch (Exception ex)
 		{
-			MessageBox.Show(Loc.T("app.tolkFailed", ex.Message));
+			SpeakBox(Loc.T("app.tolkFailed", ex.Message));
 		}
 		// Migrate old root backups/downloads files to StardewValley game subfolder if present
 		try
@@ -401,6 +402,9 @@ public partial class Form1 : Form, IMessageFilter
 		catch (Exception ex) { LogError("Migration", "Failed to migrate backups/downloads folders: " + ex.Message); }
 
 		SetupAccessibleUI();
+		// Add the "name, pause, then value/state" reading to the main window's combos, checkboxes, and lists so a
+		// screen reader doesn't run the field name straight into its value. Dialogs do the same when they open.
+		ApplyScreenReaderPauses(this);
 		if (!Directory.Exists(downloadsPath))
 		{
 			Directory.CreateDirectory(downloadsPath);
@@ -422,6 +426,14 @@ public partial class Form1 : Form, IMessageFilter
 		base.FormClosing += delegate
 		{
 			form._pipeCts.Cancel();
+			// Announce shutdown and wait for the screen reader to finish speaking it before Tolk is unloaded
+			// (unloading would cut the message off). The brief pause is fine during exit — the disconnect cue
+			// below already pauses.
+			if (Tolk.IsLoaded() && form._settings!.SpeakShutdownMessage)
+			{
+				form.Speak(Loc.T("app.shuttingDown"), interrupt: true);
+				WaitForSpeechToFinish();
+			}
 			// Only disconnect on exit if a game session is still open. Closing a session
 			// (Ctrl+Shift+C) already disconnects, so exiting with no game loaded must not
 			// replay a disconnect for a session that was already torn down.
@@ -437,7 +449,22 @@ public partial class Form1 : Form, IMessageFilter
 		};
 		base.Shown += async delegate
 		{
-			await form.CheckForAppUpdates(manual: false);
+			// Speak the welcome / shortcut-hint, then wait for it before any startup loading speaks (connection
+			// status, refresh announcements, the focused list's position) so it isn't talked over. Toggleable in
+			// Settings (Startup tab).
+			if (form._settings!.SpeakStartupMessage)
+			{
+				// The screen reader announces the new window's title bar and focused tab the moment it appears —
+				// that foreground announcement fires just after this handler runs and would cut the welcome off.
+				// Let it play first, then speak the welcome last (interrupting any tail) so the welcome plays in
+				// full; nothing else changes focus or the title until after the wait below.
+				await Task.Delay(1500);
+				form.Speak(Loc.T("app.started"), interrupt: true);
+				await WaitForSpeechAsync();
+			}
+
+			if (form._settings.CheckForManagerUpdatesAtStartup)
+				await form.CheckForAppUpdates(manual: false);
 
 			bool stardewInstalled = form.IsGameInstalled("StardewValley");
 			bool skyrimInstalled = form.IsGameInstalled("SkyrimSE");

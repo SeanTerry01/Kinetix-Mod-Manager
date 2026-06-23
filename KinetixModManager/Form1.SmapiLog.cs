@@ -36,7 +36,7 @@ public partial class Form1
 	private void OpenGameLog()
 	{
 		if (_settings.ActiveGame == "StardewValley") { OpenRawSmapiLog(); return; }
-		if (!IsBethesdaGame) { MessageBox.Show(Loc.T("log.notFound")); return; }
+		if (!IsBethesdaGame) { SpeakBox(Loc.T("log.notFound")); return; }
 
 		string folder = BethesdaLogFolder();
 		string primary = Path.Combine(folder, _settings.ActiveGame == "SkyrimSE" ? "skse64.log" : "f4se.log");
@@ -45,7 +45,7 @@ public partial class Form1
 		else if (Directory.Exists(folder))
 			Process.Start("explorer.exe", folder);
 		else
-			MessageBox.Show(Loc.T("log.notFound"));
+			SpeakBox(Loc.T("log.notFound"));
 	}
 
 	/// <summary>
@@ -76,7 +76,7 @@ public partial class Form1
 		}
 		else
 		{
-			MessageBox.Show(Loc.T("smapi.logNotFound"));
+			SpeakBox(Loc.T("smapi.logNotFound"));
 		}
 	}
 
@@ -233,7 +233,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			MessageBox.Show(Loc.T("smapi.uploadFailed", ex.Message));
+			SpeakBox(Loc.T("smapi.uploadFailed", ex.Message));
 		}
 		finally
 		{
@@ -320,6 +320,7 @@ public partial class Form1
 
 		dialog.Controls.Add(layout);
 		dialog.Shown += (s, e) => list.Focus();
+		ApplyScreenReaderPauses(dialog);
 		dialog.ShowDialog();
 	}
 

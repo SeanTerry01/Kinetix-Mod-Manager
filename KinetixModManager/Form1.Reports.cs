@@ -341,7 +341,7 @@ public partial class Form1
 			if (e.KeyCode != Keys.Enter) return;
 			if (!string.IsNullOrEmpty(row.SearchTerm))
 			{
-				if (MessageBox.Show(f, Loc.T("reports.searchConfirm", row.SearchTerm), Loc.T("reports.searchTitle"),
+				if (SpeakBox(f, Loc.T("reports.searchConfirm", row.SearchTerm), Loc.T("reports.searchTitle"),
 						MessageBoxButtons.YesNo) == DialogResult.Yes)
 				{
 					f.Close();

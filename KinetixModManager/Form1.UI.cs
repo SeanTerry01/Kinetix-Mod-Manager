@@ -192,6 +192,10 @@ public partial class Form1
 		{
 			ShowChangeLog();
 		});
+		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.modDocs", GetShortcutString("ModDocs")), null, delegate
+		{
+			ShowModDocs();
+		});
 		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.accessibilityControls", GetShortcutString("ControlsHelp")), null, delegate
 		{
 			ShowAccessibilityControls();
@@ -310,7 +314,7 @@ public partial class Form1
 		tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
 		btnPruneBackups = new Button
 		{
-			Text = Loc.T("ui.pruneBackups", GetShortcutString("PruneBackups")),
+			Text = Loc.T("ui.pruneBackups", GetShortcutString("DeleteOldBackups")),
 			Width = 250,
 			Height = 35
 		};
@@ -353,7 +357,8 @@ public partial class Form1
 		{
 			Width = 150,
 			Font = new Font("Segoe UI", 12f),
-			DropDownStyle = ComboBoxStyle.DropDownList
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			AccessibleName = Loc.T("ui.searchTypeName")
 		};
 		ComboBox.ObjectCollection items = cmbDiscoveryType.Items;
 		object[] items2 = new string[4] { "Search", "Trending", "Most Popular", "Recent" };
@@ -425,13 +430,14 @@ public partial class Form1
 			Padding = new Padding(0, 5, 0, 0)
 		});
 		flowLayoutPanel2.Controls.Add(txtSearch);
+		// Search history sits right after the search box and before the search-type selector, per user preference.
+		flowLayoutPanel2.Controls.Add(btnHistory);
 		flowLayoutPanel2.Controls.Add(cmbDiscoveryType);
 		flowLayoutPanel2.Controls.Add(new Label { Text = Loc.T("ui.languageLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
 		flowLayoutPanel2.Controls.Add(cmbDiscoveryLanguage);
 		flowLayoutPanel2.Controls.Add(new Label { Text = Loc.T("ui.resultsPerLoadLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
 		flowLayoutPanel2.Controls.Add(cmbDiscoveryPageSize);
 		flowLayoutPanel2.Controls.Add(btnSearch);
-		flowLayoutPanel2.Controls.Add(btnHistory);
 		listDiscovery = new ListBox
 		{
 			Dock = DockStyle.Fill,

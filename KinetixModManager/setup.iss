@@ -4,7 +4,7 @@
 [Setup]
 AppId={{D37D0B2E-6D3F-4B1C-BD03-9A1D2E3F4B5C}
 AppName=Kinetix Mod Manager
-AppVersion=1.4.2
+AppVersion=1.4.3
 AppPublisher=Audi Venture Games
 AppPublisherURL=https://github.com/SeanTerry01/Kinetix-Mod-Manager
 AppSupportURL=https://github.com/SeanTerry01/Kinetix-Mod-Manager
@@ -46,6 +46,8 @@ Source: "bin\Release\net10.0-windows\win-x64\publish\MANUAL.md"; DestDir: "{app}
 Source: "bin\Release\net10.0-windows\win-x64\publish\CHANGELOG.md"; DestDir: "{app}"; Flags: ignoreversion
 ; UI language files (en.json plus any community translations)
 Source: "bin\Release\net10.0-windows\win-x64\publish\lang\*"; DestDir: "{app}\lang"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+; Bundled accessibility-mod documentation (offline fallback for the F3 Mod Documentation viewer)
+Source: "bin\Release\net10.0-windows\win-x64\publish\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 ; Sound themes and initial folders - using skipifsourcedoesntexist to allow empty folders
 Source: "bin\Release\net10.0-windows\win-x64\publish\sounds\*"; DestDir: "{app}\sounds"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "bin\Release\net10.0-windows\win-x64\publish\profiles\*"; DestDir: "{app}\profiles"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist

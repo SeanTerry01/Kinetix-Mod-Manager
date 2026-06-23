@@ -134,7 +134,7 @@ public partial class Form1
 			Speak(Loc.T("loadorder.rebuildNotApplicable"));
 			return;
 		}
-		if (MessageBox.Show(Loc.T("loadorder.rebuildConfirm"), Loc.T("loadorder.rebuildTitle"),
+		if (SpeakBox(Loc.T("loadorder.rebuildConfirm"), Loc.T("loadorder.rebuildTitle"),
 				MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
 			return;
 
@@ -226,7 +226,7 @@ public partial class Form1
 		catch (Exception ex)
 		{
 			_soundEngine.Play("error");
-			MessageBox.Show(Loc.T("loadorder.exportError", ex.Message));
+			SpeakBox(Loc.T("loadorder.exportError", ex.Message));
 		}
 	}
 
@@ -265,25 +265,25 @@ public partial class Form1
 		catch (Exception ex)
 		{
 			_soundEngine.Play("error");
-			MessageBox.Show(Loc.T("loadorder.importError", ex.Message));
+			SpeakBox(Loc.T("loadorder.importError", ex.Message));
 			return;
 		}
 
 		if (data == null || (data.ModPriority.Count == 0 && data.PluginOrder.Count == 0))
 		{
 			_soundEngine.Play("error");
-			MessageBox.Show(Loc.T("loadorder.importInvalid"));
+			SpeakBox(Loc.T("loadorder.importInvalid"));
 			return;
 		}
 
 		if (!string.IsNullOrEmpty(data.Game) && !string.Equals(data.Game, game, StringComparison.OrdinalIgnoreCase))
 		{
 			_soundEngine.Play("error");
-			MessageBox.Show(Loc.T("loadorder.importGameMismatch", GameDisplayName(data.Game), GameDisplayName(game)));
+			SpeakBox(Loc.T("loadorder.importGameMismatch", GameDisplayName(data.Game), GameDisplayName(game)));
 			return;
 		}
 
-		if (MessageBox.Show(Loc.T("loadorder.importConfirm"), Loc.T("loadorder.importTitle"),
+		if (SpeakBox(Loc.T("loadorder.importConfirm"), Loc.T("loadorder.importTitle"),
 				MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
 			return;
 

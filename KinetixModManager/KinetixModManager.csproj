@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
-    <Version>1.4.2</Version>
+    <Version>1.4.3</Version>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -57,6 +57,12 @@
     <None Include="..\CHANGELOG.md">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>CHANGELOG.md</Link>
+    </None>
+    <!-- Bundled accessibility-mod documentation shown by the Mod Documentation viewer (F3). Listed
+         explicitly so internal planning docs that also live in ..\docs are never shipped. -->
+    <None Include="..\docs\stardew-access.md;..\docs\skyrim-access.md;..\docs\fallout4-access.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>docs\%(Filename)%(Extension)</Link>
     </None>
   </ItemGroup>
 

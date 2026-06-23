@@ -1,3 +1,50 @@
+# Version 1.4.3
+
+Read each accessibility mod's own documentation without leaving the manager, hear every prompt spoken aloud, and find your way around a tidier, tabbed Settings window. This release is a big pass on the things you hear and how you move through the program.
+
+---
+
+## ✨ New in Version 1.4.3
+
+### 📖 Mod Documentation viewer (F3)
+*   **Press F3** (or **Help → Mod Documentation**) to open the documentation for your current game's accessibility mod: **Stardew Access**, **Skyrim Access**, or **Fallout 4 Access**. No more hunting for a README on your computer or searching GitHub.
+*   **Familiar, accessible layout.** It uses the exact same viewer as the User Manual: a table-of-contents list on the left and a read-only text area on the right. Arrow through the sections, press **Right** or **Enter** to open one that has sub-topics, **Left** or **Backspace** to go back, **Tab** to read the text, and **Escape** to close. Position ("3 of 8") and "has sub-topics" are announced just like the manual.
+*   **Always works, stays current.** A copy of each guide ships with the manager, so it opens instantly and works offline. In the background it also refreshes from the source — the live GitHub documentation for Stardew Access, or (when you're logged in to Nexus) the mod's current Nexus page for Skyrim Access and Fallout 4 Access — so the next time you open it, it's up to date.
+*   **Deep for Stardew Access.** The Stardew guide pulls together the mod's overview, setup, features, full keybindings, commands, and configuration pages into one navigable document.
+*   **Remappable.** F3 is the default; change it in **Settings → Shortcut Manager** (action name "ModDocs") if you'd rather use another key.
+
+### 🗂️ Settings is now organized into tabs
+*   The Settings window is split into **Paths & Account**, **Startup**, **Audio**, **Mods & Search**, and **Language** tabs. It opens on the tab strip so you can arrow between tabs, then Tab into each tab's controls. Every existing setting is still there, just grouped.
+
+### 🔊 Every prompt is now spoken
+*   Yes/No, OK, and other message boxes now **speak their message** through the screen reader, the same way the rest of the app talks — so you always hear the question, not just the focused button (and it works under SAPI too, not only NVDA).
+
+### 👋 Spoken welcome and goodbye
+*   On startup the manager greets you with **"Welcome to Kinetix Mod Manager"** plus the F1 / Shift+F1 hints, and waits for that to finish before it starts loading and connecting, so nothing talks over it.
+*   On exit it says a short **goodbye** and waits for it to finish before closing.
+*   Both can be turned off on the **Settings → Startup** tab.
+
+### ⏸️ Clearer screen-reader reading
+*   Comboboxes, checkboxes, and lists now pause between the field name and its value or state — "Sound volume. 100" rather than running them together — throughout the main window and the dialogs.
+
+### 🔎 Search tab and Settings tweaks
+*   On the **Search** tab the **search history** button now sits right after the search box and before the search-type selector, and that selector finally has a proper spoken label ("Search type").
+*   The volume and "max backups" controls are now **dropdowns** instead of spin boxes, which the screen reader announces cleanly (the old spinners read their name twice).
+*   New **"Check for Manager Updates at Startup"** setting, separate from the mod-update check, so you can control each on its own.
+*   The "Random Logo at Startup" checkbox lives with the logo selector on the **Audio** tab now, and both appear only when **Show Splash Screen** is on.
+
+### 🗑️ "Delete Old Backups"
+*   The Backups tab's "Prune Old Backups" is now **"Delete Old Backups"**, on **Ctrl + Shift + D** (its old key clashed with **Open Backups Folder**). Existing keybindings are migrated automatically.
+
+### 🛠️ Fixes
+*   **Updating from a mod's page no longer asks to overwrite.** Downloading a newer version through "Mod Manager Download" now installs it as an update instead of prompting — the "already installed, overwrite?" confirmation is only for re-installing the same or an older copy.
+*   **Downloads can't hang forever.** If a download stalls with no data (the old "stuck at 94%"), it now times out with a clear message and cleans up the partial file, so you can just try again without restarting the manager.
+*   **"Access denied" installs are handled.** Installing a mod whose files were marked read-only (e.g. SkyPatcher on some setups) no longer fails — read-only files are cleared before overwriting/deleting, with a clearer error and a retry if something is briefly locked.
+*   **FOMOD installer button order.** On a FOMOD's final step you now tab **Back → Install → Cancel**, so Install comes before Cancel.
+*   **Accessibility Suite & Sound Demo lists** announce the item position correctly and no longer say it twice when you enter them.
+*   **About window** now hides the main window while it's open, and reads cleanly (the title and version aren't repeated three times).
+*   **Sound Demo** closes with **Escape** from anywhere in the dialog, not only from the sound list.
+
 # Version 1.4.2
 
 Long downloads and installs now tell you how far along they are — by ear. Big mods (200 MB and up) can take a while, so the manager now plays a rising tone and/or speaks the percentage as they download **and** as they install, and you can choose which in Settings.

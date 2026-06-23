@@ -130,7 +130,7 @@ public partial class Form1
 	/// </summary>
 	private void ApplyProfile(ModProfile profile)
 	{
-		if (MessageBox.Show(Loc.T("profiles.applyConfirm", profile.Name), Loc.T("profiles.applyTitle"), MessageBoxButtons.YesNo) == DialogResult.No)
+		if (SpeakBox(Loc.T("profiles.applyConfirm", profile.Name), Loc.T("profiles.applyTitle"), MessageBoxButtons.YesNo) == DialogResult.No)
 		{
 			return;
 		}
@@ -201,7 +201,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			MessageBox.Show(Loc.T("profiles.applyFailed", ex.Message));
+			SpeakBox(Loc.T("profiles.applyFailed", ex.Message));
 		}
 	}
 }
