@@ -622,7 +622,7 @@ public static class ModFileSystem
 			string destAbs = Path.Combine(gameRootPath, kv.Key);
 			try
 			{
-				if (File.Exists(destAbs)) File.Delete(destAbs);
+				RobustDeleteFile(destAbs);
 				CleanEmptyParents(Path.GetDirectoryName(destAbs), gameRootPath);
 			}
 			catch (Exception ex) { logError(destAbs, $"Undeploy failed: {ex.Message}"); }
@@ -646,8 +646,8 @@ public static class ModFileSystem
 			{
 				string? destDir = Path.GetDirectoryName(destAbs);
 				if (destDir != null && !Directory.Exists(destDir)) Directory.CreateDirectory(destDir);
-				if (File.Exists(destAbs)) File.Delete(destAbs);
-				if (!TryCreateHardLink(destAbs, sourceFile)) File.Copy(sourceFile, destAbs, true);
+				RobustDeleteFile(destAbs);
+				if (!TryCreateHardLink(destAbs, sourceFile)) RobustCopy(sourceFile, destAbs);
 			}
 			catch (Exception ex) { logError(sourceFile, $"Deploy failed: {ex.Message}"); }
 		}
@@ -931,14 +931,22 @@ public static class ModFileSystem
 			await Task.Run(async () =>
 			{
 				Directory.CreateDirectory(tempDir);
-				string ext = Path.GetExtension(zipPath).ToLower();
-				if (ext == ".7z")
+				// Route by the archive's real signature, not its file name: a 7z/rar mod can arrive named ".zip"
+				// (see DetectArchiveFormat), which would otherwise crash the zip extractor. Only when the bytes are
+				// unrecognised do we trust the extension.
+				ArchiveFormat fmt = DetectArchiveFormat(zipPath);
+				if (fmt == ArchiveFormat.Unknown)
+				{
+					string ext = Path.GetExtension(zipPath).ToLower();
+					fmt = ext == ".7z" ? ArchiveFormat.SevenZip : ext == ".rar" ? ArchiveFormat.Rar : ArchiveFormat.Zip;
+				}
+				if (fmt == ArchiveFormat.SevenZip)
 				{
 					string dataBasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AudiVentureGames", "KinetixModManager");
 					string exePath = await Ensure7ZipCommandLineTool(dataBasePath, nexusService);
 					Run7ZipExtract(exePath, zipPath, tempDir, installProgress);
 				}
-				else if (ext == ".rar")
+				else if (fmt == ArchiveFormat.Rar)
 				{
 					// The bundled 7za and .NET's ZipFile cannot read RAR, so use SharpCompress (managed).
 					ExtractWithSharpCompress(zipPath, tempDir, installProgress);
@@ -1414,6 +1422,38 @@ public static class ModFileSystem
 	/// Mirrors <see cref="ZipFile.ExtractToDirectory(string,string)"/> including its path-traversal guard (an entry
 	/// whose resolved path escapes <paramref name="outputDir"/> is rejected before any bytes are written).
 	/// </summary>
+	/// <summary>The archive container of a downloaded mod, identified by its file signature.</summary>
+	private enum ArchiveFormat { Zip, SevenZip, Rar, Unknown }
+
+	/// <summary>
+	/// Detects a mod archive's real format from its leading bytes (magic number) rather than its file extension.
+	/// Nexus mods are commonly .7z or .rar, but the downloaded file can end up named ".zip" — the CDN filename
+	/// isn't always present, in which case <see cref="ResolveNxmUrlAsync"/> falls back to a ".zip" name. Feeding a
+	/// 7z/rar to .NET's ZipFile then throws "End of Central Directory record could not be found". Sniffing the
+	/// signature routes each archive to the right extractor regardless of how it was named.
+	/// </summary>
+	private static ArchiveFormat DetectArchiveFormat(string path)
+	{
+		try
+		{
+			using FileStream fs = File.OpenRead(path);
+			byte[] head = new byte[8];
+			int n = fs.Read(head, 0, head.Length);
+			// 7z: 37 7A BC AF 27 1C
+			if (n >= 6 && head[0] == 0x37 && head[1] == 0x7A && head[2] == 0xBC && head[3] == 0xAF && head[4] == 0x27 && head[5] == 0x1C)
+				return ArchiveFormat.SevenZip;
+			// RAR (v1.5–4.x and v5.0 both start): 52 61 72 21 1A 07
+			if (n >= 6 && head[0] == 0x52 && head[1] == 0x61 && head[2] == 0x72 && head[3] == 0x21 && head[4] == 0x1A && head[5] == 0x07)
+				return ArchiveFormat.Rar;
+			// ZIP (incl. empty/spanned variants): 50 4B {03 04 | 05 06 | 07 08}
+			if (n >= 4 && head[0] == 0x50 && head[1] == 0x4B &&
+				((head[2] == 0x03 && head[3] == 0x04) || (head[2] == 0x05 && head[3] == 0x06) || (head[2] == 0x07 && head[3] == 0x08)))
+				return ArchiveFormat.Zip;
+		}
+		catch { /* fall back to the extension below */ }
+		return ArchiveFormat.Unknown;
+	}
+
 	private static void ExtractZipWithProgress(string archivePath, string outputDir, IProgress<double>? progress)
 	{
 		using ZipArchive archive = ZipFile.OpenRead(archivePath);
@@ -1857,6 +1897,29 @@ public static class ModFileSystem
 		for (int attempt = 0; ; attempt++)
 		{
 			try { Directory.Delete(path, recursive: true); return; }
+			catch (Exception) when (attempt < 3) { Thread.Sleep(200); }
+		}
+	}
+
+	/// <summary>Public entry point for deleting a mod's folder from the managed mods directory. Uses the same
+	/// read-only-clearing, retrying delete as the installer, so a mod that ships a read-only file (e.g. SkyPatcher's
+	/// DLL) no longer fails the user's Delete action with "Access to the path '…' is denied".</summary>
+	public static void DeleteModFolder(string path) => ForceDeleteDirectory(path);
+
+	/// <summary>Deletes a single file robustly: clears a read-only attribute first (otherwise the delete throws
+	/// "access is denied" on mods that mark files read-only) and retries a few times for a transient lock.</summary>
+	private static void RobustDeleteFile(string path)
+	{
+		if (!File.Exists(path)) return;
+		for (int attempt = 0; ; attempt++)
+		{
+			try
+			{
+				FileAttributes attrs = File.GetAttributes(path);
+				if ((attrs & FileAttributes.ReadOnly) != 0) File.SetAttributes(path, attrs & ~FileAttributes.ReadOnly);
+				File.Delete(path);
+				return;
+			}
 			catch (Exception) when (attempt < 3) { Thread.Sleep(200); }
 		}
 	}

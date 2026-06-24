@@ -1,3 +1,20 @@
+# Version 1.4.5
+
+A round of fixes for things that bit real installs: deleting mods that ship read-only files, installing mods that arrive as 7z or RAR, and the Settings window announcing where you've landed.
+
+---
+
+## 🛠️ Fixes in Version 1.4.5
+
+### 🔊 Settings announces the active tab again
+*   Opening **Settings** (**Ctrl + P**) now speaks the tab you land on — "Paths & Account Tab" — instead of going quiet. Focus was landing on the tab strip correctly, but the tab name wasn't being spoken; it now is.
+
+### 🗑️ Deleting mods with read-only files (e.g. SkyPatcher)
+*   **Delete Mod** no longer fails with *"Access to the path '…' is denied."* Some mods (SkyPatcher among them) ship files marked read-only, which blocked the delete; the manager now clears that attribute first, the same way installs already did. The fix also covers removing read-only files from your game folder when a mod is disabled or deleted.
+
+### 📦 Installing 7z and RAR mods that looked like ".zip"
+*   Fixed *"Install failed: End of Central Directory record could not be found."* This happened when a mod downloaded as a **7z or RAR** archive but ended up with a `.zip` name, so the manager tried to open it as a zip. It now detects the real archive type from the file's contents (not its name) and uses the right extractor, so these mods install correctly.
+
 # Version 1.4.4
 
 Prefer the manager quiet? You can now switch its sound effects off completely from the Audio tab, while keeping spoken progress feedback if you want it.

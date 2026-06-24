@@ -719,9 +719,17 @@ public partial class Form1
 				f.Close();
 			}
 		};
-		// Land focus on the tab strip so the screen reader announces the tabs (and the user can arrow between
-		// them) before tabbing into the first setting, rather than dropping straight onto one control.
-		f.Shown += delegate { tabs.Focus(); };
+		// Land focus on the tab strip so the user can arrow between tabs before tabbing into the first setting,
+		// rather than dropping straight onto one control. Programmatic focus alone doesn't reliably make the screen
+		// reader announce the active tab (the window-open announcement wins the race), so speak it ourselves after a
+		// short delay — the same "let the SR read the control first, then add detail" timing the lists use.
+		f.Shown += async delegate
+		{
+			tabs.Focus();
+			await Task.Delay(100);
+			if (!f.IsDisposed && tabs.Focused)
+				Speak(Loc.T("common.tabSuffix", tabs.SelectedTab?.Text ?? ""));
+		};
 		// Add the "name then pause then value" reading to every combo/checkbox/list in the dialog.
 		ApplyScreenReaderPauses(f);
 		f.ShowDialog();

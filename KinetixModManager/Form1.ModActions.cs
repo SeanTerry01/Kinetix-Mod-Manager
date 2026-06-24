@@ -294,7 +294,9 @@ public partial class Form1
 			{
 				BackupMod(stardewMod.FolderPath, stardewMod.Name + "_Delete");
 
-				Directory.Delete(stardewMod.FolderPath, recursive: true);
+				// ForceDelete (via ModFileSystem) clears read-only attributes first; a plain Directory.Delete throws
+				// "Access to the path '…' is denied" on mods that ship a read-only file such as SkyPatcher's DLL.
+				ModFileSystem.DeleteModFolder(stardewMod.FolderPath);
 				// RefreshModList below re-scans without the deleted mod and reconciles deployment and
 				// plugins.txt, pruning its files/plugins and restoring any provider it had overridden.
 				_soundEngine.Play("disable");
