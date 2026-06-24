@@ -100,6 +100,13 @@ public class AppSettings
 	/// <summary>Speak the "shutting down" message (and wait for it) when the manager closes.</summary>
 	public bool SpeakShutdownMessage { get; set; } = true;
 
+	/// <summary>
+	/// Master switch for the manager's UI sound effects (named events like connect/enable/error and the
+	/// startup logo sound). When false, those sounds are silenced. Does not affect spoken screen-reader
+	/// output or the download/install progress feedback, which has its own setting (<see cref="ProgressFeedback"/>).
+	/// </summary>
+	public bool EnableUiSounds { get; set; } = true;
+
 	public int SoundVolume { get; set; } = 80;
 
 	/// <summary>

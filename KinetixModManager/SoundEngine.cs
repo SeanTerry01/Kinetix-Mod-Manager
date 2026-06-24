@@ -55,6 +55,9 @@ public class SoundEngine
 	/// </param>
 	public void Play(string name, string? themeOverride = null)
 	{
+		if (!_settings.EnableUiSounds)
+			return;
+
 		Task.Run(() =>
 		{
 			try
@@ -143,6 +146,9 @@ public class SoundEngine
 	/// <param name="file">File name of the <c>.ogg</c> file inside the theme's <c>logo/</c> sub-folder.</param>
 	public void PlayLogoSound(string theme, string file)
 	{
+		if (!_settings.EnableUiSounds)
+			return;
+
 		Task.Run(() =>
 		{
 			try

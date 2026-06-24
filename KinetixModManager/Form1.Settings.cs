@@ -327,6 +327,18 @@ public partial class Form1
 			Padding = new Padding(0, 5, 0, 0),
 			Visible = _settings.ShowSplashScreen
 		};
+		// Master switch for the manager's UI sound effects. Sits first on the tab; when unchecked every other
+		// audio control except the download/install feedback selector is hidden (that feedback is governed
+		// separately by ProgressFeedback and stays available even with UI sounds off).
+		CheckBox cEnableSounds = new CheckBox
+		{
+			Text = Loc.T("settings.enableSounds"),
+			Checked = _settings.EnableUiSounds,
+			AutoSize = true,
+			AccessibleName = Loc.T("settings.enableSoundsName")
+		};
+		tabAudio.Controls.Add(cEnableSounds, 0, ar++);
+
 		// The logo controls only matter when the splash screen is shown (it's what plays the logo sound), so they
 		// appear only while "Show Splash Screen" is checked and follow it live. Random comes before the selector.
 		tabAudio.Controls.Add(cRandomLogo, 0, ar++);
@@ -334,9 +346,11 @@ public partial class Form1
 		tabAudio.Controls.Add(cmbLogo, 0, ar++);
 		cSplash.CheckedChanged += delegate
 		{
-			cRandomLogo.Visible = cSplash.Checked;
-			lblSelectLogo.Visible = cSplash.Checked;
-			cmbLogo.Visible = cSplash.Checked;
+			// Logo controls require both UI sounds and the splash screen to be enabled.
+			bool logo = cEnableSounds.Checked && cSplash.Checked;
+			cRandomLogo.Visible = logo;
+			lblSelectLogo.Visible = logo;
+			cmbLogo.Visible = logo;
 		};
 
 		FlowLayoutPanel flowLayoutPanel2 = new FlowLayoutPanel
@@ -556,6 +570,26 @@ public partial class Form1
 		flowProgress.Controls.Add(cmbProgress);
 		tabAudio.Controls.Add(flowProgress, 0, ar++);
 
+		// Shows or hides the audio controls based on the master "Enable UI sounds" switch. The logo controls
+		// additionally depend on the splash screen being enabled; the download/install feedback selector is left
+		// alone because it has its own setting and applies even when UI sounds are off.
+		void UpdateAudioVisibility()
+		{
+			bool sounds = cEnableSounds.Checked;
+			bool logo = sounds && cSplash.Checked;
+			cRandomLogo.Visible = logo;
+			lblSelectLogo.Visible = logo;
+			cmbLogo.Visible = logo;
+			flowLayoutPanel2.Visible = sounds; // volume
+			flowLayoutPanel4.Visible = sounds; // sound theme
+		}
+		cEnableSounds.CheckedChanged += delegate
+		{
+			UpdateAudioVisibility();
+			Speak(cEnableSounds.Checked ? Loc.T("settings.uiSoundsOn") : Loc.T("settings.uiSoundsOff"));
+		};
+		UpdateAudioVisibility();
+
 		FlowLayoutPanel flowLayoutPanel5 = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Bottom,
@@ -616,6 +650,7 @@ public partial class Form1
 				_settings.SpeakStartupMessage = cStartupMsg.Checked;
 				_settings.SpeakShutdownMessage = cShutdownMsg.Checked;
 				_settings.SaveSearchHistory = cSearchHistory.Checked;
+				_settings.EnableUiSounds = cEnableSounds.Checked;
 				if (nVol.SelectedItem is int volValue) _settings.SoundVolume = volValue;
 				if (nPrune.SelectedItem is int backupValue) _settings.MaxBackupsPerMod = backupValue;
 				if (cmbProgress.SelectedItem is ProgressFeedbackChoice pfc)

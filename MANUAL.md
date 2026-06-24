@@ -70,6 +70,35 @@ You must be **signed in** to the Nexus website for this stage to work.
 
 ---
 
+## The Settings Dashboard (Ctrl + P)
+
+Open the Settings Dashboard at any time with **Ctrl + P**. Everything you can configure lives here, and it is now organized into **tabs** so related options are grouped together instead of in one long list.
+
+### Moving around the tabs
+
+1.  When the dashboard opens, your focus lands on the **tab strip** at the top. Press **Left Arrow** and **Right Arrow** to move between the tabs; your screen reader announces each tab's name as you land on it.
+2.  When you reach the tab you want, press **Tab** to move down into that tab's controls. From there, **Tab** and **Shift + Tab** move forward and backward through the fields on that tab.
+3.  To go back to the tab strip and switch tabs, press **Shift + Tab** until you return to the tab name, or use **Ctrl + Tab** / **Ctrl + Shift + Tab** to jump straight between tabs from anywhere in the dashboard.
+4.  The **"Save Settings"** button (at the bottom, reachable with **Tab** or by pressing **Enter**) applies the settings on **every** tab at once — you do not need to save each tab separately. Press **Escape** or **Cancel** to close without saving.
+
+### What's on each tab
+
+*   **Paths & Account** — Choose which game you're configuring, set its mods and game folders (with **Browse** buttons), and enter your **Nexus API Key**.
+*   **Startup** — Show or hide the splash screen, choose whether to check for mod and manager updates at launch, and turn the spoken **welcome** and **goodbye** messages on or off.
+*   **Audio** — All sound options (see below).
+*   **Mods & Search** — Search results per load, maximum backups kept per mod, and whether to save your search history.
+*   **Language** — Pick the manager's display language, or leave it on **Automatic** to follow Windows.
+
+### The Audio tab in detail
+
+*   **Enable UI Sounds** — This is the **first** control on the tab and acts as a master switch for the manager's sound effects (the connect, enable, disable, error sounds, and the startup logo). **Uncheck it to turn all of those sounds off.** When it is unchecked, the rest of the audio options (volume, sound theme, and the logo selector) are **hidden**, since they no longer apply — leaving only the download and install feedback option, which is controlled separately and still works even with UI sounds off.
+*   **Sound Volume** — A dropdown from 0 to 100 for the overall loudness of those sound effects.
+*   **Set theme manually / Current Audio Theme** — By default the sound theme follows the game you're managing; check **Set theme manually** to choose a specific theme from the dropdown instead.
+*   **Random Logo at Startup / Select Specific Logo** — These appear only when **Show Splash Screen** (on the Startup tab) is enabled, and let you pick which startup logo sound plays.
+*   **Download and install feedback** — Choose how long downloads and installs report progress: **Tones**, **Speech**, **Both**, or **Off**. This is independent of the **Enable UI Sounds** switch above, so you can keep progress feedback even with the other sounds turned off (or vice versa).
+
+---
+
 ## Keyboard Shortcuts
 
 Kinetix Mod Manager is fully keyboard-driven. The shortcuts are grouped by where they apply, and each group has its own topic in this manual's contents list, just below this one. Here is what each group covers:
@@ -431,6 +460,8 @@ The manager uses audio cues to provide feedback. Demo these under **Help -> Soun
 5.  **Error**: Played when a download fails or an installation error occurs.
 6.  **Loading Indicator**: A pulsing sound that plays while the app is checking for updates.
 7.  **Load Complete**: Played when the update check is finished.
+
+You can turn all of these sounds off with the **Enable UI Sounds** checkbox at the top of the **Audio** tab in Settings (**Ctrl + P**). The spoken download/install progress feedback is separate and stays available — see "The Settings Dashboard" above.
 
 ---
 

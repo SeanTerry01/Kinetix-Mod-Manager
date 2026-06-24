@@ -1,3 +1,16 @@
+# Version 1.4.4
+
+Prefer the manager quiet? You can now switch its sound effects off completely from the Audio tab, while keeping spoken progress feedback if you want it.
+
+---
+
+## ✨ New in Version 1.4.4
+
+### 🔇 Turn UI sounds off
+*   A new **"Enable UI Sounds"** checkbox sits at the top of the **Audio** tab in Settings (**Ctrl + P**). Uncheck it to silence all of the manager's sound effects — the connect, enable, disable, and error cues, plus the startup logo sound.
+*   When it's off, the rest of the audio options (volume, sound theme, and the logo selector) **hide themselves**, since they no longer apply — leaving just the **download and install feedback** selector, which has its own setting and keeps working even with UI sounds off. So you can run completely silent, or keep only the spoken/tone progress feedback, whichever you prefer.
+*   Toggling it speaks "UI sounds enabled / disabled" so you get confirmation by ear, and your choice is remembered when you save.
+
 # Version 1.4.3
 
 Read each accessibility mod's own documentation without leaving the manager, hear every prompt spoken aloud, and find your way around a tidier, tabbed Settings window. This release is a big pass on the things you hear and how you move through the program.
