@@ -122,8 +122,8 @@ public partial class Form1
 		catch (Exception ex)
 		{
 			_soundEngine.Play("error");
-			SetStatus(Loc.T("mo2.error", ex.Message));
-			SpeakBox(Loc.T("mo2.error", ex.Message));
+			SetStatus(Loc.T("mo2.error", FriendlyError(ex)));
+			SpeakBox(Loc.T("mo2.error", FriendlyError(ex)));
 			return;
 		}
 
@@ -136,7 +136,7 @@ public partial class Form1
 		ModFileSystem.WritePluginsTxt(game, activePlugins, LogError);
 		_settings.Save();
 
-		_soundEngine.Play("connect");
+		_soundEngine.Play("load_complete");
 		Speak(Loc.T("mo2.done", copied, enabledCount, mods.Count - enabledCount, activePlugins.Count, skipped, missing));
 
 		// 6. Rescan and deploy the imported mods for real and reconcile plugins. Awaited so

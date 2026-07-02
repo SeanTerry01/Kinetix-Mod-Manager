@@ -86,7 +86,9 @@ Open the Settings Dashboard at any time with **Ctrl + P**. Everything you can co
 *   **Paths & Account** — Choose which game you're configuring, set its mods and game folders (with **Browse** buttons), and enter your **Nexus API Key**.
 *   **Startup** — Show or hide the splash screen, choose whether to check for mod and manager updates at launch, and turn the spoken **welcome** and **goodbye** messages on or off.
 *   **Audio** — All sound options (see below).
+*   **Display** — Low-vision visual options: a **high-contrast colour scheme** (white-on-black, yellow-on-black, or black-on-yellow) and a **text size** (Normal, Large, or Extra Large). Both apply across the whole program and take effect as soon as you save — no restart needed. They change only what's drawn on screen and never affect screen-reader speech, so leaving them at their defaults keeps the normal appearance.
 *   **Mods & Search** — Search results per load, maximum backups kept per mod, and whether to save your search history.
+*   **AI** — Turn on optional AI features, pick an AI provider and model, and enter your own API key (see "AI Log Diagnosis" below).
 *   **Language** — Pick the manager's display language, or leave it on **Automatic** to follow Windows.
 
 ### The Audio tab in detail
@@ -103,8 +105,8 @@ Open the Settings Dashboard at any time with **Ctrl + P**. Everything you can co
 
 Kinetix Mod Manager is fully keyboard-driven. The shortcuts are grouped by where they apply, and each group has its own topic in this manual's contents list, just below this one. Here is what each group covers:
 
-*   **Global Shortcuts**: Keys that work anywhere in the app — opening this manual, context help, launching the game, cycling focus with F6, opening Settings, logging in with your Nexus key, opening the downloads, backups, and error-log folders, and more.
-*   **Mod List Shortcuts (Installed Mods Tab)**: Managing your installed mods — enabling, disabling, deleting, searching, categorising, saving profiles, viewing dependencies, installing from a zip, reading descriptions, and opening a mod's Nexus page.
+*   **Global Shortcuts**: Keys that work anywhere in the app — opening this manual, context help, launching the game, cycling focus with F6, opening Settings, logging in with your Nexus key, checking your remaining Nexus API requests, opening the downloads, backups, and error-log folders, and more.
+*   **Mod List Shortcuts (Installed Mods Tab)**: Managing your installed mods — enabling, disabling, deleting, searching, categorising, adding notes, saving profiles, exporting and installing Collections, endorsing mods, viewing dependencies, installing from a zip, reading descriptions, and opening a mod's Nexus page.
 *   **Profiles Tab Shortcuts**: Applying and deleting saved mod setups.
 *   **Backups Tab Shortcuts**: Restoring, deleting, and pruning your automatic mod backups.
 *   **SMAPI Log Tab Shortcuts (Stardew Valley only)**: Searching the SMAPI log, jumping to a line, diagnosing issues, and uploading the log for help. This tab appears only when Stardew Valley is the active game.
@@ -122,9 +124,11 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Shift + F1**: **Context Help** - Speaks the shortcuts for your current tab.
 *   **F5**: Launch the active game through its mod loader (SMAPI for Stardew Valley, SKSE for Skyrim Special Edition, F4SE for Fallout 4).
 *   **F6**: **Cycle Focus** - Jump between the tab headers and the primary list in each tab (and the web view in the Wiki tab).
+*   **F9**: **Diagnose Log with AI** - Send the current SMAPI or game log to your chosen AI provider for a plain-language explanation and fixes (opt-in; see "AI Log Diagnosis" below).
 *   **Alt**: Access the Menu Bar.
 *   **Ctrl + P**: Open the **Settings Dashboard**.
 *   **Ctrl + L**: Change/Login with Nexus API Key.
+*   **Ctrl + Shift + A**: Speak your remaining Nexus **API requests** for this hour and today (see "Checking Your Nexus API Requests" below).
 *   **Ctrl + D**: Open your `downloads` folder.
 *   **Ctrl + B**: Open your `backups` folder.
 *   **Ctrl + Shift + L**: Open the error log.
@@ -138,10 +142,17 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Ctrl + F**: **Search** - Focus the search bar to filter your installed mods.
 *   **Ctrl + J**: **Change Category** - Assign a custom category to the selected mod.
 *   **Ctrl + Shift + J**: **Batch Category Action** - Enable or Disable all mods in the currently filtered category.
+*   **Ctrl + Shift + O**: **Add or Edit Note** - Attach a personal note to the selected mod, spoken whenever you select it (see "Mod Notes" below).
 *   **Ctrl + S**: **Save Profile** - Saves your current enabled/disabled mod setup.
+*   **Ctrl + Shift + X**: **Export Collection** - Save your current mods as a shareable Collection file (see "Mod Collections" below).
+*   **Ctrl + Shift + N**: **Install Collection** - Install a Collection file (see "Mod Collections" below).
 *   **Ctrl + G**: Open the mod's page on Nexus Mods.
-*   **Ctrl + Y**: View a detailed list of dependencies.
-*   **Ctrl + Q**: **Quick-Fix** - Instantly search for a missing dependency.
+*   **Ctrl + Shift + E**: **Endorse or un-endorse** the selected mod on Nexus Mods (see "Endorsing Mods" below).
+*   **Ctrl + Shift + G**: **View Changelog** - the selected mod's version history from Nexus (see "Mod Changelog and Full Description" below).
+*   **Ctrl + Shift + I**: **View Full Description** - the selected mod's complete Nexus page description (see below). Both also work in the Updates and Find New Mods lists.
+*   **Ctrl + Y**: **View Dependencies** - Opens the dependency view for the selected mod: what it *requires* (and whether each is installed) and what is *required by* it (other installed mods that depend on it). See "Dependency View and Resolver" below.
+*   **Ctrl + Q**: **Resolve Missing Requirements** - Finds every missing required mod for the selected mod and, on Skyrim/Fallout 4, offers to download and install them automatically. See "Dependency View and Resolver" below.
+*   **Ctrl + Shift + B**: **Check for Broken Mods** - Cross-references your installed mods against the community compatibility list and reports any known to be broken, abandoned, obsolete, or incompatible. See "Checking Your Mods" below.
 *   **Ctrl + K**: Manually assign a Nexus ID.
 *   **Ctrl + I**: Install a mod from an archive file. **`.zip`, `.7z`, and `.rar`** archives are all supported.
 *   **Ctrl + R**: **Read Description** - Speaks the full summary of the mod.
@@ -154,7 +165,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 ### Backups Tab Shortcuts
 *   **Enter**: **Restore Backup** - Re-installs that specific mod version.
 *   **Delete**: Permanently remove the backup zip file.
-*   **Ctrl + Shift + B**: **Prune Backups** - Deletes all but the most recent archives based on your settings.
+*   **Ctrl + Shift + D**: **Delete Old Backups** - Deletes all but the most recent archives based on your settings.
 
 ### SMAPI Log Tab Shortcuts (Stardew Valley only)
 *The SMAPI Log tab appears only when Stardew Valley is the active game, since SMAPI is its mod loader.*
@@ -282,6 +293,62 @@ You choose how much of this you hear with the **"Download and install feedback"*
 
 ---
 
+## Mod Notes
+
+You can attach a personal, free-text **note** to any installed mod — a reminder to yourself such as "keep disabled until year 2" or "conflicts with the lighting mod". The note is spoken as part of the mod's entry whenever you select it in the **Installed Mods** list, so you're reminded exactly when it matters.
+
+1.  Select a mod in the **Installed Mods** list.
+2.  Press **Ctrl + Shift + O**.
+3.  Type your note and press **Enter**. If the mod already has a note, it's pre-filled so you can edit it.
+4.  The manager confirms with "Note saved for [mod]." From then on, selecting that mod reads its note at the end of its entry.
+
+To **clear** a note, open it with **Ctrl + Shift + O**, delete all the text, and press **Enter**; the manager asks you to confirm before removing it (so cancelling never wipes a note by accident). Notes are saved with your settings and stay with the mod across sessions.
+
+---
+
+## Mod Changelog and Full Description
+
+For any mod that comes from Nexus, you can pull two things straight from its Nexus page into a readable, scrollable window — without opening a browser. Both work on the selected mod in the **Installed Mods**, **Updates**, or **Find New Mods** list, and both read the content aloud when they open (press **Escape** to close, or arrow through the text at your own pace).
+
+*   **Ctrl + Shift + G — Changelog:** the mod's version history, newest version first, so you can see exactly what changed — handy before deciding to update, or after, to know what you got.
+*   **Ctrl + Shift + I — Full Description:** the complete write-up from the mod's Nexus page, not the short one-line summary. The page's formatting is converted to plain text so it reads cleanly.
+
+The mod page's formatting (bold, headings, HTML, and so on) is converted to clean plain text so it reads naturally.
+
+**Opening links.** If a changelog or description contains links, the link's address is shown right after its text, and you can open it: arrow to a line that has a link and press **Enter**. The manager asks "Open this link in your web browser?" with the address, and opens it on **Yes** — exactly like pressing Enter on a log line that has a link. When a page has links, the viewer says so when it opens.
+
+Both need you to be connected with your Nexus API key, and both fetch live from Nexus, so give them a moment on a slow connection. If a mod has no Nexus id (a manually installed local mod), there's nothing to fetch and the manager tells you so.
+
+---
+
+## Endorsing Mods
+
+Endorsing a mod on Nexus Mods is a quick way to thank its author — endorsements are the main way authors see that people value their work. Kinetix lets you do it without leaving the app.
+
+1.  Select a mod that came from Nexus in your **Installed Mods**, **Updates**, or **Find New Mods** list.
+2.  Press **Ctrl + Shift + E**.
+3.  The manager checks whether you have already endorsed it, then asks the matching question — **"Endorse [mod] on Nexus?"** if you haven't, or **"Remove your endorsement from [mod]?"** if you have. Press **Yes** to confirm or **No** to cancel; nothing happens until you confirm.
+4.  The result is spoken, for example "Endorsed [mod]."
+
+A few things to know:
+
+*   You must be **logged in** with your Nexus API key, since endorsing is tied to your account.
+*   Nexus only lets you endorse a mod you have **downloaded and used for a short while**. If it's too soon, the manager says so rather than failing silently.
+*   You can't endorse your **own** mods — Nexus reports this and the manager passes it along.
+*   The shortcut **toggles**: press it again on a mod you've already endorsed to withdraw the endorsement (this is called "abstaining" on Nexus).
+
+---
+
+## Checking Your Nexus API Requests
+
+Nexus Mods limits how many API requests each account can make per hour and per day. Most people never come close, but during heavy use — a big Collection install, or checking updates on a very large load order — it can be handy to know where you stand.
+
+Press **Ctrl + Shift + A** anywhere to hear your remaining requests, for example **"212 Nexus API requests remaining this hour, 2160 remaining today."**
+
+This costs **no request of its own**: the manager remembers the counts Nexus reports on every normal call (logging in, checking for updates, and so on), so it simply tells you the most recent figures. If you have just started the app and haven't made a call yet, it will say the counts aren't known yet — check for updates or connect first, then try again. You must be logged in with your API key.
+
+---
+
 ## Installing Configurable Mods (FOMOD Installer)
 
 Some mods — especially larger Skyrim Special Edition and Fallout 4 mods like **Immersive Sounds Compendium** — don't simply unpack into your game. They ship a built-in **installer (called a FOMOD)** that asks you to choose options, such as which features, patches, or sound sets you want. Kinetix Mod Manager runs these in a fully keyboard-driven, screen-reader-friendly **wizard**.
@@ -406,7 +473,7 @@ From the **Mods** menu you can **Export Load Order** to save your current mod pr
 
 ## Checking Your Mods: Conflicts and Requirements
 
-Two reports on the **Mods** menu help you spot problems. Both open as a simple list you can arrow through, and **Escape** closes them.
+The reports on the **Mods** menu help you spot problems. Each opens as a simple list you can arrow through, and **Escape** closes them.
 
 ### File Conflict Report (Ctrl + Shift + F)
 This shows where your mods collide.
@@ -419,6 +486,47 @@ This scans your **enabled** mods and lists anything they need but don't have. Pr
 
 *   **Stardew Valley:** required mods that are **missing, disabled, or older** than a mod asks for — including the host mod a content pack (such as a Content Patcher pack) needs. Enter offers to **search** for the missing mod in the Find New Mods tab.
 *   **Skyrim & Fallout 4:** plugins whose **master file isn't installed** (a missing master stops a plugin loading), a **missing script extender** (SKSE/F4SE), and each mod's **Nexus "Requirements"** that you don't have installed. Enter opens the missing mod's page. Because the Nexus part checks each mod online, a large load order can take a moment — the title bar shows the progress.
+
+### Check for Broken Mods (Ctrl + Shift + B)
+This checks your installed mods against a community-maintained compatibility list and reports the ones known to have problems — issues that no Nexus update would tell you about. It needs an internet connection; if the list can't be reached it simply says so.
+
+*   **Stardew Valley:** uses the official **SMAPI compatibility list**. It flags mods marked **Broken**, **Obsolete**, or **Abandoned**, with a short note explaining the status. Press **Enter** on a mod to open its Nexus page.
+*   **Skyrim & Fallout 4:** uses the **LOOT masterlist**. It flags a plugin that is **incompatible with another plugin you also have installed**, plus any curated **warning or error** notes LOOT records for your active plugins. Only unconditional warnings are shown, so an item appears only when it definitely applies.
+
+If nothing is flagged, the report tells you none of your mods are on the known-broken list.
+
+---
+
+## Dependency View and Resolver
+
+Two tools on the Installed Mods tab (and the **Mods** menu) help you manage what your mods depend on.
+
+*   **View Dependencies (Ctrl + Y)** opens a list with two parts for the selected mod: **Requires** (each dependency and whether it's installed, disabled, out of date, or missing) and **Required by** (the other installed mods that depend on this one). On Stardew this reads each mod's manifest; on Skyrim/Fallout 4 it reads plugin masters and, when you're logged in, the mod's online Nexus requirements. Press **Enter** on a missing item to search for or open it.
+*   **Resolve Missing Requirements (Ctrl + Q)** gathers **all** of the selected mod's missing required mods at once. On Skyrim/Fallout 4, if you have a Nexus **Premium** account it downloads and installs each one automatically (opening the accessible FOMOD wizard when a mod needs setup choices); free accounts and off-Nexus requirements are listed in a report you can open and download manually. On Stardew it lists every missing required mod so you can search for each. You're asked to confirm once before anything downloads.
+
+**Before you delete a mod**, the delete confirmation now warns you if other installed mods depend on it, so you don't accidentally break your setup.
+
+---
+
+## Mod Collections
+
+A **Collection** is a shareable "recipe" for a whole modded setup. It lists every mod in your setup — which mods, which versions, and what order they load in — saved as a single small file. It does **not** contain the mod files themselves, so it stays tiny and is safe to share: installing a Collection re-downloads each mod fresh from Nexus, so authors still get their downloads and endorsements. Collections are great for backing up your own setup to reinstall later, moving a setup to another PC, or sharing a known-good setup with a friend.
+
+### Exporting a Collection (Ctrl + Shift + X)
+
+From the **Installed Mods** tab, press **Ctrl + Shift + X**. The manager gathers your currently **enabled** mods (in load-order priority on Skyrim and Fallout 4), asks you to name the Collection, and saves it to a file you choose. Mods that didn't come from Nexus can't be re-downloaded, so they're recorded in the file as ones the person installing will need to supply themselves; the manager tells you how many that was.
+
+### Installing a Collection (Ctrl + Shift + N)
+
+Press **Ctrl + Shift + N** and pick a Collection file. Before anything happens you get a **review screen**: a spoken summary — for example "This collection has 40 mods. 38 will download automatically, 2 need manual download" — and an arrowable list of every mod and what will happen to it. Press **Enter** to start installing, or **Escape** to cancel.
+
+The manager then installs the mods **one at a time**, with the same audible progress as any other download, and moves on to the next automatically. When it finishes you get a **report** listing what installed, what still needs a manual download, what you chose to skip, and anything that failed — press **Enter** on any of those rows to open its Nexus page.
+
+A few things to know:
+
+*   **Premium** Nexus accounts download every mod automatically. **Free** accounts can't (a Nexus rule), so their mods are listed in the report for you to fetch by hand with the Mod Manager Download button — each one still installs through the manager when you click it.
+*   The Collection must be for the **game you currently have loaded**; the manager checks and tells you if it's for a different game.
+*   If a mod has a **FOMOD** option wizard, it opens during the install so you can choose your options; after you select **OK**, the next mod continues automatically.
 
 ---
 
@@ -447,6 +555,42 @@ For Skyrim Special Edition and Fallout 4, a **Log** tab — shown as **"Skyrim L
 *   **Open or copy**: Press **F4** to open the selected log in Notepad, or **Ctrl + C** to copy the selected line(s) to the clipboard.
 
 (For Stardew Valley, the equivalent is the **SMAPI Log** tab described elsewhere in this manual.)
+
+---
+
+## AI Log Diagnosis
+
+When a log has you stuck, Kinetix can send it to an AI service that reads it and explains — in plain language — what's going wrong and how to fix it, with numbered steps. This is **optional and off by default**. The manager's own instant, offline checks (like the SMAPI log's Quick-Fix) are always your first line; the AI is the "I'm still stuck" step.
+
+### One-time setup (Settings → AI tab)
+
+1. Open **Settings** (Ctrl + P) and go to the **AI** tab. (While "Enable AI features" is unchecked, the rest of the tab is hidden; checking it reveals the settings below and is announced aloud.)
+2. Check **Enable AI features**.
+3. Choose an **AI Provider** — **Anthropic (Claude)**, **OpenAI (GPT)**, **Google (Gemini)**, or **OpenAI-compatible / Custom endpoint**. The last one works with any service that speaks OpenAI's API — OpenRouter, or a local server like Ollama or LM Studio — and shows an extra **Endpoint base URL** box (enter the URL the service gives you, usually ending in `/v1`). For a local server that needs no key, put any placeholder such as `local` in the key box.
+4. Paste your **API key** for that provider. You create the key on the provider's website; usage is billed to **your** account. The key is stored **encrypted** on your PC (the same protection used for your Nexus key) and is kept per-provider, so you can switch providers without re-entering keys. The help text under the key box tells you where to get a key for the chosen provider.
+5. Choose a **Model**. The list starts with a few common models; press **Refresh model list** to pull the provider's **current** catalog using your key (so new models show up and retired ones drop off), or choose **Custom** and type any model ID yourself.
+6. Press **Test Connection** — the manager makes one tiny request and speaks whether it worked, so you can confirm the key before relying on it.
+7. Save.
+
+### Using it
+
+On the **SMAPI Log** tab (Stardew Valley) or the **Log** tab (Skyrim / Fallout 4), press **F9** (or Tools menu → "Diagnose Log with AI"). If a log line is selected, the manager sends the lines around it; otherwise it sends the end of the log (where errors usually are), along with your enabled mod list for context. It speaks "Analyzing…", then opens a chat window with the explanation and fix steps and reads it aloud.
+
+**Keep the conversation going.** That window has a **follow-up box** and a **Send** button — type another question ("what if that doesn't work?", "which file exactly?") and press **Enter** or **Send**, and the AI answers with the earlier exchange as context. Each reply is read aloud and added to the transcript above. Press **Close** or **Escape** when you're done.
+
+### Other ways to ask
+
+The same AI help is available beyond logs:
+
+*   **When a mod fails to install** — the failure message offers to ask your AI provider what went wrong.
+*   **In the File Conflict and Check Mod Requirements reports** — arrow to a flagged item and press **F9** to ask the AI about that specific finding.
+*   **Any modding question** — Tools menu → **Ask AI a Question…**, type your question, and chat about the answer.
+
+A few things to know:
+
+*   It's **opt-in and pay-as-you-go** — nothing is sent anywhere unless you've enabled AI and entered your own key, and each question costs a small amount on your provider account (usually a fraction of a cent on a cheaper model).
+*   What's sent is the **relevant excerpt or question plus your enabled mod list** — no personal files.
+*   If AI isn't set up, these actions explain how to turn it on rather than doing anything.
 
 ---
 

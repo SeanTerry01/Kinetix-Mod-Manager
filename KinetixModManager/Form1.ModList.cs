@@ -72,15 +72,25 @@ public partial class Form1
 		bool launchedChecks = false;
 		try
 		{
-		SetStatus(Loc.T("status.connecting"));
-		if (!(await ValidateNexusConnection()))
+		// Nexus's API is stateless, so once the key is validated for this session there's nothing to reconnect —
+		// re-checking on every refresh just cost a round-trip and a "connecting… connected" chime each time.
+		// Validate only the first time (or after the key changes); afterwards reflect the status quietly.
+		if (!_nexusService.IsValidated)
 		{
-			SetStatus(Loc.T("status.authFailed"));
-			_soundEngine.Play("error");
-			return;
+			SetStatus(Loc.T("status.connecting"));
+			if (!(await ValidateNexusConnection()))
+			{
+				SetStatus(Loc.T("status.authFailed"));
+				_soundEngine.Play("error");
+				return;
+			}
+			SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser));
+			_soundEngine.Play("connect");
 		}
-		SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser));
-		_soundEngine.Play("connect");
+		else
+		{
+			SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser), speak: false);
+		}
 		Invoke(delegate
 		{
 			listInstalled.BeginUpdate();
@@ -552,7 +562,7 @@ public partial class Form1
 				}
 				catch (Exception ex)
 				{
-					SpeakBox(Loc.T("link.saveFailedBox", ex.Message), Loc.T("common.error"));
+					SpeakBox(Loc.T("link.saveFailedBox", FriendlyError(ex)), Loc.T("common.error"));
 					Speak(Loc.T("link.failed"));
 				}
 			}

@@ -51,6 +51,36 @@ public class NexusService
 	/// <summary>Whether the validated account has Nexus premium (required for automated downloads).</summary>
 	public bool IsPremium { get; private set; }
 
+	/// <summary>The API key that was last successfully validated; used to skip re-validating an unchanged key.</summary>
+	private string _validatedKey = "";
+
+	/// <summary>
+	/// True once the current API key has been validated this session and hasn't changed since. Nexus's API is
+	/// stateless (no persistent connection), so re-validating an unchanged key on every mod-list refresh is
+	/// redundant — callers check this to validate once, then trust it. Automatically becomes false if the key
+	/// changes (the stored validated key no longer matches settings).
+	/// </summary>
+	public bool IsValidated => !string.IsNullOrEmpty(_validatedKey) && _validatedKey == _settings.ApiKey;
+
+	// -------------------------------------------------------------------------
+	// API rate-limit tracking
+	// -------------------------------------------------------------------------
+	// Every Nexus v1 REST response carries the caller's remaining quota in x-rl-* headers. We capture
+	// the latest values off any v1 response we already make (validate, version checks, mod details,
+	// endorse) so the user can ask "how many API requests do I have left?" without spending one.
+
+	/// <summary>Requests remaining in the current rolling hour, or -1 if not yet known.</summary>
+	public int HourlyRemaining { get; private set; } = -1;
+	/// <summary>The per-hour request limit reported by Nexus, or -1 if not yet known.</summary>
+	public int HourlyLimit { get; private set; } = -1;
+	/// <summary>Requests remaining in the current rolling day, or -1 if not yet known.</summary>
+	public int DailyRemaining { get; private set; } = -1;
+	/// <summary>The per-day request limit reported by Nexus, or -1 if not yet known.</summary>
+	public int DailyLimit { get; private set; } = -1;
+
+	/// <summary>True once at least one v1 response has reported the account's remaining quota.</summary>
+	public bool HasRateLimitInfo => HourlyRemaining >= 0 || DailyRemaining >= 0;
+
 	/// <summary>Initialises the service with the live application settings.</summary>
 	public NexusService(AppSettings settings) => _settings = settings;
 
@@ -63,6 +93,8 @@ public class NexusService
 	{
 		NexusUser = "Unknown User";
 		IsPremium = false;
+		_validatedKey = "";
+		HourlyRemaining = HourlyLimit = DailyRemaining = DailyLimit = -1;
 	}
 
 	public string CurrentGameDomain => _settings.ActiveGame switch
@@ -94,13 +126,15 @@ public class NexusService
 		{
 			using var req = BuildRequest(HttpMethod.Get, "https://api.nexusmods.com/v1/users/validate.json");
 			var resp = await HttpClient.SendAsync(req);
-			if (!resp.IsSuccessStatusCode) return false;
+			CaptureRateLimit(resp);
+			if (!resp.IsSuccessStatusCode) { _validatedKey = ""; return false; }
 			JObject json = JObject.Parse(await resp.Content.ReadAsStringAsync());
 			NexusUser = json["name"]?.ToString() ?? "User";
 			IsPremium  = (bool)(json["is_premium"] ?? (JToken)false);
+			_validatedKey = _settings.ApiKey;
 			return true;
 		}
-		catch { return false; }
+		catch { _validatedKey = ""; return false; }
 	}
 
 	// -------------------------------------------------------------------------
@@ -123,6 +157,7 @@ public class NexusService
 			using var req = BuildRequest(HttpMethod.Get,
 				$"https://api.nexusmods.com/v1/games/{CurrentGameDomain}/mods/{nexusId}.json");
 			var resp = await HttpClient.SendAsync(req);
+			CaptureRateLimit(resp);
 			if (!resp.IsSuccessStatusCode) return null;
 			return ((string?)JObject.Parse(await resp.Content.ReadAsStringAsync())["version"]) ?? "0";
 		}
@@ -528,31 +563,8 @@ public class NexusService
 			throw new Exception($"Nexus rejected the file list request (Status: {filesResp.StatusCode}).");
 
 		JObject filesData = JObject.Parse(await filesResp.Content.ReadAsStringAsync());
-		var files = filesData["files"] as Newtonsoft.Json.Linq.JArray;
-		Newtonsoft.Json.Linq.JToken? selectedFile = null;
-
-		if (files != null && files.Count > 0)
-		{
-			if (mod.Name.Contains("Part 2", StringComparison.OrdinalIgnoreCase))
-			{
-				selectedFile = files.FirstOrDefault(f => 
-					(f["name"]?.ToString() ?? "").Contains("Part 2", StringComparison.OrdinalIgnoreCase) ||
-					(f["name"]?.ToString() ?? "").Contains("Preloader", StringComparison.OrdinalIgnoreCase) ||
-					(f["file_name"]?.ToString() ?? "").Contains("Part 2", StringComparison.OrdinalIgnoreCase) ||
-					(f["file_name"]?.ToString() ?? "").Contains("Part2", StringComparison.OrdinalIgnoreCase) ||
-					(f["description"]?.ToString() ?? "").Contains("Part 2", StringComparison.OrdinalIgnoreCase)
-				);
-			}
-			else if (mod.Name.Contains("Part 1", StringComparison.OrdinalIgnoreCase))
-			{
-				selectedFile = files.FirstOrDefault(f => 
-					(f["name"]?.ToString() ?? "").Contains("Part 1", StringComparison.OrdinalIgnoreCase) ||
-					(f["file_name"]?.ToString() ?? "").Contains("Part 1", StringComparison.OrdinalIgnoreCase) ||
-					(f["file_name"]?.ToString() ?? "").Contains("Part1", StringComparison.OrdinalIgnoreCase)
-				);
-			}
-			selectedFile ??= files[0];
-		}
+		var files = filesData["files"] as JArray;
+		JToken? selectedFile = (files != null && files.Count > 0) ? SelectUpdateFile(files, mod) : null;
 
 		if (selectedFile == null)
 			throw new Exception("No files found on the Nexus page.");
@@ -618,6 +630,27 @@ public class NexusService
 			using var req = BuildRequest(HttpMethod.Get,
 				$"https://api.nexusmods.com/v1/games/{CurrentGameDomain}/mods/{nexusId}.json");
 			var resp = await HttpClient.SendAsync(req);
+			CaptureRateLimit(resp);
+			if (!resp.IsSuccessStatusCode) return null;
+			return JObject.Parse(await resp.Content.ReadAsStringAsync());
+		}
+		catch { return null; }
+		finally { _apiSemaphore.Release(); }
+	}
+
+	/// <summary>
+	/// Fetches a mod's changelogs from Nexus — a JSON object keyed by version, each value an array of change
+	/// lines (e.g. <c>{ "1.2.0": ["Fixed X", "Added Y"], "1.1.0": [...] }</c>). Returns null on any failure.
+	/// </summary>
+	public async Task<JObject?> GetChangelogsAsync(string nexusId)
+	{
+		await _apiSemaphore.WaitAsync();
+		try
+		{
+			using var req = BuildRequest(HttpMethod.Get,
+				$"https://api.nexusmods.com/v1/games/{CurrentGameDomain}/mods/{nexusId}/changelogs.json");
+			var resp = await HttpClient.SendAsync(req);
+			CaptureRateLimit(resp);
 			if (!resp.IsSuccessStatusCode) return null;
 			return JObject.Parse(await resp.Content.ReadAsStringAsync());
 		}
@@ -738,8 +771,170 @@ public class NexusService
 	}
 
 	// -------------------------------------------------------------------------
+	// Endorsements
+	// -------------------------------------------------------------------------
+
+	/// <summary>The outcome of an endorse/abstain attempt, so the caller can speak the right message.</summary>
+	public enum EndorseOutcome
+	{
+		/// <summary>The mod was endorsed.</summary>
+		Endorsed,
+		/// <summary>Endorsement was withdrawn (abstained).</summary>
+		Abstained,
+		/// <summary>Nexus requires the mod to have been used a while before endorsing (TOO_SOON_AFTER_DOWNLOAD).</summary>
+		TooSoon,
+		/// <summary>Nexus has no record of this account downloading the mod (NOT_DOWNLOADED_MOD).</summary>
+		NotDownloaded,
+		/// <summary>You cannot endorse your own mod (IS_OWN_MOD).</summary>
+		OwnMod,
+		/// <summary>No API key, no network, or an unrecognised error.</summary>
+		Failed
+	}
+
+	/// <summary>
+	/// Returns whether the account currently endorses <paramref name="nexusId"/>: <c>true</c> if endorsed,
+	/// <c>false</c> if not (undecided or abstained), or <c>null</c> if the status can't be determined (no key,
+	/// network error, or a response without an endorsement field). Reads the <c>endorsement.endorse_status</c>
+	/// field of the mod details, so it costs one API request. Lets the toggle decide which way to flip.
+	/// </summary>
+	public async Task<bool?> IsModEndorsedAsync(string nexusId)
+	{
+		JObject? details = await GetModDetailsAsync(nexusId);
+		string? status = details?["endorsement"]?["endorse_status"]?.ToString();
+		if (string.IsNullOrEmpty(status)) return null;
+		return status.Equals("Endorsed", StringComparison.OrdinalIgnoreCase);
+	}
+
+	/// <summary>
+	/// Endorses (or abstains from) a mod via the Nexus v1 REST API. Nexus only allows endorsing a mod the
+	/// account has downloaded and used for a short while, so the distinct <see cref="EndorseOutcome"/> values
+	/// let the caller explain a refusal rather than just failing silently. Best-effort: any network/parse
+	/// failure returns <see cref="EndorseOutcome.Failed"/>.
+	/// </summary>
+	/// <param name="nexusId">Nexus numeric mod id.</param>
+	/// <param name="endorse">True to endorse, false to withdraw a prior endorsement.</param>
+	/// <param name="version">The installed mod version (Nexus records the endorsement against it).</param>
+	public async Task<EndorseOutcome> SetEndorsementAsync(string nexusId, bool endorse, string? version = null)
+	{
+		if (string.IsNullOrEmpty(nexusId) || string.IsNullOrEmpty(_settings.ApiKey)) return EndorseOutcome.Failed;
+
+		await _apiSemaphore.WaitAsync();
+		try
+		{
+			string action = endorse ? "endorse" : "abstain";
+			using var req = BuildRequest(HttpMethod.Post,
+				$"https://api.nexusmods.com/v1/games/{CurrentGameDomain}/mods/{nexusId}/{action}.json");
+			req.Content = new StringContent(
+				JsonConvert.SerializeObject(new { version = string.IsNullOrEmpty(version) ? "1.0.0" : version }),
+				Encoding.UTF8, "application/json");
+
+			var resp = await HttpClient.SendAsync(req);
+			CaptureRateLimit(resp);
+			string body = await resp.Content.ReadAsStringAsync();
+			if (resp.IsSuccessStatusCode)
+				return endorse ? EndorseOutcome.Endorsed : EndorseOutcome.Abstained;
+
+			// A refusal comes back as { "message": "CODE" }; map the documented codes to outcomes.
+			string code = "";
+			try { code = JObject.Parse(body)["message"]?.ToString() ?? ""; } catch { /* non-JSON body */ }
+			return code.ToUpperInvariant() switch
+			{
+				"TOO_SOON_AFTER_DOWNLOAD" => EndorseOutcome.TooSoon,
+				"NOT_DOWNLOADED_MOD"      => EndorseOutcome.NotDownloaded,
+				"IS_OWN_MOD"              => EndorseOutcome.OwnMod,
+				_                         => EndorseOutcome.Failed
+			};
+		}
+		catch { return EndorseOutcome.Failed; }
+		finally { _apiSemaphore.Release(); }
+	}
+
+	// -------------------------------------------------------------------------
 	// Helpers
 	// -------------------------------------------------------------------------
+
+	/// <summary>
+	/// Records the account's remaining API quota from a v1 REST response's <c>x-rl-*</c> headers. Called after
+	/// any v1 request; the v2 GraphQL endpoint does not send these, so it is not used there. Missing headers
+	/// leave the previous value untouched.
+	/// </summary>
+	private void CaptureRateLimit(HttpResponseMessage resp)
+	{
+		HourlyRemaining = ReadIntHeader(resp, "x-rl-hourly-remaining", HourlyRemaining);
+		HourlyLimit     = ReadIntHeader(resp, "x-rl-hourly-limit",     HourlyLimit);
+		DailyRemaining  = ReadIntHeader(resp, "x-rl-daily-remaining",  DailyRemaining);
+		DailyLimit      = ReadIntHeader(resp, "x-rl-daily-limit",      DailyLimit);
+	}
+
+	/// <summary>Reads a single integer response header, returning <paramref name="fallback"/> if absent/unparseable.</summary>
+	private static int ReadIntHeader(HttpResponseMessage resp, string name, int fallback)
+	{
+		if (resp.Headers.TryGetValues(name, out var values))
+			foreach (string v in values)
+				if (int.TryParse(v, out int n)) return n;
+		return fallback;
+	}
+
+	/// <summary>
+	/// Chooses which file of a mod's Nexus file list to download for an update. The Nexus API refuses to generate
+	/// a download link for <b>archived</b> files (their <c>category_name</c> is null/empty), which is the usual
+	/// cause of "Nexus denied the download link" — so those are excluded first. Among the rest it prefers, in
+	/// order: a genuine Part 1 / Part 2 file when the mod name says so (mods that ship two separate downloads on
+	/// one page); the author-flagged primary file; a MAIN file matching the known latest version, then the newest
+	/// MAIN file; and finally the newest remaining file. This replaces a naive "take files[0]", which could land
+	/// on an old or archived file and get denied.
+	/// </summary>
+	private static JToken? SelectUpdateFile(JArray files, GameMod mod)
+	{
+		var candidates = files
+			.Where(f => !string.IsNullOrEmpty(f["category_name"]?.ToString()))
+			.ToList();
+		if (candidates.Count == 0) candidates = files.ToList(); // nothing categorised: fall back to the raw list
+
+		// Honour the Part 1 / Part 2 naming convention for mods that genuinely ship two separate downloads.
+		if (mod.Name.Contains("Part 2", StringComparison.OrdinalIgnoreCase))
+		{
+			JToken? part2 = candidates.FirstOrDefault(f => FileMentions(f, "Part 2", "Part2", "Preloader"));
+			if (part2 != null) return part2;
+		}
+		else if (mod.Name.Contains("Part 1", StringComparison.OrdinalIgnoreCase))
+		{
+			JToken? part1 = candidates.FirstOrDefault(f => FileMentions(f, "Part 1", "Part1"));
+			if (part1 != null) return part1;
+		}
+
+		// The author-flagged primary file is the safest single "main download".
+		JToken? primary = candidates.FirstOrDefault(f => (bool?)f["is_primary"] == true);
+		if (primary != null) return primary;
+
+		// Otherwise prefer a MAIN-category file matching the latest known version, then the newest MAIN file.
+		var mainFiles = candidates
+			.Where(f => string.Equals(f["category_name"]?.ToString(), "MAIN", StringComparison.OrdinalIgnoreCase))
+			.ToList();
+		if (mainFiles.Count > 0)
+		{
+			if (!string.IsNullOrEmpty(mod.LatestVersion))
+			{
+				JToken? versionMatch = mainFiles.FirstOrDefault(f =>
+					string.Equals(f["version"]?.ToString(),     mod.LatestVersion, StringComparison.OrdinalIgnoreCase) ||
+					string.Equals(f["mod_version"]?.ToString(), mod.LatestVersion, StringComparison.OrdinalIgnoreCase));
+				if (versionMatch != null) return versionMatch;
+			}
+			return mainFiles.OrderByDescending(f => (long?)f["uploaded_timestamp"] ?? 0L).First();
+		}
+
+		// No MAIN file at all: take the newest non-archived file.
+		return candidates.OrderByDescending(f => (long?)f["uploaded_timestamp"] ?? 0L).First();
+	}
+
+	/// <summary>True if any of <paramref name="needles"/> appears in a file's name, file_name, or description.</summary>
+	private static bool FileMentions(JToken file, params string[] needles)
+	{
+		string haystack = (file["name"]?.ToString() ?? "") + " " +
+						  (file["file_name"]?.ToString() ?? "") + " " +
+						  (file["description"]?.ToString() ?? "");
+		return needles.Any(n => haystack.Contains(n, StringComparison.OrdinalIgnoreCase));
+	}
 
 	/// <summary>
 	/// Builds an authenticated <see cref="HttpRequestMessage"/> with the API key and User-Agent headers set.

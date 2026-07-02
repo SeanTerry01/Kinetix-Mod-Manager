@@ -23,6 +23,34 @@ public enum ProgressFeedback
 	Both
 }
 
+/// <summary>
+/// A high-contrast colour scheme for low-vision users, applied over the whole UI. <see cref="Off"/> keeps the
+/// normal Windows colours; the others force a bold foreground/background pair the user finds easiest to read.
+/// </summary>
+public enum DisplayContrast
+{
+	Off,
+	WhiteOnBlack,
+	YellowOnBlack,
+	BlackOnYellow
+}
+
+/// <summary>Global UI text-size multiplier for low-vision users. <see cref="Normal"/> leaves fonts unchanged.</summary>
+public enum TextSize
+{
+	Normal,
+	Large,
+	ExtraLarge
+}
+
+/// <summary>A cached AI model entry (the id sent to the API plus the name shown in the dropdown). Serialized in
+/// <see cref="AppSettings.AiModelCache"/> so a refreshed model list survives across sessions.</summary>
+public class AiModelChoice
+{
+	public string Id { get; set; } = "";
+	public string Display { get; set; } = "";
+}
+
 public class AppSettings
 {
 	public string ModsPath { get; set; } = "";
@@ -75,6 +103,40 @@ public class AppSettings
 	/// Serialized field: DPAPI-encrypted, Base64-encoded API key. Use ApiKey for all runtime access.
 	/// </summary>
 	public string ApiKeyEncrypted { get; set; } = "";
+
+	// -------------------------------------------------------------------------
+	// AI-assisted features (opt-in; user supplies their own provider API key)
+	// -------------------------------------------------------------------------
+
+	/// <summary>Master switch for AI-assisted features (currently the AI log diagnosis).</summary>
+	public bool AiEnabled { get; set; }
+
+	/// <summary>Selected AI provider id (e.g. "Anthropic"). See <see cref="AiService.Providers"/>.</summary>
+	public string AiProvider { get; set; } = "Anthropic";
+
+	/// <summary>Selected model id for the active provider (e.g. "claude-haiku-4-5").</summary>
+	public string AiModel { get; set; } = "";
+
+	/// <summary>Base URL for the OpenAI-compatible custom provider (e.g. "https://openrouter.ai/api/v1"). Unused by other providers.</summary>
+	public string AiCustomBaseUrl { get; set; } = "";
+
+	/// <summary>
+	/// Runtime-only per-provider plain-text API keys, keyed by provider id. Never serialized directly —
+	/// stored encrypted per provider via <see cref="AiApiKeysEncrypted"/>.
+	/// </summary>
+	[JsonIgnore]
+	public Dictionary<string, string> AiApiKeys { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+	/// <summary>Serialized field: per-provider DPAPI-encrypted, Base64 API keys. Use <see cref="AiApiKeys"/> at runtime.</summary>
+	public Dictionary<string, string> AiApiKeysEncrypted { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+	/// <summary>
+	/// The live model catalog last fetched via the AI Settings tab's "Refresh model list", per provider id. Kept so
+	/// the model dropdown shows the real, current models (and can re-select a saved model that isn't in the small
+	/// curated fallback list) without re-fetching every time Settings opens. Refreshing again replaces the entry and
+	/// reports what changed. Empty/absent for a provider means "no refresh yet — use the curated fallback".
+	/// </summary>
+	public Dictionary<string, List<AiModelChoice>> AiModelCache { get; set; } = new Dictionary<string, List<AiModelChoice>>(StringComparer.OrdinalIgnoreCase);
 
 	/// <summary>
 	/// False until the manager has shown its one-time first-launch setup (the Settings dialog, so a brand-new
@@ -138,6 +200,14 @@ public class AppSettings
 	/// </summary>
 	public string Language { get; set; } = "";
 
+	/// <summary>High-contrast colour scheme applied across the UI for low-vision users. Off = normal Windows colours.</summary>
+	[JsonConverter(typeof(StringEnumConverter))]
+	public DisplayContrast DisplayContrast { get; set; } = DisplayContrast.Off;
+
+	/// <summary>Global UI text-size multiplier for low-vision users. Normal leaves fonts at their designed size.</summary>
+	[JsonConverter(typeof(StringEnumConverter))]
+	public TextSize TextSize { get; set; } = TextSize.Normal;
+
 	public string CurrentTheme { get; set; } = "Default";
 
 	/// <summary>
@@ -172,6 +242,12 @@ public class AppSettings
 	public Dictionary<string, List<string>> IgnoredRequirements { get; set; } = new Dictionary<string, List<string>>();
 
 	public Dictionary<string, string> ModCategories { get; set; } = new Dictionary<string, string>();
+
+	/// <summary>
+	/// Personal free-text notes the user has attached to mods, keyed by mod UniqueID. Spoken when the mod is
+	/// selected in the installed list (e.g. "keep disabled until year 2"). Empty/removed entries mean no note.
+	/// </summary>
+	public Dictionary<string, string> ModNotes { get; set; } = new Dictionary<string, string>();
 
 	/// <summary>
 	/// Per-game mod priority order for Skyrim SE / Fallout 4, deciding which mod's loose files win when
@@ -264,6 +340,21 @@ public class AppSettings
 					}
 				}
 
+				// Decrypt per-provider AI keys into the runtime dictionary (deserialization loses the
+				// case-insensitive comparer, so rebuild it).
+				settings.AiApiKeysEncrypted ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+				settings.AiApiKeys = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+				foreach (var kv in settings.AiApiKeysEncrypted)
+				{
+					string dec = DecryptApiKey(kv.Value);
+					if (!string.IsNullOrEmpty(dec)) settings.AiApiKeys[kv.Key] = dec;
+				}
+
+				// Deserialization loses the case-insensitive comparer on the model-cache dictionary; rebuild it so
+				// provider-id lookups stay case-insensitive like the key dictionaries above.
+				if (settings.AiModelCache != null && settings.AiModelCache.Comparer != StringComparer.OrdinalIgnoreCase)
+					settings.AiModelCache = new Dictionary<string, List<AiModelChoice>>(settings.AiModelCache, StringComparer.OrdinalIgnoreCase);
+
 				return settings;
 			}
 		}
@@ -292,6 +383,7 @@ public class AppSettings
 		if (ModPriority == null) ModPriority = new Dictionary<string, List<string>>();
 		if (PluginOrder == null) PluginOrder = new Dictionary<string, List<string>>();
 		if (IgnoredRequirements == null) IgnoredRequirements = new Dictionary<string, List<string>>();
+		if (AiModelCache == null) AiModelCache = new Dictionary<string, List<AiModelChoice>>(StringComparer.OrdinalIgnoreCase);
 
 		if (string.IsNullOrEmpty(ActiveGame)) ActiveGame = "None";
 		Shortcuts ??= new Dictionary<string, Keys>();
@@ -446,6 +538,42 @@ public class AppSettings
 			{
 				"CheckRequirements",
 				Keys.Q | Keys.Shift | Keys.Control
+			},
+			{
+				"Endorse",
+				Keys.E | Keys.Shift | Keys.Control
+			},
+			{
+				"ApiCredits",
+				Keys.A | Keys.Shift | Keys.Control
+			},
+			{
+				"ExportCollection",
+				Keys.X | Keys.Shift | Keys.Control
+			},
+			{
+				"InstallCollection",
+				Keys.N | Keys.Shift | Keys.Control
+			},
+			{
+				"EditNote",
+				Keys.O | Keys.Shift | Keys.Control
+			},
+			{
+				"DiagnoseAi",
+				Keys.F9
+			},
+			{
+				"ViewChangelog",
+				Keys.G | Keys.Shift | Keys.Control
+			},
+			{
+				"ViewDescription",
+				Keys.I | Keys.Shift | Keys.Control
+			},
+			{
+				"CheckBrokenMods",
+				Keys.B | Keys.Shift | Keys.Control
 			}
 		})
 		{
@@ -462,6 +590,11 @@ public class AppSettings
 		{
 			// Encrypt the API key before serialization so it is never written as plain text.
 			ApiKeyEncrypted = EncryptApiKey(ApiKey);
+			// Encrypt each per-provider AI key the same way.
+			AiApiKeysEncrypted = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+			foreach (var kv in AiApiKeys)
+				if (!string.IsNullOrEmpty(kv.Value))
+					AiApiKeysEncrypted[kv.Key] = EncryptApiKey(kv.Value);
 			string contents = JsonConvert.SerializeObject(this, Formatting.Indented);
 			File.WriteAllText(SettingsPath, contents);
 		}

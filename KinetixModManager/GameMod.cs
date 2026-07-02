@@ -55,6 +55,9 @@ public class GameMod
 	/// <summary>User-assigned or auto-detected category (e.g. "Expansion", "Crafting").</summary>
 	public string Category { get; set; } = "Uncategorized";
 
+	/// <summary>Personal free-text note the user attached to this mod, spoken on selection; empty if none.</summary>
+	public string Note { get; set; } = "";
+
 	/// <summary>Latest version available on Nexus Mods, populated during update checks.</summary>
 	public string? LatestVersion { get; set; }
 
@@ -103,6 +106,7 @@ public class GameMod
 		{
 			return $"{Name} (ID: {NexusID}). {Description}";
 		}
-		return $"{value2}{Name} by {Author}, version {Version}. Category: {Category}. {value3}{value4}";
+		string noteSuffix = string.IsNullOrEmpty(Note) ? "" : $" Note: {Note}.";
+		return $"{value2}{Name} by {Author}, version {Version}. Category: {Category}. {value3}{value4}{noteSuffix}";
 	}
 }

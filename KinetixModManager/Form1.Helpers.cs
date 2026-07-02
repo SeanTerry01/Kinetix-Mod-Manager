@@ -177,16 +177,22 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Re-announces the focused list's position by invoking <see cref="List_Enter"/> on it. Used
-	/// when focus is restored by a path that does not raise GotFocus — notably exiting the
-	/// MenuStrip's Alt menu mode, which keeps the underlying control's focus and so never re-fires
-	/// the event. Generic: it acts on whichever ListBox currently holds focus, or does nothing.
+	/// Re-announces whatever control focus was restored to. Used when focus returns by a path that does not
+	/// raise GotFocus — notably exiting the MenuStrip's Alt menu mode, which keeps the underlying control's
+	/// focus and so never re-fires the event. Handles a focused list (announces its position via
+	/// <see cref="List_Enter"/>) and the main tab strip (announces the selected tab); otherwise does nothing.
 	/// </summary>
-	private void AnnounceFocusedList()
+	private void AnnounceFocusRestored()
 	{
-		if (Control.FromHandle(GetFocus()) is ListBox list)
+		Control? focused = Control.FromHandle(GetFocus());
+		if (focused is ListBox list)
 		{
 			List_Enter(list, EventArgs.Empty);
+		}
+		else if (focused is TabControl || mainTabs.Focused)
+		{
+			// Leaving the menu with the tab strip focused never re-fires the tab's own announcement, so say it here.
+			Speak(Loc.T("common.tabSuffix", mainTabs.SelectedTab?.Text ?? ""));
 		}
 	}
 
@@ -408,7 +414,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			SpeakBox(Loc.T("discovery.errorBox", ex.Message));
+			SpeakBox(Loc.T("discovery.errorBox", FriendlyError(ex)));
 		}
 		finally
 		{
@@ -484,6 +490,55 @@ public partial class Form1
 		{
 			Tolk.Output(text, interrupt);
 		}
+	}
+
+	/// <summary>
+	/// Speaks a potentially long passage (e.g. a mod description or AI answer) in sentence-sized chunks queued
+	/// back-to-back. Screen readers can silently cut off a single very long spoken string; splitting it into
+	/// several queued utterances makes the whole thing read. When <paramref name="interrupt"/> is true the first
+	/// chunk cuts off any in-progress speech; otherwise every chunk simply queues (used when the passage should
+	/// follow an earlier announcement, e.g. after "Analyzing…"). The rest always queue in order.
+	/// </summary>
+	private void SpeakLong(string text, bool interrupt = true)
+	{
+		if (string.IsNullOrWhiteSpace(text)) return;
+		System.Collections.Generic.List<string> chunks = ChunkForSpeech(text, 300);
+		for (int i = 0; i < chunks.Count; i++)
+			Speak(chunks[i], interrupt: interrupt && i == 0);
+	}
+
+	/// <summary>
+	/// Normalizes lone LF or CR line endings to CRLF. A multiline WinForms TextBox only renders a line break on
+	/// CRLF, so raw "\n" text (from HTML, API responses, etc.) otherwise runs together on one line.
+	/// </summary>
+	private static string NormalizeNewlines(string s) =>
+		string.IsNullOrEmpty(s) ? "" : System.Text.RegularExpressions.Regex.Replace(s, @"\r\n?|\n", "\r\n");
+
+	/// <summary>Splits text into chunks no longer than <paramref name="maxLen"/>, breaking on sentence/line
+	/// boundaries where possible and hard-splitting any single piece that's still too long.</summary>
+	private static System.Collections.Generic.List<string> ChunkForSpeech(string text, int maxLen)
+	{
+		var result = new System.Collections.Generic.List<string>();
+		string[] parts = System.Text.RegularExpressions.Regex.Split(text.Trim(), @"(?<=[\.\!\?])\s+|\r?\n+");
+		var sb = new StringBuilder();
+		void Flush() { if (sb.Length > 0) { result.Add(sb.ToString()); sb.Clear(); } }
+		foreach (string raw in parts)
+		{
+			string piece = raw.Trim();
+			if (piece.Length == 0) continue;
+			if (piece.Length > maxLen)
+			{
+				Flush();
+				for (int i = 0; i < piece.Length; i += maxLen)
+					result.Add(piece.Substring(i, Math.Min(maxLen, piece.Length - i)));
+				continue;
+			}
+			if (sb.Length + piece.Length + 1 > maxLen) Flush();
+			if (sb.Length > 0) sb.Append(' ');
+			sb.Append(piece);
+		}
+		Flush();
+		return result;
 	}
 
 	/// <summary>

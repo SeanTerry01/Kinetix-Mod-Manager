@@ -45,7 +45,7 @@ public partial class Form1
 		// raising GotFocus, because the menu uses a special input mode that never takes the list's
 		// focus. Re-announce the focused list when the menu deactivates so the user still hears their
 		// position. BeginInvoke defers until focus has actually been restored.
-		menuStrip.MenuDeactivate += (s, e) => BeginInvoke(new Action(AnnounceFocusedList));
+		menuStrip.MenuDeactivate += (s, e) => BeginInvoke(new Action(AnnounceFocusRestored));
 		_menuFile = new ToolStripMenuItem(Loc.T("menu.file")) { Name = "menuFile" };
 		_menuFile.DropDownItems.Add(Loc.T("menu.refreshAll", GetShortcutString("RefreshAll")), null, delegate
 		{
@@ -91,6 +91,14 @@ public partial class Form1
 		{
 			CreateProfileFromCurrent();
 		});
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.exportCollection", GetShortcutString("ExportCollection")), null, delegate
+		{
+			ExportCollection();
+		});
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.installCollection", GetShortcutString("InstallCollection")), null, async delegate
+		{
+			await InstallCollectionAsync();
+		});
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.installZip", GetShortcutString("InstallZip")), null, delegate
 		{
 			ManualInstall();
@@ -135,6 +143,10 @@ public partial class Form1
 		{
 			ImportFromMO2();
 		}).Name = "menuImportMO2";
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.editNote", GetShortcutString("EditNote")), null, delegate
+		{
+			SetModNote();
+		});
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.editConfig", GetShortcutString("OpenConfig")), null, delegate
 		{
 			OpenSelectedModConfig();
@@ -143,6 +155,14 @@ public partial class Form1
 		{
 			OpenSelectedModManifest();
 		});
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.viewDependencies", GetShortcutString("ShowDependencies")), null, delegate
+		{
+			ShowDependencies();
+		});
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.resolveDependencies", GetShortcutString("QuickFix")), null, delegate
+		{
+			QuickFixDependencies();
+		});
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.fileConflicts", GetShortcutString("FileConflicts")), null, delegate
 		{
 			ShowFileConflictsReport();
@@ -150,6 +170,22 @@ public partial class Form1
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.checkRequirements", GetShortcutString("CheckRequirements")), null, async delegate
 		{
 			await ShowRequirementsReport();
+		});
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.checkBrokenMods", GetShortcutString("CheckBrokenMods")), null, async delegate
+		{
+			await ShowBrokenModsReport();
+		});
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.endorse", GetShortcutString("Endorse")), null, delegate
+		{
+			EndorseSelectedMod();
+		});
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.viewChangelog", GetShortcutString("ViewChangelog")), null, delegate
+		{
+			ViewModChangelog();
+		});
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.viewDescription", GetShortcutString("ViewDescription")), null, delegate
+		{
+			ViewModDescription();
 		});
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.verifyDeployment"), null, delegate
 		{
@@ -161,6 +197,18 @@ public partial class Form1
 		});
 
 		ToolStripMenuItem toolStripMenuItem3 = new ToolStripMenuItem(Loc.T("menu.view")) { Name = "menuView" };
+		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.apiCredits", GetShortcutString("ApiCredits")), null, delegate
+		{
+			ShowApiCredits();
+		});
+		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.diagnoseAi", GetShortcutString("DiagnoseAi")), null, delegate
+		{
+			DiagnoseWithAi();
+		});
+		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.askAi"), null, delegate
+		{
+			AskFreeformAi();
+		});
 		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.openDownloads", GetShortcutString("OpenDownloads")), null, delegate
 		{
 			Process.Start("explorer.exe", downloadsPath);

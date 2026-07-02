@@ -70,6 +70,12 @@ public partial class Form1
 		}
 		catch { }
 
+		// The per-game uninstall key above is often missing or stale (reinstalls, manual library
+		// moves, installs that never write InstallLocation). Steam's own libraryfolders.vdf lists
+		// every library on every drive, so parse it to find the game wherever it actually lives.
+		string steamLib = DetectSteamLibraryGameFolder(steamAppId);
+		if (!string.IsNullOrEmpty(steamLib)) return steamLib;
+
 		try
 		{
 			string[] gogKeys = {
@@ -98,6 +104,47 @@ public partial class Form1
 
 		if (Directory.Exists(fallback))
 			return fallback;
+
+		return "";
+	}
+
+	/// <summary>
+	/// Finds the install folder for a Steam app by reading Steam's own library records, so games on
+	/// any drive (or in a custom-named library folder) are detected. Returns "" if Steam, the library
+	/// list, or the game's manifest can't be found — e.g. under Proton, where Steam runs natively on
+	/// Linux and leaves no install record in the Wine prefix's registry.
+	/// </summary>
+	private string DetectSteamLibraryGameFolder(string steamAppId)
+	{
+		try
+		{
+			string steamPath = GetSteamInstallPath();
+			if (string.IsNullOrEmpty(steamPath)) return "";
+			return SteamLibraryLocator.FindGameFolder(steamPath, steamAppId) ?? "";
+		}
+		catch { }
+		return "";
+	}
+
+	/// <summary>Reads the Steam client install path from the registry (per-user first, then machine-wide).</summary>
+	private string GetSteamInstallPath()
+	{
+		try
+		{
+			using var userKey = Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam");
+			string? p = userKey?.GetValue("SteamPath")?.ToString();
+			if (!string.IsNullOrEmpty(p) && Directory.Exists(p)) return p;
+		}
+		catch { }
+
+		try
+		{
+			using var machineKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Valve\Steam")
+				?? Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Valve\Steam");
+			string? p = machineKey?.GetValue("InstallPath")?.ToString();
+			if (!string.IsNullOrEmpty(p) && Directory.Exists(p)) return p;
+		}
+		catch { }
 
 		return "";
 	}
@@ -147,9 +194,10 @@ public partial class Form1
 	/// Verifies <paramref name="game"/> is installed before a session is allowed to load. When it
 	/// is not, the session must NOT load: <see cref="AppSettings.CurrentModsPath"/> falls back to the
 	/// Stardew Valley Mods path when a game's own path is unset, so loading anyway would silently show
-	/// another game's mods. Announces the situation, offers to purchase the game, and on "Yes" opens the
-	/// Steam/GOG store picker. Returns <c>true</c> only when loading may proceed (game installed, or
-	/// "None"), and <c>false</c> when the caller must abort the load.
+	/// another game's mods. Announces the situation and offers three choices: locate an existing install
+	/// folder (for copies auto-detection missed, e.g. under Proton), view store links to buy it, or
+	/// cancel. Returns <c>true</c> only when loading may proceed (game installed, "None", or the user
+	/// located a valid folder), and <c>false</c> when the caller must abort the load.
 	/// </summary>
 	private bool EnsureGameInstalledOrOfferPurchase(string game)
 	{
@@ -163,20 +211,160 @@ public partial class Form1
 			_ => game
 		};
 
-		Speak(Loc.T("session.notInstalledSpeak", targetName));
+		GameNotInstalledChoice choice = ShowGameNotInstalledDialog(targetName);
 
-		DialogResult choice = SpeakBox(
-			Loc.T("session.notInstalledBox", targetName),
-			Loc.T("session.notInstalledTitle"),
-			MessageBoxButtons.YesNo,
-			MessageBoxIcon.Warning);
+		if (choice == GameNotInstalledChoice.Locate)
+		{
+			// User already owns the game but auto-detection missed it (common under Proton, or a
+			// non-standard install location): let them point the manager straight at the folder.
+			return TryLocateGameFolder(game, targetName);
+		}
 
-		if (choice == DialogResult.Yes)
+		if (choice == GameNotInstalledChoice.Purchase)
 		{
 			ShowStoreSelectionDialog(targetName);
 		}
 
 		return false;
+	}
+
+	private enum GameNotInstalledChoice { Cancel, Locate, Purchase }
+
+	/// <summary>
+	/// Tells the user the game wasn't detected and offers three accessible choices: locate the existing
+	/// install folder, view store links to buy it, or cancel. Returns which the user chose.
+	/// </summary>
+	private GameNotInstalledChoice ShowGameNotInstalledDialog(string gameName)
+	{
+		GameNotInstalledChoice choice = GameNotInstalledChoice.Cancel;
+
+		Form dialog = new Form
+		{
+			Text = Loc.T("session.notInstalledDialogTitle", gameName),
+			Size = new Size(480, 260),
+			StartPosition = FormStartPosition.CenterScreen,
+			FormBorderStyle = FormBorderStyle.FixedDialog,
+			MaximizeBox = false,
+			MinimizeBox = false,
+			KeyPreview = true
+		};
+		dialog.KeyDown += (s, e) => { if (e.KeyCode == Keys.Escape) dialog.Close(); };
+
+		TableLayoutPanel layout = new TableLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			Padding = new Padding(15),
+			RowCount = 2,
+			ColumnCount = 1
+		};
+		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 65f));
+		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 35f));
+
+		Label lbl = new Label
+		{
+			Text = Loc.T("session.notInstalledPrompt", gameName),
+			Font = new Font("Segoe UI", 11f),
+			Dock = DockStyle.Fill
+		};
+		layout.Controls.Add(lbl, 0, 0);
+
+		FlowLayoutPanel buttons = new FlowLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			FlowDirection = FlowDirection.LeftToRight,
+			WrapContents = false
+		};
+
+		Button btnLocate = new Button
+		{
+			Text = Loc.T("session.locateButton"),
+			AutoSize = true,
+			Height = 40,
+			Font = new Font("Segoe UI", 11f, FontStyle.Bold)
+		};
+		Button btnPurchase = new Button
+		{
+			Text = Loc.T("session.purchaseButton"),
+			AutoSize = true,
+			Height = 40,
+			Font = new Font("Segoe UI", 11f, FontStyle.Bold)
+		};
+		Button btnCancel = new Button
+		{
+			Text = Loc.T("session.cancelButton"),
+			AutoSize = true,
+			Height = 40,
+			Font = new Font("Segoe UI", 11f, FontStyle.Bold)
+		};
+
+		btnLocate.Click += (s, e) => { choice = GameNotInstalledChoice.Locate; dialog.Close(); };
+		btnPurchase.Click += (s, e) => { choice = GameNotInstalledChoice.Purchase; dialog.Close(); };
+		btnCancel.Click += (s, e) => { choice = GameNotInstalledChoice.Cancel; dialog.Close(); };
+
+		buttons.Controls.AddRange(new Control[] { btnLocate, btnPurchase, btnCancel });
+		dialog.CancelButton = btnCancel;
+		layout.Controls.Add(buttons, 0, 1);
+		dialog.Controls.Add(layout);
+
+		Speak(Loc.T("session.notInstalledSpeak", gameName));
+		dialog.Shown += (s, e) => { btnLocate.Focus(); };
+		ApplyScreenReaderPauses(dialog);
+		dialog.ShowDialog();
+		return choice;
+	}
+
+	/// <summary>
+	/// Opens a folder picker so the user can point at an already-installed copy of <paramref name="game"/>.
+	/// Saves the path and returns <c>true</c> only when the chosen folder actually contains the game's
+	/// program file, so a wrong folder never loads a broken session.
+	/// </summary>
+	private bool TryLocateGameFolder(string game, string targetName)
+	{
+		using FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog
+		{
+			Description = Loc.T("session.locateBrowseDesc", targetName),
+			UseDescriptionForTitle = true
+		};
+
+		if (folderBrowserDialog.ShowDialog() != DialogResult.OK) return false;
+
+		string chosen = folderBrowserDialog.SelectedPath;
+		if (!FolderContainsGameExe(game, chosen))
+		{
+			Speak(Loc.T("session.locateInvalidSpeak", targetName));
+			SpeakBox(
+				Loc.T("session.locateInvalidBox", targetName),
+				Loc.T("session.notInstalledTitle"),
+				MessageBoxButtons.OK,
+				MessageBoxIcon.Warning);
+			return false;
+		}
+
+		_settings.GamePaths[game] = chosen;
+		_settings.Save();
+		Speak(Loc.T("session.locatedSpeak", targetName));
+		return true;
+	}
+
+	/// <summary>True when <paramref name="path"/> holds the game's main executable or its script-extender loader.</summary>
+	private bool FolderContainsGameExe(string game, string path)
+	{
+		if (string.IsNullOrEmpty(path) || !Directory.Exists(path)) return false;
+
+		string checkExe = game switch
+		{
+			"SkyrimSE" => "SkyrimSE.exe",
+			"Fallout4" => "Fallout4.exe",
+			_ => "Stardew Valley.exe"
+		};
+		string loaderExe = game switch
+		{
+			"SkyrimSE" => "skse64_loader.exe",
+			"Fallout4" => "f4se_loader.exe",
+			_ => "StardewModdingAPI.exe"
+		};
+
+		return File.Exists(Path.Combine(path, checkExe)) || File.Exists(Path.Combine(path, loaderExe));
 	}
 
 	private void UpdateGamesMenu()
@@ -497,7 +685,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			SpeakBox(Loc.T("launch.failed", ex.Message));
+			SpeakBox(Loc.T("launch.failed", FriendlyError(ex)));
 		}
 	}
 }

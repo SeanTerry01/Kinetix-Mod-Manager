@@ -62,9 +62,11 @@ public partial class Form1
 		TableLayoutPanel tabPaths   = NewTab(Loc.T("settings.tabPaths"));
 		TableLayoutPanel tabStartup = NewTab(Loc.T("settings.tabStartup"));
 		TableLayoutPanel tabAudio   = NewTab(Loc.T("settings.tabAudio"));
+		TableLayoutPanel tabDisplay = NewTab(Loc.T("settings.tabDisplay"));
 		TableLayoutPanel tabMods    = NewTab(Loc.T("settings.tabMods"));
+		TableLayoutPanel tabAi      = NewTab(Loc.T("settings.tabAi"));
 		TableLayoutPanel tabLang    = NewTab(Loc.T("settings.tabLanguage"));
-		int pr = 0, sr = 0, ar = 0, mr = 0, lr = 0; // per-tab row counters
+		int pr = 0, sr = 0, ar = 0, dr = 0, mr = 0, lr = 0, air = 0; // per-tab row counters
 
 		tabPaths.Controls.Add(new Label
 		{
@@ -378,6 +380,43 @@ public partial class Form1
 		flowLayoutPanel2.Controls.Add(nVol);
 		tabAudio.Controls.Add(flowLayoutPanel2, 0, ar++);
 
+		// --- Display (low-vision) tab: high-contrast colours and larger text ---
+		tabDisplay.Controls.Add(new Label { Text = Loc.T("settings.displayIntro"), AutoSize = true }, 0, dr++);
+
+		tabDisplay.Controls.Add(new Label
+		{
+			Text = Loc.T("settings.contrast") + ":",
+			AutoSize = true,
+			Padding = new Padding(0, 10, 0, 0)
+		}, 0, dr++);
+		var contrastOptions = new[] { DisplayContrast.Off, DisplayContrast.WhiteOnBlack, DisplayContrast.YellowOnBlack, DisplayContrast.BlackOnYellow };
+		ComboBox cmbContrast = new ComboBox
+		{
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			Width = 260,
+			AccessibleName = Loc.T("settings.contrastName")
+		};
+		foreach (DisplayContrast opt in contrastOptions) cmbContrast.Items.Add(Loc.T("settings.contrast." + opt));
+		cmbContrast.SelectedIndex = Math.Max(0, Array.IndexOf(contrastOptions, _settings.DisplayContrast));
+		tabDisplay.Controls.Add(cmbContrast, 0, dr++);
+
+		tabDisplay.Controls.Add(new Label
+		{
+			Text = Loc.T("settings.textSize") + ":",
+			AutoSize = true,
+			Padding = new Padding(0, 10, 0, 0)
+		}, 0, dr++);
+		var textSizeOptions = new[] { TextSize.Normal, TextSize.Large, TextSize.ExtraLarge };
+		ComboBox cmbTextSize = new ComboBox
+		{
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			Width = 260,
+			AccessibleName = Loc.T("settings.textSizeName")
+		};
+		foreach (TextSize opt in textSizeOptions) cmbTextSize.Items.Add(Loc.T("settings.textSize." + opt));
+		cmbTextSize.SelectedIndex = Math.Max(0, Array.IndexOf(textSizeOptions, _settings.TextSize));
+		tabDisplay.Controls.Add(cmbTextSize, 0, dr++);
+
 		FlowLayoutPanel flowLayoutPanel3 = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Fill,
@@ -590,6 +629,234 @@ public partial class Form1
 		};
 		UpdateAudioVisibility();
 
+		// ----- AI tab: provider, model, per-provider API key, and a connection test -----
+		tabAi.Controls.Add(new Label { Text = Loc.T("settings.aiIntro"), AutoSize = true, MaximumSize = new Size(480, 0) }, 0, air++);
+
+		CheckBox cAiEnabled = new CheckBox
+		{
+			Text = Loc.T("settings.aiEnable"),
+			Checked = _settings.AiEnabled,
+			AutoSize = true,
+			Padding = new Padding(0, 8, 0, 0)
+		};
+		tabAi.Controls.Add(cAiEnabled, 0, air++);
+
+		Label lblAiProvider = new Label { Text = Loc.T("settings.aiProvider") + ":", AutoSize = true, Padding = new Padding(0, 10, 0, 0) };
+		tabAi.Controls.Add(lblAiProvider, 0, air++);
+		ComboBox cmbAiProvider = new ComboBox
+		{
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			Width = 350,
+			Font = new Font("Segoe UI", 10f),
+			AccessibleName = Loc.T("settings.aiProvider")
+		};
+		foreach (AiProviderInfo prov in AiService.Providers) cmbAiProvider.Items.Add(prov);
+		tabAi.Controls.Add(cmbAiProvider, 0, air++);
+
+		Label lblAiBaseUrl = new Label { Text = Loc.T("settings.aiBaseUrl") + ":", AutoSize = true, Padding = new Padding(0, 10, 0, 0), Visible = false };
+		tabAi.Controls.Add(lblAiBaseUrl, 0, air++);
+		TextBox tAiBaseUrl = new TextBox
+		{
+			Width = 350,
+			Font = new Font("Segoe UI", 10f),
+			AccessibleName = Loc.T("settings.aiBaseUrl"),
+			Text = _settings.AiCustomBaseUrl,
+			Visible = false
+		};
+		tabAi.Controls.Add(tAiBaseUrl, 0, air++);
+
+		Label lblAiModel = new Label { Text = Loc.T("settings.aiModel") + ":", AutoSize = true, Padding = new Padding(0, 10, 0, 0) };
+		tabAi.Controls.Add(lblAiModel, 0, air++);
+		ComboBox cmbAiModel = new ComboBox
+		{
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			Width = 350,
+			Font = new Font("Segoe UI", 10f),
+			AccessibleName = Loc.T("settings.aiModel")
+		};
+		tabAi.Controls.Add(cmbAiModel, 0, air++);
+
+		Button btnAiRefresh = new Button { Text = Loc.T("settings.aiRefresh"), AutoSize = true, Padding = new Padding(0, 4, 0, 0) };
+		tabAi.Controls.Add(btnAiRefresh, 0, air++);
+
+		Label lblAiCustom = new Label { Text = Loc.T("settings.aiCustomModel") + ":", AutoSize = true, Padding = new Padding(0, 10, 0, 0), Visible = false };
+		tabAi.Controls.Add(lblAiCustom, 0, air++);
+		TextBox tAiCustomModel = new TextBox
+		{
+			Width = 350,
+			Font = new Font("Segoe UI", 10f),
+			AccessibleName = Loc.T("settings.aiCustomModel"),
+			Visible = false
+		};
+		tabAi.Controls.Add(tAiCustomModel, 0, air++);
+
+		Label lblAiKey = new Label { Text = Loc.T("settings.aiKey") + ":", AutoSize = true, Padding = new Padding(0, 10, 0, 0) };
+		tabAi.Controls.Add(lblAiKey, 0, air++);
+		TextBox tAiKey = new TextBox
+		{
+			Width = 350,
+			Font = new Font("Segoe UI", 10f),
+			AccessibleName = Loc.T("settings.aiKey")
+		};
+		tabAi.Controls.Add(tAiKey, 0, air++);
+
+		Label lblAiKeyHelp = new Label { Text = "", AutoSize = true, MaximumSize = new Size(480, 0), Padding = new Padding(0, 4, 0, 0) };
+		tabAi.Controls.Add(lblAiKeyHelp, 0, air++);
+
+		Button btnAiTest = new Button { Text = Loc.T("settings.aiTest"), AutoSize = true, Padding = new Padding(0, 8, 0, 0) };
+		tabAi.Controls.Add(btnAiTest, 0, air++);
+
+		void UpdateAiCustomVisibility()
+		{
+			bool custom = cAiEnabled.Checked && (cmbAiModel.SelectedItem as AiModelOption)?.Id == AiService.CustomModelId;
+			lblAiCustom.Visible = custom;
+			tAiCustomModel.Visible = custom;
+		}
+		// Show the provider/model/key controls only while AI is enabled — an unchecked box means nothing else
+		// on the tab is relevant.
+		void UpdateAiVisibility()
+		{
+			bool on = cAiEnabled.Checked;
+			lblAiProvider.Visible = cmbAiProvider.Visible = on;
+			bool needsBase = on && (cmbAiProvider.SelectedItem as AiProviderInfo)?.NeedsBaseUrl == true;
+			lblAiBaseUrl.Visible = tAiBaseUrl.Visible = needsBase;
+			lblAiModel.Visible = cmbAiModel.Visible = on;
+			lblAiKey.Visible = tAiKey.Visible = on;
+			lblAiKeyHelp.Visible = on;
+			btnAiRefresh.Visible = on;
+			btnAiTest.Visible = on;
+			UpdateAiCustomVisibility(); // the Custom row also depends on the selected model
+		}
+		// Fills the model dropdown from the provider's curated list, or from a live list fetched via
+		// "Refresh model list", always ending with a "Custom" entry. Selects wantModel, or Custom if it isn't
+		// in the list (and drops the raw id into the Custom box).
+		void PopulateAiModels(AiProviderInfo prov, string wantModel, IReadOnlyList<AiModelOption>? liveModels = null)
+		{
+			cmbAiModel.Items.Clear();
+			// Prefer a freshly fetched list, then the persisted cache from a previous "Refresh model list", and only
+			// then the small curated fallback. Using the cache is what lets a saved model that isn't in the curated
+			// list still show up (and stay selected) after Settings is reopened.
+			IReadOnlyList<AiModelOption> source = liveModels
+				?? (_settings.AiModelCache.TryGetValue(prov.Id, out var cached) && cached.Count > 0
+					? cached.Select(c => new AiModelOption(c.Id, c.Display)).ToList()
+					: prov.Models);
+			var list = source.Where(m => m.Id != AiService.CustomModelId).ToList();
+			foreach (AiModelOption m in list) cmbAiModel.Items.Add(m);
+			AiModelOption custom = new AiModelOption(AiService.CustomModelId, Loc.T("settings.aiCustomEntry"));
+			cmbAiModel.Items.Add(custom);
+
+			AiModelOption? match = list.FirstOrDefault(m => string.Equals(m.Id, wantModel, StringComparison.OrdinalIgnoreCase));
+			if (match != null)
+			{
+				cmbAiModel.SelectedItem = match;
+			}
+			else
+			{
+				cmbAiModel.SelectedItem = custom;
+				if (!string.IsNullOrEmpty(wantModel) && wantModel != AiService.CustomModelId) tAiCustomModel.Text = wantModel;
+			}
+			lblAiKeyHelp.Text = prov.KeyHelp;
+			UpdateAiCustomVisibility();
+		}
+		cmbAiProvider.SelectedIndexChanged += delegate
+		{
+			if (cmbAiProvider.SelectedItem is AiProviderInfo p)
+			{
+				PopulateAiModels(p, p.DefaultModel);
+				tAiKey.Text = _settings.AiApiKeys.TryGetValue(p.Id, out string? k) ? k : "";
+				UpdateAiVisibility();
+			}
+		};
+		cmbAiModel.SelectedIndexChanged += delegate { UpdateAiCustomVisibility(); };
+
+		// Initial load: select the saved provider, then override with the saved model + key (the handler above
+		// fills in provider defaults when the selection first changes).
+		AiProviderInfo initialProv = AiService.FindProvider(_settings.AiProvider) ?? AiService.Providers[0];
+		cmbAiProvider.SelectedItem = initialProv;
+		PopulateAiModels(initialProv, string.IsNullOrEmpty(_settings.AiModel) ? initialProv.DefaultModel : _settings.AiModel);
+		tAiKey.Text = _settings.AiApiKeys.TryGetValue(initialProv.Id, out string? initialKey) ? initialKey : "";
+
+		cAiEnabled.CheckedChanged += delegate
+		{
+			UpdateAiVisibility();
+			Speak(cAiEnabled.Checked ? Loc.T("settings.aiOn") : Loc.T("settings.aiOff"));
+		};
+		UpdateAiVisibility();
+
+		// Fetch the provider's live model catalog with the entered key and repopulate the dropdown, keeping the
+		// current selection if it still exists.
+		btnAiRefresh.Click += async delegate
+		{
+			if (cmbAiProvider.SelectedItem is not AiProviderInfo prov) return;
+			string key = tAiKey.Text.Trim();
+			if (string.IsNullOrEmpty(key)) { Speak(Loc.T("settings.aiRefreshNeedsKey")); return; }
+			string current = (cmbAiModel.SelectedItem as AiModelOption)?.Id ?? "";
+			if (current == AiService.CustomModelId) current = tAiCustomModel.Text.Trim();
+			string baseUrl = prov.NeedsBaseUrl ? tAiBaseUrl.Text.Trim() : "";
+			btnAiRefresh.Enabled = false;
+			Speak(Loc.T("settings.aiRefreshWorking"));
+			try
+			{
+				var live = await _aiService.ListModelsAsync(prov.Id, key, baseUrl);
+				if (live.Count == 0) { Speak(Loc.T("settings.aiRefreshNone")); return; }
+
+				// Compare against the previously cached list so we can tell the user what changed (new / removed models).
+				_settings.AiModelCache.TryGetValue(prov.Id, out var previous);
+				var oldIds = new HashSet<string>(previous?.Select(c => c.Id) ?? Enumerable.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+				var newIds = new HashSet<string>(live.Select(m => m.Id), StringComparer.OrdinalIgnoreCase);
+				int added = newIds.Count(id => !oldIds.Contains(id));
+				int removed = oldIds.Count(id => !newIds.Contains(id));
+
+				// Remember the fetched list (persisted on Save) so the dropdown keeps showing the real models next time.
+				_settings.AiModelCache[prov.Id] = live.Select(m => new AiModelChoice { Id = m.Id, Display = m.Display }).ToList();
+
+				PopulateAiModels(prov, string.IsNullOrEmpty(current) ? prov.DefaultModel : current, live);
+				_soundEngine.Play("load_complete");
+				// First-ever refresh for this provider: just report the count. Otherwise report the added/removed diff.
+				if (previous != null && previous.Count > 0 && (added > 0 || removed > 0))
+					Speak(Loc.T("settings.aiRefreshChanged", live.Count, added, removed));
+				else if (previous != null && previous.Count > 0)
+					Speak(Loc.T("settings.aiRefreshNoChange", live.Count));
+				else
+					Speak(Loc.T("settings.aiRefreshOk", live.Count));
+			}
+			catch (Exception ex)
+			{
+				_soundEngine.Play("error");
+				SpeakBox(Loc.T("settings.aiRefreshFail", ex.Message), Loc.T("ai.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+			}
+			finally { btnAiRefresh.Enabled = true; }
+		};
+
+		btnAiTest.Click += async delegate
+		{
+			if (cmbAiProvider.SelectedItem is not AiProviderInfo prov) return;
+			string model = (cmbAiModel.SelectedItem as AiModelOption)?.Id ?? "";
+			if (model == AiService.CustomModelId) model = tAiCustomModel.Text.Trim();
+			string key = tAiKey.Text.Trim();
+			if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(model))
+			{
+				Speak(Loc.T("settings.aiTestNeedsKey"));
+				return;
+			}
+			string testBaseUrl = prov.NeedsBaseUrl ? tAiBaseUrl.Text.Trim() : "";
+			btnAiTest.Enabled = false;
+			Speak(Loc.T("settings.aiTestWorking"));
+			try
+			{
+				// 256 tokens of headroom so a "thinking" model still has room to emit the visible reply.
+				await _aiService.AskAsync(prov.Id, model, key, "You are a connection test.", "Reply with the single word OK.", 256, testBaseUrl);
+				_soundEngine.Play("connect");
+				Speak(Loc.T("settings.aiTestOk"));
+			}
+			catch (Exception ex)
+			{
+				_soundEngine.Play("error");
+				SpeakBox(Loc.T("settings.aiTestFail", ex.Message), Loc.T("ai.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+			}
+			finally { btnAiTest.Enabled = true; }
+		};
+
 		FlowLayoutPanel flowLayoutPanel5 = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Bottom,
@@ -670,7 +937,27 @@ public partial class Form1
 				_settings.CurrentTheme = cManualTheme.Checked
 					? (cTheme.SelectedItem?.ToString() ?? "Default")
 					: AppSettings.ThemeForGame(_settings.ActiveGame);
+
+				// AI settings (per-provider key stored encrypted; empty key clears it).
+				_settings.AiEnabled = cAiEnabled.Checked;
+				_settings.AiCustomBaseUrl = tAiBaseUrl.Text.Trim();
+				if (cmbAiProvider.SelectedItem is AiProviderInfo aiProv)
+				{
+					_settings.AiProvider = aiProv.Id;
+					string chosenAiModel = (cmbAiModel.SelectedItem as AiModelOption)?.Id ?? "";
+					if (chosenAiModel == AiService.CustomModelId) chosenAiModel = tAiCustomModel.Text.Trim();
+					_settings.AiModel = chosenAiModel;
+					string aiKey = tAiKey.Text.Trim();
+					if (string.IsNullOrEmpty(aiKey)) _settings.AiApiKeys.Remove(aiProv.Id);
+					else _settings.AiApiKeys[aiProv.Id] = aiKey;
+				}
+
+				_settings.DisplayContrast = contrastOptions[Math.Max(0, cmbContrast.SelectedIndex)];
+				_settings.TextSize = textSizeOptions[Math.Max(0, cmbTextSize.SelectedIndex)];
+
 				_settings.Save();
+				// Re-theme the main window immediately so a changed contrast/text-size takes effect without a restart.
+				ApplyDisplayTheme();
 				// A changed game path can change the detected edition/build, so drop the cached display name.
 				InvalidateGameDisplayName();
 				UpdateGamesMenu();
@@ -732,6 +1019,7 @@ public partial class Form1
 		};
 		// Add the "name then pause then value" reading to every combo/checkbox/list in the dialog.
 		ApplyScreenReaderPauses(f);
+		StyleDialog(f);
 		f.ShowDialog();
 		void PreviewLogo()
 		{

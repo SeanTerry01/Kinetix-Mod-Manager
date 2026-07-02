@@ -1500,7 +1500,7 @@ public partial class Form1
 			catch (Exception ex)
 			{
 				Speak(Loc.T("config.saveFailed"));
-				SpeakBox(Loc.T("config.saveFailedBox", ex.Message), Loc.T("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+				SpeakBox(Loc.T("config.saveFailedBox", FriendlyError(ex)), Loc.T("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
 			}
 		};
 

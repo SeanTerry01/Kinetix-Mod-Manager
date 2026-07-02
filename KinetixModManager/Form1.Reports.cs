@@ -323,6 +323,15 @@ public partial class Form1
 		{
 			if (list.SelectedItem is not ReportRow row) return;
 
+			// F9 asks the configured AI provider about the selected finding.
+			if (e.KeyCode == Keys.F9 && hasRows && _aiService.IsConfigured)
+			{
+				e.Handled = e.SuppressKeyPress = true;
+				f.Close();
+				AskAiAbout(title, Loc.T("ai.aboutReportRow", title, row.Text));
+				return;
+			}
+
 			// Delete hides a requirement warning the manager can't auto-resolve (e.g. an optional/alternative-
 			// satisfied Nexus requirement). Only rows that opted in (IgnoreKey set) and reports that supplied an
 			// onIgnore handler are ignorable.
@@ -361,9 +370,11 @@ public partial class Form1
 			string opening = header + ". " + (hasRows
 				? Loc.T("reports.itemCount", rows.Count) + (actionHint != null ? ". " + actionHint : "")
 				: emptyMessage);
+			if (hasRows && _aiService.IsConfigured) opening += ". " + Loc.T("ai.reportHint");
 			Speak(opening);
 			list.Focus();
 		};
+		StyleDialog(f);
 		f.ShowDialog(this);
 	}
 }

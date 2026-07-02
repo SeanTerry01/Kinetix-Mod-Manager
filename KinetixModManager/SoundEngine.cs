@@ -27,7 +27,7 @@ public class SoundEngine
 			{ "disable",            "Played when one or more mods are disabled or deleted." },
 			{ "error",              "Played when an error occurs, such as a failed download." },
 			{ "loading_indicator",  "A pulsing sound that plays while the manager is checking for updates in the background." },
-			{ "load_complete",      "Played when the manager has finished checking all mods for updates." }
+			{ "load_complete",      "Played when an operation finishes, such as installing a mod, updating, importing, or checking for updates." }
 		};
 
 	private readonly string _themesPath;

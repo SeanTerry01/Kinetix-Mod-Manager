@@ -233,7 +233,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			SpeakBox(Loc.T("smapi.uploadFailed", ex.Message));
+			SpeakBox(Loc.T("smapi.uploadFailed", FriendlyError(ex)));
 		}
 		finally
 		{

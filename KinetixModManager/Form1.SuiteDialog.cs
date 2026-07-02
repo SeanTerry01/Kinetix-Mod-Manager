@@ -367,7 +367,7 @@ public partial class Form1
 			}
 			catch (Exception ex)
 			{
-				SpeakBox(Loc.T("suite.installErrorBox", ex.Message));
+				SpeakBox(Loc.T("suite.installErrorBox", FriendlyError(ex)));
 			}
 			finally
 			{
@@ -510,7 +510,7 @@ public partial class Form1
 		catch (Exception ex)
 		{
 			Speak(Loc.T("se.uninstallFailed", seName));
-			SpeakBox(Loc.T("se.uninstallFailedBox", ex.Message), Loc.T("common.error"),
+			SpeakBox(Loc.T("se.uninstallFailedBox", FriendlyError(ex)), Loc.T("common.error"),
 				MessageBoxButtons.OK, MessageBoxIcon.Error);
 		}
 	}

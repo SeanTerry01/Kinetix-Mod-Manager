@@ -154,6 +154,51 @@ public partial class Form1
 			e.SuppressKeyPress = true;
 			QuickFixDependencies();
 		}
+		if (IsShortcut(e, "Endorse"))
+		{
+			e.SuppressKeyPress = true;
+			EndorseSelectedMod();
+		}
+		if (IsShortcut(e, "ViewChangelog"))
+		{
+			e.SuppressKeyPress = true;
+			ViewModChangelog();
+		}
+		if (IsShortcut(e, "ViewDescription"))
+		{
+			e.SuppressKeyPress = true;
+			ViewModDescription();
+		}
+		if (IsShortcut(e, "CheckBrokenMods"))
+		{
+			e.SuppressKeyPress = true;
+			_ = ShowBrokenModsReport();
+		}
+		if (IsShortcut(e, "EditNote"))
+		{
+			e.SuppressKeyPress = true;
+			SetModNote();
+		}
+		if (IsShortcut(e, "ExportCollection"))
+		{
+			e.SuppressKeyPress = true;
+			ExportCollection();
+		}
+		if (IsShortcut(e, "InstallCollection"))
+		{
+			e.SuppressKeyPress = true;
+			_ = InstallCollectionAsync();
+		}
+		if (IsShortcut(e, "ApiCredits"))
+		{
+			e.SuppressKeyPress = true;
+			ShowApiCredits();
+		}
+		if (IsShortcut(e, "DiagnoseAi"))
+		{
+			e.SuppressKeyPress = true;
+			DiagnoseWithAi();
+		}
 		if (IsShortcut(e, "FileConflicts"))
 		{
 			e.SuppressKeyPress = true;
@@ -326,7 +371,8 @@ public partial class Form1
 		{
 			if (!string.IsNullOrEmpty(stardewMod.Description))
 			{
-				Speak(stardewMod.Description);
+				// Chunked so a long description is read in full — a single long spoken string can be clipped.
+				SpeakLong(stardewMod.Description);
 			}
 			else
 			{

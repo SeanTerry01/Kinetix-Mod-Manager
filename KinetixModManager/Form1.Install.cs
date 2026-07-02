@@ -45,17 +45,36 @@ public partial class Form1
 		}
 		else
 		{
-			if (SpeakBox(Loc.T("updateAll.confirm", listUpdates.Items.Count), Loc.T("common.confirm"), MessageBoxButtons.YesNo) == DialogResult.No)
+			// Several installed mods can come from one Nexus download (e.g. Cape Stardew bundles 5 sub-mods in one
+			// zip, all sharing a mod id). Installing that one download updates them all at once, so collapse update
+			// rows that share a source to a single download — but keep genuine multi-part mods (Part 1 / Part 2)
+			// distinct so both parts still get fetched.
+			int totalMods = listUpdates.Items.Count;
+			var groupSizes = listUpdates.Items.Cast<StardewMod>()
+				.GroupBy(UpdateGroupKey)
+				.ToDictionary(g => g.Key, g => g.Count());
+			var seenSources = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+			List<StardewMod> mods = listUpdates.Items.Cast<StardewMod>().Where(m => seenSources.Add(UpdateGroupKey(m))).ToList();
+
+			// When some updates are bundled, the download count is lower than the mod count. Say both so "1 download"
+			// never looks like it is skipping the other mods it actually updates.
+			string confirmMsg = mods.Count == totalMods
+				? Loc.T("updateAll.confirm", totalMods)
+				: Loc.T("updateAll.confirmGrouped", totalMods, mods.Count);
+			if (SpeakBox(confirmMsg, Loc.T("common.confirm"), MessageBoxButtons.YesNo) == DialogResult.No)
 			{
 				return;
 			}
 			isUpdatingAll = true;
 			try
 			{
-				List<StardewMod> mods = listUpdates.Items.Cast<StardewMod>().ToList();
 				for (int i = 0; i < mods.Count; i++)
 				{
-					SetStatus(Loc.T("updateAll.updatingStatus", i + 1, mods.Count, mods[i].Name));
+					// A bundle download updates every mod in it, so name that when it happens.
+					int members = groupSizes.TryGetValue(UpdateGroupKey(mods[i]), out int c) ? c : 1;
+					SetStatus(members > 1
+						? Loc.T("updateAll.updatingBundle", i + 1, mods.Count, mods[i].Name, members)
+						: Loc.T("updateAll.updatingStatus", i + 1, mods.Count, mods[i].Name));
 					await DownloadAndInstallUpdate(mods[i], silent: true);
 				}
 				Speak(Loc.T("updateAll.finished"));
@@ -63,18 +82,40 @@ public partial class Form1
 			catch (Exception ex)
 			{
 				LogError("Updates", "Update All failed: " + ex.Message);
-				Speak(Loc.T("updateAll.failed", ex.Message));
+				Speak(Loc.T("updateAll.failed", FriendlyError(ex)));
 			}
 			finally
 			{
 				isUpdatingAll = false;
-				_ = RefreshModList(checkUpdates: true);
+				// A final re-scan reflects the new versions and leaves the updates list as the batch left it
+				// (successful mods already removed, any failures still shown). No online re-check: the user just
+				// checked and updated, so re-querying Nexus here is redundant and only adds delay and speech.
+				_ = RefreshModList(checkUpdates: false);
 			}
 		}
 	}
 
-	/// <summary>Opens the Nexus Mods page for the selected mod in the default browser.</summary>
-	private void OpenModPage()
+	/// <summary>
+	/// The key that groups update rows sharing one download source, used to de-duplicate Update All. Mods with
+	/// the same Nexus id (or GitHub repo) collapse to one download — except that a "Part 1" / "Part 2" name marks
+	/// a mod that ships two separate files on one page, which must stay distinct. Unmatched mods key on their
+	/// UniqueID so they are never merged with anything else.
+	/// </summary>
+	private static string UpdateGroupKey(StardewMod m)
+	{
+		string part = m.Name.Contains("Part 2", StringComparison.OrdinalIgnoreCase) ? "|p2"
+			: m.Name.Contains("Part 1", StringComparison.OrdinalIgnoreCase) ? "|p1" : "";
+		if (!string.IsNullOrEmpty(m.NexusID)) return "nexus:" + m.NexusID + part;
+		if (!string.IsNullOrEmpty(m.GitHubRepo)) return "github:" + m.GitHubRepo.ToLowerInvariant() + part;
+		return "uid:" + m.UniqueId;
+	}
+
+	/// <summary>
+	/// Returns the mod selected in whichever Nexus-aware list is active (Installed, Updates, or Discovery),
+	/// or <c>null</c> if no such tab is active or nothing is selected. Shared by the Nexus actions that work
+	/// on the current selection (open page, endorse).
+	/// </summary>
+	private StardewMod? SelectedNexusMod()
 	{
 		ListBox listBox;
 		if (CurrentTab() == AppTab.Installed)
@@ -85,15 +126,21 @@ public partial class Form1
 		{
 			listBox = listUpdates;
 		}
-		else
+		else if (CurrentTab() == AppTab.Discovery)
 		{
-			if (CurrentTab() != AppTab.Discovery)
-			{
-				return;
-			}
 			listBox = listDiscovery;
 		}
-		if (listBox.SelectedItem is StardewMod stardewMod && !string.IsNullOrEmpty(stardewMod.NexusID))
+		else
+		{
+			return null;
+		}
+		return listBox.SelectedItem as StardewMod;
+	}
+
+	/// <summary>Opens the Nexus Mods page for the selected mod in the default browser.</summary>
+	private void OpenModPage()
+	{
+		if (SelectedNexusMod() is StardewMod stardewMod && !string.IsNullOrEmpty(stardewMod.NexusID))
 		{
 			Process.Start(new ProcessStartInfo($"https://www.nexusmods.com/{_nexusService.CurrentGameDomain}/mods/{stardewMod.NexusID}?tab=files")
 			{
@@ -181,7 +228,7 @@ public partial class Form1
 			ProgressAnnouncer progress = NewProgress(realName, installing: false);
 			await _nexusService.DownloadFileWithProgressAsync(dlUri, path, progress);
 			progress.Complete();
-			_soundEngine.Play("connect");
+			_soundEngine.Play("load_complete");
 			string? nexusId = null;
 			try
 			{
@@ -224,7 +271,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			SpeakBox(Loc.T("download.nxmError", ex.Message));
+			SpeakBox(Loc.T("download.nxmError", FriendlyError(ex)));
 		}
 	}
 
@@ -368,9 +415,10 @@ public partial class Form1
 	/// </summary>
 	private async Task InstallFromZip(string zipPath, string? nexusId = null, bool silent = false, bool confirmReinstall = false)
 	{
-		// In a silent batch (e.g. Update All) we skip the per-mod install tones/speech; the batch reports its
-		// own "Updating (i/n)" status instead. Interactive installs get the full progress announcer.
-		ProgressAnnouncer? installProgress = silent ? null : NewProgress(Path.GetFileNameWithoutExtension(zipPath), installing: true);
+		// Install progress runs even in a silent batch (Update All), following the user's tones/speech/both/off
+		// setting via ProgressAnnouncer. The silent flag suppresses only the per-mod spoken chatter and the
+		// per-mod "installed" message box (see below) — not the progress feedback.
+		ProgressAnnouncer? installProgress = NewProgress(Path.GetFileNameWithoutExtension(zipPath), installing: true);
 		// Only interactive installs (manual Ctrl+I, Mod Manager Download) ask before overwriting; updates
 		// deliberately overwrite without prompting.
 		Func<string, string, bool>? confirmOverwrite = confirmReinstall ? ConfirmOverwrite : null;
@@ -381,7 +429,7 @@ public partial class Form1
 				backupsPath, _settings.MaxBackupsPerMod, _settings.ActiveGame, LogError, nexusId, _nexusService, null, _settings.CurrentGamePath,
 				ShowFomodWizardAsync, installProgress, confirmOverwrite);
 			installProgress?.Complete();
-			_soundEngine.Play("connect");
+			_soundEngine.Play("load_complete");
 
 			await RefreshModList(checkUpdates: false);
 
@@ -393,7 +441,9 @@ public partial class Form1
 				SyncBethesdaDeployment(new HashSet<string>(new[] { name }, StringComparer.OrdinalIgnoreCase));
 				RefreshModPriorityList();
 			}
-			SpeakBox(Loc.T("install.installed", name));
+			// In a silent batch (Update All) don't pop a modal box per mod — the batch's status line and the
+			// end-of-run "All updates finished" cover it; a per-mod box would force a click on every mod.
+			if (!silent) SpeakBox(Loc.T("install.installed", name));
 		}
 		catch (OperationCanceledException)
 		{
@@ -403,11 +453,11 @@ public partial class Form1
 		{
 			// A denied path is almost always an external lock: the game still running, antivirus/Controlled Folder
 			// Access guarding the mods folder, or a file held open elsewhere. Say so rather than a bare path error.
-			SpeakBox(Loc.T("install.failedAccess", ex.Message));
+			AiInstallFailure(Loc.T("install.failedAccess", ex.Message), Path.GetFileNameWithoutExtension(zipPath));
 		}
 		catch (Exception ex)
 		{
-			SpeakBox(Loc.T("install.failed", ex.Message));
+			AiInstallFailure(Loc.T("install.failed", ex.Message), Path.GetFileNameWithoutExtension(zipPath));
 		}
 		finally
 		{

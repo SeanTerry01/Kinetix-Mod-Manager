@@ -28,6 +28,16 @@ public class LootMasterlist
 	/// <summary>Plugin file name → plugins it must load after.</summary>
 	public Dictionary<string, List<string>> PluginAfter { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+	/// <summary>Plugin file name → plugins LOOT records as incompatible with it (its <c>inc</c> list).</summary>
+	public Dictionary<string, List<string>> PluginIncompatibilities { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+	/// <summary>
+	/// Plugin file name → its unconditional LOOT warning/error messages (the <c>msg</c> entries of type
+	/// <c>warn</c>/<c>error</c> with no <c>condition</c>), each prefixed with its severity. Conditional and
+	/// purely informational (<c>say</c>) messages are excluded so a message only appears when it definitely applies.
+	/// </summary>
+	public Dictionary<string, List<string>> PluginWarnings { get; } = new(StringComparer.OrdinalIgnoreCase);
+
 	private int _defaultGroupIndex;
 
 	/// <summary>The group order index for a plugin (its group's index, or the default group's).</summary>
@@ -170,6 +180,10 @@ public class LootMasterlist
 				if (!string.IsNullOrEmpty(group)) result.PluginGroup[name] = group;
 				var after = NameList(TryGet(p, "after"));
 				if (after.Count > 0) result.PluginAfter[name] = after;
+				var inc = NameList(TryGet(p, "inc"));
+				if (inc.Count > 0) result.PluginIncompatibilities[name] = inc;
+				var warnings = ReadMessages(TryGet(p, "msg"));
+				if (warnings.Count > 0) result.PluginWarnings[name] = warnings;
 			}
 		}
 		return result;
@@ -216,6 +230,45 @@ public class LootMasterlist
 	}
 
 	private static string? ScalarOf(YamlNode? node) => (node as YamlScalarNode)?.Value;
+
+	/// <summary>
+	/// Reads a plugin's <c>msg</c> sequence into display strings, keeping only actionable warnings: type
+	/// <c>warn</c> or <c>error</c> with no <c>condition</c> (a conditional message might not apply, and we can't
+	/// evaluate LOOT conditions here, so surfacing one could be a false alarm). Any <c>subs</c> are substituted
+	/// into the content's <c>{0}</c>-style placeholders. Non-scalar/localised content is skipped.
+	/// </summary>
+	private static List<string> ReadMessages(YamlNode? node)
+	{
+		var list = new List<string>();
+		if (node is not YamlSequenceNode seq) return list;
+		foreach (YamlNode item in seq)
+		{
+			if (item is not YamlMappingNode m) continue;
+			string? type = ScalarOf(TryGet(m, "type"));
+			if (type != "warn" && type != "error") continue;
+			if (TryGet(m, "condition") != null) continue;
+			string? content = ScalarOf(TryGet(m, "content"));
+			if (string.IsNullOrWhiteSpace(content)) continue;
+			var subs = ScalarList(TryGet(m, "subs"));
+			for (int i = 0; i < subs.Count; i++)
+				content = content!.Replace("{" + i + "}", subs[i]);
+			list.Add((type == "error" ? "Error: " : "Warning: ") + content);
+		}
+		return list;
+	}
+
+	/// <summary>Reads a YAML sequence of plain scalars (e.g. a message's <c>subs</c>) as strings.</summary>
+	private static List<string> ScalarList(YamlNode? node)
+	{
+		var list = new List<string>();
+		if (node is YamlSequenceNode seq)
+			foreach (YamlNode item in seq)
+			{
+				string? s = ScalarOf(item);
+				if (!string.IsNullOrEmpty(s)) list.Add(s!);
+			}
+		return list;
+	}
 
 	/// <summary>An <c>after</c> value is a sequence whose items are either scalars or maps with a <c>name</c>.</summary>
 	private static List<string> NameList(YamlNode? node)

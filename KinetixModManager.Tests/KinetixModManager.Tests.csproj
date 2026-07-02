@@ -26,6 +26,8 @@
     <Compile Include="..\KinetixModManager\GameMod.cs" />
     <Compile Include="..\KinetixModManager\ModDependency.cs" />
     <Compile Include="..\KinetixModManager\ModHealth.cs" />
+    <!-- Self-contained Steam library detection (depends only on the BCL). -->
+    <Compile Include="..\KinetixModManager\SteamLibraryLocator.cs" />
   </ItemGroup>
 
 </Project>

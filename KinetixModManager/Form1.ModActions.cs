@@ -45,6 +45,47 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// Prompts for a personal free-text note on the selected mod (e.g. "keep disabled until year 2"). The note is
+	/// spoken whenever the mod is selected in the list. Submitting an empty box offers to clear an existing note —
+	/// confirmed first, since the input box can't tell an emptied field from a cancel.
+	/// </summary>
+	private void SetModNote()
+	{
+		if (listInstalled.SelectedItem is not StardewMod mod)
+		{
+			Speak(Loc.T("common.noModSelected"));
+			return;
+		}
+		if (mod.IsGroup)
+		{
+			Speak(Loc.T("common.modGroupFirst"));
+			return;
+		}
+
+		string existing = _settings.ModNotes.TryGetValue(mod.UniqueId, out string? current) ? current : "";
+		string text = Interaction.InputBox(Loc.T("modactions.notePrompt", mod.Name), Loc.T("modactions.noteTitle"), existing).Trim();
+
+		if (string.IsNullOrEmpty(text))
+		{
+			// InputBox returns "" for both Cancel and an emptied field, so confirm before clearing an existing note.
+			if (_settings.ModNotes.ContainsKey(mod.UniqueId) &&
+				SpeakBox(Loc.T("modactions.noteClearConfirm", mod.Name), Loc.T("modactions.noteTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
+			{
+				_settings.ModNotes.Remove(mod.UniqueId);
+				_settings.Save();
+				_ = RefreshModList(checkUpdates: false);
+				Speak(Loc.T("modactions.noteCleared", mod.Name));
+			}
+			return;
+		}
+
+		_settings.ModNotes[mod.UniqueId] = text;
+		_settings.Save();
+		_ = RefreshModList(checkUpdates: false);
+		Speak(Loc.T("modactions.noteSet", mod.Name));
+	}
+
+	/// <summary>
 	/// Opens the selected mod's manifest in the built-in JSON editor (Ctrl+S to save) so the user can edit
 	/// it directly — most often to correct a version number a mod author forgot to bump, which otherwise
 	/// leaves the mod perpetually flagged by, or mismatched in, update checks. Uses <c>manifest.json</c> for
@@ -159,63 +200,19 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			SpeakBox(Loc.T("modactions.batchFailedBox", ex.Message));
+			SpeakBox(Loc.T("modactions.batchFailedBox", FriendlyError(ex)));
 		}
 	}
 
 	/// <summary>
-	/// Displays a pop-up dialog listing all dependencies declared by the selected mod,
-	/// annotated with their present/missing/version status.
-	/// </summary>
-	private void ShowDependencies()
-	{
-		if (!(listInstalled.SelectedItem is StardewMod stardewMod))
-		{
-			return;
-		}
-		if (stardewMod.Dependencies.Count == 0)
-		{
-			SpeakBox(Loc.T("modactions.noDependencies"));
-			return;
-		}
-		StringBuilder stringBuilder = new StringBuilder(Loc.T("modactions.dependenciesHeader", stardewMod.Name));
-		foreach (ModDependency dependency in stardewMod.Dependencies)
-		{
-			StringBuilder stringBuilder2 = stringBuilder;
-			StringBuilder.AppendInterpolatedStringHandler handler = new StringBuilder.AppendInterpolatedStringHandler(7, 3, stringBuilder2);
-			handler.AppendLiteral("- ");
-			handler.AppendFormatted(dependency.UniqueId);
-			handler.AppendLiteral(": ");
-			handler.AppendFormatted(dependency.IsPresent ? (dependency.IsEnabled ? (dependency.IsNewEnough ? Loc.T("modactions.depOK") : Loc.T("modactions.depOld")) : Loc.T("modactions.disabled")) : Loc.T("modactions.depMissing"));
-			handler.AppendLiteral(" (");
-			handler.AppendFormatted(dependency.IsRequired ? Loc.T("modactions.depReq") : Loc.T("modactions.depOpt"));
-			handler.AppendLiteral(")");
-			stringBuilder2.AppendLine(ref handler);
-		}
-		SpeakBox(stringBuilder.ToString(), Loc.T("modactions.dependenciesTitle"));
-	}
-
-	/// <summary>
-	/// Identifies the first missing required dependency for the selected mod (or the selected
-	/// SMAPI log entry) and offers to search for it in the Discovery tab.
+	/// Identifies the missing required dependencies for the selected mod (via the one-click resolver) or, when the
+	/// SMAPI Log tab is active, diagnoses the selected log line and offers to search for a named missing mod.
 	/// </summary>
 	private void QuickFixDependencies()
 	{
-		if (listInstalled.SelectedItem is StardewMod stardewMod)
+		if (CurrentTab() == AppTab.Installed && listInstalled.SelectedItem is StardewMod)
 		{
-			List<ModDependency> list = stardewMod.Dependencies.Where((ModDependency d) => d.IsRequired && !d.IsPresent).ToList();
-			if (list.Count == 0)
-			{
-				Speak(Loc.T("modactions.noMissingDeps"));
-				return;
-			}
-			ModDependency modDependency = list[0];
-			if (SpeakBox(Loc.T("modactions.searchDepConfirm", modDependency.UniqueId), Loc.T("modactions.quickFixTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
-			{
-				SelectTab(AppTab.Discovery);
-				txtSearch.Text = modDependency.UniqueId;
-				_ = RunDiscovery();
-			}
+			_ = ResolveDependenciesAsync();
 		}
 		else
 		{
@@ -278,7 +275,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			SpeakBox(Loc.T("modactions.toggleFailedBox", ex.Message));
+			SpeakBox(Loc.T("modactions.toggleFailedBox", FriendlyError(ex)));
 		}
 	}
 
@@ -288,27 +285,116 @@ public partial class Form1
 	/// </summary>
 	private void DeleteSelectedMod()
 	{
-		if (listInstalled.SelectedItem is StardewMod stardewMod && SpeakBox(Loc.T("modactions.deleteConfirm", stardewMod.Name), Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation) == DialogResult.Yes)
-		{
-			try
-			{
-				BackupMod(stardewMod.FolderPath, stardewMod.Name + "_Delete");
+		if (listInstalled.SelectedItem is not StardewMod stardewMod || stardewMod.IsGroup) return;
 
-				// ForceDelete (via ModFileSystem) clears read-only attributes first; a plain Directory.Delete throws
-				// "Access to the path '…' is denied" on mods that ship a read-only file such as SkyPatcher's DLL.
-				ModFileSystem.DeleteModFolder(stardewMod.FolderPath);
-				// RefreshModList below re-scans without the deleted mod and reconciles deployment and
-				// plugins.txt, pruning its files/plugins and restoring any provider it had overridden.
-				_soundEngine.Play("disable");
-				SetStatus(Loc.T("modactions.deletedStatus", stardewMod.Name));
-				_ = RefreshModList(checkUpdates: false);
-			}
-			catch (Exception ex)
-			{
-				_soundEngine.Play("error");
-				SpeakBox(Loc.T("modactions.deleteFailedBox", ex.Message));
-			}
+		// Warn if other installed mods declare a required dependency on this one — deleting it would break them.
+		// The check is offline (manifest UniqueIDs on Stardew, plugin masters on Skyrim/Fallout 4).
+		string confirm = Loc.T("modactions.deleteConfirm", stardewMod.Name);
+		List<string> dependents = GetReverseDependents(stardewMod);
+		if (dependents.Count > 0)
+			confirm += Loc.T("modactions.deleteDependentsWarning", dependents.Count,
+				string.Join("\n", dependents.Take(10)));
+
+		if (SpeakBox(confirm, Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation) != DialogResult.Yes)
+			return;
+
+		try
+		{
+			BackupMod(stardewMod.FolderPath, stardewMod.Name + "_Delete");
+
+			// ForceDelete (via ModFileSystem) clears read-only attributes first; a plain Directory.Delete throws
+			// "Access to the path '…' is denied" on mods that ship a read-only file such as SkyPatcher's DLL.
+			ModFileSystem.DeleteModFolder(stardewMod.FolderPath);
+			// RefreshModList below re-scans without the deleted mod and reconciles deployment and
+			// plugins.txt, pruning its files/plugins and restoring any provider it had overridden.
+			_soundEngine.Play("disable");
+			SetStatus(Loc.T("modactions.deletedStatus", stardewMod.Name));
+			_ = RefreshModList(checkUpdates: false);
 		}
+		catch (Exception ex)
+		{
+			_soundEngine.Play("error");
+			SpeakBox(Loc.T("modactions.deleteFailedBox", FriendlyError(ex)));
+		}
+	}
+
+	/// <summary>
+	/// Toggles the Nexus endorsement of the mod selected in the active Nexus-aware list (Installed, Updates,
+	/// or Discovery): if it isn't endorsed it offers to endorse it, and if it is, it offers to withdraw the
+	/// endorsement (abstain). The action is confirmed with a yes/no prompt first, then the result is spoken.
+	/// Nexus only allows endorsing a mod the account has downloaded and used for a short while, so a refusal
+	/// is voiced with its reason rather than failing silently.
+	/// </summary>
+	private async void EndorseSelectedMod()
+	{
+		if (string.IsNullOrEmpty(_settings.ApiKey))
+		{
+			Speak(Loc.T("endorse.noLogin"));
+			return;
+		}
+
+		StardewMod? mod = SelectedNexusMod();
+		if (mod == null || string.IsNullOrEmpty(mod.NexusID))
+		{
+			Speak(Loc.T("endorse.noNexusMod"));
+			return;
+		}
+
+		// Find out which way to flip. A toggle with an unknown current state would be confusing, so abort
+		// rather than guess if Nexus can't tell us.
+		Speak(Loc.T("endorse.checking", mod.Name));
+		bool? alreadyEndorsed = await _nexusService.IsModEndorsedAsync(mod.NexusID);
+		if (alreadyEndorsed == null)
+		{
+			_soundEngine.Play("error");
+			Speak(Loc.T("endorse.statusUnknown"));
+			return;
+		}
+
+		bool endorse = !alreadyEndorsed.Value;
+		string prompt = endorse ? Loc.T("endorse.confirmEndorse", mod.Name) : Loc.T("endorse.confirmAbstain", mod.Name);
+		string title  = endorse ? Loc.T("endorse.confirmEndorseTitle") : Loc.T("endorse.confirmAbstainTitle");
+		if (SpeakBox(prompt, title, MessageBoxButtons.YesNo) != DialogResult.Yes)
+		{
+			Speak(Loc.T("endorse.cancelled"));
+			return;
+		}
+
+		Speak(Loc.T(endorse ? "endorse.working" : "endorse.workingRemove", mod.Name));
+		NexusService.EndorseOutcome outcome = await _nexusService.SetEndorsementAsync(mod.NexusID, endorse, mod.Version);
+
+		string message = outcome switch
+		{
+			NexusService.EndorseOutcome.Endorsed      => Loc.T("endorse.success", mod.Name),
+			NexusService.EndorseOutcome.Abstained     => Loc.T("endorse.abstained", mod.Name),
+			NexusService.EndorseOutcome.TooSoon       => Loc.T("endorse.tooSoon"),
+			NexusService.EndorseOutcome.NotDownloaded => Loc.T("endorse.notDownloaded"),
+			NexusService.EndorseOutcome.OwnMod        => Loc.T("endorse.ownMod"),
+			_                                         => Loc.T("endorse.failed", mod.Name)
+		};
+
+		bool success = outcome is NexusService.EndorseOutcome.Endorsed or NexusService.EndorseOutcome.Abstained;
+		_soundEngine.Play(success ? "enable" : "error");
+		Speak(message);
+	}
+
+	/// <summary>
+	/// Speaks the account's remaining Nexus API quota (requests left this hour and today), captured from the
+	/// last API response's rate-limit headers — so checking it costs no request of its own.
+	/// </summary>
+	private void ShowApiCredits()
+	{
+		if (string.IsNullOrEmpty(_settings.ApiKey))
+		{
+			Speak(Loc.T("credits.noLogin"));
+			return;
+		}
+		if (!_nexusService.HasRateLimitInfo)
+		{
+			Speak(Loc.T("credits.unknown"));
+			return;
+		}
+		Speak(Loc.T("credits.report", _nexusService.HourlyRemaining, _nexusService.DailyRemaining));
 	}
 
 	/// <summary>Permanently deletes the selected backup archive after user confirmation.</summary>
@@ -324,7 +410,7 @@ public partial class Form1
 			}
 			catch (Exception ex)
 			{
-				SpeakBox(Loc.T("modactions.deleteBackupFailedBox", ex.Message));
+				SpeakBox(Loc.T("modactions.deleteBackupFailedBox", FriendlyError(ex)));
 			}
 		}
 	}

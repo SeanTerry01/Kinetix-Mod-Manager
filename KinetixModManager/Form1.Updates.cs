@@ -278,11 +278,14 @@ public partial class Form1
 
                 string destinationPath = Path.Combine(downloadsPath, $"{mod.UniqueId}_github_latest.zip");
 
-                ProgressAnnouncer? dlProgress = silent ? null : NewProgress(mod.Name, installing: false);
+                // Progress runs during a batch (Update All) too — it follows the user's tones/speech/both/off
+                // setting through ProgressAnnouncer, so "off" stays silent. Only the per-mod spoken chatter and
+                // success message box are suppressed by the silent flag; the progress feedback is not.
+                ProgressAnnouncer? dlProgress = NewProgress(mod.Name, installing: false);
                 await _nexusService.DownloadFileWithProgressAsync(downloadUrl, destinationPath, dlProgress);
                 dlProgress?.Complete();
 
-                ProgressAnnouncer? instProgress = silent ? null : NewProgress(mod.Name, installing: true);
+                ProgressAnnouncer? instProgress = NewProgress(mod.Name, installing: true);
                 string name = await ModFileSystem.ExtractModAsync(
                     destinationPath, _settings.CurrentModsPath, _allInstalledMods,
                     backupsPath, _settings.MaxBackupsPerMod, _settings.ActiveGame, LogError,
@@ -316,7 +319,7 @@ public partial class Form1
 
                 if (!silent)
                 {
-                    _soundEngine.Play("connect");
+                    _soundEngine.Play("load_complete");
                     Speak(Loc.T("updates.githubSuccess", mod.Name));
                     SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser));
                     AnnounceUpdatesListEmptyIfFocused();
@@ -327,7 +330,7 @@ public partial class Form1
             {
                 _soundEngine.Play("error");
                 LogError(mod.Name, "GitHub Download/Install Failure: " + ex.Message);
-                SpeakBox(Loc.T("updates.githubFailBox", mod.Name, ex.Message));
+                SpeakBox(Loc.T("updates.githubFailBox", mod.Name, FriendlyError(ex)));
                 return;
             }
         }
@@ -342,7 +345,9 @@ public partial class Form1
             SetStatus(Loc.T("updates.updating", mod.Name));
             if (!silent) Speak(Loc.T("updates.downloading", mod.Name));
 
-            ProgressAnnouncer? progress = silent ? null : NewProgress(mod.Name, installing: false);
+            // Download progress runs in a batch too (honouring the tones/speech/both/off setting); the silent
+            // flag only mutes the per-mod chatter and success box, not the progress feedback itself.
+            ProgressAnnouncer? progress = NewProgress(mod.Name, installing: false);
             string tempPath = await _nexusService.DownloadModUpdateAsync(mod, downloadsPath, progress);
             progress?.Complete();
             await InstallFromZip(tempPath, mod.NexusID, silent: silent);
@@ -362,7 +367,7 @@ public partial class Form1
             await ReapplyDisabledIfNeeded(mod, wasDisabled);
             if (!silent)
             {
-                _soundEngine.Play("connect");
+                _soundEngine.Play("load_complete");
                 Speak(Loc.T("updates.success", mod.Name));
                 SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser));
                 AnnounceUpdatesListEmptyIfFocused();
@@ -372,7 +377,7 @@ public partial class Form1
         {
             _soundEngine.Play("error");
             LogError(mod.Name, "Download/Install Failure: " + ex.Message);
-            Invoke(delegate { SpeakBox(Loc.T("updates.failBox", mod.Name, ex.Message)); });
+            Invoke(delegate { SpeakBox(Loc.T("updates.failBox", mod.Name, FriendlyError(ex))); });
         }
     }
 
@@ -542,7 +547,7 @@ public partial class Form1
 			_isLoading = false;
 			_soundEngine.Play("error");
 			LogError("AutoMatch", "Auto-match failed: " + ex.Message);
-			SpeakBox(Loc.T("updates.autoMatchFailBox", ex.Message), Loc.T("common.error"));
+			SpeakBox(Loc.T("updates.autoMatchFailBox", FriendlyError(ex)), Loc.T("common.error"));
 			Speak(Loc.T("updates.autoMatchFailed"));
 		}
 	}
@@ -587,7 +592,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			if (manual) { Speak(Loc.T("updates.checkFailed")); SpeakBox(Loc.T("updates.checkFailBox", ex.Message)); }
+			if (manual) { Speak(Loc.T("updates.checkFailed")); SpeakBox(Loc.T("updates.checkFailBox", FriendlyError(ex))); }
 		}
 	}
 
@@ -656,7 +661,7 @@ public partial class Form1
 			_isLoading = false;
 			Text = originalTitle;
 			LogError("AppUpdate", "Self-update failed: " + ex.Message);
-			SpeakBox(Loc.T("updates.selfUpdateFailBox", ex.Message), Loc.T("updates.updateErrorTitle"));
+			SpeakBox(Loc.T("updates.selfUpdateFailBox", FriendlyError(ex)), Loc.T("updates.updateErrorTitle"));
 			Speak(Loc.T("updates.failed"));
 		}
 	}

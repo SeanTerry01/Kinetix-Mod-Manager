@@ -323,6 +323,9 @@ public partial class Form1
 			Font = new Font("Segoe UI", 12f),
 			AccessibleName = Loc.T("shortcutMgr.actionList")
 		};
+		// Announce "X of Y" position the same way the main lists do, on focus and on arrow-key navigation.
+		lb.SelectedIndexChanged += List_SelectedIndexChanged;
+		lb.GotFocus += List_Enter;
 		RefreshList();
 		Button button = new Button
 		{

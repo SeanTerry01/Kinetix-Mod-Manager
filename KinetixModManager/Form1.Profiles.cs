@@ -195,13 +195,13 @@ public partial class Form1
 			}
 			else
 			{
-				_soundEngine.Play("connect");
+				_soundEngine.Play("load_complete");
 			}
 			SetStatus(Loc.T("profiles.applied", profile.Name));
 		}
 		catch (Exception ex)
 		{
-			SpeakBox(Loc.T("profiles.applyFailed", ex.Message));
+			SpeakBox(Loc.T("profiles.applyFailed", FriendlyError(ex)));
 		}
 	}
 }

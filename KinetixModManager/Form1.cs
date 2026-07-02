@@ -109,6 +109,9 @@ public partial class Form1 : Form, IMessageFilter
 	/// <summary>Nexus Mods and GitHub HTTP service.</summary>
 	private NexusService _nexusService = null!;
 
+	/// <summary>AI provider service for AI-assisted features (opt-in log diagnosis).</summary>
+	private AiService _aiService = null!;
+
 	private AppSettings _settings;
 	private ToolStripMenuItem _menuGames = null!;
 
@@ -277,8 +280,13 @@ public partial class Form1 : Form, IMessageFilter
 	{
 		if (string.IsNullOrEmpty(_settings.GameModsPaths["StardewValley"]) || !Directory.Exists(_settings.GameModsPaths["StardewValley"]))
 		{
-			string[] array = new string[5]
+			// Prefer the game folder Steam actually reports (any drive / custom library), then fall back
+			// to the well-known fixed locations for non-Steam or unusual setups.
+			string detectedStardew = DetectInstalledGameFolder("StardewValley");
+			string detectedMods = string.IsNullOrEmpty(detectedStardew) ? "" : Path.Combine(detectedStardew, "Mods");
+			string[] array = new string[]
 			{
+				detectedMods,
 				"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Stardew Valley\\Mods",
 				"C:\\Program Files\\Steam\\steamapps\\common\\Stardew Valley\\Mods",
 				"D:\\SteamLibrary\\steamapps\\common\\Stardew Valley\\Mods",
@@ -344,6 +352,7 @@ public partial class Form1 : Form, IMessageFilter
 		}
 		_soundEngine    = new SoundEngine(themesPath, _settings);
 		_nexusService   = new NexusService(_settings);
+		_aiService      = new AiService(_settings);
 		if (string.IsNullOrEmpty(_settings.ApiKey) && File.Exists("nexus_key.txt"))
 		{
 			_settings.ApiKey = File.ReadAllText("nexus_key.txt").Trim();
@@ -405,6 +414,9 @@ public partial class Form1 : Form, IMessageFilter
 		// Add the "name, pause, then value/state" reading to the main window's combos, checkboxes, and lists so a
 		// screen reader doesn't run the field name straight into its value. Dialogs do the same when they open.
 		ApplyScreenReaderPauses(this);
+		// Apply the low-vision display settings (high-contrast colours / larger text) to the whole window once the
+		// UI exists. No-op at the defaults, so normal-vision users see no change.
+		ApplyDisplayTheme();
 		if (!Directory.Exists(downloadsPath))
 		{
 			Directory.CreateDirectory(downloadsPath);

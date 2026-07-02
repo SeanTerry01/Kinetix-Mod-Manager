@@ -147,7 +147,7 @@ public partial class Form1
 		RefreshModPriorityList();
 		RefreshPluginOrderList();
 
-		_soundEngine.Play("connect");
+		_soundEngine.Play("load_complete");
 		Speak(Loc.T("loadorder.rebuilt", forceAll.Count, conflicts.Count));
 		// Don't leave "Rebuilding mod deployment" sitting in the title after it's finished.
 		ResetStatus();
@@ -220,13 +220,13 @@ public partial class Form1
 		try
 		{
 			File.WriteAllText(dlg.FileName, JsonConvert.SerializeObject(data, Formatting.Indented));
-			_soundEngine.Play("connect");
+			_soundEngine.Play("load_complete");
 			Speak(Loc.T("loadorder.exported", data.ModPriority.Count, data.PluginOrder.Count));
 		}
 		catch (Exception ex)
 		{
 			_soundEngine.Play("error");
-			SpeakBox(Loc.T("loadorder.exportError", ex.Message));
+			SpeakBox(Loc.T("loadorder.exportError", FriendlyError(ex)));
 		}
 	}
 
@@ -265,7 +265,7 @@ public partial class Form1
 		catch (Exception ex)
 		{
 			_soundEngine.Play("error");
-			SpeakBox(Loc.T("loadorder.importError", ex.Message));
+			SpeakBox(Loc.T("loadorder.importError", FriendlyError(ex)));
 			return;
 		}
 
@@ -299,7 +299,7 @@ public partial class Form1
 		RefreshModPriorityList();
 		RefreshPluginOrderList();
 
-		_soundEngine.Play("connect");
+		_soundEngine.Play("load_complete");
 		Speak(Loc.T("loadorder.imported",
 			_settings.ModPriority[game].Count, _settings.PluginOrder[game].Count, conflicts.Count));
 	}

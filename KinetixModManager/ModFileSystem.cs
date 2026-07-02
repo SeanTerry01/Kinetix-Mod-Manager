@@ -79,6 +79,7 @@ public static class ModFileSystem
 
 					mod.Category = settings.ModCategories.TryGetValue(uid, out string? cat) ? cat
 						: DetectCategory(mod.Name, mod.Description);
+					mod.Note = settings.ModNotes.TryGetValue(uid, out string? note) ? note : "";
 
 					if (manifest["Dependencies"] is JArray deps)
 					{
@@ -215,6 +216,7 @@ public static class ModFileSystem
 
 					mod.Category = settings.ModCategories.TryGetValue(mod.UniqueId, out string? cat) ? cat
 						: DetectCategory(mod.Name, mod.Description);
+					mod.Note = settings.ModNotes.TryGetValue(mod.UniqueId, out string? note) ? note : "";
 
 					mods.Add(mod);
 				}
