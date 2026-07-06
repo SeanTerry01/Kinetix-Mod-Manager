@@ -28,6 +28,8 @@
     <Compile Include="..\KinetixModManager\ModHealth.cs" />
     <!-- Self-contained Steam library detection (depends only on the BCL). -->
     <Compile Include="..\KinetixModManager\SteamLibraryLocator.cs" />
+    <!-- Self-contained root-folder-mod layout classifier (depends only on the BCL). -->
+    <Compile Include="..\KinetixModManager\BethesdaLayout.cs" />
   </ItemGroup>
 
 </Project>

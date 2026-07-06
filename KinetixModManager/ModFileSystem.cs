@@ -1041,6 +1041,61 @@ public static class ModFileSystem
 	}
 
 	/// <summary>
+	/// Resolves which extracted folder to store as the mod, adding "root-folder mod" support: files that belong in
+	/// the game's root (ENB/ReShade injectors, an explicit <c>Root\</c> folder, tools/DLLs beside a <c>Data\</c>
+	/// folder) are gathered under a reserved <c>Root\</c> subfolder, which the deployment engine maps back out to
+	/// the game root. When the archive has no game-root content this falls back to <see cref="FindEffectiveModRoot"/>,
+	/// so an ordinary Data-only mod is stored exactly as before (no behaviour change, no extra copying).
+	/// </summary>
+	private static string ResolveBethesdaModSource(string tempDir)
+	{
+		char sep = Path.DirectorySeparatorChar;
+		string contentRoot = StripWrapperFolders(tempDir);
+		string canonical = Path.GetFullPath(contentRoot).TrimEnd(sep) + sep;
+
+		var files = Directory.GetFiles(contentRoot, "*.*", SearchOption.AllDirectories);
+		var rels = files.Select(f => Path.GetFullPath(f).Substring(canonical.Length)).ToList();
+
+		List<BethesdaLayout.Entry> plan = BethesdaLayout.Plan(rels);
+		// No game-root content: keep the long-standing behaviour verbatim so normal installs can't regress.
+		if (!BethesdaLayout.HasRootContent(plan)) return FindEffectiveModRoot(tempDir);
+
+		// Realise the plan in a staging folder (Data content at the top level, game-root content under Root\).
+		// Files are moved, not copied — staging lives on the same volume as the extraction, so this stays cheap.
+		string stage = Path.Combine(tempDir, "__kmm_layout__");
+		Directory.CreateDirectory(stage);
+		foreach (BethesdaLayout.Entry e in plan)
+		{
+			string src = Path.Combine(contentRoot, e.Source.Replace('/', sep));
+			string dst = Path.Combine(stage, e.Dest.Replace('/', sep));
+			try
+			{
+				Directory.CreateDirectory(Path.GetDirectoryName(dst)!);
+				if (File.Exists(src)) File.Move(src, dst, overwrite: true);
+			}
+			catch { try { RobustCopy(src, dst); } catch { } }
+		}
+		return stage;
+	}
+
+	/// <summary>
+	/// Descends through single-child wrapper folders (e.g. an archive that nests everything under "MyMod v1.2\")
+	/// to reach the folder that actually holds the mod's content. Stops as soon as a child folder's name carries
+	/// layout meaning (a Data/Root or known asset folder), so a real structure folder is never peeled away.
+	/// </summary>
+	private static string StripWrapperFolders(string dir)
+	{
+		while (true)
+		{
+			string[] entries = Directory.GetFileSystemEntries(dir);
+			if (entries.Length != 1 || !Directory.Exists(entries[0])) break;
+			if (BethesdaLayout.IsLayoutFolder(Path.GetFileName(entries[0]))) break;
+			dir = entries[0];
+		}
+		return dir;
+	}
+
+	/// <summary>
 	/// Returns a writable temp-extraction base directory on the same volume as <paramref name="modsPath"/>,
 	/// so extraction/staging don't consume space on the system drive. Falls back to the system temp folder
 	/// when the mods drive can't be resolved or isn't writable.
@@ -1183,7 +1238,7 @@ public static class ModFileSystem
 				}
 
 				return await FinalizeBethesdaModAsync(
-					FindEffectiveModRoot(tempDir), Path.GetFileNameWithoutExtension(zipPath), zipPath, modsPath, installedMods,
+					ResolveBethesdaModSource(tempDir), Path.GetFileNameWithoutExtension(zipPath), zipPath, modsPath, installedMods,
 					backupsPath, maxBackups, activeGame, logError, nexusId, nexusService, gitHubRepo, currentGamePath, null,
 					docsSourceRoot: tempDir);
 			}
