@@ -74,7 +74,10 @@ public partial class Form1
         layout.Controls.Add(list, 0, 0);
         form.Controls.Add(layout);
 
+        // GotFocus announces the position on entry; SelectedIndexChanged keeps announcing "X of Y" as the user
+        // arrows through — matching every other list in the app.
         list.GotFocus += List_Enter;
+        list.SelectedIndexChanged += List_SelectedIndexChanged;
 
         void OpenSelected()
         {
@@ -157,7 +160,10 @@ public partial class Form1
         layout.Controls.Add(buttons, 0, 1);
         form.Controls.Add(layout);
 
+        // GotFocus announces the position on entry; SelectedIndexChanged keeps announcing "X of Y" as the user
+        // arrows through — matching every other list in the app.
         list.GotFocus += List_Enter;
+        list.SelectedIndexChanged += List_SelectedIndexChanged;
 
         bool SaveDoc()
         {
