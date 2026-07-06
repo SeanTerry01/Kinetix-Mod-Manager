@@ -583,6 +583,33 @@ public static class ModFileSystem
 		return Path.Combine(docs, "My Games", "Fallout4", "Fallout4Custom.ini");
 	}
 
+	/// <summary>
+	/// The standard configuration INI files for a Bethesda game, as (display label, full path) pairs in the order
+	/// players usually reach for them: the main INI, the preferences INI, and the custom INI (the safe place for
+	/// tweaks — the engine merges it over the generated ones). They live in <c>Documents\My Games\&lt;game&gt;\</c>.
+	/// Any of them may not exist yet (the game generates the first two on first launch; the custom one is optional).
+	/// Empty for non-Bethesda games.
+	/// </summary>
+	public static List<(string Label, string Path)> GameIniFiles(string activeGame)
+	{
+		string folder = activeGame switch
+		{
+			"SkyrimSE" => "Skyrim Special Edition",
+			"Fallout4" => "Fallout4",
+			_ => "",
+		};
+		if (folder.Length == 0) return new List<(string, string)>();
+
+		string prefix = activeGame == "SkyrimSE" ? "Skyrim" : "Fallout4";
+		string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "My Games", folder);
+		return new List<(string, string)>
+		{
+			($"{prefix}.ini",       Path.Combine(dir, $"{prefix}.ini")),
+			($"{prefix}Prefs.ini",  Path.Combine(dir, $"{prefix}Prefs.ini")),
+			($"{prefix}Custom.ini", Path.Combine(dir, $"{prefix}Custom.ini")),
+		};
+	}
+
 	/// <summary>The [Archive] keys that together tell the engine to load loose mod files ahead of the packed BA2 archives.</summary>
 	private static readonly (string Key, string Value)[] ArchiveInvalidationKeys =
 	{

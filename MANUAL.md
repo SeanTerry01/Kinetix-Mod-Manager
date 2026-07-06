@@ -506,6 +506,19 @@ When you enable a mod or change the load order, the manager automatically **depl
 *   **Rebuild Mod Deployment** force re-links **every** enabled mod's files into the game folder and rewrites the plugin list, after you confirm. Use it as a safety net if deployment ever looks inconsistent. It never deletes any of your installed mods.
 *   **Purge Mod Deployment (Restore Vanilla Game Folder)** does the opposite: it **removes every file the manager deployed** from the game folder, returning it to a clean, un-modded state — while leaving all your installed mods untouched in the manager. Use it when you want to run the game vanilla for a moment, or to fully reset the game folder before rebuilding. Only files the manager put there are removed; it never touches anything it didn't deploy. Because the manager re-deploys automatically, the next time you enable a mod or change the load order everything comes back — or choose **Rebuild Mod Deployment** to re-apply it all at once.
 
+### Editing Game Settings (INI files)
+
+Skyrim and Fallout 4 keep their settings in **INI files** (things like resolution, field of view, or mod-required tweaks). Choose **Edit Game Settings (INI Files)** from the **Mods** menu to change them without opening a text editor or risking a typo that stops the game launching.
+
+First you pick which file to edit — the main INI, the preferences INI, or the **custom** INI (the safe place for your own tweaks; the manager creates it if it doesn't exist yet). Then you get a navigable list of every setting, each read as **"[Section] key = value"**:
+
+*   **Arrow** through the settings, or type the first letter to jump.
+*   **Enter** on a setting to change its value — you type the new value and it's saved straight away.
+*   **Delete** removes a setting after you confirm.
+*   The **Add Setting** button adds a new one: it asks for the section, the setting name, and the value.
+
+Every change is written back immediately, and all your comments and other settings are left exactly as they were.
+
 ### Mods that install to the game's root folder (ENB, ReShade, script extenders)
 
 Most Skyrim and Fallout 4 mods install into the game's **Data** folder, but some — graphics injectors like **ENB** and **ReShade**, or tools that sit next to the game's `.exe` — need their files in the game's **root** folder instead. The manager detects these automatically when you install them: their game-root files (such as `d3d11.dll`, `dxgi.dll`, `enbseries\`, or an archive's `Root\` folder) are deployed to the root, while any `Data` files in the same archive still go to Data. You don't have to do anything special — install them like any other mod, and enable/disable and Purge/Rebuild treat them the same as the rest. (Full script extenders like SKSE and F4SE are still installed directly, as before.)

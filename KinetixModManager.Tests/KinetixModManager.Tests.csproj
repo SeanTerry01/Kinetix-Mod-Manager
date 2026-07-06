@@ -30,6 +30,8 @@
     <Compile Include="..\KinetixModManager\SteamLibraryLocator.cs" />
     <!-- Self-contained root-folder-mod layout classifier (depends only on the BCL). -->
     <Compile Include="..\KinetixModManager\BethesdaLayout.cs" />
+    <!-- Self-contained INI parse/edit model behind the accessible INI editor (depends only on the BCL). -->
+    <Compile Include="..\KinetixModManager\IniDocument.cs" />
   </ItemGroup>
 
 </Project>
