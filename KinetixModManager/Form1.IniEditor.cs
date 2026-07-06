@@ -102,13 +102,16 @@ public partial class Form1
                     return;
                 }
             }
-            form.Close();
+            // Open the editor as a nested dialog and leave this chooser open behind it, so Escape from the editor
+            // returns here (the file list) and a second Escape closes the chooser back to the main window.
             ShowIniEditor(choice.Path, choice.Label);
         }
 
         list.KeyDown += (_, e) =>
         {
-            if (e.KeyCode == Keys.Enter) { e.Handled = e.SuppressKeyPress = true; OpenSelected(); }
+            // Left/Right would otherwise move the selection like Up/Down in a single-column list box; suppress them.
+            if (e.KeyCode == Keys.Left || e.KeyCode == Keys.Right) { e.Handled = e.SuppressKeyPress = true; }
+            else if (e.KeyCode == Keys.Enter) { e.Handled = e.SuppressKeyPress = true; OpenSelected(); }
         };
         form.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) form.Close(); };
         form.Shown += (_, _) => { Speak(Loc.T("ini.chooseOpening", files.Count)); list.Focus(); };
@@ -225,7 +228,9 @@ public partial class Form1
         btnClose.Click += (_, _) => form.Close();
         list.KeyDown += (_, e) =>
         {
-            if (e.KeyCode == Keys.Enter) { e.Handled = e.SuppressKeyPress = true; EditSelected(); }
+            // Left/Right would otherwise move the selection like Up/Down in a single-column list box; suppress them.
+            if (e.KeyCode == Keys.Left || e.KeyCode == Keys.Right) { e.Handled = e.SuppressKeyPress = true; }
+            else if (e.KeyCode == Keys.Enter) { e.Handled = e.SuppressKeyPress = true; EditSelected(); }
             else if (e.KeyCode == Keys.Delete) { e.Handled = e.SuppressKeyPress = true; DeleteSelected(); }
         };
         form.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) form.Close(); };
