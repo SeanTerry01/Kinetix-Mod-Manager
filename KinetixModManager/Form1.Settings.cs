@@ -571,6 +571,25 @@ public partial class Form1
 		};
 		tabMods.Controls.Add(cSearchHistory, 0, mr++);
 
+		// Archive invalidation (loose-file loading). The INI on disk is the source of truth: the box reflects the
+		// current state and, on Save, only writes when the user changed it. Shown only for games where it applies
+		// (Fallout 4); ArchiveInvalidationIniPath returns null otherwise, which hides the control.
+		bool archiveGame = ModFileSystem.ArchiveInvalidationIniPath(_settings.ActiveGame) != null;
+		CheckBox cArchiveInvalidation = new CheckBox
+		{
+			Text = Loc.T("settings.archiveInvalidation"),
+			Checked = archiveGame && ModFileSystem.IsArchiveInvalidationEnabled(_settings.ActiveGame),
+			AutoSize = true,
+			Padding = new Padding(0, 5, 0, 0),
+			AccessibleName = Loc.T("settings.archiveInvalidationName"),
+			Visible = archiveGame
+		};
+		cArchiveInvalidation.CheckedChanged += delegate
+		{
+			Speak(cArchiveInvalidation.Checked ? Loc.T("settings.archiveInvalidationOn") : Loc.T("settings.archiveInvalidationOff"));
+		};
+		tabMods.Controls.Add(cArchiveInvalidation, 0, mr++);
+
 		FlowLayoutPanel flowProgress = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Fill,
@@ -954,6 +973,15 @@ public partial class Form1
 
 				_settings.DisplayContrast = contrastOptions[Math.Max(0, cmbContrast.SelectedIndex)];
 				_settings.TextSize = textSizeOptions[Math.Max(0, cmbTextSize.SelectedIndex)];
+
+				// Apply archive invalidation to disk only when the user actually flipped the toggle. The INI is the
+				// source of truth (not an AppSettings flag), so we avoid rewriting it when nothing changed.
+				if (cArchiveInvalidation.Visible)
+				{
+					bool currentInvalidation = ModFileSystem.IsArchiveInvalidationEnabled(_settings.ActiveGame);
+					if (cArchiveInvalidation.Checked != currentInvalidation)
+						ModFileSystem.SetArchiveInvalidation(_settings.ActiveGame, cArchiveInvalidation.Checked, LogError);
+				}
 
 				_settings.Save();
 				// Re-theme the main window immediately so a changed contrast/text-size takes effect without a restart.

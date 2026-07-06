@@ -498,6 +498,16 @@ If nothing is flagged, the report tells you none of your mods are on the known-b
 
 ---
 
+## Deployment Tools (Skyrim & Fallout 4)
+
+When you enable a mod or change the load order, the manager automatically **deploys** — it links each enabled mod's files into the game's folder and updates the plugin list so the game loads them. Stardew Valley loads mods from their own folders, so these tools are for Skyrim and Fallout 4 only. Three commands on the **Mods** menu let you check and control that deployment directly, which is handy if the game's folder ever gets into an odd state.
+
+*   **Verify Selected Mod's Files Are Installed** checks the mod highlighted on the Installed Mods tab and reports how many of its files are **in place**, how many are **missing** from the game folder, and how many are **overridden** by a higher-priority mod. Missing files mean the mod isn't really active on disk even if it looks enabled — the decisive check when a mod "should" be working but isn't.
+*   **Rebuild Mod Deployment** force re-links **every** enabled mod's files into the game folder and rewrites the plugin list, after you confirm. Use it as a safety net if deployment ever looks inconsistent. It never deletes any of your installed mods.
+*   **Purge Mod Deployment (Restore Vanilla Game Folder)** does the opposite: it **removes every file the manager deployed** from the game folder, returning it to a clean, un-modded state — while leaving all your installed mods untouched in the manager. Use it when you want to run the game vanilla for a moment, or to fully reset the game folder before rebuilding. Only files the manager put there are removed; it never touches anything it didn't deploy. Because the manager re-deploys automatically, the next time you enable a mod or change the load order everything comes back — or choose **Rebuild Mod Deployment** to re-apply it all at once.
+
+---
+
 ## Dependency View and Resolver
 
 Two tools on the Installed Mods tab (and the **Mods** menu) help you manage what your mods depend on.

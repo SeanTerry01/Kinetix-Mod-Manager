@@ -131,6 +131,10 @@ public partial class Form1
 		{
 			RebuildDeployment();
 		}).Name = "menuRebuildDeploy";
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.purgeDeploy"), null, delegate
+		{
+			PurgeDeployment();
+		}).Name = "menuPurgeDeploy";
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.exportLoadOrder"), null, delegate
 		{
 			ExportLoadOrder();

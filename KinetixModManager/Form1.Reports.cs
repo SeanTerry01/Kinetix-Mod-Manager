@@ -291,7 +291,7 @@ public partial class Form1
 	/// it (used by the requirements report). An empty result shows <paramref name="emptyMessage"/> as the only row.
 	/// </summary>
 	private void ShowReportDialog(string title, string header, string emptyMessage, List<ReportRow> rows, string? actionHint,
-		Action<ReportRow>? onIgnore = null)
+		Action<ReportRow>? onIgnore = null, string? listName = null, string? openingNote = null)
 	{
 		var f = new Form
 		{
@@ -308,12 +308,22 @@ public partial class Form1
 
 		layout.Controls.Add(new Label { Text = header, AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 8) }, 0, 0);
 
-		var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = header, IntegralHeight = false, HorizontalScrollbar = true };
+		// Give the list its own accessible name — deliberately distinct from BOTH the window title (which the
+		// screen reader already announces when the dialog opens) and the header (spoken once in the opening
+		// announcement). Reusing either would make the screen reader say it a second time the instant focus lands
+		// on the list. Callers pass a name like "Broken Mods List"; the default covers reports that don't.
+		var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = listName ?? Loc.T("reports.listGeneric"), IntegralHeight = false, HorizontalScrollbar = true };
 		bool hasRows = rows.Count > 0;
-		if (!hasRows)
-			list.Items.Add(new ReportRow { Text = emptyMessage });
-		else
+		// With findings, add them and pre-select the first so it's the focused (and thus spoken) item on open —
+		// with a single finding there's nothing to arrow onto, so without an initial selection the lone row is
+		// never read. With no findings, leave the list genuinely empty: the empty message is already spoken in the
+		// opening announcement, and an empty list makes the screen reader say "List is empty" (nothing to arrow
+		// through) rather than reading that same message again as a lone, navigable row.
+		if (hasRows)
+		{
 			foreach (ReportRow r in rows) list.Items.Add(r);
+			list.SelectedIndex = 0;
+		}
 		layout.Controls.Add(list, 0, 1);
 		f.Controls.Add(layout);
 
@@ -367,10 +377,18 @@ public partial class Form1
 
 		f.Shown += (_, _) =>
 		{
-			string opening = header + ". " + (hasRows
-				? Loc.T("reports.itemCount", rows.Count) + (actionHint != null ? ". " + actionHint : "")
+			// The header may already end in a period (the broken-mods and verify headers do); strip it before adding
+			// the ". " separator so screen readers don't speak a stray ".." pause. Likewise say "1 item", not
+			// "1 items", for a single finding.
+			string spokenHeader = header.EndsWith(".") ? header[..^1] : header;
+			string opening = spokenHeader + ". " + (hasRows
+				? Loc.T(rows.Count == 1 ? "reports.itemCountOne" : "reports.itemCount", rows.Count)
+					+ (actionHint != null ? ". " + actionHint : "")
 				: emptyMessage);
 			if (hasRows && _aiService.IsConfigured) opening += ". " + Loc.T("ai.reportHint");
+			// A finding-level advisory (e.g. the loose-files explanation): spoken as context in the opening so the
+			// list rows themselves can stay short and scannable, rather than each carrying a paragraph.
+			if (hasRows && !string.IsNullOrEmpty(openingNote)) opening += ". " + openingNote;
 			Speak(opening);
 			list.Focus();
 		};

@@ -31,13 +31,17 @@ public partial class Form1
 
 		var rows = new List<ReportRow>();
 		string domain = _nexusService.CurrentGameDomain;
+		// A finding-level advisory spoken as context in the opening announcement (see the loose-files check below),
+		// so its row can stay a short, scannable list of the affected mods instead of a spoken paragraph.
+		string? openingNote = null;
 
 		if (_settings.ActiveGame == "StardewValley")
 		{
 			var mods = _allInstalledMods.Where(m => !m.IsGroup && !string.IsNullOrEmpty(m.UniqueId)).ToList();
 			if (mods.Count == 0)
 			{
-				ShowReportDialog(Loc.T("broken.title"), Loc.T("broken.header", GameDisplayName()), Loc.T("broken.none"), rows, null);
+				ShowReportDialog(Loc.T("broken.title"), Loc.T("broken.header", GameDisplayName()), Loc.T("broken.none"), rows, null,
+					listName: Loc.T("broken.listName"));
 				return;
 			}
 
@@ -99,14 +103,58 @@ public partial class Form1
 
 			// Collapse identical lines (an incompatibility can be listed from both sides).
 			rows = rows.GroupBy(r => r.Text).Select(g => g.First()).ToList();
+
+			// Loose-file loading (archive invalidation) off while loose-file mods are installed is a classic silent
+			// failure: the game ships them but ignores them, so nothing appears to change. Flag it first, naming the
+			// mods. Applies only where the toggle is real (Fallout 4) — ArchiveInvalidationIniPath is null for games
+			// that always load loose files.
+			if (ModFileSystem.ArchiveInvalidationIniPath(_settings.ActiveGame) != null &&
+				!ModFileSystem.IsArchiveInvalidationEnabled(_settings.ActiveGame))
+			{
+				var looseFileMods = enabled.Where(ModHasLooseFiles).ToList();
+				if (looseFileMods.Count > 0)
+				{
+					// The explanation and fix are the same for every affected mod, so speak them once as context
+					// (openingNote) and make the row just the list of mods, keeping it short to arrow through.
+					openingNote = Loc.T("broken.looseFilesOff");
+					rows.Insert(0, new ReportRow { Text = string.Join(", ", looseFileMods.Select(m => m.Name)) });
+				}
+			}
 		}
 		else
 		{
-			ShowReportDialog(Loc.T("broken.title"), Loc.T("broken.header", GameDisplayName()), Loc.T("broken.noData"), rows, null);
+			ShowReportDialog(Loc.T("broken.title"), Loc.T("broken.header", GameDisplayName()), Loc.T("broken.noData"), rows, null,
+				listName: Loc.T("broken.listName"));
 			return;
 		}
 
-		string? hint = rows.Count > 0 ? Loc.T("broken.actionHint") : null;
-		ShowReportDialog(Loc.T("broken.title"), Loc.T("broken.header", GameDisplayName()), Loc.T("broken.none"), rows, hint);
+		// Only show the "Press Enter to open the Nexus page" hint when a row actually has that action (Stardew rows
+		// carry an OpenUrl; Bethesda incompatibility/warning/loose-file rows don't), so Fallout 4 doesn't get told
+		// to press Enter on a "Stardew mod" that does nothing.
+		string? hint = rows.Any(r => !string.IsNullOrEmpty(r.OpenUrl)) ? Loc.T("broken.actionHint") : null;
+		ShowReportDialog(Loc.T("broken.title"), Loc.T("broken.header", GameDisplayName()), Loc.T("broken.none"), rows, hint,
+			listName: Loc.T("broken.listName"), openingNote: openingNote);
 	}
+
+	/// <summary>
+	/// True when the mod ships loose game assets — files the engine only loads with archive invalidation on. Judged
+	/// by recognized asset extensions (textures, meshes, materials, audio, scripts, interface); plugins and packed
+	/// BA2 archives don't count, so a plugin-only or fully-packed mod is not flagged. Best-effort; errors mean false.
+	/// </summary>
+	private static bool ModHasLooseFiles(StardewMod m)
+	{
+		try
+		{
+			return Directory.EnumerateFiles(m.FolderPath, "*.*", SearchOption.AllDirectories)
+				.Any(f => LooseAssetExtensions.Contains(Path.GetExtension(f)));
+		}
+		catch { return false; }
+	}
+
+	/// <summary>Extensions that indicate a loose game asset (lower-case, with the leading dot).</summary>
+	private static readonly HashSet<string> LooseAssetExtensions = new(StringComparer.OrdinalIgnoreCase)
+	{
+		".dds", ".nif", ".hkx", ".bgsm", ".bgem", ".tri", ".tga",
+		".wav", ".xwm", ".fuz", ".lip", ".pex", ".swf",
+	};
 }

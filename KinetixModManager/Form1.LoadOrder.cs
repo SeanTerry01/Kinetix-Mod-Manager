@@ -153,6 +153,51 @@ public partial class Form1
 		ResetStatus();
 	}
 
+	/// <summary>
+	/// Manual command (Mods menu): removes every file the manager has deployed into the game folder, returning it
+	/// to its un-modded state, after a strong confirmation. The installed mods themselves are left completely
+	/// intact in the mod store — only the deployed (hard-linked/copied) files tracked by the deployment manifest
+	/// are removed. Because the manager re-deploys automatically, enabling a mod or changing the load order
+	/// afterwards re-applies everything; use Rebuild Mod Deployment to re-apply immediately. plugins.txt is left
+	/// as-is: the plugin files it names are now gone from the Data folder, so the game loads vanilla either way.
+	/// </summary>
+	private void PurgeDeployment()
+	{
+		if (!IsBethesdaGame)
+		{
+			Speak(Loc.T("loadorder.purgeNotApplicable"));
+			return;
+		}
+		string game = _settings.ActiveGame;
+		string gameRoot = _settings.CurrentGamePath;
+		if (string.IsNullOrEmpty(gameRoot) || !Directory.Exists(gameRoot))
+		{
+			Speak(Loc.T("loadorder.purgeNoGamePath"));
+			return;
+		}
+
+		var manifest = DeploymentManifest.Load(game);
+		if (manifest.Deployed.Count == 0)
+		{
+			Speak(Loc.T("loadorder.purgeNothing"));
+			return;
+		}
+		if (SpeakBox(Loc.T("loadorder.purgeConfirm", manifest.Deployed.Count), Loc.T("loadorder.purgeTitle"),
+				MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+			return;
+
+		SetStatus(Loc.T("loadorder.purging"));
+		int removed = ModFileSystem.PurgeDeployment(gameRoot, manifest, LogError);
+		manifest.Save(game);
+		_lastConflicts = new List<FileConflict>();
+		RefreshModPriorityList();
+		RefreshPluginOrderList();
+
+		_soundEngine.Play("load_complete");
+		Speak(Loc.T("loadorder.purged", removed));
+		ResetStatus();
+	}
+
 	// -------------------------------------------------------------------------
 	// Load-order export / import
 	// -------------------------------------------------------------------------

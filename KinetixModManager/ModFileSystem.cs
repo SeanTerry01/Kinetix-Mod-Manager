@@ -565,6 +565,144 @@ public static class ModFileSystem
 	}
 
 	// -------------------------------------------------------------------------
+	// Archive invalidation (loose-file loading)
+	// -------------------------------------------------------------------------
+	// Fallout 4 ignores mods' loose files (textures, meshes, scripts) unless "archive invalidation" is turned on
+	// via a small [Archive] block in Fallout4Custom.ini. Skyrim SE deliberately isn't covered here: it loads loose
+	// files by default, so the toggle would be a misleading no-op there.
+
+	/// <summary>
+	/// Full path to the custom INI that holds the archive-invalidation [Archive] block, or <c>null</c> for any game
+	/// where the toggle doesn't apply (everything except Fallout 4). Uses Fallout4Custom.ini — the file the engine
+	/// merges over its generated Fallout4.ini — so the toggle is non-destructive and never edits a game-owned INI.
+	/// </summary>
+	public static string? ArchiveInvalidationIniPath(string activeGame)
+	{
+		if (activeGame != "Fallout4") return null;
+		string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+		return Path.Combine(docs, "My Games", "Fallout4", "Fallout4Custom.ini");
+	}
+
+	/// <summary>The [Archive] keys that together tell the engine to load loose mod files ahead of the packed BA2 archives.</summary>
+	private static readonly (string Key, string Value)[] ArchiveInvalidationKeys =
+	{
+		("bInvalidateOlderFiles", "1"),
+		("sResourceDataDirsFinal", ""),
+	};
+
+	/// <summary>
+	/// True when archive invalidation is currently enabled, judged by <c>bInvalidateOlderFiles=1</c> in the
+	/// [Archive] section of the custom INI. Returns false where the toggle doesn't apply or the file/key is absent.
+	/// </summary>
+	public static bool IsArchiveInvalidationEnabled(string activeGame)
+	{
+		string? path = ArchiveInvalidationIniPath(activeGame);
+		if (path == null || !File.Exists(path)) return false;
+		try
+		{
+			string? value = ReadIniValue(File.ReadAllLines(path), "Archive", "bInvalidateOlderFiles");
+			return value != null && value.Trim() == "1";
+		}
+		catch { return false; }
+	}
+
+	/// <summary>
+	/// Turns archive invalidation on or off by adding or removing the managed [Archive] keys in the custom INI,
+	/// creating the file if needed. No-op where the toggle doesn't apply. Errors go to <paramref name="logError"/>.
+	/// </summary>
+	public static void SetArchiveInvalidation(string activeGame, bool enable, Action<string, string> logError)
+	{
+		string? path = ArchiveInvalidationIniPath(activeGame);
+		if (path == null) return;
+		try
+		{
+			string? dir = Path.GetDirectoryName(path);
+			if (dir != null && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
+			List<string> lines = File.Exists(path) ? File.ReadAllLines(path).ToList() : new List<string>();
+			foreach (var (key, value) in ArchiveInvalidationKeys)
+				SetIniValue(lines, "Archive", key, enable ? value : null);
+			File.WriteAllLines(path, lines);
+		}
+		catch (Exception ex)
+		{
+			logError(path, $"Failed to update archive invalidation: {ex.Message}");
+		}
+	}
+
+	/// <summary>Reads a key's raw value from a section of an INI's lines, or <c>null</c> if the section/key is absent.</summary>
+	private static string? ReadIniValue(IReadOnlyList<string> lines, string section, string key)
+	{
+		bool inSection = false;
+		foreach (string raw in lines)
+		{
+			string line = raw.Trim();
+			if (line.StartsWith("[") && line.EndsWith("]"))
+			{
+				inSection = line.Substring(1, line.Length - 2).Trim().Equals(section, StringComparison.OrdinalIgnoreCase);
+				continue;
+			}
+			if (!inSection) continue;
+			int eq = line.IndexOf('=');
+			if (eq <= 0) continue;
+			if (line.Substring(0, eq).Trim().Equals(key, StringComparison.OrdinalIgnoreCase))
+				return line.Substring(eq + 1);
+		}
+		return null;
+	}
+
+	/// <summary>
+	/// Sets (value non-null) or removes (value null) a key within a section of an INI held as a mutable line list,
+	/// appending the section at the end of the file if it doesn't exist. All other lines and comments are preserved.
+	/// Each call re-scans from scratch, so it's safe to call repeatedly on the same list.
+	/// </summary>
+	private static void SetIniValue(List<string> lines, string section, string key, string? value)
+	{
+		// Locate the section body: (sectionStart, sectionEnd) bracket the lines between this header and the next.
+		int sectionStart = -1, sectionEnd = lines.Count;
+		for (int i = 0; i < lines.Count; i++)
+		{
+			string line = lines[i].Trim();
+			if (!(line.StartsWith("[") && line.EndsWith("]"))) continue;
+			string name = line.Substring(1, line.Length - 2).Trim();
+			if (sectionStart < 0 && name.Equals(section, StringComparison.OrdinalIgnoreCase))
+				sectionStart = i;
+			else if (sectionStart >= 0) { sectionEnd = i; break; }
+		}
+
+		int keyLine = -1;
+		if (sectionStart >= 0)
+		{
+			for (int i = sectionStart + 1; i < sectionEnd; i++)
+			{
+				string line = lines[i].Trim();
+				int eq = line.IndexOf('=');
+				if (eq > 0 && line.Substring(0, eq).Trim().Equals(key, StringComparison.OrdinalIgnoreCase))
+				{
+					keyLine = i;
+					break;
+				}
+			}
+		}
+
+		if (value == null)
+		{
+			if (keyLine >= 0) lines.RemoveAt(keyLine);
+			return;
+		}
+
+		string entry = key + "=" + value;
+		if (keyLine >= 0) lines[keyLine] = entry;
+		else if (sectionStart >= 0) lines.Insert(sectionStart + 1, entry);
+		else
+		{
+			if (lines.Count > 0 && !string.IsNullOrWhiteSpace(lines[^1])) lines.Add("");
+			lines.Add("[" + section + "]");
+			lines.Add(entry);
+		}
+	}
+
+	// -------------------------------------------------------------------------
 	// Mod installation
 	// -------------------------------------------------------------------------
 
@@ -668,6 +806,38 @@ public static class ModFileSystem
 				conflicts.Add(new FileConflict { RelativePath = kv.Key, Winner = winner, Losers = losers });
 		}
 		return conflicts;
+	}
+
+	/// <summary>
+	/// Removes every file the manager has deployed into <paramref name="gameRootPath"/> (per the manifest) and
+	/// empties the manifest, returning the game folder to its un-deployed state while leaving the installed mods
+	/// untouched in the mod store. Only manifest-tracked paths are deleted — a file the manager never deployed is
+	/// never removed. Empty directories left behind are tidied up. Returns the number of files actually removed.
+	/// </summary>
+	public static int PurgeDeployment(string gameRootPath, DeploymentManifest manifest, Action<string, string> logError)
+	{
+		if (string.IsNullOrEmpty(gameRootPath) || manifest.Deployed.Count == 0) return 0;
+		gameRootPath = Path.GetFullPath(gameRootPath).TrimEnd(Path.DirectorySeparatorChar);
+
+		int removed = 0;
+		foreach (var kv in manifest.Deployed)
+		{
+			string destAbs = Path.Combine(gameRootPath, kv.Key);
+			try
+			{
+				if (File.Exists(destAbs))
+				{
+					RobustDeleteFile(destAbs);
+					removed++;
+				}
+				CleanEmptyParents(Path.GetDirectoryName(destAbs), gameRootPath);
+			}
+			catch (Exception ex) { logError(destAbs, $"Purge failed: {ex.Message}"); }
+		}
+		// The game folder now holds none of our deployed files, so the manifest must be emptied — otherwise the
+		// next sync would think these paths are still deployed and skip re-linking them.
+		manifest.Deployed = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		return removed;
 	}
 
 	/// <summary>Deletes empty directories upward from <paramref name="dir"/>, stopping at <paramref name="limitRoot"/>.</summary>
