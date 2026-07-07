@@ -45,3 +45,71 @@ This document tracks potential improvements, architectural refinements, and new 
 *   Prioritize "High Contrast" mode for low-vision users.
 *   Evaluate if users prefer automated conflict detection or manual troubleshooting via the SMAPI log.
 *   Consider the impact of refactoring on current development speed.
+
+---
+
+## 5. Recently Completed (through July 2026)
+
+Many of the ideas in sections 1-3 above have since shipped. For the record, the manager now includes:
+*   Enhanced spoken error handling (FriendlyError), unit tests, High Contrast / Large Text, API credits display, dependency tree view + reverse-dependency delete warning, one-click requirement resolver, broken-mod detection (SMAPI + LOOT), per-mod notes, and profile/Collections sharing.
+*   Accessible FOMOD installer, controls/README viewer, mod changelog/description viewers, multi-provider AI assistant + log diagnosis, MO2 import, LOOT auto-sort, load-order export/import, and Wine/Linux support.
+*   **July 2026 batch:** Fallout 4 archive-invalidation ("Load Loose Mod Files") toggle; deployment tools (Verify / Rebuild / **Purge**); **root-folder mod support** (ENB, ReShade, MO2-style Root\ folders); and an **accessible INI editor** for game settings.
+
+---
+
+## 6. Proposed Features & Backlog (added 2026-07-06)
+
+Ideas for things other managers (Vortex, MO2, the Nexus app) have that we don't, or accessibility-first
+features nobody else does. Effort is a rough guess. Stars mark the recommended next picks.
+
+### Tier 1 — real gaps, high value, strong fit
+
+*   **Game-update / script-extender guardian** [medium] ⭐
+    Detect when the game's executable version changed since the last launch and warn that SKSE/F4SE and any
+    DLL plugins likely need updating (e.g. "Skyrim updated to 1.6.1170; SKSE and its plugins may be outdated").
+    Prevents the most common "my game won't launch after a Steam update" disaster — nothing currently catches it.
+*   **Plugin-limit awareness** [low-medium] ⭐
+    Bethesda caps at 255 regular plugins plus separate ESL "light" slots. Extend the Plugin Order tab to announce
+    usage ("231 of 255 slots used, 40 light plugins") and warn as the cap approaches.
+*   **Setup Health Dashboard** [low — mostly aggregation] ⭐
+    One "Check My Setup" command that runs everything already built — broken mods, missing requirements, file
+    conflicts, missing masters, script-extender status, plus the guardian and plugin-limit checks — and gives a
+    single spoken summary ("3 problems found: 1 missing master, 1 outdated requirement, plugin limit near").
+*   **Savegame manager** [medium-high]
+    Accessible list of saves (character, level, location, playtime, date) and which plugins each save needs,
+    warning when a save depends on a mod that has since been removed. Delete/back up saves. Works for both games;
+    no accessible manager does this well.
+
+### Tier 2 — parity polish
+
+*   **Nexus "Tracked Mods" sync** [medium] — pull the user's Nexus tracked list and notify of updates even for
+    mods not yet installed.
+*   **Downloads history / re-install tab** [low-medium] — re-install a previously downloaded mod without
+    re-searching.
+*   **Persistent load-order rules** [medium-high] — MO2/LOOT-style "always load X after Y," beyond numeric
+    priority.
+*   **Per-file conflict override** [medium] — choose which mod wins a specific file regardless of priority.
+
+### Tier 3 — accessibility differentiators & nice-to-haves
+
+*   **First-run setup wizard** [medium] — guided, spoken onboarding: pick game -> locate folder -> Nexus login
+    -> API key.
+*   **Auto safety-backup before risky operations** [low] — snapshot INIs + load order before purge/rebuild/edit,
+    with one-click restore.
+*   **"Prepare for game update / restore after"** [low] — purge before a known update, redeploy after; pairs with
+    the game-update guardian.
+*   **Mod list filter/search** by category, note, or status [low-medium].
+*   **Deeper Stardew support** [medium] — SMAPI install/update helper, Content Patcher token/config awareness.
+*   **Free space / cleanup tools** [low] — clear orphaned temp files and unused downloads (Delete Old Backups
+    already exists).
+
+### Recommended order
+Do the **Setup Health Dashboard** first (low effort, ties existing checks into one accessible action), then the
+**game-update guardian** and **plugin-limit awareness** (the two most common Bethesda disasters). The **savegame
+manager** is the meatiest, most novel option for a larger feature.
+
+### Deferred / needs a tester
+*   **Vortex import** — implemented approach exists but needs a Vortex user to validate.
+*   **FOMOD answer replay** in Collections (record/replay pre-chosen wizard options for unattended installs).
+*   **Zip-bundle Collections** with an embedded readme; pin exact file IDs rather than latest main file.
+*   **Downloadable language packs** — revisit once non-English translations exist.
