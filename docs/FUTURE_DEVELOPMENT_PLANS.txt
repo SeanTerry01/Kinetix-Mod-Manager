@@ -53,7 +53,7 @@ This document tracks potential improvements, architectural refinements, and new 
 Many of the ideas in sections 1-3 above have since shipped. For the record, the manager now includes:
 *   Enhanced spoken error handling (FriendlyError), unit tests, High Contrast / Large Text, API credits display, dependency tree view + reverse-dependency delete warning, one-click requirement resolver, broken-mod detection (SMAPI + LOOT), per-mod notes, and profile/Collections sharing.
 *   Accessible FOMOD installer, controls/README viewer, mod changelog/description viewers, multi-provider AI assistant + log diagnosis, MO2 import, LOOT auto-sort, load-order export/import, and Wine/Linux support.
-*   **July 2026 batch:** Fallout 4 archive-invalidation ("Load Loose Mod Files") toggle; deployment tools (Verify / Rebuild / **Purge**); **root-folder mod support** (ENB, ReShade, MO2-style Root\ folders); an **accessible INI editor** for game settings; the **Setup Health Dashboard** ("Check My Setup") aggregating the requirements, broken-mod, and file-conflict checks into one spoken summary; and a **game-update / script-extender guardian** that warns once when a Steam/GOG update changes the game exe version so SKSE/F4SE and DLL plugins can be updated before launch.
+*   **July 2026 batch:** Fallout 4 archive-invalidation ("Load Loose Mod Files") toggle; deployment tools (Verify / Rebuild / **Purge**); **root-folder mod support** (ENB, ReShade, MO2-style Root\ folders); an **accessible INI editor** for game settings; the **Setup Health Dashboard** ("Check My Setup") aggregating the requirements, broken-mod, and file-conflict checks into one spoken summary; a **game-update / script-extender guardian** that warns once when a Steam/GOG update changes the game exe version so SKSE/F4SE and DLL plugins can be updated before launch; and **plugin-limit awareness** (255 regular / 4096 light-ESL slot tracking with spoken usage and near-cap warnings).
 
 ---
 
@@ -69,9 +69,11 @@ features nobody else does. Effort is a rough guess. Stars mark the recommended n
     dialog) that the game was updated from version X to Y and that SKSE/F4SE and DLL plugins likely need a matching
     update, offering to open the script-extender page. One-shot per update, not a persistent nag; no-ops for
     Stardew or an unreadable exe (Wine). Stored in AppSettings.LastSeenGameVersion.
-*   **Plugin-limit awareness** [low-medium] ⭐
-    Bethesda caps at 255 regular plugins plus separate ESL "light" slots. Extend the Plugin Order tab to announce
-    usage ("231 of 255 slots used, 40 light plugins") and warn as the cap approaches.
+*   ~~**Plugin-limit awareness** [low-medium] ⭐~~ — **Done.** "Plugin Slot Usage" (Mods menu / Ctrl+Shift+U)
+    speaks "X of 255 regular plugins used, N remaining, M of 4096 light plugins used" and a warning when a pool is
+    near/over its cap. Counts implicit base-game/DLC masters (present on disk) toward the regular cap and uses the
+    TES4 light flag (via ReadPluginFlags) so ESL-flagged .esp files count as light. Warns automatically once per
+    approach when the Plugin Order list is focused, and contributes a finding to the Setup Health Check.
 *   ~~**Setup Health Dashboard** [low — mostly aggregation] ⭐~~ — **Done.** "Check My Setup" (Mods menu /
     Ctrl+Shift+K) runs the requirements check (missing masters, script extender, Nexus requirements), the
     known-broken/incompatible check, and the file-conflict check in one pass and gives a single spoken summary
@@ -107,9 +109,9 @@ features nobody else does. Effort is a rough guess. Stars mark the recommended n
     already exists).
 
 ### Recommended order
-The **Setup Health Dashboard** and the **game-update guardian** are done. Next up is **plugin-limit awareness**
-(the remaining common Bethesda disaster), then the **savegame manager** — the meatiest, most novel option for a
-larger feature.
+The **Setup Health Dashboard**, the **game-update guardian**, and **plugin-limit awareness** are all done. The
+**savegame manager** is the meatiest, most novel remaining option; the Tier 2 parity items (Nexus tracked-mods
+sync, downloads history, persistent load-order rules, per-file conflict override) are smaller follow-ups.
 
 ### Deferred / needs a tester
 *   **Vortex import** — implemented approach exists but needs a Vortex user to validate.

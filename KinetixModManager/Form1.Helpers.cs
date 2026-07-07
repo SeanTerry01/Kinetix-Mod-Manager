@@ -305,7 +305,7 @@ public partial class Form1
 			text = Loc.T("help.modPriority");
 			break;
 		case AppTab.PluginOrder:
-			text = Loc.T("help.pluginOrder", GetShortcutString("AutoSort"));
+			text = Loc.T("help.pluginOrder", GetShortcutString("AutoSort"), GetShortcutString("PluginSlots"));
 			break;
 		case AppTab.Creations:
 			text = Loc.T("help.creations");

@@ -587,6 +587,10 @@ public class AppSettings
 			{
 				"HealthCheck",
 				Keys.K | Keys.Shift | Keys.Control
+			},
+			{
+				"PluginSlots",
+				Keys.U | Keys.Shift | Keys.Control
 			}
 		})
 		{

@@ -187,6 +187,10 @@ public partial class Form1
 		{
 			await ShowBrokenModsReport();
 		});
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.pluginSlots", GetShortcutString("PluginSlots")), null, delegate
+		{
+			AnnouncePluginSlotUsage();
+		});
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.endorse", GetShortcutString("Endorse")), null, delegate
 		{
 			EndorseSelectedMod();
@@ -989,6 +993,7 @@ public partial class Form1
 		listPluginOrder.KeyDown += ListPluginOrder_KeyDown;
 		listPluginOrder.SelectedIndexChanged += ListModPriority_SelectedIndexChanged;
 		listPluginOrder.GotFocus += List_Enter;
+		listPluginOrder.GotFocus += ListPluginOrder_WarnOnFocus;
 		listCreations.KeyDown += ListCreations_KeyDown;
 		listCreations.SelectedIndexChanged += ListModPriority_SelectedIndexChanged;
 		listCreations.GotFocus += List_Enter;

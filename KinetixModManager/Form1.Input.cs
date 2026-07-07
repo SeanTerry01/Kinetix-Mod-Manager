@@ -179,6 +179,11 @@ public partial class Form1
 			e.SuppressKeyPress = true;
 			_ = RunHealthCheck();
 		}
+		if (IsShortcut(e, "PluginSlots"))
+		{
+			e.SuppressKeyPress = true;
+			AnnouncePluginSlotUsage();
+		}
 		if (IsShortcut(e, "EditNote"))
 		{
 			e.SuppressKeyPress = true;

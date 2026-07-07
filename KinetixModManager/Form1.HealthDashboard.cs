@@ -34,15 +34,18 @@ public partial class Form1
 		SetStatus(Loc.T("health.checking"), speak: true);
 
 		(List<ReportRow> reqRows, _) = await GatherRequirementFindings();
+		ReportRow? limitRow = GatherPluginLimitFinding();
 		BrokenModFindings broken = await GatherBrokenModFindings();
 		List<ReportRow> conflictRows = GatherFileConflictFindings();
 
 		ResetStatus();
 
 		// Tag each finding with its category so a single flat, arrowable list stays self-describing. The rows are
-		// freshly gathered, so prefixing their Text in place is safe. Order is severity-first.
+		// freshly gathered, so prefixing their Text in place is safe. Order is severity-first: missing requirements
+		// and a breached plugin limit both stop the game loading, so they lead.
 		var rows = new List<ReportRow>();
 		foreach (ReportRow r in reqRows) { r.Text = Loc.T("health.rowReq", r.Text); rows.Add(r); }
+		if (limitRow != null) { limitRow.Text = Loc.T("health.rowLimit", limitRow.Text); rows.Add(limitRow); }
 		foreach (ReportRow r in broken.Rows) { r.Text = Loc.T("health.rowBroken", r.Text); rows.Add(r); }
 		foreach (ReportRow r in conflictRows) { r.Text = Loc.T("health.rowConflict", r.Text); rows.Add(r); }
 
@@ -62,6 +65,8 @@ public partial class Form1
 		var parts = new List<string>();
 		if (reqRows.Count > 0)
 			parts.Add(Loc.T(reqRows.Count == 1 ? "health.sumReqOne" : "health.sumReqMany", reqRows.Count));
+		if (limitRow != null)
+			parts.Add(Loc.T("health.sumLimit"));
 		if (broken.Rows.Count > 0)
 			parts.Add(Loc.T(broken.Rows.Count == 1 ? "health.sumBrokenOne" : "health.sumBrokenMany", broken.Rows.Count));
 		if (conflictRows.Count > 0)

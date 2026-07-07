@@ -917,6 +917,17 @@ public static class ModFileSystem
 	};
 
 	/// <summary>
+	/// The implicit base-game/DLC master file names for the game. These never appear in the Plugin Order list but
+	/// still occupy regular plugin slots, so the plugin-limit check counts the ones actually present on disk.
+	/// </summary>
+	public static IReadOnlyCollection<string> BaseMasters(string activeGame) => activeGame switch
+	{
+		"SkyrimSE" => SkyrimBaseMasters,
+		"Fallout4" => Fallout4BaseMasters,
+		_ => Array.Empty<string>()
+	};
+
+	/// <summary>
 	/// Reads a plugin's master/light status from its TES4 record header flags, falling back to the file
 	/// extension when the header cannot be read. The engine loads master-flagged and light (ESL) plugins
 	/// before regular plugins, so this — not the extension alone — decides the masters-first grouping
