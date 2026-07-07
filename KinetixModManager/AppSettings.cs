@@ -595,6 +595,10 @@ public class AppSettings
 			{
 				"SaveManager",
 				Keys.V | Keys.Shift | Keys.Control
+			},
+			{
+				"DownloadsHistory",
+				Keys.W | Keys.Shift | Keys.Control
 			}
 		})
 		{

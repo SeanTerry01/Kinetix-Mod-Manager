@@ -91,8 +91,10 @@ features nobody else does. Effort is a rough guess. Stars mark the recommended n
 
 *   **Nexus "Tracked Mods" sync** [medium] — pull the user's Nexus tracked list and notify of updates even for
     mods not yet installed.
-*   **Downloads history / re-install tab** [low-medium] — re-install a previously downloaded mod without
-    re-searching.
+*   ~~**Downloads history / re-install tab** [low-medium]~~ — **Done** (as a dialog, not a tab, to avoid touching
+    core tab/F6 navigation). "Reinstall a Downloaded Mod" (Mods menu / Ctrl+Shift+W) lists the per-game downloads
+    folder newest-first with size + date; Enter reinstalls via the normal InstallFromZip path, Delete recycles the
+    archive.
 *   **Persistent load-order rules** [medium-high] — MO2/LOOT-style "always load X after Y," beyond numeric
     priority.
 *   **Per-file conflict override** [medium] — choose which mod wins a specific file regardless of priority.

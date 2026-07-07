@@ -195,6 +195,10 @@ public partial class Form1
 		{
 			await ShowSaveManager();
 		}).Name = "menuSaveManager";
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.downloadsHistory", GetShortcutString("DownloadsHistory")), null, delegate
+		{
+			ShowDownloadsHistory();
+		});
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.endorse", GetShortcutString("Endorse")), null, delegate
 		{
 			EndorseSelectedMod();

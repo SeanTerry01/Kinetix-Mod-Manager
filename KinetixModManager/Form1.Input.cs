@@ -189,6 +189,11 @@ public partial class Form1
 			e.SuppressKeyPress = true;
 			_ = ShowSaveManager();
 		}
+		if (IsShortcut(e, "DownloadsHistory"))
+		{
+			e.SuppressKeyPress = true;
+			ShowDownloadsHistory();
+		}
 		if (IsShortcut(e, "EditNote"))
 		{
 			e.SuppressKeyPress = true;
