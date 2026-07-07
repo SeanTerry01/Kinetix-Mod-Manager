@@ -194,6 +194,11 @@ public partial class Form1
 			e.SuppressKeyPress = true;
 			ShowDownloadsHistory();
 		}
+		if (IsShortcut(e, "TrackedMods"))
+		{
+			e.SuppressKeyPress = true;
+			_ = ShowTrackedMods();
+		}
 		if (IsShortcut(e, "EditNote"))
 		{
 			e.SuppressKeyPress = true;

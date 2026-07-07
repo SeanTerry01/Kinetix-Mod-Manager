@@ -639,6 +639,58 @@ public class NexusService
 	}
 
 	/// <summary>
+	/// Fetches the numeric mod ids the connected user is tracking on Nexus, filtered to <paramref name="domain"/>
+	/// (the tracked list spans every game, so it is filtered here to the active game). Returns an empty list on any
+	/// failure. One API call regardless of how many mods are tracked.
+	/// </summary>
+	public async Task<List<int>> GetTrackedModIdsAsync(string domain)
+	{
+		await _apiSemaphore.WaitAsync();
+		try
+		{
+			using var req = BuildRequest(HttpMethod.Get, "https://api.nexusmods.com/v1/user/tracked_mods.json");
+			var resp = await HttpClient.SendAsync(req);
+			CaptureRateLimit(resp);
+			if (!resp.IsSuccessStatusCode) return new List<int>();
+
+			var ids = new List<int>();
+			foreach (JToken t in JArray.Parse(await resp.Content.ReadAsStringAsync()))
+			{
+				if (!string.Equals((string?)t["domain_name"], domain, StringComparison.OrdinalIgnoreCase)) continue;
+				if ((int?)t["mod_id"] is int id) ids.Add(id);
+			}
+			return ids;
+		}
+		catch { return new List<int>(); }
+		finally { _apiSemaphore.Release(); }
+	}
+
+	/// <summary>
+	/// Fetches the set of mod ids for the active game that Nexus updated within <paramref name="period"/> ("1d",
+	/// "1w", or "1m"). One API call that lets the tracked-mods check find recently-updated mods without a per-mod
+	/// request. Returns an empty set on any failure.
+	/// </summary>
+	public async Task<HashSet<int>> GetRecentlyUpdatedModIdsAsync(string period)
+	{
+		await _apiSemaphore.WaitAsync();
+		try
+		{
+			using var req = BuildRequest(HttpMethod.Get,
+				$"https://api.nexusmods.com/v1/games/{CurrentGameDomain}/mods/updated.json?period={period}");
+			var resp = await HttpClient.SendAsync(req);
+			CaptureRateLimit(resp);
+			var set = new HashSet<int>();
+			if (!resp.IsSuccessStatusCode) return set;
+
+			foreach (JToken u in JArray.Parse(await resp.Content.ReadAsStringAsync()))
+				if ((int?)u["mod_id"] is int id) set.Add(id);
+			return set;
+		}
+		catch { return new HashSet<int>(); }
+		finally { _apiSemaphore.Release(); }
+	}
+
+	/// <summary>
 	/// Fetches a mod's changelogs from Nexus — a JSON object keyed by version, each value an array of change
 	/// lines (e.g. <c>{ "1.2.0": ["Fixed X", "Added Y"], "1.1.0": [...] }</c>). Returns null on any failure.
 	/// </summary>

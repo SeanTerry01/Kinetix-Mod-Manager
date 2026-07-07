@@ -89,8 +89,11 @@ features nobody else does. Effort is a rough guess. Stars mark the recommended n
 
 ### Tier 2 — parity polish
 
-*   **Nexus "Tracked Mods" sync** [medium] — pull the user's Nexus tracked list and notify of updates even for
-    mods not yet installed.
+*   ~~**Nexus "Tracked Mods" sync** [medium]~~ — **Done.** "Check Tracked Mods for Updates" (Mods menu /
+    Ctrl+Shift+T) pulls the user's Nexus tracked list for the active game, intersects it with Nexus's
+    recently-updated list (two bulk API calls), and shows the actionable mods: tracked-but-not-installed, and
+    installed tracked mods with a newer version. Enter opens the mod's Nexus files page. Detail lookups run only for
+    the small recently-updated-and-tracked subset, keeping it light on the API quota.
 *   ~~**Downloads history / re-install tab** [low-medium]~~ — **Done** (as a dialog, not a tab, to avoid touching
     core tab/F6 navigation). "Reinstall a Downloaded Mod" (Mods menu / Ctrl+Shift+W) lists the per-game downloads
     folder newest-first with size + date; Enter reinstalls via the normal InstallFromZip path, Delete recycles the

@@ -199,6 +199,10 @@ public partial class Form1
 		{
 			ShowDownloadsHistory();
 		});
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.trackedMods", GetShortcutString("TrackedMods")), null, async delegate
+		{
+			await ShowTrackedMods();
+		});
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.endorse", GetShortcutString("Endorse")), null, delegate
 		{
 			EndorseSelectedMod();

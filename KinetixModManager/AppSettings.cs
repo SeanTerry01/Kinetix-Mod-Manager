@@ -599,6 +599,10 @@ public class AppSettings
 			{
 				"DownloadsHistory",
 				Keys.W | Keys.Shift | Keys.Control
+			},
+			{
+				"TrackedMods",
+				Keys.T | Keys.Shift | Keys.Control
 			}
 		})
 		{
