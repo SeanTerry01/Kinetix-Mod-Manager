@@ -591,6 +591,10 @@ public class AppSettings
 			{
 				"PluginSlots",
 				Keys.U | Keys.Shift | Keys.Control
+			},
+			{
+				"SaveManager",
+				Keys.V | Keys.Shift | Keys.Control
 			}
 		})
 		{

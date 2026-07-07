@@ -610,6 +610,25 @@ public static class ModFileSystem
 		};
 	}
 
+	/// <summary>
+	/// The folder where the game keeps its save files (<c>Documents\My Games\&lt;game&gt;\Saves</c>), and the save
+	/// file extension for the game (<c>.ess</c> for Skyrim, <c>.fos</c> for Fallout 4). Empty for non-Bethesda
+	/// games. The folder may not exist yet if the player has never saved.
+	/// </summary>
+	public static (string Folder, string Extension) SavesLocation(string activeGame)
+	{
+		string folder = activeGame switch
+		{
+			"SkyrimSE" => "Skyrim Special Edition",
+			"Fallout4" => "Fallout4",
+			_ => "",
+		};
+		if (folder.Length == 0) return ("", "");
+		string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "My Games", folder, "Saves");
+		string ext = activeGame == "SkyrimSE" ? ".ess" : ".fos";
+		return (dir, ext);
+	}
+
 	/// <summary>The [Archive] keys that together tell the engine to load loose mod files ahead of the packed BA2 archives.</summary>
 	private static readonly (string Key, string Value)[] ArchiveInvalidationKeys =
 	{

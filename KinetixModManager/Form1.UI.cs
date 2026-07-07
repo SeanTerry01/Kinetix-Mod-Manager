@@ -191,6 +191,10 @@ public partial class Form1
 		{
 			AnnouncePluginSlotUsage();
 		});
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.saveManager", GetShortcutString("SaveManager")), null, async delegate
+		{
+			await ShowSaveManager();
+		}).Name = "menuSaveManager";
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.endorse", GetShortcutString("Endorse")), null, delegate
 		{
 			EndorseSelectedMod();

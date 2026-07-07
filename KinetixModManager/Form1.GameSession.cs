@@ -111,6 +111,9 @@ public partial class Form1
 			// Uninstalling the script extender only applies to Skyrim SE / Fallout 4.
 			if (modsMenu.DropDownItems["menuUninstallSE"] is ToolStripItem seItem)
 				seItem.Visible = game == "SkyrimSE" || game == "Fallout4";
+			// The savegame manager parses Bethesda save formats, so it's only shown for those games.
+			if (modsMenu.DropDownItems["menuSaveManager"] is ToolStripItem saveItem)
+				saveItem.Visible = game == "SkyrimSE" || game == "Fallout4";
 		}
 
 		// The View menu's "Open Log" item targets a different log per game (SMAPI for Stardew, the

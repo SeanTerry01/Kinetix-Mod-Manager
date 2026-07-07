@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="K4os.Compression.LZ4" Version="1.3.8" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
@@ -32,6 +33,8 @@
     <Compile Include="..\KinetixModManager\BethesdaLayout.cs" />
     <!-- Self-contained INI parse/edit model behind the accessible INI editor (depends only on the BCL). -->
     <Compile Include="..\KinetixModManager\IniDocument.cs" />
+    <!-- Self-contained Bethesda save-file parser (depends on the BCL + K4os LZ4, no app runtime). -->
+    <Compile Include="..\KinetixModManager\SaveGame.cs" />
   </ItemGroup>
 
 </Project>

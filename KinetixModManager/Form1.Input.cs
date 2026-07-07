@@ -184,6 +184,11 @@ public partial class Form1
 			e.SuppressKeyPress = true;
 			AnnouncePluginSlotUsage();
 		}
+		if (IsShortcut(e, "SaveManager"))
+		{
+			e.SuppressKeyPress = true;
+			_ = ShowSaveManager();
+		}
 		if (IsShortcut(e, "EditNote"))
 		{
 			e.SuppressKeyPress = true;
