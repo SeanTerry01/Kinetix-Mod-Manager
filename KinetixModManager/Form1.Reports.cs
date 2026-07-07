@@ -40,24 +40,37 @@ public partial class Form1
 	/// </summary>
 	private void ShowFileConflictsReport()
 	{
+		List<ReportRow> rows = GatherFileConflictFindings();
+
+		if (_settings.ActiveGame == "StardewValley")
+			ShowReportDialog(Loc.T("reports.conflictTitle"), Loc.T("reports.dupHeader"),
+				Loc.T("reports.dupNone"), rows, null);
+		else if (!IsBethesdaGame)
+			ShowReportDialog(Loc.T("reports.conflictTitle"), Loc.T("reports.conflictHeader"),
+				Loc.T("reports.conflictNoneGame"), rows, null);
+		else
+			ShowReportDialog(Loc.T("reports.conflictTitle"), Loc.T("reports.conflictHeader"),
+				Loc.T("reports.conflictNone"), rows, null);
+	}
+
+	/// <summary>
+	/// Gathers the file-conflict findings for the active game without showing any UI, so both the standalone
+	/// report and the Setup Health Check can share the same computation. Stardew: mods sharing a UniqueID.
+	/// Skyrim/Fallout 4: each loose file provided by more than one enabled mod, naming winner and losers. Any
+	/// other game returns an empty list.
+	/// </summary>
+	private List<ReportRow> GatherFileConflictFindings()
+	{
 		var rows = new List<ReportRow>();
 
 		if (_settings.ActiveGame == "StardewValley")
 		{
 			foreach (var (uid, names) in ModHealth.FindDuplicateUniqueIds(_allInstalledMods))
 				rows.Add(new ReportRow { Text = Loc.T("reports.dupId", uid, string.Join(", ", names)) });
-
-			ShowReportDialog(Loc.T("reports.conflictTitle"), Loc.T("reports.dupHeader"),
-				Loc.T("reports.dupNone"), rows, null);
-			return;
+			return rows;
 		}
 
-		if (!IsBethesdaGame)
-		{
-			ShowReportDialog(Loc.T("reports.conflictTitle"), Loc.T("reports.conflictHeader"),
-				Loc.T("reports.conflictNoneGame"), rows, null);
-			return;
-		}
+		if (!IsBethesdaGame) return rows;
 
 		// Map a mod's priority key (folder name) to its friendly display name for the report.
 		var nameByKey = _allInstalledMods.Where(m => !m.IsGroup)
@@ -71,8 +84,7 @@ public partial class Form1
 				Text = Loc.T("reports.conflictRow", c.RelativePath, Disp(c.Winner), string.Join(", ", c.Losers.Select(Disp)))
 			});
 
-		ShowReportDialog(Loc.T("reports.conflictTitle"), Loc.T("reports.conflictHeader"),
-			Loc.T("reports.conflictNone"), rows, null);
+		return rows;
 	}
 
 	// ---------------------------------------------------------------------
@@ -86,6 +98,25 @@ public partial class Form1
 	/// mod at a time with a progress status, so a large load order can take a moment.
 	/// </summary>
 	private async Task ShowRequirementsReport()
+	{
+		(List<ReportRow> rows, int hiddenCount) = await GatherRequirementFindings();
+
+		string hint = rows.Count > 0 ? Loc.T("reports.reqActionHint") : null!;
+		if (hiddenCount > 0)
+			hint = (hint ?? "") + Loc.T("reports.reqHiddenSuffix", hiddenCount);
+
+		ShowReportDialog(Loc.T("reports.reqTitle"), Loc.T("reports.reqHeader", GameDisplayName()),
+			Loc.T("reports.reqNone"), rows, hint, IgnoreRequirementRow);
+	}
+
+	/// <summary>
+	/// Gathers the requirement findings for the active game without showing any UI, returning the (collapsed,
+	/// ignore-filtered) rows plus how many warnings were hidden by the user's ignore list. Shared by the
+	/// standalone requirements report and the Setup Health Check. Skyrim/Fallout 4 lookups hit the Nexus
+	/// "Requirements" tab one mod at a time (with a non-spoken progress status), so a large load order can take
+	/// a moment; the caller is responsible for the overall spoken status.
+	/// </summary>
+	private async Task<(List<ReportRow> rows, int hiddenCount)> GatherRequirementFindings()
 	{
 		var enabled = _allInstalledMods.Where(m => !m.IsGroup && m.IsEnabled).ToList();
 		var rows = new List<ReportRow>();
@@ -162,12 +193,7 @@ public partial class Form1
 			StringComparer.OrdinalIgnoreCase);
 		int hiddenCount = rows.RemoveAll(r => r.IgnoreKey != null && ignored.Contains(r.IgnoreKey));
 
-		string hint = rows.Count > 0 ? Loc.T("reports.reqActionHint") : null!;
-		if (hiddenCount > 0)
-			hint = (hint ?? "") + Loc.T("reports.reqHiddenSuffix", hiddenCount);
-
-		ShowReportDialog(Loc.T("reports.reqTitle"), Loc.T("reports.reqHeader", GameDisplayName()),
-			Loc.T("reports.reqNone"), rows, hint, IgnoreRequirementRow);
+		return (rows, hiddenCount);
 	}
 
 	/// <summary>Persists a requirement warning to this game's ignore list so it stops appearing in the report.</summary>

@@ -263,6 +263,14 @@ public class AppSettings
 	/// </summary>
 	public Dictionary<string, List<string>> PluginOrder { get; set; } = new Dictionary<string, List<string>>();
 
+	/// <summary>
+	/// Last game executable version the manager saw for each Bethesda game, as "major.minor.build" (e.g.
+	/// "1.6.1170"). Keyed by game id. Used by the game-update guardian: when the exe's version differs from the
+	/// value stored here on a later load, the game was updated (usually by Steam) since we last looked, so SKSE/F4SE
+	/// and any DLL plugins likely need updating. An absent key means "not yet recorded" and never triggers a warning.
+	/// </summary>
+	public Dictionary<string, string> LastSeenGameVersion { get; set; } = new Dictionary<string, string>();
+
 	public Dictionary<string, Keys> Shortcuts { get; set; } = new Dictionary<string, Keys>();
 
 	public static string AppDataFolder
@@ -384,6 +392,7 @@ public class AppSettings
 		if (PluginOrder == null) PluginOrder = new Dictionary<string, List<string>>();
 		if (IgnoredRequirements == null) IgnoredRequirements = new Dictionary<string, List<string>>();
 		if (AiModelCache == null) AiModelCache = new Dictionary<string, List<AiModelChoice>>(StringComparer.OrdinalIgnoreCase);
+		if (LastSeenGameVersion == null) LastSeenGameVersion = new Dictionary<string, string>();
 
 		if (string.IsNullOrEmpty(ActiveGame)) ActiveGame = "None";
 		Shortcuts ??= new Dictionary<string, Keys>();
@@ -574,6 +583,10 @@ public class AppSettings
 			{
 				"CheckBrokenMods",
 				Keys.B | Keys.Shift | Keys.Control
+			},
+			{
+				"HealthCheck",
+				Keys.K | Keys.Shift | Keys.Control
 			}
 		})
 		{

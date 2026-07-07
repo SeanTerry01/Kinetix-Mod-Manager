@@ -171,6 +171,10 @@ public partial class Form1
 		{
 			QuickFixDependencies();
 		});
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.healthCheck", GetShortcutString("HealthCheck")), null, async delegate
+		{
+			await RunHealthCheck();
+		});
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.fileConflicts", GetShortcutString("FileConflicts")), null, delegate
 		{
 			ShowFileConflictsReport();

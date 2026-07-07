@@ -35,6 +35,9 @@ public partial class Form1
 	private void RefreshAllData(bool checkUpdates)
 	{
 		if (_settings.ActiveGame == "None") return;
+		// Catch a Steam/GOG game update before the user tries to launch: warns once if the exe version changed
+		// since we last loaded this game. Harmless on Stardew and cheap enough to run on every refresh.
+		CheckGameUpdateGuardian();
 		_ = RefreshModList(checkUpdates);
 		RefreshBackupsList();
 		RefreshProfilesList();
