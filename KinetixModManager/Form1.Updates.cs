@@ -85,6 +85,11 @@ public partial class Form1
 	// run finishes so its prompt doesn't interrupt the mod-update announcement. Null when none.
 	private (string Current, string Latest, string Url)? _pendingSmapiUpdate;
 
+	// How many installed mods the last update check skipped because they have no Nexus/GitHub link (so their
+	// version can't be checked). Surfaced in the completion announcement so "all up to date" isn't misleading —
+	// a manually-placed mod with a null NexusID would otherwise be silently ignored. See RefreshModList.
+	private int _updateSkippedUnlinked;
+
 	private void CompleteUpdateCheckUnit()
 	{
 		if (Interlocked.Decrement(ref _activeChecks) <= 0)
@@ -97,9 +102,14 @@ public partial class Form1
 			_pendingSmapiUpdate = null;
 			Invoke(delegate
 			{
-				Speak(listUpdates.Items.Count > 0
+				string message = listUpdates.Items.Count > 0
 					? Loc.T("updates.checkComplete", listUpdates.Items.Count)
-					: Loc.T("updates.checkCompleteNone"));
+					: Loc.T("updates.checkCompleteNone");
+				// Tell the user when some mods couldn't be checked at all (no Nexus/GitHub link), so an
+				// "all up to date" result isn't taken to cover a manually-added mod that was really just skipped.
+				if (_updateSkippedUnlinked > 0)
+					message += " " + Loc.T(_updateSkippedUnlinked == 1 ? "updates.unlinkedNoteOne" : "updates.unlinkedNote", _updateSkippedUnlinked);
+				Speak(message);
 				if (pendingSmapi is { } s)
 					NotifySmapiUpdateAvailable(s.Current, s.Latest, s.Url);
 			});

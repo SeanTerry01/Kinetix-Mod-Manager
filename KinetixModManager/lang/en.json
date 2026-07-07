@@ -400,6 +400,7 @@
   "modlist.updateInProgress": "Update check already in progress.",
   "modlist.modsPathInvalid": "Mods path invalid.",
   "modlist.noUpdateSources": "No mods found with update sources to check.",
+  "modlist.noUpdateSourcesUnlinked": "None of your mods have a Nexus or GitHub link to check for updates. Use Auto-match Nexus IDs in the Mods menu to link them, then check again.",
   "modlist.checkingUpdates": "Checking for updates.",
   "modlist.updateIgnoredPos": "Update ignored. {0}. {1} of {2}",
   "modlist.updateIgnoredEmpty": "Update ignored. List is empty.",
@@ -665,6 +666,8 @@
   "updates.failed": "Update failed.",
   "updates.checkComplete": "Update check complete. Found {0} mod updates.",
   "updates.checkCompleteNone": "Update check complete. All mods are up-to-date.",
+  "updates.unlinkedNote": "{0} mods have no Nexus or GitHub link, so they were not checked. Use Auto-match Nexus IDs in the Mods menu to link them.",
+  "updates.unlinkedNoteOne": "1 mod has no Nexus or GitHub link, so it was not checked. Use Auto-match Nexus IDs in the Mods menu to link it.",
   "updates.titleDownloading": "Downloading {0}... {1:F0}%",
   "updates.titleManagerUpdate": "Downloading Manager Update... {0:F0}%",
 

@@ -227,6 +227,11 @@ public partial class Form1
 		List<IGrouping<string, StardewMod>> list = (from m in _allInstalledMods
 			where !string.IsNullOrEmpty(m.NexusID) || !string.IsNullOrEmpty(m.GitHubRepo)
 			group m by (!string.IsNullOrEmpty(m.NexusID) ? "Nexus:" + m.NexusID : "GitHub:" + m.GitHubRepo)).ToList();
+		// Mods with neither a Nexus nor a GitHub link can't be version-checked and are excluded above; count them
+		// so the completion announcement can say they were skipped (a manually-placed mod would otherwise look
+		// "up to date" when it was never checked). The Mods menu's Auto-match Nexus IDs can link them.
+		_updateSkippedUnlinked = _allInstalledMods.Count(m => !m.IsGroup
+			&& string.IsNullOrEmpty(m.NexusID) && string.IsNullOrEmpty(m.GitHubRepo));
 		// Stardew Valley additionally runs one smapi.io batch check (counted as a unit), which catches
 		// mods whose manifest update key is missing or broken — the manifest-only Nexus grouping below
 		// can't see those. Skyrim/Fallout 4 use only the Nexus group checks.
@@ -236,7 +241,10 @@ public partial class Form1
 		{
 			_isLoading = false;
 			_soundEngine.Play("load_complete");
-			Speak(Loc.T("modlist.noUpdateSources"));
+			// When there are unlinked mods present, point the user at Auto-match rather than a dead-end message.
+			Speak(_updateSkippedUnlinked > 0
+				? Loc.T("modlist.noUpdateSourcesUnlinked")
+				: Loc.T("modlist.noUpdateSources"));
 			return;
 		}
 		_isLoading = true;
