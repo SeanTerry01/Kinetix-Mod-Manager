@@ -116,7 +116,8 @@ public partial class Form1
 
 		var ordered = GetOrderedEnabledMods();
 		var manifest = DeploymentManifest.Load(game);
-		_lastConflicts = ModFileSystem.SyncDeployment(gameRoot, ordered, manifest, LogError, forceRelink);
+		_settings.FileWinnerOverrides.TryGetValue(game, out Dictionary<string, string>? overrides);
+		_lastConflicts = ModFileSystem.SyncDeployment(gameRoot, ordered, manifest, LogError, forceRelink, overrides);
 		manifest.Save(game);
 		return _lastConflicts;
 	}

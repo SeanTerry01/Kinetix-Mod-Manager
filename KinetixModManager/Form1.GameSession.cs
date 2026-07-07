@@ -114,6 +114,9 @@ public partial class Form1
 			// The savegame manager parses Bethesda save formats, so it's only shown for those games.
 			if (modsMenu.DropDownItems["menuSaveManager"] is ToolStripItem saveItem)
 				saveItem.Visible = game == "SkyrimSE" || game == "Fallout4";
+			// Per-file conflict winners only apply to the Bethesda loose-file deployment model.
+			if (modsMenu.DropDownItems["menuConflictWinners"] is ToolStripItem cwItem)
+				cwItem.Visible = game == "SkyrimSE" || game == "Fallout4";
 		}
 
 		// The View menu's "Open Log" item targets a different log per game (SMAPI for Stardew, the

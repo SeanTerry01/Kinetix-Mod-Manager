@@ -760,17 +760,20 @@ public static class ModFileSystem
 		List<(string Name, string FolderPath)> enabledModsHighToLow,
 		DeploymentManifest manifest,
 		Action<string, string> logError,
-		HashSet<string>? forceRelink = null)
+		HashSet<string>? forceRelink = null,
+		IReadOnlyDictionary<string, string>? winnerOverrides = null)
 	{
 		var conflicts = new List<FileConflict>();
 		if (string.IsNullOrEmpty(gameRootPath)) return conflicts;
 		gameRootPath = Path.GetFullPath(gameRootPath).TrimEnd(Path.DirectorySeparatorChar);
 
 		// Destination path (relative to the game root) -> winning source file / owning mod. providers
-		// tracks every mod that supplies a path so conflicts can be reported.
+		// tracks every mod that supplies a path so conflicts can be reported. providerSource keeps each
+		// provider's own source file for a path, so a per-file override can force a specific mod to win.
 		var desiredSource = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 		var desiredOwner  = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 		var providers     = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+		var providerSource = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
 
 		// Walk lowest priority first so the highest-priority provider is written last and wins.
 		for (int i = enabledModsHighToLow.Count - 1; i >= 0; i--)
@@ -798,6 +801,33 @@ public static class ModFileSystem
 				desiredOwner[destRel]  = modName;
 				if (!providers.TryGetValue(destRel, out var list)) { list = new List<string>(); providers[destRel] = list; }
 				list.Add(modName);
+				// Only remember each provider's own source for paths that actually carry an override — otherwise this
+				// would allocate a nested dictionary for every deployed file (heavy on a large load order).
+				if (winnerOverrides != null && winnerOverrides.ContainsKey(destRel))
+				{
+					if (!providerSource.TryGetValue(destRel, out var bySrc))
+					{
+						bySrc = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+						providerSource[destRel] = bySrc;
+					}
+					bySrc[modName] = sourceFile;
+				}
+			}
+		}
+
+		// Apply per-file winner overrides: force the chosen mod to win a path regardless of priority, but only when
+		// it actually provides that path (a stale override for a since-removed/renamed mod is silently ignored, so
+		// deployment falls back to the normal priority winner).
+		if (winnerOverrides != null)
+		{
+			foreach (var (destRel, forcedOwner) in winnerOverrides)
+			{
+				if (providerSource.TryGetValue(destRel, out var bySrc) &&
+					bySrc.TryGetValue(forcedOwner, out string? forcedSource))
+				{
+					desiredSource[destRel] = forcedSource;
+					desiredOwner[destRel]  = forcedOwner;
+				}
 			}
 		}
 

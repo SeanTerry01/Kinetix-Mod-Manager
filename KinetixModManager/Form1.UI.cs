@@ -179,6 +179,10 @@ public partial class Form1
 		{
 			ShowFileConflictsReport();
 		});
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.conflictWinners"), null, delegate
+		{
+			ShowConflictOverride();
+		}).Name = "menuConflictWinners";
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.checkRequirements", GetShortcutString("CheckRequirements")), null, async delegate
 		{
 			await ShowRequirementsReport();

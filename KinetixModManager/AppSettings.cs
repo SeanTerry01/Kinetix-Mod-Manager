@@ -264,6 +264,15 @@ public class AppSettings
 	public Dictionary<string, List<string>> PluginOrder { get; set; } = new Dictionary<string, List<string>>();
 
 	/// <summary>
+	/// Per-file conflict winner overrides for Skyrim SE / Fallout 4: for a game, maps a deployed file path (relative
+	/// to the game root, e.g. <c>Data\textures\x.dds</c>) to the mod (priority-key / folder name) the user forced to
+	/// win that path, regardless of mod priority. An override is honored only while that mod still provides the path;
+	/// a stale entry is ignored by the deployment sync. Empty for a game with no overrides.
+	/// </summary>
+	public Dictionary<string, Dictionary<string, string>> FileWinnerOverrides { get; set; } =
+		new Dictionary<string, Dictionary<string, string>>();
+
+	/// <summary>
 	/// Last game executable version the manager saw for each Bethesda game, as "major.minor.build" (e.g.
 	/// "1.6.1170"). Keyed by game id. Used by the game-update guardian: when the exe's version differs from the
 	/// value stored here on a later load, the game was updated (usually by Steam) since we last looked, so SKSE/F4SE
@@ -393,6 +402,11 @@ public class AppSettings
 		if (IgnoredRequirements == null) IgnoredRequirements = new Dictionary<string, List<string>>();
 		if (AiModelCache == null) AiModelCache = new Dictionary<string, List<AiModelChoice>>(StringComparer.OrdinalIgnoreCase);
 		if (LastSeenGameVersion == null) LastSeenGameVersion = new Dictionary<string, string>();
+		if (FileWinnerOverrides == null) FileWinnerOverrides = new Dictionary<string, Dictionary<string, string>>();
+		// Deserialization doesn't preserve the case-insensitive comparer on the inner path->winner maps; rebuild it
+		// so a path lookup matches regardless of case (paths and folder names are compared case-insensitively).
+		foreach (string key in new List<string>(FileWinnerOverrides.Keys))
+			FileWinnerOverrides[key] = new Dictionary<string, string>(FileWinnerOverrides[key], StringComparer.OrdinalIgnoreCase);
 
 		if (string.IsNullOrEmpty(ActiveGame)) ActiveGame = "None";
 		Shortcuts ??= new Dictionary<string, Keys>();
