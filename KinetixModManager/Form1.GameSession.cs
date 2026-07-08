@@ -125,6 +125,11 @@ public partial class Form1
 			// Safety snapshots capture Bethesda game INIs + load order.
 			if (modsMenu.DropDownItems["menuRestoreSafety"] is ToolStripItem safetyItem)
 				safetyItem.Visible = game == "SkyrimSE" || game == "Fallout4";
+			// Prepare/restore around a game update act on the Bethesda deployment.
+			if (modsMenu.DropDownItems["menuPrepUpdate"] is ToolStripItem prepItem)
+				prepItem.Visible = game == "SkyrimSE" || game == "Fallout4";
+			if (modsMenu.DropDownItems["menuRestoreUpdate"] is ToolStripItem restoreItem)
+				restoreItem.Visible = game == "SkyrimSE" || game == "Fallout4";
 		}
 
 		// The View menu's "Open Log" item targets a different log per game (SMAPI for Stardew, the

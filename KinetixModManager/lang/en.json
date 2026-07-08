@@ -656,6 +656,19 @@
   "pluginlimit.rowLightNear": "{0} of {1} light (ESL) plugin slots used — approaching the limit.",
   "pluginlimit.rowLightOver": "{0} of {1} light (ESL) plugin slots used — over the limit.",
 
+  "prep.notApplicable": "Preparing for a game update applies to Skyrim and Fallout 4.",
+  "prep.noGamePath": "No game folder is set for this game, so it can't be prepared for an update.",
+  "prep.alreadyVanilla": "No mods are deployed, so the game folder is already vanilla and ready to update.",
+  "prep.confirm": "Prepare for a game update? This takes a safety backup and temporarily removes your {0} deployed mod files, returning the game folder to vanilla so the update installs cleanly. Your installed mods are kept and can be redeployed with Restore Mods After Game Update.",
+  "prep.confirmTitle": "Prepare for Game Update",
+  "prep.reason": "Before a game update",
+  "prep.working": "Preparing for the game update...",
+  "prep.done": "Ready to update. Removed {0} deployed files; the game folder is now vanilla. Update your game, then choose Restore Mods After Game Update.",
+  "prep.restoreConfirm": "Restore your mods after the game update? This redeploys every enabled mod into the game folder.",
+  "prep.restoreTitle": "Restore Mods After Game Update",
+  "prep.restoreWorking": "Redeploying your mods...",
+  "prep.restoreDone": "Restored {0} mods with {1} file conflicts.",
+
   "cleanup.freed": "Freed {0} of temporary files.",
   "cleanup.nothing": "No temporary files to clear. Everything is already tidy.",
 
@@ -1101,6 +1114,8 @@
   "menu.manageLoadRules": "Manage Load Order Rules",
   "menu.restoreSafety": "Restore a Safety Backup",
   "menu.freeUpSpace": "Free Up Space (Clear Temporary Files)",
+  "menu.prepUpdate": "Prepare for Game Update",
+  "menu.restoreUpdate": "Restore Mods After Game Update",
   "menu.checkRequirements": "Check Mod Requirements ({0})",
   "menu.checkBrokenMods": "Check for Broken Mods ({0})",
   "menu.endorse": "Endorse or Un-endorse Selected Mod on Nexus ({0})",

@@ -117,8 +117,10 @@ features nobody else does. Effort is a rough guess. Stars mark the recommended n
     + saved load order is taken automatically before purge, rebuild, and opening the INI editor (newest 8 kept per
     game). "Restore a Safety Backup" (Mods menu) lists them; Enter restores the files and load order and re-deploys,
     Delete removes one.
-*   **"Prepare for game update / restore after"** [low] — purge before a known update, redeploy after; pairs with
-    the game-update guardian.
+*   ~~**"Prepare for game update / restore after"** [low]~~ — **Done.** "Prepare for Game Update" (Mods menu) takes
+    a safety snapshot and undeploys mods so a Steam/GOG update installs against a clean vanilla folder; "Restore Mods
+    After Game Update" redeploys every enabled mod and runs the game-update guardian to flag any SKSE/F4SE mismatch.
+    Pairs with the guardian.
 *   ~~**Mod list filter/search** by category, note, or status [low-medium]~~ — **Done.** The Installed tab already
     had text (name/author) + category filters; the text search now also matches note text, and a new Status filter
     (All / Enabled Only / Disabled Only / Has a Note) sits beside the category filter. Filters compose.
