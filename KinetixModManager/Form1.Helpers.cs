@@ -101,6 +101,23 @@ public partial class Form1
 		}
 	}
 
+	/// <summary>
+	/// Wires the standard accessible behaviour onto a modal dialog's list: announce the "X of Y" position both when
+	/// the list gains focus (<see cref="List_Enter"/>) and as the selection moves with the arrow keys
+	/// (<see cref="List_SelectedIndexChanged"/>), and suppress Left/Right, which would otherwise move the selection
+	/// like Up/Down in a single-column list box and read confusingly. Every new dialog list should use this so it
+	/// behaves like the rest of the app. Callers add their own KeyDown handler for Enter/Delete actions.
+	/// </summary>
+	private void WireAccessibleDialogList(ListBox list)
+	{
+		list.GotFocus += List_Enter;
+		list.SelectedIndexChanged += List_SelectedIndexChanged;
+		list.KeyDown += (_, e) =>
+		{
+			if (e.KeyCode == Keys.Left || e.KeyCode == Keys.Right) { e.Handled = e.SuppressKeyPress = true; }
+		};
+	}
+
 	private async void List_Enter(object? sender, EventArgs e)
 	{
 		if (sender is not ListBox listBox) return;

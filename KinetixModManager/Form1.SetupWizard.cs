@@ -53,7 +53,7 @@ public partial class Form1
 		}
 		Rebuild(0);
 
-		list.GotFocus += List_Enter;
+		WireAccessibleDialogList(list);
 		f.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) f.Close(); };
 		list.KeyDown += (_, e) =>
 		{

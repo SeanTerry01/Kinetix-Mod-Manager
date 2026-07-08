@@ -131,7 +131,7 @@ public partial class Form1
 		layout.Controls.Add(list, 0, 1);
 		f.Controls.Add(layout);
 
-		list.GotFocus += List_Enter;
+		WireAccessibleDialogList(list);
 		f.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) f.Close(); };
 		list.KeyDown += (_, e) =>
 		{
