@@ -139,6 +139,7 @@ public partial class Form1
 				MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
 			return;
 
+		CreateSafetyBackup(Loc.T("safety.reasonRebuild"));
 		SetStatus(Loc.T("loadorder.rebuilding"));
 		var forceAll = new HashSet<string>(
 			_allInstalledMods.Where(m => !m.IsGroup && m.IsEnabled).Select(PriorityKey),
@@ -187,6 +188,7 @@ public partial class Form1
 				MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
 			return;
 
+		CreateSafetyBackup(Loc.T("safety.reasonPurge"));
 		SetStatus(Loc.T("loadorder.purging"));
 		int removed = ModFileSystem.PurgeDeployment(gameRoot, manifest, LogError);
 		manifest.Save(game);

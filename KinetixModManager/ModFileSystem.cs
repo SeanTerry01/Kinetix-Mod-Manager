@@ -1098,6 +1098,9 @@ public static class ModFileSystem
 		return Path.Combine(localAppData, folderName, "plugins.txt");
 	}
 
+	/// <summary>The absolute path of the game's active-plugins list (plugins.txt); empty for non-Bethesda games.</summary>
+	public static string ActivePluginsTxtPath(string activeGame) => PluginsTxtPath(activeGame);
+
 	/// <summary>
 	/// Finds the deepest common directory containing game files or plugins.
 	/// </summary>

@@ -191,6 +191,10 @@ public partial class Form1
 		{
 			ShowLoadOrderRules();
 		}).Name = "menuManageLoadRules";
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.restoreSafety"), null, delegate
+		{
+			ShowRestoreSafetyBackup();
+		}).Name = "menuRestoreSafety";
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.checkRequirements", GetShortcutString("CheckRequirements")), null, async delegate
 		{
 			await ShowRequirementsReport();

@@ -122,6 +122,9 @@ public partial class Form1
 				addRuleItem.Visible = game == "SkyrimSE" || game == "Fallout4";
 			if (modsMenu.DropDownItems["menuManageLoadRules"] is ToolStripItem mgrRuleItem)
 				mgrRuleItem.Visible = game == "SkyrimSE" || game == "Fallout4";
+			// Safety snapshots capture Bethesda game INIs + load order.
+			if (modsMenu.DropDownItems["menuRestoreSafety"] is ToolStripItem safetyItem)
+				safetyItem.Visible = game == "SkyrimSE" || game == "Fallout4";
 		}
 
 		// The View menu's "Open Log" item targets a different log per game (SMAPI for Stardew, the

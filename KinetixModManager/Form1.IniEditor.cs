@@ -127,6 +127,9 @@ public partial class Form1
         try { doc = IniDocument.Load(path); }
         catch (Exception ex) { SpeakError(Loc.T("ini.loadFailed", fileLabel), ex); return; }
 
+        // Snapshot the game INIs + load order once before any edits, so a bad change is one restore away.
+        CreateSafetyBackup(Loc.T("safety.reasonIni", fileLabel));
+
         var form = new Form
         {
             Text = Loc.T("ini.editorTitle", fileLabel),

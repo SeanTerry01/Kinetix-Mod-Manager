@@ -113,8 +113,10 @@ features nobody else does. Effort is a rough guess. Stars mark the recommended n
 
 *   **First-run setup wizard** [medium] — guided, spoken onboarding: pick game -> locate folder -> Nexus login
     -> API key.
-*   **Auto safety-backup before risky operations** [low] — snapshot INIs + load order before purge/rebuild/edit,
-    with one-click restore.
+*   ~~**Auto safety-backup before risky operations** [low]~~ — **Done.** A snapshot of the game INIs + plugins.txt
+    + saved load order is taken automatically before purge, rebuild, and opening the INI editor (newest 8 kept per
+    game). "Restore a Safety Backup" (Mods menu) lists them; Enter restores the files and load order and re-deploys,
+    Delete removes one.
 *   **"Prepare for game update / restore after"** [low] — purge before a known update, redeploy after; pairs with
     the game-update guardian.
 *   **Mod list filter/search** by category, note, or status [low-medium].
