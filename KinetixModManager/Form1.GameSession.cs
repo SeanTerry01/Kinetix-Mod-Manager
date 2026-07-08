@@ -28,6 +28,53 @@ namespace KinetixModManager;
 /// <summary>Active-game switching, session close, game menus, and game-selection panel for Form1.</summary>
 public partial class Form1
 {
+	/// <summary>
+	/// Finds a menu item by its stable <see cref="ToolStripItem.Name"/> anywhere in <paramref name="root"/>'s
+	/// dropdown tree, including nested submenus (unlike <c>DropDownItems[name]</c>, which searches only direct
+	/// children). Used so per-game relabeling/visibility keeps working now that Mods items live in submenus.
+	/// </summary>
+	private static ToolStripItem? FindMenuItem(ToolStripMenuItem root, string name)
+	{
+		foreach (ToolStripItem item in root.DropDownItems)
+		{
+			if (item.Name == name) return item;
+			if (item is ToolStripMenuItem sub && sub.HasDropDownItems)
+			{
+				ToolStripItem? found = FindMenuItem(sub, name);
+				if (found != null) return found;
+			}
+		}
+		return null;
+	}
+
+	/// <summary>
+	/// Applies the per-game Mods-menu state for the active game: relabels the launch and accessibility-suite items
+	/// with the game name, and shows the Skyrim/Fallout 4-only items and the load-order submenu only for those
+	/// games. Called both on a game switch and once at startup (a game restored from settings doesn't go through
+	/// SwitchActiveGame). Items are found recursively by their stable Name since they now live in submenus.
+	/// </summary>
+	private void ConfigureModsMenuForGame()
+	{
+		if (MainMenuStrip?.Items["menuMods"] is not ToolStripMenuItem modsMenu) return;
+		string game = _settings.ActiveGame;
+		bool bethesda = game == "SkyrimSE" || game == "Fallout4";
+		string gameName = game == "None" ? "" : GameDisplayName();
+
+		if (FindMenuItem(modsMenu, "menuLaunch") is ToolStripItem launchItem)
+			launchItem.Text = Loc.T("menu.launch", gameName, GetShortcutString("LaunchGame"));
+		if (FindMenuItem(modsMenu, "menuSuite") is ToolStripItem suiteItem)
+			suiteItem.Text = Loc.T("menu.installSuite", gameName);
+		// Skyrim SE / Fallout 4-only items: script extender, savegames, conflict winners, load-order rules, safety
+		// restore, and the prepare/restore-for-update pair.
+		foreach (string name in new[] { "menuUninstallSE", "menuSaveManager", "menuConflictWinners", "menuAddLoadRule",
+			"menuManageLoadRules", "menuRestoreSafety", "menuPrepUpdate", "menuRestoreUpdate" })
+			if (FindMenuItem(modsMenu, name) is ToolStripItem item) item.Visible = bethesda;
+		// The whole load-order/files submenu is Skyrim/Fallout 4 only; hide it for Stardew rather than show a group
+		// of "not applicable" items.
+		if (FindMenuItem(modsMenu, "menuGroupLoadOrder") is ToolStripItem loadGroup)
+			loadGroup.Visible = bethesda;
+	}
+
 	private void SwitchActiveGame(string game)
 	{
 		if (_settings.ActiveGame == game) return;
@@ -102,35 +149,7 @@ public partial class Form1
 
 		// Re-label the game-specific Mods items for the newly loaded game. Items are found by their stable
 		// Name (set in SetupAccessibleUI), not their visible text, so this keeps working when the UI is localized.
-		if (MainMenuStrip?.Items["menuMods"] is ToolStripMenuItem modsMenu)
-		{
-			if (modsMenu.DropDownItems["menuLaunch"] is ToolStripItem launchItem)
-				launchItem.Text = Loc.T("menu.launch", gameName, GetShortcutString("LaunchGame"));
-			if (modsMenu.DropDownItems["menuSuite"] is ToolStripItem suiteItem)
-				suiteItem.Text = Loc.T("menu.installSuite", gameName);
-			// Uninstalling the script extender only applies to Skyrim SE / Fallout 4.
-			if (modsMenu.DropDownItems["menuUninstallSE"] is ToolStripItem seItem)
-				seItem.Visible = game == "SkyrimSE" || game == "Fallout4";
-			// The savegame manager parses Bethesda save formats, so it's only shown for those games.
-			if (modsMenu.DropDownItems["menuSaveManager"] is ToolStripItem saveItem)
-				saveItem.Visible = game == "SkyrimSE" || game == "Fallout4";
-			// Per-file conflict winners only apply to the Bethesda loose-file deployment model.
-			if (modsMenu.DropDownItems["menuConflictWinners"] is ToolStripItem cwItem)
-				cwItem.Visible = game == "SkyrimSE" || game == "Fallout4";
-			// Persistent load-order rules act on the Skyrim/Fallout 4 plugin order.
-			if (modsMenu.DropDownItems["menuAddLoadRule"] is ToolStripItem addRuleItem)
-				addRuleItem.Visible = game == "SkyrimSE" || game == "Fallout4";
-			if (modsMenu.DropDownItems["menuManageLoadRules"] is ToolStripItem mgrRuleItem)
-				mgrRuleItem.Visible = game == "SkyrimSE" || game == "Fallout4";
-			// Safety snapshots capture Bethesda game INIs + load order.
-			if (modsMenu.DropDownItems["menuRestoreSafety"] is ToolStripItem safetyItem)
-				safetyItem.Visible = game == "SkyrimSE" || game == "Fallout4";
-			// Prepare/restore around a game update act on the Bethesda deployment.
-			if (modsMenu.DropDownItems["menuPrepUpdate"] is ToolStripItem prepItem)
-				prepItem.Visible = game == "SkyrimSE" || game == "Fallout4";
-			if (modsMenu.DropDownItems["menuRestoreUpdate"] is ToolStripItem restoreItem)
-				restoreItem.Visible = game == "SkyrimSE" || game == "Fallout4";
-		}
+		ConfigureModsMenuForGame();
 
 		// The View menu's "Open Log" item targets a different log per game (SMAPI for Stardew, the
 		// script extender log for Skyrim/FO4), so relabel it to match — found by its stable Name.

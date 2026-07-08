@@ -87,18 +87,11 @@ public partial class Form1
 		UpdateGamesMenu();
 
 		ToolStripMenuItem toolStripMenuItem2 = new ToolStripMenuItem(Loc.T("menu.mods")) { Name = "menuMods" };
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.saveProfile", GetShortcutString("SaveProfile")), null, delegate
-		{
-			CreateProfileFromCurrent();
-		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.exportCollection", GetShortcutString("ExportCollection")), null, delegate
-		{
-			ExportCollection();
-		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.installCollection", GetShortcutString("InstallCollection")), null, async delegate
-		{
-			await InstallCollectionAsync();
-		});
+		// The Mods menu is grouped into submenus so a screen-reader user isn't faced with one 40-item list. The most
+		// common actions stay at the top level; everything else is filed under a themed submenu. Items keep their
+		// stable Names (some are relabeled/hidden per game in SwitchActiveGame, which finds them recursively).
+
+		// Common, frequently-used actions at the top level.
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.installZip", GetShortcutString("InstallZip")), null, delegate
 		{
 			ManualInstall();
@@ -111,142 +104,68 @@ public partial class Form1
 		{
 			LaunchGame();
 		}).Name = "menuLaunch";
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.installSuite", gameName), null, delegate
-		{
-			ShowAccessibilitySuiteDialog();
-		}).Name = "menuSuite";
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.uninstallScriptExtender"), null, delegate
-		{
-			UninstallScriptExtenderCommand();
-		}).Name = "menuUninstallSE";
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.autoMatch"), null, async delegate
-		{
-			await AutoMatchNexusIDs();
-		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.autoSort", GetShortcutString("AutoSort")), null, async delegate
-		{
-			await AutoSortPluginsAsync();
-		}).Name = "menuAutoSort";
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.rebuildDeploy"), null, delegate
-		{
-			RebuildDeployment();
-		}).Name = "menuRebuildDeploy";
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.purgeDeploy"), null, delegate
-		{
-			PurgeDeployment();
-		}).Name = "menuPurgeDeploy";
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.prepUpdate"), null, delegate
-		{
-			PrepareForGameUpdate();
-		}).Name = "menuPrepUpdate";
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.restoreUpdate"), null, delegate
-		{
-			RestoreAfterUpdate();
-		}).Name = "menuRestoreUpdate";
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.editGameIni"), null, delegate
-		{
-			EditGameIni();
-		}).Name = "menuEditGameIni";
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.exportLoadOrder"), null, delegate
-		{
-			ExportLoadOrder();
-		}).Name = "menuExportLoadOrder";
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.importLoadOrder"), null, delegate
-		{
-			ImportLoadOrder();
-		}).Name = "menuImportLoadOrder";
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.importMO2"), null, delegate
-		{
-			ImportFromMO2();
-		}).Name = "menuImportMO2";
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.editNote", GetShortcutString("EditNote")), null, delegate
-		{
-			SetModNote();
-		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.editConfig", GetShortcutString("OpenConfig")), null, delegate
-		{
-			OpenSelectedModConfig();
-		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.editManifest", GetShortcutString("OpenManifest")), null, delegate
-		{
-			OpenSelectedModManifest();
-		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.viewDependencies", GetShortcutString("ShowDependencies")), null, delegate
-		{
-			ShowDependencies();
-		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.resolveDependencies", GetShortcutString("QuickFix")), null, delegate
-		{
-			QuickFixDependencies();
-		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.healthCheck", GetShortcutString("HealthCheck")), null, async delegate
-		{
-			await RunHealthCheck();
-		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.fileConflicts", GetShortcutString("FileConflicts")), null, delegate
-		{
-			ShowFileConflictsReport();
-		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.conflictWinners"), null, delegate
-		{
-			ShowConflictOverride();
-		}).Name = "menuConflictWinners";
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.addLoadRule"), null, delegate
-		{
-			AddLoadOrderRule();
-		}).Name = "menuAddLoadRule";
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.manageLoadRules"), null, delegate
-		{
-			ShowLoadOrderRules();
-		}).Name = "menuManageLoadRules";
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.restoreSafety"), null, delegate
-		{
-			ShowRestoreSafetyBackup();
-		}).Name = "menuRestoreSafety";
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.checkRequirements", GetShortcutString("CheckRequirements")), null, async delegate
-		{
-			await ShowRequirementsReport();
-		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.checkBrokenMods", GetShortcutString("CheckBrokenMods")), null, async delegate
-		{
-			await ShowBrokenModsReport();
-		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.pluginSlots", GetShortcutString("PluginSlots")), null, delegate
-		{
-			AnnouncePluginSlotUsage();
-		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.saveManager", GetShortcutString("SaveManager")), null, async delegate
-		{
-			await ShowSaveManager();
-		}).Name = "menuSaveManager";
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.downloadsHistory", GetShortcutString("DownloadsHistory")), null, delegate
-		{
-			ShowDownloadsHistory();
-		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.trackedMods", GetShortcutString("TrackedMods")), null, async delegate
-		{
-			await ShowTrackedMods();
-		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.endorse", GetShortcutString("Endorse")), null, delegate
-		{
-			EndorseSelectedMod();
-		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.viewChangelog", GetShortcutString("ViewChangelog")), null, delegate
-		{
-			ViewModChangelog();
-		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.viewDescription", GetShortcutString("ViewDescription")), null, delegate
-		{
-			ViewModDescription();
-		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.verifyDeployment"), null, delegate
-		{
-			VerifyModDeployment();
-		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.resetIgnoredReqs"), null, delegate
-		{
-			ResetIgnoredRequirements();
-		});
+		toolStripMenuItem2.DropDownItems.Add(new ToolStripSeparator());
+
+		// Submenu: actions on the currently selected mod.
+		var grpSelected = new ToolStripMenuItem(Loc.T("menu.groupSelectedMod")) { Name = "menuGroupSelectedMod" };
+		grpSelected.DropDownItems.Add(Loc.T("menu.editNote", GetShortcutString("EditNote")), null, delegate { SetModNote(); });
+		grpSelected.DropDownItems.Add(Loc.T("menu.editConfig", GetShortcutString("OpenConfig")), null, delegate { OpenSelectedModConfig(); });
+		grpSelected.DropDownItems.Add(Loc.T("menu.editManifest", GetShortcutString("OpenManifest")), null, delegate { OpenSelectedModManifest(); });
+		grpSelected.DropDownItems.Add(Loc.T("menu.viewDependencies", GetShortcutString("ShowDependencies")), null, delegate { ShowDependencies(); });
+		grpSelected.DropDownItems.Add(Loc.T("menu.resolveDependencies", GetShortcutString("QuickFix")), null, delegate { QuickFixDependencies(); });
+		grpSelected.DropDownItems.Add(Loc.T("menu.viewChangelog", GetShortcutString("ViewChangelog")), null, delegate { ViewModChangelog(); });
+		grpSelected.DropDownItems.Add(Loc.T("menu.viewDescription", GetShortcutString("ViewDescription")), null, delegate { ViewModDescription(); });
+		grpSelected.DropDownItems.Add(Loc.T("menu.endorse", GetShortcutString("Endorse")), null, delegate { EndorseSelectedMod(); });
+		grpSelected.DropDownItems.Add(Loc.T("menu.verifyDeployment"), null, delegate { VerifyModDeployment(); });
+		toolStripMenuItem2.DropDownItems.Add(grpSelected);
+
+		// Submenu: installing and updating mods.
+		var grpInstall = new ToolStripMenuItem(Loc.T("menu.groupInstall")) { Name = "menuGroupInstall" };
+		grpInstall.DropDownItems.Add(Loc.T("menu.autoMatch"), null, async delegate { await AutoMatchNexusIDs(); });
+		grpInstall.DropDownItems.Add(Loc.T("menu.downloadsHistory", GetShortcutString("DownloadsHistory")), null, delegate { ShowDownloadsHistory(); });
+		grpInstall.DropDownItems.Add(Loc.T("menu.trackedMods", GetShortcutString("TrackedMods")), null, async delegate { await ShowTrackedMods(); });
+		toolStripMenuItem2.DropDownItems.Add(grpInstall);
+
+		// Submenu: profiles and shareable collections.
+		var grpProfiles = new ToolStripMenuItem(Loc.T("menu.groupProfiles")) { Name = "menuGroupProfiles" };
+		grpProfiles.DropDownItems.Add(Loc.T("menu.saveProfile", GetShortcutString("SaveProfile")), null, delegate { CreateProfileFromCurrent(); });
+		grpProfiles.DropDownItems.Add(Loc.T("menu.exportCollection", GetShortcutString("ExportCollection")), null, delegate { ExportCollection(); });
+		grpProfiles.DropDownItems.Add(Loc.T("menu.installCollection", GetShortcutString("InstallCollection")), null, async delegate { await InstallCollectionAsync(); });
+		grpProfiles.DropDownItems.Add(Loc.T("menu.importMO2"), null, delegate { ImportFromMO2(); }).Name = "menuImportMO2";
+		toolStripMenuItem2.DropDownItems.Add(grpProfiles);
+
+		// Submenu: health checks and reports.
+		var grpHealth = new ToolStripMenuItem(Loc.T("menu.groupHealth")) { Name = "menuGroupHealth" };
+		grpHealth.DropDownItems.Add(Loc.T("menu.healthCheck", GetShortcutString("HealthCheck")), null, async delegate { await RunHealthCheck(); });
+		grpHealth.DropDownItems.Add(Loc.T("menu.checkRequirements", GetShortcutString("CheckRequirements")), null, async delegate { await ShowRequirementsReport(); });
+		grpHealth.DropDownItems.Add(Loc.T("menu.checkBrokenMods", GetShortcutString("CheckBrokenMods")), null, async delegate { await ShowBrokenModsReport(); });
+		grpHealth.DropDownItems.Add(Loc.T("menu.fileConflicts", GetShortcutString("FileConflicts")), null, delegate { ShowFileConflictsReport(); });
+		grpHealth.DropDownItems.Add(Loc.T("menu.pluginSlots", GetShortcutString("PluginSlots")), null, delegate { AnnouncePluginSlotUsage(); });
+		grpHealth.DropDownItems.Add(Loc.T("menu.resetIgnoredReqs"), null, delegate { ResetIgnoredRequirements(); });
+		toolStripMenuItem2.DropDownItems.Add(grpHealth);
+
+		// Submenu: Skyrim/Fallout 4 load order and loose-file deployment.
+		var grpLoad = new ToolStripMenuItem(Loc.T("menu.groupLoadOrder")) { Name = "menuGroupLoadOrder" };
+		grpLoad.DropDownItems.Add(Loc.T("menu.autoSort", GetShortcutString("AutoSort")), null, async delegate { await AutoSortPluginsAsync(); }).Name = "menuAutoSort";
+		grpLoad.DropDownItems.Add(Loc.T("menu.conflictWinners"), null, delegate { ShowConflictOverride(); }).Name = "menuConflictWinners";
+		grpLoad.DropDownItems.Add(Loc.T("menu.addLoadRule"), null, delegate { AddLoadOrderRule(); }).Name = "menuAddLoadRule";
+		grpLoad.DropDownItems.Add(Loc.T("menu.manageLoadRules"), null, delegate { ShowLoadOrderRules(); }).Name = "menuManageLoadRules";
+		grpLoad.DropDownItems.Add(Loc.T("menu.rebuildDeploy"), null, delegate { RebuildDeployment(); }).Name = "menuRebuildDeploy";
+		grpLoad.DropDownItems.Add(Loc.T("menu.purgeDeploy"), null, delegate { PurgeDeployment(); }).Name = "menuPurgeDeploy";
+		grpLoad.DropDownItems.Add(Loc.T("menu.exportLoadOrder"), null, delegate { ExportLoadOrder(); }).Name = "menuExportLoadOrder";
+		grpLoad.DropDownItems.Add(Loc.T("menu.importLoadOrder"), null, delegate { ImportLoadOrder(); }).Name = "menuImportLoadOrder";
+		toolStripMenuItem2.DropDownItems.Add(grpLoad);
+
+		// Submenu: game launch/setup and maintenance operations.
+		var grpGame = new ToolStripMenuItem(Loc.T("menu.groupGame")) { Name = "menuGroupGame" };
+		grpGame.DropDownItems.Add(Loc.T("menu.installSuite", gameName), null, delegate { ShowAccessibilitySuiteDialog(); }).Name = "menuSuite";
+		grpGame.DropDownItems.Add(Loc.T("menu.uninstallScriptExtender"), null, delegate { UninstallScriptExtenderCommand(); }).Name = "menuUninstallSE";
+		grpGame.DropDownItems.Add(Loc.T("menu.editGameIni"), null, delegate { EditGameIni(); }).Name = "menuEditGameIni";
+		grpGame.DropDownItems.Add(Loc.T("menu.saveManager", GetShortcutString("SaveManager")), null, async delegate { await ShowSaveManager(); }).Name = "menuSaveManager";
+		grpGame.DropDownItems.Add(Loc.T("menu.prepUpdate"), null, delegate { PrepareForGameUpdate(); }).Name = "menuPrepUpdate";
+		grpGame.DropDownItems.Add(Loc.T("menu.restoreUpdate"), null, delegate { RestoreAfterUpdate(); }).Name = "menuRestoreUpdate";
+		grpGame.DropDownItems.Add(Loc.T("menu.restoreSafety"), null, delegate { ShowRestoreSafetyBackup(); }).Name = "menuRestoreSafety";
+		toolStripMenuItem2.DropDownItems.Add(grpGame);
 
 		ToolStripMenuItem toolStripMenuItem3 = new ToolStripMenuItem(Loc.T("menu.view")) { Name = "menuView" };
 		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.apiCredits", GetShortcutString("ApiCredits")), null, delegate
@@ -1029,6 +948,9 @@ public partial class Form1
 
 		UpdateGamesMenu();
 		UpdateMenuState();
+		// Apply the per-game Mods-menu labels/visibility for the game restored from settings (startup doesn't go
+		// through SwitchActiveGame when the active game is unchanged).
+		ConfigureModsMenuForGame();
 		listInstalled.KeyDown += List_KeyDown;
 		listUpdates.KeyDown += List_KeyDown;
 		listDiscovery.KeyDown += List_KeyDown;
