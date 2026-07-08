@@ -248,6 +248,7 @@ public partial class Form1 : Form, IMessageFilter
 	private bool _suppressDiscoveryLanguageEvent;
 	private ComboBox cmbLogFilter = null!;
 	private ComboBox cmbCategoryFilter = null!;
+	private ComboBox cmbStatusFilter = null!;
 	private Button btnSearch = null!;
 	private Button btnPruneBackups = null!;
 	private TextBox txtWikiSearch = null!;

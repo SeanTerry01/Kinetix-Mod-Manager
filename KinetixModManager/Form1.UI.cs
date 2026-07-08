@@ -376,6 +376,28 @@ public partial class Form1
 			Padding = new Padding(10, 8, 0, 0)
 		});
 		flowLayoutPanel.Controls.Add(cmbCategoryFilter);
+		cmbStatusFilter = new ComboBox
+		{
+			Width = 150,
+			Font = new Font("Segoe UI", 12f),
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			AccessibleName = Loc.T("ui.statusFilterName")
+		};
+		// Order/text supplied by StatusFilterKeys so the selection can be matched by index regardless of language.
+		foreach (string label in new[] { Loc.T("status.all"), Loc.T("status.enabled"), Loc.T("status.disabled"), Loc.T("status.hasNote") })
+			cmbStatusFilter.Items.Add(label);
+		cmbStatusFilter.SelectedIndex = 0;
+		cmbStatusFilter.SelectedIndexChanged += delegate
+		{
+			FilterInstalledMods();
+		};
+		flowLayoutPanel.Controls.Add(new Label
+		{
+			Text = Loc.T("ui.statusLabel"),
+			AutoSize = true,
+			Padding = new Padding(10, 8, 0, 0)
+		});
+		flowLayoutPanel.Controls.Add(cmbStatusFilter);
 		listInstalled = new ListBox
 		{
 			Dock = DockStyle.Fill,

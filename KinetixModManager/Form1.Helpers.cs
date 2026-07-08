@@ -78,15 +78,24 @@ public partial class Form1
 	{
 		string query = txtSearchInstalled.Text.Trim().ToLower();
 		string category = cmbCategoryFilter.SelectedItem?.ToString() ?? "All Categories";
+		// Status filter by combo index (language-independent): 0 All, 1 Enabled, 2 Disabled, 3 Has Note.
+		int status = cmbStatusFilter?.SelectedIndex ?? 0;
+		bool StatusMatch(StardewMod m) => status switch
+		{
+			1 => m.IsEnabled,
+			2 => !m.IsEnabled,
+			3 => !string.IsNullOrWhiteSpace(m.Note),
+			_ => true
+		};
 		listInstalled.BeginUpdate();
 		listInstalled.Items.Clear();
-		List<StardewMod> list = _allInstalledMods.Where((StardewMod m) => (m.Name.ToLower().Contains(query) || m.Author.ToLower().Contains(query)) && (category == "All Categories" || m.Category == category)).ToList();
+		List<StardewMod> list = _allInstalledMods.Where((StardewMod m) => (m.Name.ToLower().Contains(query) || m.Author.ToLower().Contains(query) || m.Note.ToLower().Contains(query)) && (category == "All Categories" || m.Category == category) && StatusMatch(m)).ToList();
 		foreach (StardewMod item in list)
 		{
 			listInstalled.Items.Add(item);
 		}
 		listInstalled.EndUpdate();
-		if (!string.IsNullOrEmpty(query) || category != "All Categories")
+		if (!string.IsNullOrEmpty(query) || category != "All Categories" || status != 0)
 		{
 			Speak(Loc.T("discovery.modsFound", list.Count));
 		}

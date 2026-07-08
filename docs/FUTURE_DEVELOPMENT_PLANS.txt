@@ -119,7 +119,9 @@ features nobody else does. Effort is a rough guess. Stars mark the recommended n
     Delete removes one.
 *   **"Prepare for game update / restore after"** [low] — purge before a known update, redeploy after; pairs with
     the game-update guardian.
-*   **Mod list filter/search** by category, note, or status [low-medium].
+*   ~~**Mod list filter/search** by category, note, or status [low-medium]~~ — **Done.** The Installed tab already
+    had text (name/author) + category filters; the text search now also matches note text, and a new Status filter
+    (All / Enabled Only / Disabled Only / Has a Note) sits beside the category filter. Filters compose.
 *   **Deeper Stardew support** [medium] — SMAPI install/update helper, Content Patcher token/config awareness.
 *   **Free space / cleanup tools** [low] — clear orphaned temp files and unused downloads (Delete Old Backups
     already exists).
