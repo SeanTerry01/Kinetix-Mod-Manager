@@ -126,7 +126,11 @@ features nobody else does. Effort is a rough guess. Stars mark the recommended n
 *   ~~**Mod list filter/search** by category, note, or status [low-medium]~~ — **Done.** The Installed tab already
     had text (name/author) + category filters; the text search now also matches note text, and a new Status filter
     (All / Enabled Only / Disabled Only / Has a Note) sits beside the category filter. Filters compose.
-*   **Deeper Stardew support** [medium] — SMAPI install/update helper, Content Patcher token/config awareness.
+*   **Deeper Stardew support** [medium] — *Mostly already covered; Content Patcher awareness deferred.* The **SMAPI
+    install/update helper already exists** (the accessibility-suite installer installs SMAPI, and the update check
+    detects + installs SMAPI updates), and any mod's `config.json` is already editable via "Edit Config" (Ctrl+E).
+    The remaining piece — **Content Patcher token/config awareness** (surfacing a CP mod's config options/tokens) —
+    is niche, needs real CP mods to validate, and is deferred rather than shipped half-baked.
 *   ~~**Free space / cleanup tools** [low]~~ — **Done.** "Free Up Space (Clear Temporary Files)" (View menu) removes
     the app-update extraction folder and stale extractor/installer staging dirs the manager left in the system temp
     (matched by its own name prefixes, only ones older than an hour so a running install is safe) and reports how
