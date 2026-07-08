@@ -123,8 +123,10 @@ features nobody else does. Effort is a rough guess. Stars mark the recommended n
     had text (name/author) + category filters; the text search now also matches note text, and a new Status filter
     (All / Enabled Only / Disabled Only / Has a Note) sits beside the category filter. Filters compose.
 *   **Deeper Stardew support** [medium] — SMAPI install/update helper, Content Patcher token/config awareness.
-*   **Free space / cleanup tools** [low] — clear orphaned temp files and unused downloads (Delete Old Backups
-    already exists).
+*   ~~**Free space / cleanup tools** [low]~~ — **Done.** "Free Up Space (Clear Temporary Files)" (View menu) removes
+    the app-update extraction folder and stale extractor/installer staging dirs the manager left in the system temp
+    (matched by its own name prefixes, only ones older than an hour so a running install is safe) and reports how
+    much was reclaimed. Downloaded archives are left for per-item removal in Reinstall a Downloaded Mod.
 
 ### Recommended order
 All of Tier 1 and Tier 2 are done. Remaining work is Tier 3 (first-run setup wizard, auto safety-backup before

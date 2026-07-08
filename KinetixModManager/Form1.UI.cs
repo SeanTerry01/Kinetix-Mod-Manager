@@ -261,6 +261,10 @@ public partial class Form1
 		{
 			Process.Start("explorer.exe", backupsPath);
 		});
+		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.freeUpSpace"), null, delegate
+		{
+			FreeUpSpace();
+		});
 		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.openSmapiLog", GetShortcutString("OpenLogFile")), null, delegate
 		{
 			OpenGameLog();

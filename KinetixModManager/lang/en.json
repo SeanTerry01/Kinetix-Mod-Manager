@@ -656,6 +656,9 @@
   "pluginlimit.rowLightNear": "{0} of {1} light (ESL) plugin slots used — approaching the limit.",
   "pluginlimit.rowLightOver": "{0} of {1} light (ESL) plugin slots used — over the limit.",
 
+  "cleanup.freed": "Freed {0} of temporary files.",
+  "cleanup.nothing": "No temporary files to clear. Everything is already tidy.",
+
   "safety.notApplicable": "Safety backups apply to Skyrim and Fallout 4.",
   "safety.none": "There are no safety backups yet. One is taken automatically before you purge, rebuild, or edit game settings.",
   "safety.title": "Restore a Safety Backup",
@@ -1097,6 +1100,7 @@
   "menu.addLoadRule": "Add Load Order Rule for Selected Plugin",
   "menu.manageLoadRules": "Manage Load Order Rules",
   "menu.restoreSafety": "Restore a Safety Backup",
+  "menu.freeUpSpace": "Free Up Space (Clear Temporary Files)",
   "menu.checkRequirements": "Check Mod Requirements ({0})",
   "menu.checkBrokenMods": "Check for Broken Mods ({0})",
   "menu.endorse": "Endorse or Un-endorse Selected Mod on Nexus ({0})",
