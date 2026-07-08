@@ -6,7 +6,7 @@ You choose which game you're managing from the **Games** menu (press **Alt**, th
 
 ## Getting Started & First-Time Setup
 
-1.  **Your First Launch**: When you run the manager for the first time, the **Settings Dashboard** will automatically open. This is to ensure the active game's mods folder is detected correctly and to give you a chance to enter your Nexus Mods API Key.
+1.  **Your First Launch (Setup Wizard)**: When you run the manager for the first time, a guided **Setup Wizard** opens automatically. It's a short, spoken **checklist** of the three things needed to get going — **choose a game**, **set your Nexus API key**, and **confirm your game folder** — and it tells you which steps are **done** and which are **not done yet**. Arrow up and down the steps and press **Enter** on one to complete it (this opens the game chooser, or the Settings window). The checklist refreshes as you finish each step, so you always know what's left. Press **Escape** to close it and finish later. You can reopen it any time from **Help → Setup Wizard (Getting Started)**.
 2.  **Configuring Paths**: The app attempts to find your mods folder automatically for the selected game (the `Mods` folder for Stardew Valley, or the `Data` folder for Skyrim Special Edition and Fallout 4). It detects games on **any drive**, including secondary Steam libraries. If it succeeds, the path will be pre-filled. If not, please use the "Browse" button in settings to select it.
     *   **If a game can't be found**, picking it offers a small dialog with three choices — **Locate Installed Folder** (browse to the folder yourself, useful for unusual install locations or when running under Linux/Wine, where you point it at the game folder on your `Z:` drive), **View Store Links** (where to buy the game), or **Cancel**.
 3.  **Nexus Integration**: To search for mods or check for updates, you **must** provide a **Nexus Mods API Key** (sometimes called a Nexus ID). This is a standard requirement for all mod managers. See the **"Nexus Mods Setup"** section below for instructions on how to get yours for free.
@@ -154,6 +154,11 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Ctrl + Y**: **View Dependencies** - Opens the dependency view for the selected mod: what it *requires* (and whether each is installed) and what is *required by* it (other installed mods that depend on it). See "Dependency View and Resolver" below.
 *   **Ctrl + Q**: **Resolve Missing Requirements** - Finds every missing required mod for the selected mod and, on Skyrim/Fallout 4, offers to download and install them automatically. See "Dependency View and Resolver" below.
 *   **Ctrl + Shift + B**: **Check for Broken Mods** - Cross-references your installed mods against the community compatibility list and reports any known to be broken, abandoned, obsolete, or incompatible. See "Checking Your Mods" below.
+*   **Ctrl + Shift + K**: **Check My Setup** - Runs the requirements, plugin-limit, broken-mod, and file-conflict checks together and gives one spoken summary. See "Check My Setup (Setup Health Check)" below.
+*   **Ctrl + Shift + T**: **Check Tracked Mods for Updates** - Lists the mods you track on Nexus that need attention. See "Tracked Mods" below.
+*   **Ctrl + Shift + W**: **Reinstall a Downloaded Mod** - Reinstall from your downloads folder without re-searching. See "Reinstalling a Downloaded Mod" below.
+*   **Ctrl + Shift + U**: **Plugin Slot Usage** (Skyrim & Fallout 4) - Speaks how many plugin slots you're using. See "Plugin Limit Awareness" below.
+*   **Ctrl + Shift + V**: **Manage Save Games** (Skyrim & Fallout 4) - Browse, back up, and delete your saves. See "Savegame Manager" below.
 *   **Ctrl + K**: Manually assign a Nexus ID.
 *   **Ctrl + I**: Install a mod from an archive file. **`.zip`, `.7z`, and `.rar`** archives are all supported.
 *   **Ctrl + R**: **Read Description** - Speaks the full summary of the mod.
@@ -208,6 +213,21 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 
 ---
 
+## How the Mods Menu Is Organized
+
+The **Mods** menu (press **Alt**, then arrow to **Mods**) keeps its most common actions — **Install from Archive**, **Update All Mods**, and **Launch Game** — at the top, and groups everything else into **submenus** so you're not faced with one long list. Arrow to a submenu and press **Right Arrow** or **Enter** to open it. The submenus are:
+
+*   **Selected Mod** — actions on the mod highlighted in your list: edit note, config, or manifest; view dependencies; resolve missing requirements; view changelog or description; endorse; verify files.
+*   **Install and Update Mods** — auto-match Nexus IDs, reinstall a downloaded mod, and check tracked mods for updates.
+*   **Profiles and Collections** — save a profile, export or install a Collection, import from Mod Organizer 2.
+*   **Health and Reports** — Check My Setup, Check Mod Requirements, Check for Broken Mods, File Conflicts, Plugin Slot Usage, and Reset Ignored Requirements.
+*   **Load Order and Files** (Skyrim & Fallout 4 only) — auto-sort, choose file-conflict winners, load-order rules, rebuild or purge deployment, and export or import your load order. This whole submenu is hidden for Stardew Valley.
+*   **Game and Maintenance** — install the accessibility suite, uninstall the script extender, edit game INI files, manage save games, prepare for and restore after a game update, and restore a safety backup.
+
+Every command still has its usual keyboard shortcut, which works no matter which submenu it now lives in.
+
+---
+
 ## Navigation Cycle (F6)
 The **F6** key is a powerful tool for quickly moving your focus between major areas of the application without having to press Tab many times.
 
@@ -244,6 +264,18 @@ The Walkthroughs tab (e.g. **Stardew Walkthroughs**, **Skyrim Walkthroughs**, or
 1.  **Guides List**: Select a guide from the list using the Up/Down arrow keys. The guide content automatically loads in the Web View on selection.
 2.  **Accessible Reading**: Press **F6** or **Tab** to enter the **Web View** pane. Since these walkthroughs are text-based guides, screen reader browse-mode commands (like **H** to jump between headings and **T** for tables) work seamlessly to make navigation easy for blind players.
 3.  **Exit Content**: Press **F6** at any time to escape the web view and return to the main tab headers.
+
+---
+
+## Filtering the Installed Mods List
+
+Above the **Installed Mods** list are three controls that narrow down what's shown, and they **combine** — so you can, for example, see only *disabled* mods in the *Gameplay* category:
+
+*   **Search box (Ctrl + F):** type any text to show only mods whose **name, author, or note** contains it. (Searching your notes means you can find a mod by something you wrote about it.)
+*   **Category dropdown:** show only mods in the category you pick, or **All Categories**.
+*   **Status dropdown:** show **All Mods**, **Enabled Only**, **Disabled Only**, or **Has a Note**.
+
+The manager speaks how many mods match as you filter. Clear the search box and set both dropdowns back to "All" to see your full list again.
 
 ---
 
@@ -291,6 +323,14 @@ You choose how much of this you hear with the **"Download and install feedback"*
 *   **Tones** — only the rising tones, no speech.
 *   **Speech** — only the spoken percentages, no tones.
 *   **Off** — neither. Pick this if you'd rather rely on your screen reader's own progress-bar feedback (for example NVDA's **Progress bar output** beeps), so you don't hear two sets of cues at once.
+
+---
+
+## Reinstalling a Downloaded Mod (Ctrl + Shift + W)
+
+Every mod archive the manager downloads stays in its downloads folder, so you can reinstall one later **without searching Nexus again** — useful if you removed a mod and want it back, or an install didn't take. Press **Ctrl + Shift + W** (or **Mods → Install and Update Mods → Reinstall a Downloaded Mod**).
+
+A list of your downloaded archives opens, newest first, each showing its file name, size, and date. Press **Enter** on one to reinstall it (it installs exactly as if you'd picked the file by hand, with the same progress feedback and, if the mod has options, the FOMOD wizard). Press **Delete** to send an archive you no longer need to the Recycle Bin and free up space — this only removes the download, not the installed mod. The list is per game, so you only see downloads for the game you're currently managing.
 
 ---
 
@@ -445,6 +485,28 @@ When the manager detects an update, it will appear in the **Updates Available** 
 
 ---
 
+## Tracked Mods (Ctrl + Shift + T)
+
+On the Nexus website you can **track** mods you're interested in — including ones you haven't installed yet. The manager can check that tracked list for you and point out the ones worth acting on. This catches updates the normal Updates tab can't: the Updates tab only knows about mods you already have, whereas this also flags **mods you track but haven't installed** that have had a recent release.
+
+Press **Ctrl + Shift + T** (or **Mods → Install and Update Mods → Check Tracked Mods for Updates**). The manager reads your tracked list for the current game, cross-references it with the mods Nexus has updated recently, and lists the ones that need attention: **tracked mods you haven't installed** (with their latest version and update date), and **installed tracked mods that now have a newer version**. Press **Enter** on any of them to open its Nexus **Files** page so you can download it. If nothing needs attention, it tells you so. You must be connected with your Nexus API key.
+
+---
+
+## Savegame Manager (Ctrl + Shift + V, Skyrim & Fallout 4)
+
+The **Savegame Manager** gives you an accessible way to browse, back up, and delete your Skyrim and Fallout 4 saves, and — uniquely — to find out when a save depends on a mod you've since removed. Press **Ctrl + Shift + V** (or **Mods → Game and Maintenance → Manage Save Games**).
+
+Your saves are listed newest-first, each read as the **character name, level, location, and save date**. A save that needs a plugin that's **no longer active** (because you removed or disabled the mod) is flagged in its entry — loading such a save can crash the game or lose content, so this is worth knowing before you continue a character.
+
+On a save in the list:
+
+*   **Enter** speaks its **full details** — character, level, location, in-game playtime, save date, how many plugins it was made with, and, if any are missing, exactly which plugins it needs that are no longer active.
+*   **B** **backs up** the save (and its script-extender co-save) to the manager's save-backup folder.
+*   **Delete** sends the save (and its co-save) to the **Recycle Bin** after you confirm, so it can be recovered if you change your mind.
+
+---
+
 ## Smart Game Launching (F5)
 The manager does more than just launch the game:
 *   It announces when it starts launching the game through its mod loader (SMAPI for Stardew Valley, SKSE for Skyrim Special Edition, F4SE for Fallout 4).
@@ -468,13 +530,40 @@ The **Plugin Order** tab is the load order of your plugin files (the `.esp`, `.e
 **Creations** (formerly Creation Club content) are official add-ons you download **inside the game**, from its **Creations** menu — or queue from the Bethesda.net website to your linked account. No mod manager downloads them for you; the game installs them into its own folder. The **Creations** tab lists the Creations already installed in your game, whether each is **Active**, and whether it's a master or light master. Press **Space** to activate or deactivate the selected one. To change where a Creation loads, use the Plugin Order tab.
 
 ### Exporting and Importing Your Load Order
-From the **Mods** menu you can **Export Load Order** to save your current mod priority and plugin order to a file, and **Import Load Order** to apply a saved file later — for example as a backup, or to move a setup between computers. Importing replaces the current order and re-applies it; it never adds or removes your mods, and it only accepts a file that was exported for the same game.
+From the **Mods menu → Load Order and Files** submenu you can **Export Load Order** to save your current mod priority and plugin order to a file, and **Import Load Order** to apply a saved file later — for example as a backup, or to move a setup between computers. Importing replaces the current order and re-applies it; it never adds or removes your mods, and it only accepts a file that was exported for the same game.
+
+### Plugin Limit Awareness (Ctrl + Shift + U)
+
+Skyrim and Fallout 4 can load only a limited number of plugins: **255 regular** plugins (the base game and its add-ons count toward this), plus a **separate pool of up to 4096 light (ESL)** plugins. Going over the regular limit is a hard failure — the game silently drops plugins or won't launch — so it's worth knowing where you stand.
+
+Press **Ctrl + Shift + U** (or **Mods → Health and Reports → Plugin Slot Usage**) to hear a summary such as *"Plugin slots: 231 of 255 regular plugins used, 24 remaining. 40 of 4096 light plugins used."* If you're near or over a limit, it adds a warning and suggests converting eligible plugins to light (ESL) to free up regular slots. The manager also **warns you automatically** the first time you focus the **Plugin Order** list while you're near or over the cap, so you're not caught out. (A plugin flagged as light — an `.esl`, or an ESL-flagged `.esp` — counts against the light pool, not the regular 255.)
+
+### Choosing File Conflict Winners
+
+When two enabled mods provide the **same** loose file, the higher-priority mod wins by default. But sometimes you want mod A's version of one file and mod B's version of another, even though A outranks B overall — something plain priority order can't express. **Mods → Load Order and Files → Choose File Conflict Winners** lets you override the winner for a specific file.
+
+It lists every contested file with its current winner. Press **Enter** on a file to **cycle** its winner through the mods that provide it (the manager announces each new winner and re-deploys immediately), or **Delete** to revert that file to normal priority order. Your overrides are saved per game and re-applied every time the manager deploys; if you later remove the mod you forced to win, the override is simply ignored and the file falls back to priority order.
+
+### Persistent Load-Order Rules
+
+Beyond moving plugins one at a time, you can set **standing rules** — "always load this plugin after that one" — that survive an auto-sort, the way Mod Organizer 2 and LOOT let you. This is handy for a patch that must always come after the mod it patches.
+
+*   **Add a rule:** on the **Plugin Order** tab, select the plugin you want to constrain, then choose **Mods → Load Order and Files → Add Load Order Rule for Selected Plugin**. A list of the other plugins opens: press **Enter** on one to load your selected plugin **after** it, or **B** to load it **before** it.
+*   **Manage rules:** choose **Mods → Load Order and Files → Manage Load Order Rules** to hear your rules ("X loads after Y") and press **Delete** to remove one.
+
+Rules are applied the next time you **auto-sort** with **F8**, alongside master dependencies and LOOT's own rules.
 
 ---
 
 ## Checking Your Mods: Conflicts and Requirements
 
-The reports on the **Mods** menu help you spot problems. Each opens as a simple list you can arrow through, and **Escape** closes them.
+The reports in the **Mods menu → Health and Reports** submenu help you spot problems. Each opens as a simple list you can arrow through, and **Escape** closes them.
+
+### Check My Setup (Setup Health Check) (Ctrl + Shift + K)
+
+If you'd rather run everything at once than open each report separately, choose **Check My Setup** (or press **Ctrl + Shift + K**). It runs all the individual checks in one pass — **missing requirements** (missing masters, script extender, and Nexus requirements), the **plugin limit**, **known-broken or incompatible mods**, and **file conflicts** — and gives you a **single spoken summary** broken down by category, for example *"Setup health check found 3 problems: 1 missing requirement, 2 broken or incompatible mods."* If everything's fine it says *"No problems found. Your setup looks healthy."*
+
+The findings then appear as one combined list, most serious first. Each row keeps the same actions it has in its own report: press **Enter** to search for or open a missing mod, **Delete** to hide a requirement warning that doesn't apply to you, or **F9** to ask the AI about that finding (if AI is set up). This is the quickest way to check a setup is sound — for example after installing several mods, or before launching.
 
 ### File Conflict Report (Ctrl + Shift + F)
 This shows where your mods collide.
@@ -522,6 +611,31 @@ Every change is written back immediately, and all your comments and other settin
 ### Mods that install to the game's root folder (ENB, ReShade, script extenders)
 
 Most Skyrim and Fallout 4 mods install into the game's **Data** folder, but some — graphics injectors like **ENB** and **ReShade**, or tools that sit next to the game's `.exe` — need their files in the game's **root** folder instead. The manager detects these automatically when you install them: their game-root files (such as `d3d11.dll`, `dxgi.dll`, `enbseries\`, or an archive's `Root\` folder) are deployed to the root, while any `Data` files in the same archive still go to Data. You don't have to do anything special — install them like any other mod, and enable/disable and Purge/Rebuild treat them the same as the rest. (Full script extenders like SKSE and F4SE are still installed directly, as before.)
+
+---
+
+## Surviving a Game Update (Skyrim & Fallout 4)
+
+The single most common way a modded Bethesda game breaks is a **Steam or GOG update**: it changes the game's `.exe`, and then **SKSE/F4SE and any DLL-based plugins built for the old version stop loading** — which is usually why the Mod Configuration Menu and other features suddenly vanish. The manager helps you both catch this and plan for it.
+
+### The Game-Update Guardian (automatic)
+
+Every time you load a Skyrim or Fallout 4 session, the manager quietly records the game's version. If it notices the version **changed since last time**, it warns you **once** — for example *"Skyrim Special Edition updated from version 1.6.640 to 1.6.1170 since you last opened the manager. SKSE and any DLL-based plugins almost always need a matching update before the game will launch."* When a script extender is installed it also offers to open its Nexus page so you can grab the matching build. It's a one-time heads-up per update, not a nag. (This is separate from the pre-launch check on **F5**, which verifies the script extender matches right before the game starts.)
+
+### Prepare for a Game Update, and Restore Afterwards
+
+If you know an update is coming, you can plan for it from **Mods → Game and Maintenance**:
+
+*   **Prepare for Game Update** takes a safety snapshot and temporarily **undeploys your mods**, returning the game folder to vanilla so the update installs cleanly against unmodified files. Your installed mods are kept safe in the manager — only the deployed (linked) files are removed.
+*   After the update finishes, choose **Restore Mods After Game Update** to **redeploy every enabled mod** back into the game folder. It then runs the guardian automatically, so if the update changed the game version you're reminded to update the script extender.
+
+---
+
+## Safety Backups (Skyrim & Fallout 4)
+
+Before the operations most likely to disrupt a setup — **purging** or **rebuilding** deployment, and **editing the game's INI files** — the manager automatically takes a **safety snapshot**. Each snapshot captures the game's INI files and the active plugin list (`plugins.txt`) plus your saved mod priority and plugin order. The most recent **eight** snapshots per game are kept; older ones are removed automatically. You don't have to do anything to create them.
+
+If a change goes wrong, choose **Mods → Game and Maintenance → Restore a Safety Backup**. It lists the snapshots newest-first, each labelled with when it was taken and what it was taken before (for example *"Before editing SkyrimPrefs.ini"*). Press **Enter** on one to restore it — after you confirm, the manager copies those files back, reinstates the saved load order, and re-deploys — or **Delete** to remove a snapshot you don't need.
 
 ---
 
@@ -647,6 +761,7 @@ Beyond the basics of enabling and updating mods, Kinetix Mod Manager includes se
 *   **Splash Screen Customization**: Randomise the startup logo sound or pick a specific one.
 *   **Management Safety**: Settings, Shortcut, and Theme windows use a Save/Cancel system, so pressing Escape or Cancel discards your changes.
 *   **Log Search and Jump (Stardew Valley)**: Search the SMAPI log and jump straight to a matching line in context.
+*   **Free Up Space**: Clear the temporary files the manager leaves behind, and see how much was reclaimed.
 
 ### 1. Mod Profiles
 Profiles allow you to have different mod setups for different playthroughs. Save your current list with **Ctrl + S**, and switch between them in the **Profiles** tab. Profiles also remember your active **Audio Theme**.
@@ -667,6 +782,9 @@ All management windows (Settings, Shortcuts, Themes) now feature a **Save and Ca
 
 ### 6. Log Search and Jump (Stardew Valley)
 Troubleshooting large logs is easier with the Search feature in the **SMAPI Log** tab (available when Stardew Valley is the active game). Search for a keyword (like "Error" or a mod name) to filter the list. Selecting a result and pressing **Enter** will restore the full log and position you exactly at that line, allowing you to read the context surrounding the event.
+
+### 7. Free Up Space (Clear Temporary Files)
+Over time the manager can leave temporary files behind — the folder it extracts app updates into, and staging folders from installs that were interrupted by a crash. Choose **View → Free Up Space (Clear Temporary Files)** to clean them up; it tells you how much was reclaimed, for example *"Freed 84.2 MB of temporary files."* It only removes the manager's own leftover scratch (never your downloaded mod archives — remove those individually from **Reinstall a Downloaded Mod**), and never touches anything from an install that's still in progress.
 
 ---
 *Happy Modding!*
