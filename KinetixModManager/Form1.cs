@@ -495,8 +495,8 @@ public partial class Form1 : Form, IMessageFilter
 				form._settings.Save();
 				if (fresh)
 				{
-					Speak(Loc.T("app.firstRunSettings"));
-					form.ShowSettings();
+					// Guide a brand-new user through the setup checklist rather than dropping them into raw Settings.
+					form.ShowSetupWizard();
 				}
 			}
 

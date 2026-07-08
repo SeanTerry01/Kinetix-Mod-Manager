@@ -288,6 +288,10 @@ public partial class Form1
 			}
 		});
 		ToolStripMenuItem toolStripMenuItem4 = new ToolStripMenuItem(Loc.T("menu.help"));
+		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.setupWizard"), null, delegate
+		{
+			ShowSetupWizard();
+		});
 		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.userManual", GetShortcutString("Manual")), null, delegate
 		{
 			ShowManual();

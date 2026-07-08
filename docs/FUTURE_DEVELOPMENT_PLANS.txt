@@ -111,8 +111,10 @@ features nobody else does. Effort is a rough guess. Stars mark the recommended n
 
 ### Tier 3 — accessibility differentiators & nice-to-haves
 
-*   **First-run setup wizard** [medium] — guided, spoken onboarding: pick game -> locate folder -> Nexus login
-    -> API key.
+*   ~~**First-run setup wizard** [medium]~~ — **Done.** A guided, spoken checklist (auto-shown on a fresh install
+    in place of raw Settings, and re-openable from Help -> "Setup Wizard") shows the three setup steps — choose a
+    game, set the Nexus API key, confirm the game folder — with live done / not-done status; Enter on a step
+    launches its action (game chooser or Settings) and the checklist refreshes as steps complete.
 *   ~~**Auto safety-backup before risky operations** [low]~~ — **Done.** A snapshot of the game INIs + plugins.txt
     + saved load order is taken automatically before purge, rebuild, and opening the INI editor (newest 8 kept per
     game). "Restore a Safety Backup" (Mods menu) lists them; Enter restores the files and load order and re-deploys,
