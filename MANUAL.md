@@ -451,7 +451,7 @@ F3 is the default shortcut and can be remapped in **Settings → Shortcut Manage
 ---
 
 ## Accessibility Suite Installer
-Each supported game needs a set of foundation mods to be accessible (its mod loader plus the screen-reader and helper mods). The **Accessibility Suite Installer** gathers them all in one place. Open it from the **Mods** menu → **"Install [Game] Accessibility Suite"** (the exact name reflects the active game).
+Each supported game needs a set of foundation mods to be accessible (its mod loader plus the screen-reader and helper mods). The **Accessibility Suite Installer** gathers them all in one place. Open it from the **Mods** menu → **Game and Maintenance** → **"Install [Game] Accessibility Suite"** (the exact name reflects the active game).
 
 The dialog shows a **status list**, with one line per required mod telling you whether it is **Installed** or **Not Installed**. The suite differs per game — for example SMAPI and Stardew Access for Stardew Valley; SKSE64, the Address Library, SkyUI, and others for Skyrim Special Edition; and F4SE, the Address Library, the Mod Configuration Menu, and Fallout 4 Access for Fallout 4.
 
@@ -462,7 +462,7 @@ There are two ways to get the missing mods:
 
 You can mix the two approaches freely, and you can re-open the installer at any time to check what's still missing.
 
-**Uninstalling the script extender (Skyrim & Fallout 4):** SKSE and F4SE install into the game folder itself rather than as normal mods, so they don't show up in your mod list. To remove one cleanly, open the **Mods** menu and choose **"Uninstall Script Extender (SKSE/F4SE)"**. The manager removes the files it installed (asking you to confirm first). Remember that anything relying on the script extender — including the Mod Configuration Menu — stops working until you reinstall it, so only do this if you mean to.
+**Uninstalling the script extender (Skyrim & Fallout 4):** SKSE and F4SE install into the game folder itself rather than as normal mods, so they don't show up in your mod list. To remove one cleanly, open the **Mods** menu → **Game and Maintenance** and choose **"Uninstall Script Extender (SKSE/F4SE)"**. The manager removes the files it installed (asking you to confirm first). Remember that anything relying on the script extender — including the Mod Configuration Menu — stops working until you reinstall it, so only do this if you mean to.
 
 ---
 
@@ -589,7 +589,7 @@ If nothing is flagged, the report tells you none of your mods are on the known-b
 
 ## Deployment Tools (Skyrim & Fallout 4)
 
-When you enable a mod or change the load order, the manager automatically **deploys** — it links each enabled mod's files into the game's folder and updates the plugin list so the game loads them. Stardew Valley loads mods from their own folders, so these tools are for Skyrim and Fallout 4 only. Three commands on the **Mods** menu let you check and control that deployment directly, which is handy if the game's folder ever gets into an odd state.
+When you enable a mod or change the load order, the manager automatically **deploys** — it links each enabled mod's files into the game's folder and updates the plugin list so the game loads them. Stardew Valley loads mods from their own folders, so these tools are for Skyrim and Fallout 4 only. Three commands let you check and control that deployment directly, which is handy if the game's folder ever gets into an odd state. On the **Mods** menu, **Verify Selected Mod's Files Are Installed** is under **Selected Mod**, while **Rebuild** and **Purge Mod Deployment** are under **Load Order and Files**.
 
 *   **Verify Selected Mod's Files Are Installed** checks the mod highlighted on the Installed Mods tab and reports how many of its files are **in place**, how many are **missing** from the game folder, and how many are **overridden** by a higher-priority mod. Missing files mean the mod isn't really active on disk even if it looks enabled — the decisive check when a mod "should" be working but isn't.
 *   **Rebuild Mod Deployment** force re-links **every** enabled mod's files into the game folder and rewrites the plugin list, after you confirm. Use it as a safety net if deployment ever looks inconsistent. It never deletes any of your installed mods.
@@ -597,7 +597,7 @@ When you enable a mod or change the load order, the manager automatically **depl
 
 ### Editing Game Settings (INI files)
 
-Skyrim and Fallout 4 keep their settings in **INI files** (things like resolution, field of view, or mod-required tweaks). Choose **Edit Game Settings (INI Files)** from the **Mods** menu to change them without opening a text editor or risking a typo that stops the game launching.
+Skyrim and Fallout 4 keep their settings in **INI files** (things like resolution, field of view, or mod-required tweaks). Choose **Edit Game Settings (INI Files)** from the **Mods** menu → **Game and Maintenance** to change them without opening a text editor or risking a typo that stops the game launching.
 
 First you pick which file to edit — the main INI, the preferences INI, or the **custom** INI (the safe place for your own tweaks; the manager creates it if it doesn't exist yet). Then you get a navigable list of every setting, each read as **"[Section] key = value"**:
 
@@ -641,7 +641,7 @@ If a change goes wrong, choose **Mods → Game and Maintenance → Restore a Saf
 
 ## Dependency View and Resolver
 
-Two tools on the Installed Mods tab (and the **Mods** menu) help you manage what your mods depend on.
+Two tools on the Installed Mods tab (and the **Mods** menu → **Selected Mod** submenu) help you manage what your mods depend on.
 
 *   **View Dependencies (Ctrl + Y)** opens a list with two parts for the selected mod: **Requires** (each dependency and whether it's installed, disabled, out of date, or missing) and **Required by** (the other installed mods that depend on this one). On Stardew this reads each mod's manifest; on Skyrim/Fallout 4 it reads plugin masters and, when you're logged in, the mod's online Nexus requirements. Press **Enter** on a missing item to search for or open it.
 *   **Resolve Missing Requirements (Ctrl + Q)** gathers **all** of the selected mod's missing required mods at once. On Skyrim/Fallout 4, if you have a Nexus **Premium** account it downloads and installs each one automatically (opening the accessible FOMOD wizard when a mod needs setup choices); free accounts and off-Nexus requirements are listed in a report you can open and download manually. On Stardew it lists every missing required mod so you can search for each. You're asked to confirm once before anything downloads.
@@ -674,7 +674,7 @@ A few things to know:
 
 ## Importing from Mod Organizer 2 (Skyrim & Fallout 4)
 
-If you're moving to Kinetix Mod Manager from **Mod Organizer 2 (MO2)**, you can bring your existing setup across. Open the **Mods** menu and choose **"Import from Mod Organizer 2"**.
+If you're moving to Kinetix Mod Manager from **Mod Organizer 2 (MO2)**, you can bring your existing setup across. Open the **Mods** menu → **Profiles and Collections** and choose **"Import from Mod Organizer 2"**.
 
 1.  Pick your MO2 folder — the one that contains the `mods` and `profiles` folders. (On most setups this is under `...\AppData\Local\ModOrganizer\<your game>`.)
 2.  Choose which **profile** to import from the list, which shows each profile's mod count and how many are enabled.
@@ -716,7 +716,7 @@ When a log has you stuck, Kinetix can send it to an AI service that reads it and
 
 ### Using it
 
-On the **SMAPI Log** tab (Stardew Valley) or the **Log** tab (Skyrim / Fallout 4), press **F9** (or Tools menu → "Diagnose Log with AI"). If a log line is selected, the manager sends the lines around it; otherwise it sends the end of the log (where errors usually are), along with your enabled mod list for context. It speaks "Analyzing…", then opens a chat window with the explanation and fix steps and reads it aloud.
+On the **SMAPI Log** tab (Stardew Valley) or the **Log** tab (Skyrim / Fallout 4), press **F9** (or **View** menu → "Diagnose Log with AI"). If a log line is selected, the manager sends the lines around it; otherwise it sends the end of the log (where errors usually are), along with your enabled mod list for context. It speaks "Analyzing…", then opens a chat window with the explanation and fix steps and reads it aloud.
 
 **Keep the conversation going.** That window has a **follow-up box** and a **Send** button — type another question ("what if that doesn't work?", "which file exactly?") and press **Enter** or **Send**, and the AI answers with the earlier exchange as context. Each reply is read aloud and added to the transcript above. Press **Close** or **Escape** when you're done.
 
@@ -726,7 +726,7 @@ The same AI help is available beyond logs:
 
 *   **When a mod fails to install** — the failure message offers to ask your AI provider what went wrong.
 *   **In the File Conflict and Check Mod Requirements reports** — arrow to a flagged item and press **F9** to ask the AI about that specific finding.
-*   **Any modding question** — Tools menu → **Ask AI a Question…**, type your question, and chat about the answer.
+*   **Any modding question** — **View** menu → **Ask AI a Question…**, type your question, and chat about the answer.
 
 A few things to know:
 
