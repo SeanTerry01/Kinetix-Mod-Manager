@@ -263,6 +263,21 @@ public class AppSettings
 	/// </summary>
 	public Dictionary<string, List<string>> PluginOrder { get; set; } = new Dictionary<string, List<string>>();
 
+	/// <summary>One persistent load-order rule: <see cref="Plugin"/> must load after <see cref="After"/>.</summary>
+	public class LoadOrderRule
+	{
+		public string Plugin { get; set; } = "";
+		public string After { get; set; } = "";
+	}
+
+	/// <summary>
+	/// Persistent user load-order rules per Skyrim SE / Fallout 4 game ("always load X after Y"), applied by the
+	/// plugin auto-sort on top of masters and LOOT rules. A rule that names a plugin not in the current load order is
+	/// ignored. Empty for a game with no rules.
+	/// </summary>
+	public Dictionary<string, List<LoadOrderRule>> LoadOrderRules { get; set; } =
+		new Dictionary<string, List<LoadOrderRule>>();
+
 	/// <summary>
 	/// Per-file conflict winner overrides for Skyrim SE / Fallout 4: for a game, maps a deployed file path (relative
 	/// to the game root, e.g. <c>Data\textures\x.dds</c>) to the mod (priority-key / folder name) the user forced to
@@ -402,6 +417,7 @@ public class AppSettings
 		if (IgnoredRequirements == null) IgnoredRequirements = new Dictionary<string, List<string>>();
 		if (AiModelCache == null) AiModelCache = new Dictionary<string, List<AiModelChoice>>(StringComparer.OrdinalIgnoreCase);
 		if (LastSeenGameVersion == null) LastSeenGameVersion = new Dictionary<string, string>();
+		if (LoadOrderRules == null) LoadOrderRules = new Dictionary<string, List<LoadOrderRule>>();
 		if (FileWinnerOverrides == null) FileWinnerOverrides = new Dictionary<string, Dictionary<string, string>>();
 		// Deserialization doesn't preserve the case-insensitive comparer on the inner path->winner maps; rebuild it
 		// so a path lookup matches regardless of case (paths and folder names are compared case-insensitively).

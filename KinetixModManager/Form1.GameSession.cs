@@ -117,6 +117,11 @@ public partial class Form1
 			// Per-file conflict winners only apply to the Bethesda loose-file deployment model.
 			if (modsMenu.DropDownItems["menuConflictWinners"] is ToolStripItem cwItem)
 				cwItem.Visible = game == "SkyrimSE" || game == "Fallout4";
+			// Persistent load-order rules act on the Skyrim/Fallout 4 plugin order.
+			if (modsMenu.DropDownItems["menuAddLoadRule"] is ToolStripItem addRuleItem)
+				addRuleItem.Visible = game == "SkyrimSE" || game == "Fallout4";
+			if (modsMenu.DropDownItems["menuManageLoadRules"] is ToolStripItem mgrRuleItem)
+				mgrRuleItem.Visible = game == "SkyrimSE" || game == "Fallout4";
 		}
 
 		// The View menu's "Open Log" item targets a different log per game (SMAPI for Stardew, the

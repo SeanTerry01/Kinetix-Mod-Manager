@@ -736,6 +736,13 @@ public partial class Form1
 			if (ml != null && ml.PluginAfter.TryGetValue(name, out List<string>? afters))
 				foreach (string a in afters)
 					if (inSet.Contains(a) && !string.Equals(a, name, StringComparison.OrdinalIgnoreCase)) set.Add(a);
+			// User-defined persistent rules ("load this plugin after X"), applied exactly like a LOOT after-rule so
+			// they compose with masters and LOOT ordering. A rule naming a plugin not in the load order is ignored.
+			if (_settings.LoadOrderRules.TryGetValue(game, out List<AppSettings.LoadOrderRule>? rules))
+				foreach (AppSettings.LoadOrderRule r in rules)
+					if (string.Equals(r.Plugin, name, StringComparison.OrdinalIgnoreCase) &&
+						inSet.Contains(r.After) && !string.Equals(r.After, name, StringComparison.OrdinalIgnoreCase))
+						set.Add(r.After);
 			preds[name] = set;
 		}
 

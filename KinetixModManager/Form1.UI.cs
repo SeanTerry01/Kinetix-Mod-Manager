@@ -183,6 +183,14 @@ public partial class Form1
 		{
 			ShowConflictOverride();
 		}).Name = "menuConflictWinners";
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.addLoadRule"), null, delegate
+		{
+			AddLoadOrderRule();
+		}).Name = "menuAddLoadRule";
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.manageLoadRules"), null, delegate
+		{
+			ShowLoadOrderRules();
+		}).Name = "menuManageLoadRules";
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.checkRequirements", GetShortcutString("CheckRequirements")), null, async delegate
 		{
 			await ShowRequirementsReport();

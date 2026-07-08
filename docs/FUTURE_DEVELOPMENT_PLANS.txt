@@ -98,8 +98,11 @@ features nobody else does. Effort is a rough guess. Stars mark the recommended n
     core tab/F6 navigation). "Reinstall a Downloaded Mod" (Mods menu / Ctrl+Shift+W) lists the per-game downloads
     folder newest-first with size + date; Enter reinstalls via the normal InstallFromZip path, Delete recycles the
     archive.
-*   **Persistent load-order rules** [medium-high] — MO2/LOOT-style "always load X after Y," beyond numeric
-    priority.
+*   ~~**Persistent load-order rules** [medium-high]~~ — **Done.** MO2/LOOT-style "always load X after Y" rules,
+    stored per game (AppSettings.LoadOrderRules) and folded into the plugin auto-sort (F8) alongside master
+    dependencies and LOOT's own after-rules. "Add Load Order Rule for Selected Plugin" (Plugin Order tab selection
+    = subject; Enter = load after target, B = load before) and "Manage Load Order Rules" (list + Delete) in the
+    Mods menu.
 *   ~~**Per-file conflict override** [medium]~~ — **Done.** "Choose File Conflict Winners" (Mods menu) lists every
     contested loose file; Enter cycles the winner through the mods that provide it, Delete reverts to priority order.
     Overrides persist per game (AppSettings.FileWinnerOverrides) and are applied by SyncDeployment after the priority
@@ -120,9 +123,9 @@ features nobody else does. Effort is a rough guess. Stars mark the recommended n
     already exists).
 
 ### Recommended order
-All four Tier 1 picks are done: **Setup Health Dashboard**, **game-update guardian**, **plugin-limit awareness**,
-and the **savegame manager**. Next are the Tier 2 parity items (Nexus tracked-mods sync, downloads history,
-persistent load-order rules, per-file conflict override) — smaller follow-ups.
+All of Tier 1 and Tier 2 are done. Remaining work is Tier 3 (first-run setup wizard, auto safety-backup before
+risky ops, "prepare for game update / restore after", mod-list filter/search, deeper Stardew support, free-space
+cleanup) plus the deferred/needs-a-tester items below.
 
 ### Deferred / needs a tester
 *   **Vortex import** — implemented approach exists but needs a Vortex user to validate.
