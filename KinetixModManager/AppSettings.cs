@@ -195,6 +195,40 @@ public class AppSettings
 	public bool SaveSearchHistory { get; set; } = false;
 
 	/// <summary>
+	/// Mods the user has told the manager arrive with another mod, per game:
+	/// <c>game -> child UniqueID -> parent UniqueID</c>.
+	///
+	/// The manager works out most of these itself, from mods sharing a folder or a download (see
+	/// <see cref="UpdateCoverage"/>). What it cannot see is a mod that came from the same mod page as another —
+	/// an optional file downloaded separately, say — and was unpacked somewhere unrelated: nothing on disk
+	/// connects the two. Rather than report such a mod as un-checkable forever, the user can point it at the mod
+	/// it belongs to, once, and it is then treated exactly like the mods that arrived in one archive.
+	/// </summary>
+	public Dictionary<string, Dictionary<string, string>> ModBundledWith { get; set; } = new();
+
+	/// <summary>
+	/// Which release of each download is installed, per game: <c>game -> "Nexus:23737" -> "1.0.2"</c>.
+	///
+	/// A mod's manifest version is the author's number for that mod, which is not the same thing as the version
+	/// of the download it came in — authors routinely ship a "1.0.2" release whose manifests still say "1.0.0",
+	/// and one download often installs several mods with versions of their own. Comparing a manifest version
+	/// against the mod page's version therefore reports an update that installing can never satisfy: the files
+	/// arrive, the manifest still says the old number, and the mod is offered again forever (with two mods from
+	/// one download, alternately). Recording what was actually installed makes the comparison honest and needs
+	/// no rewriting of files the mod author shipped. See <c>Form1.CheckForUpdates</c>.
+	/// </summary>
+	public Dictionary<string, Dictionary<string, string>> InstalledDownloadVersions { get; set; } = new();
+
+	/// <summary>
+	/// Skyrim SE / Fallout 4 only. When true (the default) the manager guards the game's <c>plugins.txt</c>:
+	/// it is marked read-only whenever the manager writes it, so the game cannot rewrite the active plugin
+	/// list behind the user's back. Both games do exactly that when a new game is started — they deactivate
+	/// Creations and reshuffle the load order — which is what this setting exists to prevent. The manager
+	/// clears the flag for its own writes, and clears it permanently when the setting is turned off.
+	/// </summary>
+	public bool ProtectPluginOrder { get; set; } = true;
+
+	/// <summary>
 	/// UI language for the whole program, as a two-letter code (e.g. "es"). Empty string means
 	/// "follow the Windows display language". English is always the fallback. See <see cref="Loc"/>.
 	/// </summary>
@@ -412,6 +446,8 @@ public class AppSettings
 		if (!GamePaths.ContainsKey("SkyrimSE")) GamePaths["SkyrimSE"] = "";
 		if (!GamePaths.ContainsKey("Fallout4")) GamePaths["Fallout4"] = "";
 
+		if (InstalledDownloadVersions == null) InstalledDownloadVersions = new Dictionary<string, Dictionary<string, string>>();
+		if (ModBundledWith == null) ModBundledWith = new Dictionary<string, Dictionary<string, string>>();
 		if (ModPriority == null) ModPriority = new Dictionary<string, List<string>>();
 		if (PluginOrder == null) PluginOrder = new Dictionary<string, List<string>>();
 		if (IgnoredRequirements == null) IgnoredRequirements = new Dictionary<string, List<string>>();

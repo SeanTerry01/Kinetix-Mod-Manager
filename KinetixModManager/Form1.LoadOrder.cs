@@ -524,6 +524,28 @@ public partial class Form1
 		// the order the game currently loads them (so an existing curated load order is not scrambled).
 		List<string> existingActive = ModFileSystem.ReadActivePlugins(game);
 
+		// Skyrim SE and Fallout 4 rewrite plugins.txt themselves when a new game is started: they deactivate
+		// every Creation and reshuffle what is left. Our saved order is the user's actual intent, so any entry
+		// in it that no installed mod provides (Creations, and anything else installed straight into Data) is
+		// re-adopted as long as its file is still there — otherwise the game's rewrite would be read back as
+		// "the user turned these off" and the Creations would be forgotten for good. Only genuinely missing
+		// files are dropped, which is the existing ghost-plugin behaviour below.
+		int restored = 0;
+		if (_settings.PluginOrder.TryGetValue(game, out List<string>? savedOrder) && savedOrder != null)
+		{
+			var stillActive = new HashSet<string>(existingActive, StringComparer.OrdinalIgnoreCase);
+			foreach (string name in savedOrder)
+			{
+				if (stillActive.Contains(name)) continue;
+				if (allModPlugins.Contains(name) || ModFileSystem.IsBaseMaster(game, name)) continue;
+				if (string.IsNullOrEmpty(gameRoot)) continue;
+				if (!File.Exists(Path.Combine(gameRoot, "Data", name))) continue;
+				existingActive.Add(name);
+				restored++;
+			}
+		}
+		_restoredExternalPlugins = restored;
+
 		// Preserve external active entries (e.g. Creation Club) that no installed mod provides — but only if the
 		// plugin file is actually still in the Data folder. When the game folder is known and the file is gone
 		// (e.g. its mod was just uninstalled), drop the stale plugins.txt entry instead of re-adopting it;
@@ -577,8 +599,49 @@ public partial class Form1
 
 		_pluginClass = cls;
 		_pluginPaths = paths;
-		ModFileSystem.WritePluginsTxt(game, order, LogError);
+		ModFileSystem.WritePluginsTxt(game, order, LogError, _settings.ProtectPluginOrder);
 		// The list UI is refreshed by the caller on the UI thread (see RefreshModList).
+	}
+
+	/// <summary>
+	/// How many plugins the last <see cref="SyncBethesdaPlugins"/> put back after the game had dropped them from
+	/// plugins.txt — in practice the Creations Skyrim/Fallout 4 deactivate when a new game is started. Announced
+	/// once by the caller, on the UI thread, so the user hears that their setup was repaired.
+	/// </summary>
+	private int _restoredExternalPlugins;
+
+	/// <summary>
+	/// Compares the game's plugins.txt against the order the manager holds and, when the game has changed it
+	/// (Skyrim SE and Fallout 4 both deactivate Creations and reorder plugins when a new game is started),
+	/// writes the saved order back and announces it. Called when the game exits, so the file is no longer in
+	/// use. Does nothing when the two already agree, so a normal play session stays silent.
+	/// </summary>
+	private void RestorePluginOrderAfterPlay()
+	{
+		if (!IsBethesdaGame) return;
+		string game = _settings.ActiveGame;
+		if (!_settings.PluginOrder.TryGetValue(game, out List<string>? order) || order == null || order.Count == 0)
+			return;
+
+		// The game lists the base-game and DLC masters in plugins.txt; the manager's order leaves them implicit,
+		// so compare like with like or every play session would look like a change.
+		List<string> current = ModFileSystem.ReadActivePlugins(game)
+			.Where(n => !ModFileSystem.IsBaseMaster(game, n)).ToList();
+		if (current.SequenceEqual(order, StringComparer.OrdinalIgnoreCase)) return;
+
+		int missing = order.Count(n => !current.Contains(n, StringComparer.OrdinalIgnoreCase));
+		ModFileSystem.WritePluginsTxt(game, order, LogError, _settings.ProtectPluginOrder);
+		// The restore itself is what matters and has already happened; only refresh and speak if the window is
+		// still around (the game can outlive the manager, and this runs when the game exits).
+		if (IsDisposed || !IsHandleCreated) return;
+		BeginInvoke(delegate
+		{
+			RefreshPluginOrderList();
+			RefreshCreationsList();
+			Speak(missing > 0
+				? Loc.T(missing == 1 ? "loadorder.restoredOne" : "loadorder.restoredMany", missing)
+				: Loc.T("loadorder.restoredOrder"));
+		});
 	}
 
 	/// <summary>One row of the Plugin Order list: a plugin file and its master/light classification.</summary>
@@ -666,7 +729,7 @@ public partial class Form1
 
 		(order[idx], order[target]) = (order[target], order[idx]);
 		_settings.Save();
-		ModFileSystem.WritePluginsTxt(_settings.ActiveGame, order, LogError);
+		ModFileSystem.WritePluginsTxt(_settings.ActiveGame, order, LogError, _settings.ProtectPluginOrder);
 
 		_suppressPrioritySpeak = true;
 		RefreshPluginOrderList();
@@ -764,7 +827,7 @@ public partial class Form1
 		{
 			_settings.PluginOrder[game] = sorted;
 			_settings.Save();
-			ModFileSystem.WritePluginsTxt(game, sorted, LogError);
+			ModFileSystem.WritePluginsTxt(game, sorted, LogError, _settings.ProtectPluginOrder);
 			_suppressPrioritySpeak = true;
 			RefreshPluginOrderList();
 			_suppressPrioritySpeak = false;
@@ -949,9 +1012,18 @@ public partial class Form1
 		List<string> active = ModFileSystem.ReadActivePlugins(game);
 		bool wasActive = active.Any(n => string.Equals(n, entry.File, StringComparison.OrdinalIgnoreCase));
 		if (wasActive)
+		{
 			active.RemoveAll(n => string.Equals(n, entry.File, StringComparison.OrdinalIgnoreCase));
+			// Drop it from the saved order too, or the sync below would treat its absence from plugins.txt as
+			// the game having deactivated it and switch it straight back on (see SyncBethesdaPlugins).
+			if (_settings.PluginOrder.TryGetValue(game, out List<string>? saved) && saved != null &&
+				saved.RemoveAll(n => string.Equals(n, entry.File, StringComparison.OrdinalIgnoreCase)) > 0)
+				_settings.Save();
+		}
 		else
+		{
 			active.Add(entry.File);
+		}
 
 		// Write the toggled active set, then let the normal plugin sync adopt/drop it and re-normalise the
 		// order. Writing first means the sync reads the new state as the source of truth for externals.

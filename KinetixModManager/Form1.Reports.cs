@@ -26,6 +26,8 @@ public partial class Form1
 		public string? OpenUrl;
 		/// <summary>Stable key identifying a requirement warning so it can be hidden with Delete, or null if not ignorable.</summary>
 		public string? IgnoreKey;
+		/// <summary>An action to run on Enter (e.g. set this mod's update link), or null. Runs after the report closes.</summary>
+		public Func<Task>? OnEnter;
 		public override string ToString() => Text;
 	}
 
@@ -384,6 +386,14 @@ public partial class Form1
 			}
 
 			if (e.KeyCode != Keys.Enter) return;
+			if (row.OnEnter != null)
+			{
+				// Close first: the action opens its own dialog (and may refresh the lists behind this one).
+				e.Handled = e.SuppressKeyPress = true;
+				f.Close();
+				_ = row.OnEnter();
+				return;
+			}
 			if (!string.IsNullOrEmpty(row.SearchTerm))
 			{
 				if (SpeakBox(f, Loc.T("reports.searchConfirm", row.SearchTerm), Loc.T("reports.searchTitle"),

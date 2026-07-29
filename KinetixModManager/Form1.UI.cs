@@ -140,6 +140,7 @@ public partial class Form1
 		grpHealth.DropDownItems.Add(Loc.T("menu.checkRequirements", GetShortcutString("CheckRequirements")), null, async delegate { await ShowRequirementsReport(); });
 		grpHealth.DropDownItems.Add(Loc.T("menu.checkBrokenMods", GetShortcutString("CheckBrokenMods")), null, async delegate { await ShowBrokenModsReport(); });
 		grpHealth.DropDownItems.Add(Loc.T("menu.fileConflicts", GetShortcutString("FileConflicts")), null, delegate { ShowFileConflictsReport(); });
+		grpHealth.DropDownItems.Add(Loc.T("menu.updateCoverage"), null, async delegate { await ShowUpdateCoverageReport(); }).Name = "menuUpdateCoverage";
 		grpHealth.DropDownItems.Add(Loc.T("menu.pluginSlots", GetShortcutString("PluginSlots")), null, delegate { AnnouncePluginSlotUsage(); });
 		grpHealth.DropDownItems.Add(Loc.T("menu.resetIgnoredReqs"), null, delegate { ResetIgnoredRequirements(); });
 		toolStripMenuItem2.DropDownItems.Add(grpHealth);

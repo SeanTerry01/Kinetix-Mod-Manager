@@ -433,6 +433,13 @@ public partial class Form1
 
 			await RefreshModList(checkUpdates: false);
 
+			// Remember which Nexus page this download came from, for every mod it installed. Stardew mods keep
+			// their update key in the author's own manifest.json, which the manager must not rewrite — and one
+			// archive routinely installs several mods where only one (or none) declares a key. Recording the id
+			// against each installed mod's UniqueID is what makes them all updatable afterwards.
+			if (!string.IsNullOrEmpty(nexusId) && _settings.ActiveGame == "StardewValley")
+				LinkModsInstalledFrom(name, nexusId!, zipPath);
+
 			// RefreshModList already added the new mod to the priority/plugin order and wrote plugins.txt.
 			// Re-sync assets with forceRelink so the new mod's files are linked even on a reinstall that
 			// reuses the folder name (where ownership is unchanged), then refresh the priority list.
@@ -454,6 +461,13 @@ public partial class Form1
 			// A denied path is almost always an external lock: the game still running, antivirus/Controlled Folder
 			// Access guarding the mods folder, or a file held open elsewhere. Say so rather than a bare path error.
 			AiInstallFailure(Loc.T("install.failedAccess", ex.Message), Path.GetFileNameWithoutExtension(zipPath));
+		}
+		catch (ModFileSystem.ModArchiveContentException ex)
+		{
+			// The archive was fine but holds no mod for this game — say what to do about it, and keep the raw
+			// detail (what the archive did contain) in the error log rather than in the spoken message.
+			LogError(Path.GetFileNameWithoutExtension(zipPath), ex.Message);
+			AiInstallFailure(Loc.T("install.failed", FriendlyError(ex)), Path.GetFileNameWithoutExtension(zipPath));
 		}
 		catch (Exception ex)
 		{

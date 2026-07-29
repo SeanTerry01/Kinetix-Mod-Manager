@@ -70,6 +70,13 @@ public class GameMod
 	/// <summary>True when this instance represents a pending update in the Updates tab.</summary>
 	public bool IsUpdateResult { get; set; }
 
+	/// <summary>
+	/// True when the mod's manifest declares update keys but they are all blank or malformed (e.g.
+	/// <c>"UpdateKeys": [""]</c> or <c>["Nexus: "]</c> with no id). The mod can't be version-checked, but the
+	/// cause is an author's typo rather than a missing field — the Update Coverage report says which.
+	/// </summary>
+	public bool HasBlankUpdateKey { get; set; }
+
 	/// <inheritdoc/>
 	public override string ToString()
 	{

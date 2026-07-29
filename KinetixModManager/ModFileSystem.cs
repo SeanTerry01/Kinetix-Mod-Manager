@@ -39,6 +39,12 @@ public static class ModFileSystem
 	// Manifest scanning
 	// -------------------------------------------------------------------------
 
+	// Manifest reading is case-insensitive and tolerant of the ways hand-written manifests differ; the rules
+	// (and why they matter) live in ModManifest, which is unit tested.
+	private static JToken? ManifestField(JObject manifest, string name) => ModManifest.Field(manifest, name);
+
+	private static string? ManifestString(JObject manifest, string name) => ModManifest.String(manifest, name);
+
 	/// <summary>
 	/// Scans the mods directory for installed mods depending on the active game.
 	/// </summary>
@@ -59,20 +65,26 @@ public static class ModFileSystem
 				try
 				{
 					JObject manifest = JObject.Parse(File.ReadAllText(manifestPath));
-					string uid = ((string?)manifest["UniqueID"]) ?? Guid.NewGuid().ToString();
+					string uid = ManifestString(manifest, "UniqueID") ?? Guid.NewGuid().ToString();
+					JToken? updateKeys = ManifestField(manifest, "UpdateKeys");
 
 					var mod = new GameMod
 					{
-						Name        = ((string?)manifest["Name"])        ?? "Unknown",
-						Version     = ((string?)manifest["Version"])     ?? "0",
-						Author      = ((string?)manifest["Author"])      ?? "User",
+						Name        = ManifestString(manifest, "Name")        ?? "Unknown",
+						Version     = ManifestString(manifest, "Version")     ?? "0",
+						Author      = ManifestString(manifest, "Author")      ?? "User",
 						UniqueId    = uid,
-						Description = ((string?)manifest["Description"]) ?? "",
-						NexusID     = ParseNexusId(manifest["UpdateKeys"]),
-						GitHubRepo  = ParseGitHubRepo(manifest["UpdateKeys"]),
+						Description = ManifestString(manifest, "Description") ?? "",
+						NexusID     = ParseNexusId(updateKeys),
+						GitHubRepo  = ParseGitHubRepo(updateKeys),
 						FolderPath  = Path.GetDirectoryName(manifestPath) ?? "",
 						IsEnabled   = !Path.GetFileName(Path.GetDirectoryName(manifestPath) ?? "").StartsWith(".")
 					};
+					// An UpdateKeys entry that is present but unusable — a blank string, or "Nexus: " with no
+					// number after it — is an author's typo, not an absent key. Remember the difference so the
+					// coverage report can say which it is instead of lumping both under "no link".
+					mod.HasBlankUpdateKey = ModManifest.HasUnusableUpdateKey(updateKeys) &&
+											string.IsNullOrEmpty(mod.NexusID) && string.IsNullOrEmpty(mod.GitHubRepo);
 
 					if (nexusIdMap.TryGetValue(uid, out JToken? mappedId))
 						mod.NexusID = mappedId?.ToString();
@@ -81,32 +93,32 @@ public static class ModFileSystem
 						: DetectCategory(mod.Name, mod.Description);
 					mod.Note = settings.ModNotes.TryGetValue(uid, out string? note) ? note : "";
 
-					if (manifest["Dependencies"] is JArray deps)
+					if (ManifestField(manifest, "Dependencies") is JArray deps)
 					{
 						foreach (JToken dep in deps)
 						{
-							if (dep == null) continue;
+							if (dep is not JObject depObj) continue;
 							mod.Dependencies.Add(new ModDependency
 							{
-								UniqueId       = ((string?)dep["UniqueID"])       ?? "Unknown",
-								MinimumVersion = (string?)dep["MinimumVersion"],
-								IsRequired     = ((bool?)dep["IsRequired"]) ?? true
+								UniqueId       = ManifestString(depObj, "UniqueID")       ?? "Unknown",
+								MinimumVersion = ManifestString(depObj, "MinimumVersion"),
+								IsRequired     = ((bool?)ManifestField(depObj, "IsRequired")) ?? true
 							});
 						}
 					}
 
 					// A content pack (e.g. a Content Patcher pack) declares its host mod in ContentPackFor and
 					// cannot load without it, so treat that host as a required dependency for the requirements check.
-					if (manifest["ContentPackFor"] is JObject cpFor)
+					if (ManifestField(manifest, "ContentPackFor") is JObject cpFor)
 					{
-						string? hostId = (string?)cpFor["UniqueID"];
+						string? hostId = ManifestString(cpFor, "UniqueID");
 						if (!string.IsNullOrEmpty(hostId) &&
 							!mod.Dependencies.Exists(d => d.UniqueId.Equals(hostId, StringComparison.OrdinalIgnoreCase)))
 						{
 							mod.Dependencies.Add(new ModDependency
 							{
 								UniqueId       = hostId,
-								MinimumVersion = (string?)cpFor["MinimumVersion"],
+								MinimumVersion = ManifestString(cpFor, "MinimumVersion"),
 								IsRequired     = true
 							});
 						}
@@ -138,8 +150,8 @@ public static class ModFileSystem
 					if (File.Exists(manifestPath))
 					{
 						JObject manifest = JObject.Parse(File.ReadAllText(manifestPath));
-						string uid = ((string?)manifest["UniqueID"]) ?? folderName;
-						string? nexusId = (string?)manifest["NexusID"];
+						string uid = ManifestString(manifest, "UniqueID") ?? folderName;
+						string? nexusId = ManifestString(manifest, "NexusID");
 
 						// Auto-extract NexusID from folderName if not present
 						if (string.IsNullOrEmpty(nexusId) && activeGame != "StardewValley")
@@ -159,13 +171,13 @@ public static class ModFileSystem
 
 						mod = new GameMod
 						{
-							Name        = ((string?)manifest["Name"])        ?? folderName,
-							Version     = ((string?)manifest["Version"])     ?? "1.0.0",
-							Author      = ((string?)manifest["Author"])      ?? "Unknown",
+							Name        = ManifestString(manifest, "Name")        ?? folderName,
+							Version     = ManifestString(manifest, "Version")     ?? "1.0.0",
+							Author      = ManifestString(manifest, "Author")      ?? "Unknown",
 							UniqueId    = uid,
-							Description = ((string?)manifest["Description"]) ?? "",
+							Description = ManifestString(manifest, "Description") ?? "",
 							NexusID     = nexusId,
-							GitHubRepo  = ((string?)manifest["GitHubRepo"]),
+							GitHubRepo  = ManifestString(manifest, "GitHubRepo"),
 							FolderPath  = dir,
 							IsEnabled   = !folderName.StartsWith(".")
 						};
@@ -555,7 +567,12 @@ public static class ModFileSystem
 
 			if (changed)
 			{
+				// plugins.txt may be marked read-only to stop the game rewriting it (see SetPluginsTxtProtection);
+				// clear that for our own write and restore it afterwards.
+				bool wasProtected = IsReadOnly(pluginsFilePath);
+				SetReadOnly(pluginsFilePath, false);
 				File.WriteAllLines(pluginsFilePath, lines);
+				if (wasProtected) SetReadOnly(pluginsFilePath, true);
 			}
 		}
 		catch (Exception ex)
@@ -1077,7 +1094,12 @@ public static class ModFileSystem
 	/// given order, which the caller has already arranged masters-first. Replaces the previous per-mod
 	/// add/remove approach so the order is deterministic.
 	/// </summary>
-	public static void WritePluginsTxt(string activeGame, IEnumerable<string> orderedActivePlugins, Action<string, string> logError)
+	/// <param name="protect">
+	/// When true the file is marked read-only after writing, which stops the game rewriting the active plugin
+	/// list on its own (see <see cref="AppSettings.ProtectPluginOrder"/>). The read-only flag is always cleared
+	/// first so the manager's own write succeeds either way.
+	/// </param>
+	public static void WritePluginsTxt(string activeGame, IEnumerable<string> orderedActivePlugins, Action<string, string> logError, bool protect = false)
 	{
 		string path = PluginsTxtPath(activeGame);
 		if (string.IsNullOrEmpty(path)) return;
@@ -1085,9 +1107,43 @@ public static class ModFileSystem
 		{
 			string? dir = Path.GetDirectoryName(path);
 			if (dir != null && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
+			SetReadOnly(path, false);
 			File.WriteAllLines(path, orderedActivePlugins.Select(p => "*" + p));
+			if (protect) SetReadOnly(path, true);
 		}
 		catch (Exception ex) { logError(path, $"Failed to write plugins.txt: {ex.Message}"); }
+	}
+
+	/// <summary>
+	/// Marks the game's plugins.txt read-only (or clears that), which is what actually stops Skyrim/Fallout 4
+	/// deactivating Creations and reordering plugins when a new game is started — the game silently gives up on
+	/// rewriting a read-only file and keeps loading the order it was given. Safe to call when the file does not
+	/// exist yet. Returns true if the attribute was changed.
+	/// </summary>
+	public static bool SetPluginsTxtProtection(string activeGame, bool protect, Action<string, string> logError)
+	{
+		string path = PluginsTxtPath(activeGame);
+		if (string.IsNullOrEmpty(path) || !File.Exists(path)) return false;
+		try
+		{
+			if (IsReadOnly(path) == protect) return false;
+			SetReadOnly(path, protect);
+			return true;
+		}
+		catch (Exception ex)
+		{
+			logError(path, $"Failed to change the plugins.txt read-only flag: {ex.Message}");
+			return false;
+		}
+	}
+
+	private static bool IsReadOnly(string path) => (File.GetAttributes(path) & FileAttributes.ReadOnly) != 0;
+
+	private static void SetReadOnly(string path, bool readOnly)
+	{
+		if (!File.Exists(path)) return;
+		FileAttributes attrs = File.GetAttributes(path);
+		File.SetAttributes(path, readOnly ? (attrs | FileAttributes.ReadOnly) : (attrs & ~FileAttributes.ReadOnly));
 	}
 
 	private static string PluginsTxtPath(string activeGame)
@@ -1336,7 +1392,15 @@ public static class ModFileSystem
 			// Stardew Valley Manifest logic
 			string[] manifests = Directory.GetFiles(tempDir, "manifest.json", SearchOption.AllDirectories);
 			if (manifests.Length == 0)
-				throw new Exception("No manifest.json found.");
+			{
+				// Some downloads wrap the mod itself in a second archive — a "pick the variant you want" pack, or
+				// a zip that simply contains the real zip. Unpack one level of nested archives and look again
+				// before declaring the download unusable.
+				await ExtractNestedArchivesAsync(tempDir, nexusService);
+				manifests = Directory.GetFiles(tempDir, "manifest.json", SearchOption.AllDirectories);
+			}
+			if (manifests.Length == 0)
+				throw new ModArchiveContentException(DescribeMissingManifest(zipPath, tempDir));
 
 			bool overwriteConfirmed = confirmOverwrite == null; // no callback => proceed without prompting
 			foreach (string mPath in manifests)
@@ -1649,6 +1713,37 @@ public static class ModFileSystem
 		return null;
 	}
 
+	/// <summary>
+	/// Reads the mod UniqueIDs declared inside a downloaded .zip, by parsing every manifest.json in it without
+	/// extracting anything. Pairing these with <see cref="ModManifest.ParseNexusIdFromFileName"/> recovers exactly which
+	/// installed mods came from which Nexus page — including every mod of a multi-mod download, where usually
+	/// only one (or none) carries an update key. Returns an empty list for anything unreadable or not a zip.
+	/// </summary>
+	public static List<string> ReadModIdsInArchive(string archivePath)
+	{
+		var ids = new List<string>();
+		try
+		{
+			if (DetectArchiveFormat(archivePath) != ArchiveFormat.Zip) return ids;
+			using ZipArchive archive = ZipFile.OpenRead(archivePath);
+			foreach (ZipArchiveEntry entry in archive.Entries)
+			{
+				if (!entry.Name.Equals("manifest.json", StringComparison.OrdinalIgnoreCase)) continue;
+				if (entry.Length > 512 * 1024) continue;   // a "manifest" that large isn't one
+				try
+				{
+					using var reader = new StreamReader(entry.Open());
+					JObject manifest = JObject.Parse(reader.ReadToEnd());
+					string? id = ManifestString(manifest, "UniqueID");
+					if (!string.IsNullOrWhiteSpace(id)) ids.Add(id!.Trim());
+				}
+				catch { /* one unreadable manifest shouldn't lose the rest of the archive */ }
+			}
+		}
+		catch { /* not a readable zip: nothing to recover from it */ }
+		return ids;
+	}
+
 	public static string? ParseGitHubRepo(JToken? keys)
 	{
 		if (keys == null) return null;
@@ -1740,6 +1835,89 @@ public static class ModFileSystem
 	/// whose resolved path escapes <paramref name="outputDir"/> is rejected before any bytes are written).
 	/// </summary>
 	/// <summary>The archive container of a downloaded mod, identified by its file signature.</summary>
+	/// <summary>
+	/// Thrown when an archive extracted fine but doesn't hold a mod for the active game — most often a Stardew
+	/// download with no <c>manifest.json</c> anywhere inside. Distinct from an I/O or extraction failure because
+	/// the fix is different: the file is the wrong download, usually because the mod is linked to the wrong Nexus
+	/// page. The message carries what the archive actually contained, for the error log.
+	/// </summary>
+	public sealed class ModArchiveContentException : Exception
+	{
+		public ModArchiveContentException(string message) : base(message) { }
+	}
+
+	/// <summary>
+	/// Builds the diagnostic message for a Stardew download with no manifest.json: names the archive and lists
+	/// what was actually extracted, so the error log shows whether the file was empty, held only documentation,
+	/// or is simply a different mod than expected.
+	/// </summary>
+	private static string DescribeMissingManifest(string archivePath, string extractedRoot)
+	{
+		string contents;
+		try
+		{
+			var names = Directory.EnumerateFileSystemEntries(extractedRoot, "*", SearchOption.TopDirectoryOnly)
+				.Select(Path.GetFileName).Take(8).ToList();
+			contents = names.Count == 0 ? "the archive extracted to nothing" : "it contains: " + string.Join(", ", names);
+		}
+		catch { contents = "its contents could not be listed"; }
+
+		return $"No manifest.json found in {Path.GetFileName(archivePath)} — {contents}. " +
+			   "This download is not a SMAPI mod, so it is probably the wrong file for this mod.";
+	}
+
+	/// <summary>
+	/// Unpacks any archives found inside an already-extracted download, one level deep, into a sibling folder
+	/// each. Used only as a fallback when the expected mod files weren't found at the top level. Best-effort:
+	/// an archive that can't be read is skipped rather than failing the install.
+	/// </summary>
+	private static async Task ExtractNestedArchivesAsync(string tempDir, NexusService? nexusService)
+	{
+		string[] inner;
+		try
+		{
+			inner = Directory.GetFiles(tempDir, "*.*", SearchOption.AllDirectories)
+				.Where(f =>
+				{
+					string ext = Path.GetExtension(f).ToLowerInvariant();
+					return ext == ".zip" || ext == ".7z" || ext == ".rar";
+				})
+				.Take(12)   // a sane bound: a mod pack with more variants than this isn't auto-installable anyway
+				.ToArray();
+		}
+		catch { return; }
+
+		foreach (string archive in inner)
+		{
+			try
+			{
+				string outDir = archive + "__unpacked";
+				Directory.CreateDirectory(outDir);
+				ArchiveFormat fmt = DetectArchiveFormat(archive);
+				if (fmt == ArchiveFormat.Unknown)
+				{
+					string ext = Path.GetExtension(archive).ToLowerInvariant();
+					fmt = ext == ".7z" ? ArchiveFormat.SevenZip : ext == ".rar" ? ArchiveFormat.Rar : ArchiveFormat.Zip;
+				}
+				if (fmt == ArchiveFormat.SevenZip)
+				{
+					string dataBasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AudiVentureGames", "KinetixModManager");
+					string exePath = await Ensure7ZipCommandLineTool(dataBasePath, nexusService);
+					Run7ZipExtract(exePath, archive, outDir);
+				}
+				else if (fmt == ArchiveFormat.Rar)
+				{
+					ExtractWithSharpCompress(archive, outDir);
+				}
+				else
+				{
+					ExtractZipWithProgress(archive, outDir, null);
+				}
+			}
+			catch { /* an unreadable nested archive just means this fallback didn't help */ }
+		}
+	}
+
 	private enum ArchiveFormat { Zip, SevenZip, Rar, Unknown }
 
 	/// <summary>

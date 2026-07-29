@@ -165,48 +165,92 @@ public class NexusService
 		finally { _apiSemaphore.Release(); }
 	}
 
-	/// <summary>One mod's suggested update as resolved by the SMAPI web API.</summary>
-	public readonly record struct SmapiUpdate(string Version, string Url);
+	/// <summary>
+	/// What the SMAPI web API knows about one installed mod: the suggested update (when one is offered) and
+	/// the mod-database entry it was matched to. <see cref="Known"/> is <c>true</c> when smapi.io recognised
+	/// the mod's UniqueID at all — that mod has been version-checked even if its manifest carries no update
+	/// key, so it must not be reported to the user as "not checked".
+	/// </summary>
+	public sealed class SmapiModInfo
+	{
+		public string? Version;
+		public string? Url;
+		public string? NexusId;
+		public string? GitHubRepo;
+		public string? Name;
+		public bool Known;
+	}
+
+	/// <summary>
+	/// Coerces a version string into the form the SMAPI web API accepts. See <see cref="SmapiVersion.Sanitize"/>
+	/// for why every version sent to smapi.io has to go through it.
+	/// </summary>
+	public static string SanitizeModVersion(string? version) => SmapiVersion.Sanitize(version);
 
 	/// <summary>
 	/// Queries the SMAPI web API (smapi.io) for available updates, exactly as SMAPI itself does. Unlike the
 	/// per-mod Nexus check, this resolves updates by each mod's UniqueID against SMAPI's crowdsourced mod
 	/// database, so it also finds mods whose <c>manifest.json</c> has a missing or broken update key (for
-	/// example <c>Nexus:???</c> or no key at all). Returns a map of mod UniqueID (case-insensitive) to its
-	/// suggested update, or <c>null</c> if the service could not be reached — in which case callers fall back
-	/// to the manifest-based Nexus check. Include an entry with id "SMAPI" to also receive SMAPI's own update.
+	/// example <c>Nexus:???</c> or no key at all). Returns a map of mod UniqueID (case-insensitive) to what
+	/// the service knows about it, or <c>null</c> if the service could not be reached — in which case callers
+	/// fall back to the manifest-based Nexus check. Include an entry with id "SMAPI" to also receive SMAPI's
+	/// own update.
 	/// </summary>
 	/// <param name="mods">Installed mods as (UniqueID, installed version, update keys) tuples.</param>
 	/// <param name="smapiVersion">Installed SMAPI version, sent as the API's apiVersion (must be valid semver).</param>
 	/// <param name="gameVersion">Installed Stardew Valley version, used by the API to filter compatible updates.</param>
-	public async Task<Dictionary<string, SmapiUpdate>?> GetSmapiUpdatesAsync(
+	public async Task<Dictionary<string, SmapiModInfo>?> GetSmapiUpdatesAsync(
 		IEnumerable<(string Id, string Version, IEnumerable<string> UpdateKeys)> mods,
 		string smapiVersion, string gameVersion)
 	{
+		// apiVersion/gameVersion are validated by the service too, and a bad one fails the whole request the
+		// same way — StardewModdingAPI.dll's file version is commonly four-part ("4.1.10.0"), for instance.
+		string api  = SanitizeModVersion(smapiVersion);
+		string game = SanitizeModVersion(gameVersion);
+		if (string.IsNullOrEmpty(api))  api  = "4.0.0";
+		if (string.IsNullOrEmpty(game)) game = "1.6.15";
+
+		var entries = new List<JObject>();
+		foreach (var m in mods)
+		{
+			if (string.IsNullOrEmpty(m.Id)) continue;
+			var keys = new JArray();
+			foreach (string k in m.UpdateKeys)
+				if (!string.IsNullOrWhiteSpace(k)) keys.Add(k);
+
+			entries.Add(new JObject
+			{
+				["id"]               = m.Id,
+				["updateKeys"]       = keys,
+				["installedVersion"] = SanitizeModVersion(m.Version),
+				["isBroken"]         = false
+			});
+		}
+		if (entries.Count == 0) return new Dictionary<string, SmapiModInfo>(StringComparer.OrdinalIgnoreCase);
+
+		var result = new Dictionary<string, SmapiModInfo>(StringComparer.OrdinalIgnoreCase);
+		bool reachable = await FetchSmapiEntriesAsync(entries, api, game, result);
+		return reachable ? result : null;
+	}
+
+	/// <summary>
+	/// Posts one batch of mod entries to smapi.io and merges the results into <paramref name="result"/>.
+	/// If the service answers with no entries at all for a batch of more than one mod, the batch is split in
+	/// half and each half retried: the API discards every result when a single entry displeases it, so
+	/// halving isolates the offender instead of losing the whole check. Returns <c>false</c> only when the
+	/// service could not be reached (so the caller can fall back to the Nexus check).
+	/// </summary>
+	private async Task<bool> FetchSmapiEntriesAsync(
+		List<JObject> entries, string apiVersion, string gameVersion, Dictionary<string, SmapiModInfo> result)
+	{
+		JArray? arr;
 		try
 		{
-			var modArray = new JArray();
-			foreach (var m in mods)
-			{
-				if (string.IsNullOrEmpty(m.Id)) continue;
-				var keys = new JArray();
-				foreach (string k in m.UpdateKeys)
-					if (!string.IsNullOrWhiteSpace(k)) keys.Add(k);
-
-				modArray.Add(new JObject
-				{
-					["id"]               = m.Id,
-					["updateKeys"]       = keys,
-					["installedVersion"] = string.IsNullOrEmpty(m.Version) ? "0.0.0" : m.Version,
-					["isBroken"]         = false
-				});
-			}
-
 			var body = new JObject
 			{
-				["mods"]                    = modArray,
-				["apiVersion"]              = string.IsNullOrEmpty(smapiVersion) ? "4.0.0" : smapiVersion,
-				["gameVersion"]             = string.IsNullOrEmpty(gameVersion) ? "1.6.15" : gameVersion,
+				["mods"]                    = new JArray(entries.Cast<object>().ToArray()),
+				["apiVersion"]              = apiVersion,
+				["gameVersion"]             = gameVersion,
 				["platform"]                = "Windows",
 				["includeExtendedMetadata"] = true
 			};
@@ -216,25 +260,43 @@ public class NexusService
 			req.Headers.UserAgent.ParseAdd($"KinetixModManager/{AppVersion}");
 
 			using var resp = await HttpClient.SendAsync(req);
-			if (!resp.IsSuccessStatusCode) return null;
-
-			var arr = JArray.Parse(await resp.Content.ReadAsStringAsync());
-			var result = new Dictionary<string, SmapiUpdate>(StringComparer.OrdinalIgnoreCase);
-			foreach (JToken entry in arr)
-			{
-				string? id = (string?)entry["id"];
-				JToken? suggested = entry["suggestedUpdate"];
-				if (string.IsNullOrEmpty(id) || suggested == null || suggested.Type != JTokenType.Object)
-					continue;
-
-				string? version = (string?)suggested["version"];
-				string? url = (string?)suggested["url"];
-				if (!string.IsNullOrEmpty(version))
-					result[id!] = new SmapiUpdate(version!, url ?? "");
-			}
-			return result;
+			if (!resp.IsSuccessStatusCode) return false;
+			arr = JArray.Parse(await resp.Content.ReadAsStringAsync());
 		}
-		catch { return null; }
+		catch { return false; }
+
+		if (arr.Count == 0 && entries.Count > 1)
+		{
+			int half = entries.Count / 2;
+			bool a = await FetchSmapiEntriesAsync(entries.GetRange(0, half), apiVersion, gameVersion, result);
+			bool b = await FetchSmapiEntriesAsync(entries.GetRange(half, entries.Count - half), apiVersion, gameVersion, result);
+			return a || b;
+		}
+
+		foreach (JToken entry in arr)
+		{
+			string? id = (string?)entry["id"];
+			if (string.IsNullOrEmpty(id)) continue;
+
+			var info = new SmapiModInfo();
+			if (entry["metadata"] is JObject meta)
+			{
+				// An empty "id" array means the service has no database entry for this mod, so it was not
+				// really checked; anything else means it was matched and version-checked.
+				info.Known      = meta["id"] is JArray ids && ids.Count > 0;
+				info.Name       = (string?)meta["name"];
+				info.NexusId    = ((int?)meta["nexusID"])?.ToString();
+				info.GitHubRepo = (string?)meta["gitHubRepo"];
+			}
+			if (entry["suggestedUpdate"] is JObject suggested)
+			{
+				info.Version = (string?)suggested["version"];
+				info.Url     = (string?)suggested["url"];
+				if (!string.IsNullOrEmpty(info.Version)) info.Known = true;
+			}
+			result[id!] = info;
+		}
+		return true;
 	}
 
 	// -------------------------------------------------------------------------

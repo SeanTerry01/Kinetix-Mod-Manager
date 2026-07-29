@@ -590,6 +590,25 @@ public partial class Form1
 		};
 		tabMods.Controls.Add(cArchiveInvalidation, 0, mr++);
 
+		// Guard against the game rewriting its own plugins.txt (Skyrim SE / Fallout 4 deactivate Creations and
+		// reorder plugins when a new game is started). Only meaningful for those two games, so hidden elsewhere.
+		bool pluginGuardGame = _settings.ActiveGame == "SkyrimSE" || _settings.ActiveGame == "Fallout4";
+		CheckBox cProtectPlugins = new CheckBox
+		{
+			Text = Loc.T("settings.protectPluginOrder"),
+			Checked = _settings.ProtectPluginOrder,
+			AutoSize = true,
+			Padding = new Padding(0, 5, 0, 0),
+			AccessibleName = Loc.T("settings.protectPluginOrderName"),
+			AccessibleDescription = Loc.T("settings.protectPluginOrderDesc"),
+			Visible = pluginGuardGame
+		};
+		cProtectPlugins.CheckedChanged += delegate
+		{
+			Speak(cProtectPlugins.Checked ? Loc.T("settings.protectPluginOrderOn") : Loc.T("settings.protectPluginOrderOff"));
+		};
+		tabMods.Controls.Add(cProtectPlugins, 0, mr++);
+
 		FlowLayoutPanel flowProgress = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Fill,
@@ -981,6 +1000,14 @@ public partial class Form1
 					bool currentInvalidation = ModFileSystem.IsArchiveInvalidationEnabled(_settings.ActiveGame);
 					if (cArchiveInvalidation.Checked != currentInvalidation)
 						ModFileSystem.SetArchiveInvalidation(_settings.ActiveGame, cArchiveInvalidation.Checked, LogError);
+				}
+
+				// Apply the plugins.txt guard straight away, so turning it off also clears the read-only flag the
+				// manager set rather than leaving the file locked for other tools.
+				if (cProtectPlugins.Visible)
+				{
+					_settings.ProtectPluginOrder = cProtectPlugins.Checked;
+					ModFileSystem.SetPluginsTxtProtection(_settings.ActiveGame, cProtectPlugins.Checked, LogError);
 				}
 
 				_settings.Save();

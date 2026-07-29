@@ -16,6 +16,7 @@ You choose which game you're managing from the **Games** menu (press **Alt**, th
     *   Press **F2** at any time to open the **Change Log**. It uses the same navigable window — a list of versions you open (with **Right Arrow or Enter**) to read what changed in each one.
     *   Press **Shift + F1** while on any tab to hear a context-sensitive list of shortcuts for that specific area.
 6.  **Splash Screen**: On every startup, an audio logo plays. You can press **Enter** to skip it and go straight to the main window.
+7.  **On the game list**: while the "select a game" list is showing — at startup, or after you close a session — **F1** (manual), **F2** (change log), and **Ctrl + P** (Settings) all work, so you can read the manual or set a game folder before loading anything. When you close one of those windows, focus returns to the game list. **Escape** exits the manager.
 
 ---
 
@@ -88,7 +89,7 @@ Open the Settings Dashboard at any time with **Ctrl + P**. Everything you can co
 *   **Startup** — Show or hide the splash screen, choose whether to check for mod and manager updates at launch, and turn the spoken **welcome** and **goodbye** messages on or off.
 *   **Audio** — All sound options (see below).
 *   **Display** — Low-vision visual options: a **high-contrast colour scheme** (white-on-black, yellow-on-black, or black-on-yellow) and a **text size** (Normal, Large, or Extra Large). Both apply across the whole program and take effect as soon as you save — no restart needed. They change only what's drawn on screen and never affect screen-reader speech, so leaving them at their defaults keeps the normal appearance.
-*   **Mods & Search** — Search results per load, maximum backups kept per mod, and whether to save your search history.
+*   **Mods & Search** — Search results per load, maximum backups kept per mod, whether to save your search history, and (for Skyrim and Fallout 4) **Protect Plugin Order and Creations**, which stops the game switching your Creations off when you start a new game — see "Keeping Your Creations On and Your Plugins in Order" below.
 *   **AI** — Turn on optional AI features, pick an AI provider and model, and enter your own API key (see "AI Log Diagnosis" below).
 *   **Language** — Pick the manager's display language, or leave it on **Automatic** to follow Windows.
 
@@ -220,7 +221,7 @@ The **Mods** menu (press **Alt**, then arrow to **Mods**) keeps its most common 
 *   **Selected Mod** — actions on the mod highlighted in your list: edit note, config, or manifest; view dependencies; resolve missing requirements; view changelog or description; endorse; verify files.
 *   **Install and Update Mods** — auto-match Nexus IDs, reinstall a downloaded mod, and check tracked mods for updates.
 *   **Profiles and Collections** — save a profile, export or install a Collection, import from Mod Organizer 2.
-*   **Health and Reports** — Check My Setup, Check Mod Requirements, Check for Broken Mods, File Conflicts, Plugin Slot Usage, and Reset Ignored Requirements.
+*   **Health and Reports** — Check My Setup, Check Mod Requirements, Check for Broken Mods, File Conflicts, Update Coverage Report, Plugin Slot Usage, and Reset Ignored Requirements.
 *   **Load Order and Files** (Skyrim & Fallout 4 only) — auto-sort, choose file-conflict winners, load-order rules, rebuild or purge deployment, and export or import your load order. This whole submenu is hidden for Stardew Valley.
 *   **Game and Maintenance** — install the accessibility suite, uninstall the script extender, edit game INI files, manage save games, prepare for and restore after a game update, and restore a safety backup.
 
@@ -466,6 +467,65 @@ You can mix the two approaches freely, and you can re-open the installer at any 
 
 ---
 
+## How the Update Check Works
+
+When you check for updates, the manager works out the latest version of each installed mod from two sources:
+
+*   **The mod's own link.** A mod that records a Nexus mod ID or a GitHub repository is checked against that page directly.
+*   **SMAPI's mod database (Stardew Valley).** Every installed Stardew mod is also looked up by its **unique ID** on smapi.io — the same service SMAPI itself uses when it tells you about updates in its log window. This finds updates for mods whose `manifest.json` has a missing or wrong update key, so what the manager reports lines up with what SMAPI reports.
+
+Where both sources have an answer and they disagree, the manager takes the **newer** of the two. A Nexus page's version field is typed in by the author and often lags the files actually on the page, so the mod database is frequently ahead of it. A mod is only ever listed in the Updates tab when the version it would fetch really is newer than the one you have.
+
+When that lookup identifies a mod, the manager also **remembers its Nexus page**, so a mod that arrived with no link becomes fully actionable — you can download its update and open its page like any other. This happens quietly during a normal update check; nothing in the mod's own files is edited.
+
+### Mods that arrive together in one download
+
+One Nexus download often unpacks into **several mods** — a main mod plus the content packs that ship with it — and usually only one of them records the update key. The others are still covered: updating the one that carries the key reinstalls the whole download, and everything in it. The manager recognises this (a mod inside another mod's folder, or sharing its top-level folder under `Mods` with a linked mod) and treats those mods as covered rather than reporting them as unchecked. This is why the "couldn't be checked" number is much smaller than the number of mods without their own update key.
+
+### The Update Coverage Report
+
+To see exactly where every mod stands, choose **Mods → Health and Reports → Update Coverage Report**. It opens as an accessible list and tells you up front how many of your installed mods can be checked and how many can't.
+
+*   **Mods that can't be checked are listed first**, each with its name, version, unique ID, and the folder it lives in — enough to find it on disk. Press **Enter** on one and the manager **searches Nexus for it** and offers what it finds as a list: arrow through the results — likely matches, judged by name and author, come first — and press **Enter** on the right one to link it. You don't need to know the mod's ID. Two more items sit at the end of that list: **type a Nexus mod ID yourself**, and **"This mod came with another mod I have installed"** (see below).
+*   **Mods covered by another download are listed after them**, each naming the mod whose update carries it and that mod's Nexus ID — so you can confirm nothing has been quietly skipped.
+*   **The whole list is also written to the error log** (open it with **Ctrl + Shift + L**), including every mod's unique ID, folder, and update link. That's the copy to read at leisure, or to paste into a bug report.
+
+Each mod it can't check says **why**: either its `manifest.json` lists no update key at all, or the key is there but blank — `"UpdateKeys": [""]`, or `"Nexus: "` with no number after it. Both are things the mod's author left out, not something wrong with your setup; the mod simply doesn't record where it came from. Giving it a Nexus ID (with **Enter** here, or **Ctrl + K** in the mod list) fixes it permanently, and the manager remembers the link in its own file rather than editing the author's manifest.
+
+Two things the report doesn't nag you about, because they're normal: mods that **ship with SMAPI** (Console Commands, Save Backup, Error Handler) update when SMAPI does, and mods **covered by another download**, as described above.
+
+### "This mod came with another mod"
+
+Sometimes a mod has no page of its own because it isn't really a separate download — it's an **optional file from another mod's page**, or an extra that arrived alongside a mod you installed. When it unpacks into a folder of its own, nothing on your computer connects the two: no update key, no shared folder, nothing the manager can follow. Only you know where it came from.
+
+So tell it once. In the report, press **Enter** on the mod, then choose **"This mod came with another mod I have installed"**. You get a list of the mods that *can* be checked; press **Enter** on the one this mod arrives with. From then on it's treated exactly like the mods that came in a single archive: covered by that mod, never reported as unchecked, and never asked to update on its own. The choice is remembered per game, and if you ever uninstall the mod you attached it to, it simply goes back to being listed so you can decide again.
+
+Before it reports, the manager tries to repair the links itself, from most reliable source to least:
+
+1.  **Your downloaded files.** A Nexus download is named like `Granny's Recipe Box-23737-1-0-2-1715181269.zip` — the number after the name is the Nexus mod ID — and the archive lists every mod inside it. Matching the two links each installed mod to the exact page it came from, including the extra mods a single download unpacks. This is exact, not a guess.
+2.  **SMAPI's mod database** (Stardew Valley), which maps a mod's unique ID straight to its page.
+
+Anything still unlinked after that is what the report lists. From then on the manager records the Nexus page of **every mod a download installs** at install time, so newly installed mods never end up in this state.
+
+At the end of an update check you hear how many updates were found, plus — if any apply — how many mods **couldn't be checked at all** because nothing knows where they came from: no Nexus or GitHub link, not in SMAPI's database, and not part of another mod's download. Those are usually mods copied in by hand. Use **Auto-match Nexus IDs** (Mods → Install and Update Mods) to link them. It works from the most reliable source to the least: your downloaded files first, then SMAPI's mod database, and only then a Nexus search by name — accepting a search result only when the name matches exactly, or the name is a close match **and** the author is the same. Names are compared with any leading content-pack tag removed, so `[CP] Stoned Valley` matches the Nexus page called "Stoned Valley". A mod it isn't confident about is left unlinked rather than pointed at the wrong page.
+
+> **If an update fails with "that download doesn't contain a mod for this game"**, the mod is almost certainly linked to the **wrong Nexus page** — so the file it downloaded belongs to some other mod. Select the mod in the Installed list, press **Ctrl + K**, and enter the correct Nexus mod ID (the number in its Nexus web address).
+
+### Mods that don't report their new version
+
+A mod's version — the number inside its `manifest.json` — is the author's number for *that mod*, which is not the same thing as the version of the **download** it came in. Authors routinely publish a "1.0.2" release whose manifests still say "1.0.0", and one download often installs several mods that each carry a version of their own.
+
+Comparing those numbers against the mod page's version would offer an update that installing can never satisfy: the new files arrive, the manifest still says the old number, and the mod is offered again on the next check — forever. With two mods from one download it was worse: installing it rewrites both folders, so the two took turns asking to be updated, back and forth.
+
+So the manager **remembers which release of each download is installed** and compares that instead. It learns it when it installs or updates something, and — for mods you downloaded through it earlier — from the file still sitting in your downloads folder. Nothing the mod author shipped is rewritten to make this work.
+
+Two things follow from this:
+
+*   **One row per download.** When several installed mods come from the same Nexus page, the Updates tab lists that download once, named after the main mod, rather than once per mod inside it. Installing it updates all of them, as it always did.
+*   **A single mod whose author forgot to bump the version** still gets its manifest corrected after an update, so the version it reports (in SMAPI's log, for instance) is accurate. That only happens when one mod comes from the download — never for the extras bundled alongside it, whose numbers are their own.
+
+---
+
 ## Updating Individual Mods via Nexus Mods
 
 When the manager detects an update, it will appear in the **Updates Available** tab. Because Nexus Mods often lists multiple versions (like optional files or older versions), follow these steps to ensure you get the correct update:
@@ -528,6 +588,18 @@ The **Plugin Order** tab is the load order of your plugin files (the `.esp`, `.e
 
 ### Creations
 **Creations** (formerly Creation Club content) are official add-ons you download **inside the game**, from its **Creations** menu — or queue from the Bethesda.net website to your linked account. No mod manager downloads them for you; the game installs them into its own folder. The **Creations** tab lists the Creations already installed in your game, whether each is **Active**, and whether it's a master or light master. Press **Space** to activate or deactivate the selected one. To change where a Creation loads, use the Plugin Order tab.
+
+### Keeping Your Creations On and Your Plugins in Order
+
+Skyrim Special Edition and Fallout 4 rewrite their own plugin list when you start a new game: they **switch off every Creation** and **reshuffle your load order**, undoing what you set up. The manager guards against this in three ways, all automatic:
+
+*   **The plugin list is protected.** Whenever the manager writes `plugins.txt` — and again just before it launches the game with **F5** — it marks that file **read-only**, which the game quietly gives up on rewriting. Your order and your active Creations survive starting a new game.
+*   **Anything the game did undo is put back.** When the game closes, and again whenever the mod list is refreshed, the manager compares the game's plugin list against your saved order. If Creations were switched off or plugins were moved, it restores your setup and tells you so — *"The game had turned off 3 plugins or Creations. They have been switched back on and your load order restored."* This also covers launching the game outside the manager, from Steam.
+*   **Turning a Creation off still works.** Deactivating a Creation yourself with **Space** on the Creations tab is remembered as your choice, so the protection never switches it back on.
+
+One thing to know: because the game can no longer edit that file, a Creation you download **while playing** may not switch itself on. Come back to the manager, choose **File → Refresh All**, and press **Space** on it in the Creations tab to activate it.
+
+If you'd rather the manager left `plugins.txt` alone — for instance because another tool wants to write it — uncheck **"Protect Plugin Order and Creations"** on the **Mods & Search** tab in Settings (**Ctrl + P**). Unchecking it also clears the read-only mark straight away.
 
 ### Exporting and Importing Your Load Order
 From the **Mods menu → Load Order and Files** submenu you can **Export Load Order** to save your current mod priority and plugin order to a file, and **Import Load Order** to apply a saved file later — for example as a backup, or to move a setup between computers. Importing replaces the current order and re-applies it; it never adds or removes your mods, and it only accepts a file that was exported for the same game.

@@ -32,11 +32,25 @@ public partial class Form1
 	{
 		if (_settings.ActiveGame == "None")
 		{
+			// On the game-selection screen most shortcuts act on a mod list that isn't loaded yet, but the
+			// app-wide ones still make sense and are needed here — Settings in particular, since that is where
+			// a game folder is set when auto-detection missed the install. Focus goes back to the game list
+			// afterwards so the user lands where they left off.
 			if (e.KeyCode == Keys.Escape)
 			{
 				e.Handled = true;
 				e.SuppressKeyPress = true;
 				Application.Exit();
+				return;
+			}
+			if (IsShortcut(e, "Manual") || IsShortcut(e, "ChangeLog") || IsShortcut(e, "Settings"))
+			{
+				e.Handled = true;
+				e.SuppressKeyPress = true;
+				if (IsShortcut(e, "Manual")) ShowManual();
+				else if (IsShortcut(e, "ChangeLog")) ShowChangeLog();
+				else ShowSettings();
+				_lstGames?.Focus();
 			}
 			return;
 		}

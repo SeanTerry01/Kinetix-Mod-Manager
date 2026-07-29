@@ -656,6 +656,16 @@ public partial class Form1
 				SetStatus(Loc.T("launch.launching", gameName));
 				Speak(Loc.T("launch.launching", gameName));
 
+				// Skyrim SE and Fallout 4 rewrite plugins.txt as they run — starting a new game deactivates every
+				// Creation and reshuffles the load order. Write the manager's order out one last time and, unless
+				// the user has turned the guard off, mark the file read-only so the game keeps the order it is
+				// given. Whatever happens, the order is verified again once the game exits (below).
+				if (IsBethesdaGame)
+				{
+					SyncBethesdaPlugins();
+					ModFileSystem.SetPluginsTxtProtection(game, _settings.ProtectPluginOrder, LogError);
+				}
+
 				Process p = new Process();
 				p.StartInfo = new ProcessStartInfo(exePath)
 				{
@@ -665,6 +675,9 @@ public partial class Form1
 				p.Exited += async delegate
 				{
 					SetStatus(Loc.T("launch.gameClosed"));
+					// If the game did manage to rewrite plugins.txt (the guard is off, or the file was writable),
+					// put the manager's order — including the active Creations — back now that it has let go.
+					RestorePluginOrderAfterPlay();
 					await Task.Delay(5000);
 					SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser));
 				};

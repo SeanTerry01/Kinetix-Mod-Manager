@@ -11,6 +11,7 @@
   <ItemGroup>
     <PackageReference Include="K4os.Compression.LZ4" Version="1.3.8" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
   </ItemGroup>
@@ -35,6 +36,14 @@
     <Compile Include="..\KinetixModManager\IniDocument.cs" />
     <!-- Self-contained Bethesda save-file parser (depends on the BCL + K4os LZ4, no app runtime). -->
     <Compile Include="..\KinetixModManager\SaveGame.cs" />
+    <!-- Self-contained version handling for the smapi.io update check (depends only on the BCL). -->
+    <Compile Include="..\KinetixModManager\SmapiVersion.cs" />
+    <!-- Self-contained "can this mod be update-checked?" rules (BCL + GameMod metadata). -->
+    <Compile Include="..\KinetixModManager\UpdateCoverage.cs" />
+    <!-- Self-contained manifest/download-name parsing (BCL + Newtonsoft). -->
+    <Compile Include="..\KinetixModManager\ModManifest.cs" />
+    <!-- Self-contained "is this Nexus search result the same mod?" rules (BCL + GameMod metadata). -->
+    <Compile Include="..\KinetixModManager\ModNameMatch.cs" />
   </ItemGroup>
 
 </Project>

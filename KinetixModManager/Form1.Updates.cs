@@ -29,8 +29,72 @@ namespace KinetixModManager;
 public partial class Form1
 {
 	/// <summary>
-	/// Queries the Nexus Mods REST API or GitHub Releases for the latest version of a group of mods.
-	/// Adds any mods with newer versions to <c>listUpdates</c>. Rate-limited by <c>_apiSemaphore</c> for Nexus.
+	/// Records the newest version any source has reported for <paramref name="mod"/>, keeping whichever is
+	/// higher. The Nexus and smapi.io checks run at the same time and don't always agree: a Nexus page's own
+	/// version field is set by hand and often lags the files on it (Machine Control Panel's page said 2.2.0
+	/// while 2.3.0 was the current release). Plain assignment let whichever check finished last win, so the
+	/// Nexus answer could overwrite a newer one after smapi.io had already listed the mod as updatable —
+	/// leaving a row reading "Current: 2.2.0. Latest: 2.2.0". Taking the maximum makes the result independent
+	/// of which check finishes first.
+	/// </summary>
+	private void RecordLatestVersion(StardewMod mod, string? candidate)
+	{
+		if (string.IsNullOrWhiteSpace(candidate)) return;
+		if (string.IsNullOrEmpty(mod.LatestVersion) || IsNewerVersion(mod.LatestVersion, candidate))
+			mod.LatestVersion = candidate;
+	}
+
+	/// <summary>The key identifying the one download a mod comes from — its Nexus page or GitHub repo.</summary>
+	private static string DownloadKey(StardewMod mod) =>
+		!string.IsNullOrEmpty(mod.NexusID) ? "Nexus:" + mod.NexusID : "GitHub:" + mod.GitHubRepo;
+
+	/// <summary>The release of <paramref name="key"/>'s download the manager knows is installed, or null.</summary>
+	private string? InstalledDownloadVersion(string key) =>
+		_settings.InstalledDownloadVersions.TryGetValue(_settings.ActiveGame, out var map) &&
+		map.TryGetValue(key, out string? version) && !string.IsNullOrWhiteSpace(version)
+			? version : null;
+
+	/// <summary>
+	/// Records which release of a download is installed, so later checks compare like with like. Called when the
+	/// manager installs a download and therefore knows exactly what went on disk.
+	/// </summary>
+	private void RecordInstalledDownloadVersion(string key, string? version)
+	{
+		if (string.IsNullOrWhiteSpace(version) || string.IsNullOrEmpty(key) || key == "GitHub:") return;
+		if (!_settings.InstalledDownloadVersions.TryGetValue(_settings.ActiveGame, out var map))
+			_settings.InstalledDownloadVersions[_settings.ActiveGame] = map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		if (map.TryGetValue(key, out string? existing) && existing == version) return;
+		map[key] = version!;
+		_settings.Save();
+	}
+
+	/// <summary>
+	/// Whether <paramref name="installed"/> still has an update pending at <paramref name="latestVersion"/>.
+	/// Uses the recorded release of its download when there is one, so a mod whose manifest version the author
+	/// never bumped isn't offered the same update forever. The single place this question is answered.
+	/// </summary>
+	private bool HasPendingUpdate(StardewMod installed, string? latestVersion)
+	{
+		if (string.IsNullOrWhiteSpace(latestVersion)) return false;
+		string? recorded = UpdateCoverage.HasUpdateLink(installed)
+			? InstalledDownloadVersion(DownloadKey(installed))
+			: null;
+		return IsNewerVersion(recorded ?? installed.Version, latestVersion);
+	}
+
+	/// <summary>
+	/// Queries the Nexus Mods REST API or GitHub Releases for the latest version of a group of mods that share
+	/// one download, and lists that download once when it has a newer release. Rate-limited by
+	/// <c>_apiSemaphore</c> for Nexus.
+	///
+	/// The comparison deliberately isn't "each mod's manifest version versus the mod page's version". Those are
+	/// different things: a "1.0.2" release routinely contains manifests that still say "1.0.0", and one download
+	/// often installs several mods that each carry a version of their own. Comparing them offered an update that
+	/// installing could never satisfy — the files arrived, the manifests still said the old number, and the mod
+	/// came back next check. With two mods in one download they came back alternately, because installing it
+	/// rewrote both folders and undid whatever the previous round had settled. So we compare what we know is
+	/// installed (recorded at install time), falling back to the newest manifest version in the group, and list
+	/// one row for the download rather than one per mod inside it.
 	/// </summary>
 	private async Task CheckForUpdates(List<StardewMod> group)
 	{
@@ -51,23 +115,30 @@ public partial class Form1
 			if (_settings.IgnoredVersions.TryGetValue(group[0].UniqueId, out string? ignored) && ignored == latestVersion)
 				return;
 
-			foreach (StardewMod mod in group)
+			foreach (StardewMod mod in group) RecordLatestVersion(mod, latestVersion);
+
+			string key = DownloadKey(group[0]);
+			// What's installed from this download: what we recorded when we installed it, or — for a mod that
+			// arrived by hand — the newest version any of its mods claims, since the main mod usually carries
+			// the release's number while the extras bundled with it keep their own.
+			string installedVersion = InstalledDownloadVersion(key)
+				?? group.Select(m => m.Version).Aggregate((best, v) => IsNewerVersion(best, v) ? v : best);
+			if (!IsNewerVersion(installedVersion, latestVersion)) return;
+
+			// One row per download, named after the mod that best stands for it — the main mod rather than a
+			// content pack bundled with it — so the row is recognisable (see UpdateCoverage.PickRepresentative).
+			StardewMod representative = UpdateCoverage.PickRepresentative(group, _settings.CurrentModsPath);
+
+			Invoke(delegate
 			{
-				mod.LatestVersion = latestVersion;
-				if (IsNewerVersion(mod.Version, latestVersion))
+				listUpdates.BeginUpdate();
+				if (!listUpdates.Items.Contains(representative))
 				{
-					Invoke(delegate
-					{
-						listUpdates.BeginUpdate();
-						if (!listUpdates.Items.Contains(mod))
-						{
-							mod.IsUpdateResult = true;
-							listUpdates.Items.Add(mod);
-						}
-						listUpdates.EndUpdate();
-					});
+					representative.IsUpdateResult = true;
+					listUpdates.Items.Add(representative);
 				}
-			}
+				listUpdates.EndUpdate();
+			});
 		}
 		finally
 		{
@@ -85,10 +156,43 @@ public partial class Form1
 	// run finishes so its prompt doesn't interrupt the mod-update announcement. Null when none.
 	private (string Current, string Latest, string Url)? _pendingSmapiUpdate;
 
-	// How many installed mods the last update check skipped because they have no Nexus/GitHub link (so their
-	// version can't be checked). Surfaced in the completion announcement so "all up to date" isn't misleading —
-	// a manually-placed mod with a null NexusID would otherwise be silently ignored. See RefreshModList.
-	private int _updateSkippedUnlinked;
+	// The installed mods the last update check had no Nexus/GitHub link for, so the manifest-based Nexus check
+	// couldn't cover them. Surfaced in the completion announcement so "all up to date" isn't misleading — a
+	// manually-placed mod with a null NexusID would otherwise be silently ignored. See RefreshModList.
+	private List<StardewMod> _updateUnlinkedMods = new();
+
+	// UniqueIDs the SMAPI web API recognised during this check. Those mods were version-checked against SMAPI's
+	// mod database whether or not their manifest carries an update key, so they are not "unchecked" — Stardew
+	// users were previously told dozens of perfectly ordinary mods "have no Nexus or GitHub link".
+	private HashSet<string> _smapiCheckedIds = new(StringComparer.OrdinalIgnoreCase);
+
+	/// <summary>
+	/// How many mods really went unchecked. A mod counts only when nothing can tell the manager where it came
+	/// from: no update link of its own, unknown to the SMAPI mod database, and not bundled inside another,
+	/// linked mod's download (see <see cref="ClassifyUpdateCoverage"/>). Bundled mods — the several mods one
+	/// Nexus archive unpacks into, where only one carries the update key — are covered by that download, and
+	/// counting them made an ordinary Stardew setup sound like dozens of mods were being ignored.
+	/// </summary>
+	private int UncheckedModCount() =>
+		ClassifyUpdateCoverage().Count(c => c.Kind == UpdateCoverageKind.Unchecked);
+
+	/// <summary>
+	/// Final consistency pass over the Updates list: drops any row whose latest version is no longer newer than
+	/// what is installed. Rows are added by two checks running at once, each of which may learn a different
+	/// "latest" from its own source, so this is the one place that guarantees what the user is shown is
+	/// genuinely an update — never a row reading "Current: 2.2.0. Latest: 2.2.0". Runs on the UI thread once
+	/// every check in the batch has finished.
+	/// </summary>
+	private void DropUpToDateUpdateRows()
+	{
+		listUpdates.BeginUpdate();
+		for (int i = listUpdates.Items.Count - 1; i >= 0; i--)
+		{
+			if (listUpdates.Items[i] is StardewMod m && !HasPendingUpdate(m, m.LatestVersion))
+				listUpdates.Items.RemoveAt(i);
+		}
+		listUpdates.EndUpdate();
+	}
 
 	private void CompleteUpdateCheckUnit()
 	{
@@ -100,15 +204,17 @@ public partial class Form1
 			_soundEngine.Play("load_complete");
 			var pendingSmapi = _pendingSmapiUpdate;
 			_pendingSmapiUpdate = null;
+			int unchecked_ = UncheckedModCount();
 			Invoke(delegate
 			{
+				DropUpToDateUpdateRows();
 				string message = listUpdates.Items.Count > 0
 					? Loc.T("updates.checkComplete", listUpdates.Items.Count)
 					: Loc.T("updates.checkCompleteNone");
 				// Tell the user when some mods couldn't be checked at all (no Nexus/GitHub link), so an
 				// "all up to date" result isn't taken to cover a manually-added mod that was really just skipped.
-				if (_updateSkippedUnlinked > 0)
-					message += " " + Loc.T(_updateSkippedUnlinked == 1 ? "updates.unlinkedNoteOne" : "updates.unlinkedNote", _updateSkippedUnlinked);
+				if (unchecked_ > 0)
+					message += " " + Loc.T(unchecked_ == 1 ? "updates.unlinkedNoteOne" : "updates.unlinkedNote", unchecked_);
 				Speak(message);
 				if (pendingSmapi is { } s)
 					NotifySmapiUpdateAvailable(s.Current, s.Latest, s.Url);
@@ -143,37 +249,75 @@ public partial class Form1
 			var updates = await _nexusService.GetSmapiUpdatesAsync(entries, smapiVersion, gameVersion);
 			if (updates == null) return; // Service unreachable; the Nexus fallback check still runs.
 
-			if (updates.TryGetValue("SMAPI", out var smapiUpd) && IsNewerVersion(smapiVersion, smapiUpd.Version))
+			if (updates.TryGetValue("SMAPI", out var smapiUpd) && !string.IsNullOrEmpty(smapiUpd.Version)
+				&& IsNewerVersion(smapiVersion, smapiUpd.Version))
 			{
 				// Defer the prompt until the whole check completes (see CompleteUpdateCheckUnit).
-				_pendingSmapiUpdate = (smapiVersion, smapiUpd.Version, smapiUpd.Url);
+				_pendingSmapiUpdate = (smapiVersion, smapiUpd.Version!, smapiUpd.Url ?? "");
 			}
 
+			var linked = new Dictionary<string, string>();
 			foreach (StardewMod mod in installed)
 			{
 				if (mod.IsGroup || string.IsNullOrEmpty(mod.UniqueId)) continue;
 				if (!updates.TryGetValue(mod.UniqueId, out var upd)) continue;
-				if (!IsNewerVersion(mod.Version, upd.Version)) continue;
+
+				// Remember that this mod really was version-checked, so it isn't counted as "not checked". A mod
+				// whose manifest version can't be expressed as a semantic version is sent without one: the
+				// service can identify it but not compare it, so that doesn't count as checked.
+				string sentVersion = NexusService.SanitizeModVersion(mod.Version);
+				if (upd.Known && sentVersion.Length > 0) _smapiCheckedIds.Add(mod.UniqueId);
+
+				// Back-fill the mod's update source from SMAPI's mod database, which maps UniqueID to mod page
+				// directly — an authoritative link, unlike guessing from the mod's name. This makes previously
+				// "unlinked" mods actionable (download the update, open the page) and is remembered on disk.
+				if (string.IsNullOrEmpty(mod.NexusID) && string.IsNullOrEmpty(mod.GitHubRepo))
+				{
+					if (!string.IsNullOrEmpty(upd.NexusId))
+					{
+						mod.NexusID = upd.NexusId;
+						linked[mod.UniqueId] = upd.NexusId!;
+					}
+					else if (!string.IsNullOrEmpty(upd.GitHubRepo))
+					{
+						mod.GitHubRepo = upd.GitHubRepo;
+					}
+					else if (!string.IsNullOrEmpty(upd.Url))
+					{
+						var nexus = Regex.Match(upd.Url!, @"nexusmods\.com/stardewvalley/mods/(\d+)", RegexOptions.IgnoreCase);
+						if (nexus.Success)
+						{
+							mod.NexusID = nexus.Groups[1].Value;
+							linked[mod.UniqueId] = mod.NexusID;
+						}
+						else
+						{
+							var gh = Regex.Match(upd.Url!, @"github\.com/([^/]+/[^/]+?)(?:/|$)", RegexOptions.IgnoreCase);
+							if (gh.Success) mod.GitHubRepo = gh.Groups[1].Value;
+						}
+					}
+				}
+
+				if (string.IsNullOrEmpty(upd.Version)) continue;
+
+				// smapi.io only suggests an update when it is newer than the version we sent, so its verdict is
+				// authoritative whenever we sent the mod's exact version. Fall back to the local comparison only
+				// when the version had to be coerced to satisfy the API (see NexusService.SanitizeModVersion).
+				bool sentExactVersion = sentVersion == (mod.Version ?? "").Trim();
+				bool isUpdate = sentExactVersion
+					? !string.Equals(upd.Version, (mod.Version ?? "").Trim(), StringComparison.OrdinalIgnoreCase)
+					: IsNewerVersion(mod.Version, upd.Version);
+				if (!isUpdate) continue;
+				// If we know which release of this mod's download is installed, that beats the manifest version:
+				// the manifest may simply never have been bumped by its author (see HasPendingUpdate).
+				if (UpdateCoverage.HasUpdateLink(mod) &&
+					InstalledDownloadVersion(DownloadKey(mod)) is string recorded &&
+					!IsNewerVersion(recorded, upd.Version)) continue;
 
 				if (_settings.IgnoredVersions.TryGetValue(mod.UniqueId, out string? ignored) && ignored == upd.Version)
 					continue;
 
-				mod.LatestVersion = upd.Version;
-				// Back-fill a Nexus ID or GitHub repo from the suggested page when the manifest lacked a
-				// usable update key, so the mod becomes actionable by the existing update/open-page flow.
-				if (string.IsNullOrEmpty(mod.NexusID) && string.IsNullOrEmpty(mod.GitHubRepo) && !string.IsNullOrEmpty(upd.Url))
-				{
-					var nexus = Regex.Match(upd.Url, @"nexusmods\.com/stardewvalley/mods/(\d+)", RegexOptions.IgnoreCase);
-					if (nexus.Success)
-					{
-						mod.NexusID = nexus.Groups[1].Value;
-					}
-					else
-					{
-						var gh = Regex.Match(upd.Url, @"github\.com/([^/]+/[^/]+?)(?:/|$)", RegexOptions.IgnoreCase);
-						if (gh.Success) mod.GitHubRepo = gh.Groups[1].Value;
-					}
-				}
+				RecordLatestVersion(mod, upd.Version);
 
 				Invoke(delegate
 				{
@@ -186,6 +330,8 @@ public partial class Form1
 					listUpdates.EndUpdate();
 				});
 			}
+
+			PersistNexusIdLinks(linked);
 		}
 		catch (Exception ex)
 		{
@@ -326,6 +472,13 @@ public partial class Form1
                 }
 
                 await ReapplyDisabledIfNeeded(mod, wasDisabled);
+                // Remember which release is now on disk, so the next check compares against what was installed
+
+                // rather than whatever version numbers the mods inside the download happen to declare.
+
+                RecordInstalledDownloadVersion(DownloadKey(mod), mod.LatestVersion);
+
+                await SyncManifestVersionAfterUpdate(mod, mod.LatestVersion);
 
                 if (!silent)
                 {
@@ -375,6 +528,13 @@ public partial class Form1
             });
             await RefreshModList(checkUpdates: false);
             await ReapplyDisabledIfNeeded(mod, wasDisabled);
+            // Remember which release is now on disk, so the next check compares against what was installed
+
+            // rather than whatever version numbers the mods inside the download happen to declare.
+
+            RecordInstalledDownloadVersion(DownloadKey(mod), mod.LatestVersion);
+
+            await SyncManifestVersionAfterUpdate(mod, mod.LatestVersion);
             if (!silent)
             {
                 _soundEngine.Play("load_complete");
@@ -406,6 +566,55 @@ public partial class Form1
 		if (!listUpdates.Focused)
 			listUpdates.Focus();
 		AnnounceListEmpty(listUpdates);
+	}
+
+	/// <summary>
+	/// Brings a freshly updated mod's manifest version in line with the release that was installed, for the
+	/// simple case: one mod, one download. Some authors ship an update without bumping <c>Version</c> in the
+	/// manifest, so the mod keeps reporting the old number; stamping the release's version into it keeps what
+	/// the mod reports (in SMAPI's log, say) honest.
+	///
+	/// Deliberately skipped when several installed mods share the download. Their versions are the authors'
+	/// own numbers for each mod, not the release's, and installing the download rewrites every one of those
+	/// folders — so stamping one would be undone the next time any of them updated, while the sibling it just
+	/// overwrote started asking to be updated in its place. That ping-pong is why the release's version is
+	/// recorded separately (see <see cref="RecordInstalledDownloadVersion"/>), which settles the comparison
+	/// without editing anyone's manifest.
+	/// </summary>
+	private async Task SyncManifestVersionAfterUpdate(StardewMod original, string? installedVersion)
+	{
+		if (string.IsNullOrEmpty(installedVersion)) return;
+		if (UpdateCoverage.HasUpdateLink(original))
+		{
+			string key = DownloadKey(original);
+			int sharing = _allInstalledMods.Count(m => !m.IsGroup && UpdateCoverage.HasUpdateLink(m) && DownloadKey(m) == key);
+			if (sharing > 1) return;
+		}
+		try
+		{
+			StardewMod? updated = _allInstalledMods.FirstOrDefault(m => !m.IsGroup
+					&& !string.IsNullOrEmpty(original.UniqueId) && m.UniqueId == original.UniqueId)
+				?? _allInstalledMods.FirstOrDefault(m => !m.IsGroup &&
+					((!string.IsNullOrEmpty(original.NexusID) && original.NexusID.Equals(m.NexusID, StringComparison.OrdinalIgnoreCase)) ||
+					 (!string.IsNullOrEmpty(original.GitHubRepo) && original.GitHubRepo.Equals(m.GitHubRepo, StringComparison.OrdinalIgnoreCase))));
+
+			if (updated == null || !Directory.Exists(updated.FolderPath)) return;
+			if (!IsNewerVersion(updated.Version, installedVersion)) return;   // already at or beyond the new version
+
+			string manifestPath = Path.Combine(updated.FolderPath,
+				_settings.ActiveGame == "StardewValley" ? "manifest.json" : ".manager_manifest.json");
+			if (!File.Exists(manifestPath)) return;
+
+			JObject manifest = JObject.Parse(File.ReadAllText(manifestPath));
+			manifest["Version"] = installedVersion;
+			File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
+			updated.Version = installedVersion;
+			LogError(updated.Name, $"Manifest version corrected to the installed version {installedVersion}.");
+
+			// Re-scan so the installed list reads the new version and the Updates tab drops the stale row.
+			await RefreshModList(checkUpdates: false);
+		}
+		catch (Exception ex) { LogError(original.Name, "Could not update the manifest version: " + ex.Message); }
 	}
 
 	/// <summary>
@@ -456,6 +665,66 @@ public partial class Form1
 		catch { return null; }
 	}
 
+	/// <summary>
+	/// Records mod UniqueID to Nexus ID links in the manager's own <c>mod_id_map.json</c>, which every later
+	/// scan consults (see <see cref="RefreshModList"/>). The map is used rather than the mod's manifest.json so
+	/// a link discovered by the manager never rewrites a file the mod author ships.
+	/// </summary>
+	private void PersistNexusIdLinks(IReadOnlyDictionary<string, string> links)
+	{
+		if (links.Count == 0) return;
+		try
+		{
+			string mapPath = Path.Combine(AppSettings.AppDataFolder, "mod_id_map.json");
+			JObject map = (File.Exists(mapPath) ? JObject.Parse(File.ReadAllText(mapPath)) : new JObject()) ?? new JObject();
+			foreach (var kv in links) map[kv.Key] = kv.Value;
+			File.WriteAllText(mapPath, map.ToString(Formatting.Indented));
+		}
+		catch (Exception ex) { LogError("ModIdMap", "Failed to persist Nexus ID mappings: " + ex.Message); }
+	}
+
+	/// <summary>
+	/// Links unmatched Stardew Valley mods to their Nexus page (or GitHub repo) using SMAPI's mod database,
+	/// which resolves a mod by its UniqueID. Links found this way are exact, so they replace the name-search
+	/// guesswork for every mod the database knows. Returns how many mods were linked; a no-op for other games.
+	/// </summary>
+	private async Task<int> MatchStardewIdsViaSmapiAsync(List<StardewMod> targetMods)
+	{
+		if (_settings.ActiveGame != "StardewValley" || targetMods.Count == 0) return 0;
+
+		var (smapiVer, gameVer) = DetectStardewVersions();
+		var entries = targetMods
+			.Where(m => !string.IsNullOrEmpty(m.UniqueId))
+			.Select(m => (m.UniqueId, m.Version, (IEnumerable<string>)Array.Empty<string>()));
+
+		var info = await _nexusService.GetSmapiUpdatesAsync(entries, smapiVer, gameVer);
+		if (info == null) return 0;
+
+		int matched = 0;
+		var links = new Dictionary<string, string>();
+		foreach (StardewMod mod in targetMods)
+		{
+			if (!info.TryGetValue(mod.UniqueId, out var entry)) continue;
+			if (!string.IsNullOrEmpty(entry.NexusId))
+			{
+				mod.NexusID = entry.NexusId;
+				links[mod.UniqueId] = entry.NexusId!;
+			}
+			else if (!string.IsNullOrEmpty(entry.GitHubRepo))
+			{
+				mod.GitHubRepo = entry.GitHubRepo;
+			}
+			else continue;
+
+			matched++;
+		}
+		PersistNexusIdLinks(links);
+		// One summary rather than a line per mod: this phase links dozens of mods in a couple of seconds, so
+		// per-mod speech would be a wall of chatter before the slower name search even starts.
+		if (matched > 0) Speak(Loc.T(matched == 1 ? "updates.smapiLinkedOne" : "updates.smapiLinked", matched));
+		return matched;
+	}
+
 	private async Task AutoMatchNexusIDs()
 	{
 		int matchCount = 0;
@@ -463,7 +732,7 @@ public partial class Form1
 		_isLoading = true;
 		_ = RunLoadingLoop();
 		Speak(Loc.T("updates.autoMatchStart"));
-		
+
 		try
 		{
 			var targetMods = _allInstalledMods.Where(m => !m.IsGroup && string.IsNullOrEmpty(m.NexusID) && string.IsNullOrEmpty(m.GitHubRepo)).ToList();
@@ -477,40 +746,30 @@ public partial class Form1
 				return;
 			}
 
+			// Exact sources first, guesswork last. The archives in the downloads folder record which Nexus page
+			// each mod actually came from, and SMAPI's mod database maps a mod's UniqueID straight to its page;
+			// only what neither knows falls through to the name search below.
+			matchCount += RecoverNexusIdsFromDownloads();
+			targetMods = targetMods.Where(m => !UpdateCoverage.HasUpdateLink(m)).ToList();
+			matchCount += await MatchStardewIdsViaSmapiAsync(targetMods);
+			targetMods = targetMods.Where(m => !UpdateCoverage.HasUpdateLink(m)).ToList();
+
 			int current = 0;
 			foreach (var mod in targetMods)
 			{
 				current++;
-				SetStatus(Loc.T("updates.matchingStatus", current, totalMods, mod.Name));
+				SetStatus(Loc.T("updates.matchingStatus", current, targetMods.Count, mod.Name));
 				Speak(Loc.T("updates.searchingFor", mod.Name));
 
 				var (results, total) = await _nexusService.SearchModsAsync("Search", mod.Name, 1, 5);
 				if (results.Count > 0)
 				{
-					GameMod? bestMatch = null;
-					foreach (var result in results)
-					{
-						if (result.Name.Equals(mod.Name, StringComparison.OrdinalIgnoreCase))
-						{
-							bestMatch = result;
-							break;
-						}
-					}
-
-					if (bestMatch == null)
-					{
-						var top = results[0];
-						if (top.Name.Contains(mod.Name, StringComparison.OrdinalIgnoreCase) || 
-							mod.Name.Contains(top.Name, StringComparison.OrdinalIgnoreCase))
-						{
-							bestMatch = top;
-						}
-					}
+					GameMod? bestMatch = results.FirstOrDefault(r => ModNameMatch.IsConfident(mod, r));
 
 					if (bestMatch != null)
 					{
 						mod.NexusID = bestMatch.NexusID;
-						
+
 						string manifestPath = Path.Combine(mod.FolderPath, ".manager_manifest.json");
 						if (_settings.ActiveGame == "StardewValley")
 						{
@@ -530,7 +789,7 @@ public partial class Form1
 							}
 							File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
 						}
-						
+
 						matchCount++;
 						Speak(Loc.T("updates.matchedWith", bestMatch.Name));
 					}

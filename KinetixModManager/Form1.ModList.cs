@@ -171,6 +171,15 @@ public partial class Form1
 			RefreshCreationsList();
 			listInstalled.EndUpdate();
 
+			// Say so when the sync above put Creations (or other Data-folder plugins) back after the game
+			// deactivated them, so the repair isn't silent — that reset is exactly what users notice and
+			// report, and hearing it confirmed is the difference between "fixed" and "did it happen again?".
+			if (_restoredExternalPlugins > 0)
+			{
+				Speak(Loc.T(_restoredExternalPlugins == 1 ? "loadorder.restoredOne" : "loadorder.restoredMany", _restoredExternalPlugins));
+				_restoredExternalPlugins = 0;
+			}
+
 			int oldSelectedIndex = listUpdates.SelectedIndex;
 			object? oldSelectedItem = listUpdates.SelectedItem;
 
@@ -188,7 +197,7 @@ public partial class Form1
 					{
 						listUpdates.Items.RemoveAt(i);
 					}
-					else if (!IsNewerVersion(installedMod.Version, updateMod.LatestVersion))
+					else if (!HasPendingUpdate(installedMod, updateMod.LatestVersion))
 					{
 						listUpdates.Items.RemoveAt(i);
 					}
@@ -230,11 +239,14 @@ public partial class Form1
 		List<IGrouping<string, StardewMod>> list = (from m in _allInstalledMods
 			where !string.IsNullOrEmpty(m.NexusID) || !string.IsNullOrEmpty(m.GitHubRepo)
 			group m by (!string.IsNullOrEmpty(m.NexusID) ? "Nexus:" + m.NexusID : "GitHub:" + m.GitHubRepo)).ToList();
-		// Mods with neither a Nexus nor a GitHub link can't be version-checked and are excluded above; count them
-		// so the completion announcement can say they were skipped (a manually-placed mod would otherwise look
-		// "up to date" when it was never checked). The Mods menu's Auto-match Nexus IDs can link them.
-		_updateSkippedUnlinked = _allInstalledMods.Count(m => !m.IsGroup
-			&& string.IsNullOrEmpty(m.NexusID) && string.IsNullOrEmpty(m.GitHubRepo));
+		// Mods with neither a Nexus nor a GitHub link are excluded from the grouping above; remember them so the
+		// completion announcement can say they were skipped (a manually-placed mod would otherwise look "up to
+		// date" when it was never checked). For Stardew Valley most of these are still covered by the smapi.io
+		// batch below, which resolves mods by UniqueID — only what it doesn't recognise is really unchecked, so
+		// the final count is worked out at the end of the run (see UncheckedModCount).
+		_updateUnlinkedMods = _allInstalledMods.Where(m => !m.IsGroup
+			&& string.IsNullOrEmpty(m.NexusID) && string.IsNullOrEmpty(m.GitHubRepo)).ToList();
+		_smapiCheckedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		// Stardew Valley additionally runs one smapi.io batch check (counted as a unit), which catches
 		// mods whose manifest update key is missing or broken — the manifest-only Nexus grouping below
 		// can't see those. Skyrim/Fallout 4 use only the Nexus group checks.
@@ -245,7 +257,7 @@ public partial class Form1
 			_isLoading = false;
 			_soundEngine.Play("load_complete");
 			// When there are unlinked mods present, point the user at Auto-match rather than a dead-end message.
-			Speak(_updateSkippedUnlinked > 0
+			Speak(_updateUnlinkedMods.Count > 0
 				? Loc.T("modlist.noUpdateSourcesUnlinked")
 				: Loc.T("modlist.noUpdateSources"));
 			return;
@@ -455,9 +467,14 @@ public partial class Form1
 	/// Prompts the user to enter a Nexus Mods ID or GitHub repo for the selected mod
 	/// and updates its manifest.
 	/// </summary>
-	private async Task LinkModUpdateSource()
+	/// <param name="target">
+	/// The mod to link. Defaults to the Installed list's selection (the Ctrl+K case); the Update Coverage
+	/// report passes the mod its row stands for, so a mod can be linked straight from where the problem
+	/// was reported without hunting for it in the list first.
+	/// </param>
+	private async Task LinkModUpdateSource(StardewMod? target = null)
 	{
-		if (listInstalled.SelectedItem is StardewMod stardewMod3)
+		if ((target ?? listInstalled.SelectedItem as StardewMod) is StardewMod stardewMod3)
 		{
 			string currentId = stardewMod3.NexusID ?? stardewMod3.GitHubRepo ?? "";
 			string input = Interaction.InputBox(
