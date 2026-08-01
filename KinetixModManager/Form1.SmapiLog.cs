@@ -301,15 +301,10 @@ public partial class Form1
 	/// </summary>
 	private void ShowLogLinkPicker(List<string> urls)
 	{
-		Form dialog = new Form
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView. Escape is handled
+		// by the view itself.
+		ShowInlineView(Loc.T("smapi.linkPickerTitle"), (container, closeView) =>
 		{
-			Text = Loc.T("smapi.linkPickerTitle"),
-			Size = new Size(560, 320),
-			StartPosition = FormStartPosition.CenterScreen,
-			KeyPreview = true
-		};
-		dialog.KeyDown += (s, e) => { if (e.KeyCode == Keys.Escape) dialog.Close(); };
-
 		ListBox list = new ListBox
 		{
 			Dock = DockStyle.Fill,
@@ -333,7 +328,7 @@ public partial class Form1
 			{
 				OpenLogLink(urls[list.SelectedIndex]);
 				e.Handled = true;
-				dialog.Close();
+				closeView();
 			}
 		};
 
@@ -356,10 +351,10 @@ public partial class Form1
 		layout.Controls.Add(list, 0, 0);
 		layout.Controls.Add(hint, 0, 1);
 
-		dialog.Controls.Add(layout);
-		dialog.Shown += (s, e) => list.Focus();
-		ApplyScreenReaderPauses(dialog);
-		dialog.ShowDialog();
+		container.Controls.Add(layout);
+		ApplyScreenReaderPauses(container);
+		return list;
+		});
 	}
 
 	/// <summary>Returns a short, screen-reader-friendly label for a link based on its host (e.g. "Nexus Mods page").</summary>

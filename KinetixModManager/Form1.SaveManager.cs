@@ -101,61 +101,51 @@ public partial class Form1
 
 	private void ShowSaveManagerDialog(string game, List<SaveRow> rows)
 	{
-		var f = new Form
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
+		ShowInlineView(Loc.T("saves.title"), (container, closeView) =>
 		{
-			Text = Loc.T("saves.title"),
-			Size = new Size(760, 520),
-			StartPosition = FormStartPosition.CenterParent,
-			KeyPreview = true,
-			MinimizeBox = false,
-			MaximizeBox = false
-		};
-		var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
-		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-		layout.Controls.Add(new Label { Text = Loc.T("saves.header", GameDisplayName(game)), AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 8) }, 0, 0);
+			var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
+			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+			layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+			layout.Controls.Add(new Label { Text = Loc.T("saves.header", GameDisplayName(game)), AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 8) }, 0, 0);
 
-		var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("saves.listName"), IntegralHeight = false, HorizontalScrollbar = true };
-		foreach (SaveRow r in rows) list.Items.Add(r);
-		if (list.Items.Count > 0) list.SelectedIndex = 0;
-		layout.Controls.Add(list, 0, 1);
-		f.Controls.Add(layout);
+			var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("saves.listName"), IntegralHeight = false, HorizontalScrollbar = true };
+			foreach (SaveRow r in rows) list.Items.Add(r);
+			if (list.Items.Count > 0) list.SelectedIndex = 0;
+			layout.Controls.Add(list, 0, 1);
+			container.Controls.Add(layout);
 
-		WireAccessibleDialogList(list);
-		f.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) f.Close(); };
-		list.KeyDown += (_, e) =>
-		{
-			if (list.SelectedItem is not SaveRow row) return;
-
-			if (e.KeyCode == Keys.Enter)
+			WireAccessibleDialogList(list);
+			// Escape is handled by the view itself (see Form1.InlineView).
+			list.KeyDown += (_, e) =>
 			{
-				e.Handled = e.SuppressKeyPress = true;
-				Speak(BuildSaveDetails(row));
-			}
-			else if (e.KeyCode == Keys.B)
-			{
-				e.Handled = e.SuppressKeyPress = true;
-				BackupSave(f, row);
-			}
-			else if (e.KeyCode == Keys.Delete)
-			{
-				e.Handled = e.SuppressKeyPress = true;
-				DeleteSave(f, list, row);
-			}
-		};
+				if (list.SelectedItem is not SaveRow row) return;
 
-		f.Shown += (_, _) =>
-		{
+				if (e.KeyCode == Keys.Enter)
+				{
+					e.Handled = e.SuppressKeyPress = true;
+					Speak(BuildSaveDetails(row));
+				}
+				else if (e.KeyCode == Keys.B)
+				{
+					e.Handled = e.SuppressKeyPress = true;
+					BackupSave(row);
+				}
+				else if (e.KeyCode == Keys.Delete)
+				{
+					e.Handled = e.SuppressKeyPress = true;
+					DeleteSave(closeView, list, row);
+				}
+			};
+
 			int problems = rows.Count(r => r.MissingPlugins.Count > 0);
 			string opening = Loc.T("saves.header", GameDisplayName(game)) + " "
 				+ Loc.T(rows.Count == 1 ? "saves.countOne" : "saves.count", rows.Count);
 			if (problems > 0) opening += " " + Loc.T("saves.countProblems", problems);
 			opening += " " + Loc.T("saves.actionHint");
 			Speak(opening);
-			list.Focus();
-		};
-		StyleDialog(f);
-		f.ShowDialog(this);
+			return list;
+		});
 	}
 
 	/// <summary>The full spoken details for a save when the user presses Enter on its row.</summary>
@@ -177,7 +167,7 @@ public partial class Form1
 	}
 
 	/// <summary>Copies a save (and any co-save) into the app's save-backup folder.</summary>
-	private void BackupSave(IWin32Window owner, SaveRow row)
+	private void BackupSave(SaveRow row)
 	{
 		try
 		{
@@ -197,10 +187,10 @@ public partial class Form1
 	}
 
 	/// <summary>Sends a save (and any co-save) to the Recycle Bin after confirmation, and drops it from the list.</summary>
-	private void DeleteSave(Form owner, ListBox list, SaveRow row)
+	private void DeleteSave(Action closeView, ListBox list, SaveRow row)
 	{
 		string label = Path.GetFileNameWithoutExtension(row.Save.FilePath);
-		if (SpeakBox(owner, Loc.T("saves.deleteConfirm", label), Loc.T("saves.deleteTitle"),
+		if (SpeakBox(Loc.T("saves.deleteConfirm", label), Loc.T("saves.deleteTitle"),
 				MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
 			return;
 
@@ -222,7 +212,7 @@ public partial class Form1
 		int idx = list.SelectedIndex;
 		list.Items.Remove(row);
 		_soundEngine.Play("disable");
-		if (list.Items.Count == 0) { Speak(Loc.T("saves.deletedLast")); owner.Close(); return; }
+		if (list.Items.Count == 0) { Speak(Loc.T("saves.deletedLast")); closeView(); return; }
 		list.SelectedIndex = Math.Min(idx, list.Items.Count - 1);
 		Speak(Loc.T("saves.deleted", list.Items.Count));
 	}

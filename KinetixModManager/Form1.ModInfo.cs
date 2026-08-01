@@ -152,15 +152,10 @@ public partial class Form1
 	/// </summary>
 	private void ShowTextViewer(string title, string text)
 	{
-		using var f = new Form
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView. Escape is handled
+		// by the view itself.
+		ShowInlineView(title, (container, closeView) =>
 		{
-			Text = title,
-			Size = new Size(760, 560),
-			StartPosition = FormStartPosition.CenterParent,
-			KeyPreview = true,
-			MinimizeBox = false,
-			MaximizeBox = false,
-		};
 		var box = new TextBox
 		{
 			Multiline = true,
@@ -172,8 +167,7 @@ public partial class Form1
 			Text = NormalizeNewlines(text),
 			AccessibleName = title,
 		};
-		f.Controls.Add(box);
-		f.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) f.Close(); };
+		container.Controls.Add(box);
 		// Enter on a line that contains a link offers to open it in the browser (same idea as the log tabs).
 		box.KeyDown += (_, e) =>
 		{
@@ -186,22 +180,19 @@ public partial class Form1
 			string? url = ExtractFirstUrl(all.Substring(start, end - start));
 			if (url == null) return;
 			e.Handled = e.SuppressKeyPress = true;
-			if (SpeakBox(f, Loc.T("modinfo.openLinkConfirm", url), Loc.T("modinfo.openLinkTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
+			if (SpeakBox(Loc.T("modinfo.openLinkConfirm", url), Loc.T("modinfo.openLinkTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 			{
 				try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
 				catch { }
 			}
 		};
-		f.Shown += (_, _) =>
-		{
-			box.Focus();
-			box.SelectionStart = 0;
-			box.SelectionLength = 0;
-			if (Regex.IsMatch(text, @"https?://", RegexOptions.IgnoreCase))
-				Speak(Loc.T("modinfo.linkHint"), interrupt: false);
-			SpeakLong(text, interrupt: false);
-		};
-		StyleDialog(f);
-		f.ShowDialog(this);
+
+		box.SelectionStart = 0;
+		box.SelectionLength = 0;
+		if (Regex.IsMatch(text, @"https?://", RegexOptions.IgnoreCase))
+			Speak(Loc.T("modinfo.linkHint"), interrupt: false);
+		SpeakLong(text, interrupt: false);
+		return box;
+		});
 	}
 }

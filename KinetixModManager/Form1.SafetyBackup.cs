@@ -111,63 +111,53 @@ public partial class Form1
 			return;
 		}
 
-		var f = new Form
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
+		ShowInlineView(Loc.T("safety.title"), (container, closeView) =>
 		{
-			Text = Loc.T("safety.title"),
-			Size = new Size(760, 500),
-			StartPosition = FormStartPosition.CenterParent,
-			KeyPreview = true,
-			MinimizeBox = false,
-			MaximizeBox = false
-		};
-		var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
-		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-		layout.Controls.Add(new Label { Text = Loc.T("safety.header", GameDisplayName()), AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 8) }, 0, 0);
+			var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
+			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+			layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+			layout.Controls.Add(new Label { Text = Loc.T("safety.header", GameDisplayName()), AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 8) }, 0, 0);
 
-		var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("safety.listName"), IntegralHeight = false, HorizontalScrollbar = true };
-		foreach (SafetyBackupItem it in items) list.Items.Add(it);
-		if (list.Items.Count > 0) list.SelectedIndex = 0;
-		layout.Controls.Add(list, 0, 1);
-		f.Controls.Add(layout);
+			var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("safety.listName"), IntegralHeight = false, HorizontalScrollbar = true };
+			foreach (SafetyBackupItem it in items) list.Items.Add(it);
+			if (list.Items.Count > 0) list.SelectedIndex = 0;
+			layout.Controls.Add(list, 0, 1);
+			container.Controls.Add(layout);
 
-		WireAccessibleDialogList(list);
-		f.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) f.Close(); };
-		list.KeyDown += (_, e) =>
-		{
-			if (list.SelectedItem is not SafetyBackupItem item) return;
-
-			if (e.KeyCode == Keys.Enter)
+			WireAccessibleDialogList(list);
+			// Escape is handled by the view itself (see Form1.InlineView).
+			list.KeyDown += (_, e) =>
 			{
-				e.Handled = e.SuppressKeyPress = true;
-				if (SpeakBox(f, Loc.T("safety.restoreConfirm", item.Summary), Loc.T("safety.restoreTitle"),
-						MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+				if (list.SelectedItem is not SafetyBackupItem item) return;
+
+				if (e.KeyCode == Keys.Enter)
 				{
-					f.Close();
-					RestoreSafetyBackup(item);
+					e.Handled = e.SuppressKeyPress = true;
+					if (SpeakBox(Loc.T("safety.restoreConfirm", item.Summary), Loc.T("safety.restoreTitle"),
+							MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+					{
+						closeView();
+						RestoreSafetyBackup(item);
+					}
 				}
-			}
-			else if (e.KeyCode == Keys.Delete)
-			{
-				e.Handled = e.SuppressKeyPress = true;
-				try { Directory.Delete(item.Dir, recursive: true); } catch (Exception ex) { LogError("Safety", ex.Message); }
-				int idx = list.SelectedIndex;
-				list.Items.Remove(item);
-				_soundEngine.Play("disable");
-				if (list.Items.Count == 0) { Speak(Loc.T("safety.deletedLast")); f.Close(); return; }
-				list.SelectedIndex = Math.Min(idx, list.Items.Count - 1);
-				Speak(Loc.T("safety.deleted", list.Items.Count));
-			}
-		};
+				else if (e.KeyCode == Keys.Delete)
+				{
+					e.Handled = e.SuppressKeyPress = true;
+					try { Directory.Delete(item.Dir, recursive: true); } catch (Exception ex) { LogError("Safety", ex.Message); }
+					int idx = list.SelectedIndex;
+					list.Items.Remove(item);
+					_soundEngine.Play("disable");
+					if (list.Items.Count == 0) { Speak(Loc.T("safety.deletedLast")); closeView(); return; }
+					list.SelectedIndex = Math.Min(idx, list.Items.Count - 1);
+					Speak(Loc.T("safety.deleted", list.Items.Count));
+				}
+			};
 
-		f.Shown += (_, _) =>
-		{
 			Speak(Loc.T("safety.header", GameDisplayName()) + " "
 				+ Loc.T(items.Count == 1 ? "safety.countOne" : "safety.count", items.Count) + " " + Loc.T("safety.actionHint"));
-			list.Focus();
-		};
-		StyleDialog(f);
-		f.ShowDialog(this);
+			return list;
+		});
 	}
 
 	private List<SafetyBackupItem> LoadSafetyBackups()

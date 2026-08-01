@@ -52,57 +52,47 @@ public partial class Form1
 			.ToDictionary(g => g.Key, g => g.First().Name, StringComparer.OrdinalIgnoreCase);
 		string Disp(string key) => nameByKey.TryGetValue(key, out string? n) ? n : key;
 
-		var f = new Form
-		{
-			Text = Loc.T("conflictfix.title"),
-			Size = new Size(780, 520),
-			StartPosition = FormStartPosition.CenterParent,
-			KeyPreview = true,
-			MinimizeBox = false,
-			MaximizeBox = false
-		};
-		var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
-		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-		layout.Controls.Add(new Label { Text = Loc.T("conflictfix.header", GameDisplayName()), AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 8) }, 0, 0);
-
-		var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("conflictfix.listName"), IntegralHeight = false, HorizontalScrollbar = true };
-		foreach (FileConflict c in _lastConflicts.OrderBy(c => c.RelativePath, StringComparer.OrdinalIgnoreCase))
-			list.Items.Add(new ConflictRow { Path = c.RelativePath, Summary = BuildConflictSummary(c.RelativePath, Disp) });
-		if (list.Items.Count > 0) list.SelectedIndex = 0;
-		layout.Controls.Add(list, 0, 1);
-		f.Controls.Add(layout);
-
-		WireAccessibleDialogList(list);
-		f.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) f.Close(); };
-		list.KeyDown += (_, e) =>
-		{
-			if (list.SelectedItem is not ConflictRow row) return;
-
-			if (e.KeyCode == Keys.Enter)
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
+		ShowInlineView(Loc.T("conflictfix.title"), (container, closeView) =>
 			{
-				e.Handled = e.SuppressKeyPress = true;
-				CycleConflictWinner(row, Disp);
-				RefreshConflictRow(list, row, Disp);
-			}
-			else if (e.KeyCode == Keys.Delete)
-			{
-				e.Handled = e.SuppressKeyPress = true;
-				RevertConflictWinner(row, Disp);
-				RefreshConflictRow(list, row, Disp);
-			}
-		};
+			var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
+			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+			layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+			layout.Controls.Add(new Label { Text = Loc.T("conflictfix.header", GameDisplayName()), AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 8) }, 0, 0);
 
-		f.Shown += (_, _) =>
-		{
+			var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("conflictfix.listName"), IntegralHeight = false, HorizontalScrollbar = true };
+			foreach (FileConflict c in _lastConflicts.OrderBy(c => c.RelativePath, StringComparer.OrdinalIgnoreCase))
+				list.Items.Add(new ConflictRow { Path = c.RelativePath, Summary = BuildConflictSummary(c.RelativePath, Disp) });
+			if (list.Items.Count > 0) list.SelectedIndex = 0;
+			layout.Controls.Add(list, 0, 1);
+			container.Controls.Add(layout);
+
+			WireAccessibleDialogList(list);
+			// Escape is handled by the view itself (see Form1.InlineView).
+			list.KeyDown += (_, e) =>
+			{
+				if (list.SelectedItem is not ConflictRow row) return;
+
+				if (e.KeyCode == Keys.Enter)
+				{
+					e.Handled = e.SuppressKeyPress = true;
+					CycleConflictWinner(row, Disp);
+					RefreshConflictRow(list, row, Disp);
+				}
+				else if (e.KeyCode == Keys.Delete)
+				{
+					e.Handled = e.SuppressKeyPress = true;
+					RevertConflictWinner(row, Disp);
+					RefreshConflictRow(list, row, Disp);
+				}
+			};
+
 			string opening = Loc.T("conflictfix.header", GameDisplayName()) + " "
 				+ Loc.T(_lastConflicts.Count == 1 ? "conflictfix.countOne" : "conflictfix.count", _lastConflicts.Count)
 				+ " " + Loc.T("conflictfix.actionHint");
 			Speak(opening);
-			list.Focus();
-		};
-		StyleDialog(f);
-		f.ShowDialog(this);
+			return list;
+		});
 	}
 
 	/// <summary>The providers of a contested path in priority order (highest first); index 0 is the natural winner.</summary>
