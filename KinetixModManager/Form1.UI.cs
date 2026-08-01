@@ -296,6 +296,7 @@ public partial class Form1
 		cmbCategoryFilter.SelectedIndex = 0;
 		cmbCategoryFilter.SelectedIndexChanged += delegate
 		{
+			if (_suppressInstalledFilterEvent) return;
 			FilterInstalledMods();
 		};
 		flowLayoutPanel.Controls.Add(new Label
@@ -325,6 +326,7 @@ public partial class Form1
 		cmbStatusFilter.SelectedIndex = 0;
 		cmbStatusFilter.SelectedIndexChanged += delegate
 		{
+			if (_suppressInstalledFilterEvent) return;
 			FilterInstalledMods();
 		};
 		flowLayoutPanel.Controls.Add(new Label
@@ -411,7 +413,9 @@ public partial class Form1
 			AccessibleName = Loc.T("ui.searchTypeName")
 		};
 		ComboBox.ObjectCollection items = cmbDiscoveryType.Items;
-		object[] items2 = new string[4] { "Search", "Trending", "Most Popular", "Recent" };
+		// "All" browses the game's whole catalogue alphabetically — the way to find a specific mod you already
+		// know exists, rather than whatever is currently popular.
+		object[] items2 = new string[5] { "Search", "All", "Trending", "Most Popular", "Recent" };
 		items.AddRange(items2);
 		cmbDiscoveryType.SelectedIndex = 0;
 		cmbDiscoveryLanguage = new ComboBox
@@ -730,6 +734,7 @@ public partial class Form1
 		{
 			"SkyrimSE" => Loc.T("tab.wikiSkyrim"),
 			"Fallout4" => Loc.T("tab.wikiFallout"),
+			"MoonlightPeaks" => Loc.T("tab.wikiMoonlight"),
 			_ => Loc.T("tab.wikiStardew")
 		};
 		tabWiki = new TabPage(initialWikiTitle);
@@ -751,6 +756,7 @@ public partial class Form1
 		{
 			"SkyrimSE" => Loc.T("ui.searchWikiSkyrim"),
 			"Fallout4" => Loc.T("ui.searchWikiFallout"),
+			"MoonlightPeaks" => Loc.T("ui.searchWikiMoonlight"),
 			_ => Loc.T("ui.searchWikiStardew")
 		};
 		txtWikiSearch = new TextBox
@@ -869,6 +875,7 @@ public partial class Form1
 		{
 			"SkyrimSE" => Loc.T("tab.walkSkyrim"),
 			"Fallout4" => Loc.T("tab.walkFallout"),
+			"MoonlightPeaks" => Loc.T("tab.walkMoonlight"),
 			_ => Loc.T("tab.walkStardew")
 		};
 		tabWalkthroughs = new TabPage(initialWalkthroughTitle);
@@ -918,7 +925,7 @@ public partial class Form1
 		{
 			mainTabs.TabPages.Add(tabSmapiLog);
 		}
-		else if (IsBethesdaGame)
+		else if (GameHasLogTab(_settings.ActiveGame))
 		{
 			mainTabs.TabPages.Add(tabGameLog);
 		}

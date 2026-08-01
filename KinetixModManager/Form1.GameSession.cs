@@ -64,6 +64,15 @@ public partial class Form1
 			launchItem.Text = Loc.T("menu.launch", gameName, GetShortcutString("LaunchGame"));
 		if (FindMenuItem(modsMenu, "menuSuite") is ToolStripItem suiteItem)
 			suiteItem.Text = Loc.T("menu.installSuite", gameName);
+		// The config editor edits the game's own INIs for Skyrim/Fallout 4 and each mod's BepInEx config file for
+		// Moonlight Peaks, so it is named for what it actually opens. Stardew mods keep their settings in JSON,
+		// which this editor doesn't handle, so it is hidden there rather than shown as a dead command.
+		if (FindMenuItem(modsMenu, "menuEditGameIni") is ToolStripItem iniItem)
+		{
+			bool bepInEx = game == "MoonlightPeaks";
+			iniItem.Visible = bethesda || bepInEx;
+			iniItem.Text = bepInEx ? Loc.T("menu.editModConfigs") : Loc.T("menu.editGameIni");
+		}
 		// Skyrim SE / Fallout 4-only items: script extender, savegames, conflict winners, load-order rules, safety
 		// restore, and the prepare/restore-for-update pair.
 		foreach (string name in new[] { "menuUninstallSE", "menuSaveManager", "menuConflictWinners", "menuAddLoadRule",
@@ -156,15 +165,19 @@ public partial class Form1
 		if (MainMenuStrip?.Items["menuView"] is ToolStripMenuItem viewMenu &&
 			viewMenu.DropDownItems["menuOpenLog"] is ToolStripItem logItem)
 		{
-			logItem.Text = game == "StardewValley"
-				? Loc.T("menu.openSmapiLog", GetShortcutString("OpenLogFile"))
-				: Loc.T("menu.openGameLog", GetShortcutString("OpenLogFile"));
+			logItem.Text = game switch
+			{
+				"StardewValley"  => Loc.T("menu.openSmapiLog", GetShortcutString("OpenLogFile")),
+				"MoonlightPeaks" => Loc.T("menu.openBepInExLog", GetShortcutString("OpenLogFile")),
+				_                => Loc.T("menu.openGameLog", GetShortcutString("OpenLogFile"))
+			};
 		}
 
 		tabWiki.Text = game switch
 		{
 			"SkyrimSE" => Loc.T("tab.wikiSkyrim"),
 			"Fallout4" => Loc.T("tab.wikiFallout"),
+			"MoonlightPeaks" => Loc.T("tab.wikiMoonlight"),
 			_ => Loc.T("tab.wikiStardew")
 		};
 
@@ -172,6 +185,7 @@ public partial class Form1
 		{
 			"SkyrimSE" => Loc.T("tab.walkSkyrim"),
 			"Fallout4" => Loc.T("tab.walkFallout"),
+			"MoonlightPeaks" => Loc.T("tab.walkMoonlight"),
 			_ => Loc.T("tab.walkStardew")
 		};
 
@@ -179,6 +193,7 @@ public partial class Form1
 		{
 			"SkyrimSE" => Loc.T("tab.logsSkyrim"),
 			"Fallout4" => Loc.T("tab.logsFallout"),
+			"MoonlightPeaks" => Loc.T("tab.logsMoonlight"),
 			_ => Loc.T("tab.gameLog")
 		};
 
@@ -188,6 +203,7 @@ public partial class Form1
 			{
 				"SkyrimSE" => Loc.T("ui.searchWikiSkyrim"),
 				"Fallout4" => Loc.T("ui.searchWikiFallout"),
+				"MoonlightPeaks" => Loc.T("ui.searchWikiMoonlight"),
 				_ => Loc.T("ui.searchWikiStardew")
 			};
 		}
@@ -213,9 +229,6 @@ public partial class Form1
 				mainTabs.TabPages.Insert(2, tabPluginOrder);
 			if (!mainTabs.TabPages.Contains(tabCreations))
 				mainTabs.TabPages.Insert(3, tabCreations);
-			// The Log tab sits at the end (parallel to Stardew's SMAPI Log tab).
-			if (!mainTabs.TabPages.Contains(tabGameLog))
-				mainTabs.TabPages.Add(tabGameLog);
 		}
 		else
 		{
@@ -225,6 +238,18 @@ public partial class Form1
 				mainTabs.TabPages.Remove(tabPluginOrder);
 			if (mainTabs.TabPages.Contains(tabCreations))
 				mainTabs.TabPages.Remove(tabCreations);
+		}
+
+		// The Log tab sits at the end (parallel to Stardew's SMAPI Log tab). Every game whose loader keeps a log
+		// the manager can read gets it: the script-extender log for Skyrim/Fallout 4, BepInEx's LogOutput.log for
+		// Moonlight Peaks. Stardew has its own SMAPI Log tab instead.
+		if (GameHasLogTab(game))
+		{
+			if (!mainTabs.TabPages.Contains(tabGameLog))
+				mainTabs.TabPages.Add(tabGameLog);
+		}
+		else
+		{
 			if (mainTabs.TabPages.Contains(tabGameLog))
 				mainTabs.TabPages.Remove(tabGameLog);
 		}
@@ -258,6 +283,12 @@ public partial class Form1
 		mainTabs.Focus();
 		Speak(Loc.T("session.switched", gameName));
 		RefreshAllData(checkUpdates: _settings.CheckForUpdatesAtStartup);
+
+		// A BepInEx game with no BepInEx installed loads none of its mods and says nothing about it in-game, so
+		// the session says so here instead. Checked once per loaded session, after the data refresh so the mod
+		// list is already on screen.
+		_bepInExCheckedThisSession = false;
+		_ = CheckBepInExForSessionAsync();
 	}
 
 	private void CloseGameSession()
@@ -344,9 +375,7 @@ public partial class Form1
 			AccessibleDescription = Loc.T("session.selectGameDesc")
 		};
 		// Listed alphabetically.
-		_lstGames.Items.Add("Fallout 4");
-		_lstGames.Items.Add("Skyrim Special Edition");
-		_lstGames.Items.Add("Stardew Valley");
+		foreach (string name in GameProfiles.AllDisplayNames) _lstGames.Items.Add(name);
 		_lstGames.SelectedIndex = 0;
 
 		FlowLayoutPanel buttonLayout = new FlowLayoutPanel
@@ -427,12 +456,8 @@ public partial class Form1
 	{
 		if (_lstGames.SelectedItem == null) return;
 		string selection = _lstGames.SelectedItem.ToString() ?? "";
-		string gameId = selection switch
-		{
-			"Skyrim Special Edition" => "SkyrimSE",
-			"Fallout 4" => "Fallout4",
-			_ => "StardewValley"
-		};
+		string? gameId = GameProfiles.IdForDisplayName(selection);
+		if (gameId == null) return;
 
 		SwitchActiveGame(gameId);
 	}

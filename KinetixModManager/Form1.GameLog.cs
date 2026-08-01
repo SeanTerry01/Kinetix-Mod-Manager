@@ -25,7 +25,7 @@ public partial class Form1
 	/// <summary>Re-reads the log folder and reloads the current log. Called on game load and manual refresh.</summary>
 	private void RefreshGameLog()
 	{
-		if (!IsBethesdaGame || cmbGameLog == null) return;
+		if (!GameHasLogTab(_settings.ActiveGame) || cmbGameLog == null) return;
 		PopulateGameLogFiles();
 	}
 
@@ -36,8 +36,8 @@ public partial class Form1
 	/// </summary>
 	private void PopulateGameLogFiles()
 	{
-		if (cmbGameLog == null || listGameLog == null || !IsBethesdaGame) return;
-		string folder = BethesdaLogFolder();
+		if (cmbGameLog == null || listGameLog == null || !GameHasLogTab(_settings.ActiveGame)) return;
+		string folder = GameLogFolder();
 		string? previous = cmbGameLog.SelectedItem as string;
 
 		cmbGameLog.BeginUpdate();
@@ -56,7 +56,7 @@ public partial class Form1
 			return;
 		}
 
-		string defaultLog = _settings.ActiveGame == "SkyrimSE" ? "skse64.log" : "f4se.log";
+		string defaultLog = PrimaryGameLogName();
 		int idx = previous != null ? cmbGameLog.Items.IndexOf(previous) : -1;
 		if (idx < 0) idx = cmbGameLog.Items.IndexOf(defaultLog);
 		if (idx < 0) idx = 0;
@@ -74,7 +74,7 @@ public partial class Form1
 			ApplyGameLogView();
 			return;
 		}
-		string path = Path.Combine(BethesdaLogFolder(), name);
+		string path = Path.Combine(GameLogFolder(), name);
 		_gameLogLines.Clear();
 		try
 		{

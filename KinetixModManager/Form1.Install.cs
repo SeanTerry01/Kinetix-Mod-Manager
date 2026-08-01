@@ -167,19 +167,88 @@ public partial class Form1
 		}
 	}
 
+	/// <summary>
+	/// Backs a mod up with the user's chosen progress feedback, off the UI thread.
+	///
+	/// Zipping a large mod takes long enough to matter, and doing it on the UI thread froze the window with
+	/// nothing said — indistinguishable from a crash if you can't see the screen. <paramref name="displayName"/>
+	/// is what the progress announcement calls the mod, so it is the mod's name rather than the backup's
+	/// internal file stem.
+	/// </summary>
+	private async Task BackupModWithProgressAsync(string folderPath, string modName, string displayName)
+	{
+		try
+		{
+			ProgressAnnouncer progress = NewProgress(displayName, installing: true);
+			await Task.Run(() => ModFileSystem.CreateBackup(folderPath, modName, backupsPath, progress));
+			progress.Complete();
+
+			ModFileSystem.PruneBackups(modName, backupsPath, _settings.MaxBackupsPerMod);
+			RefreshBackupsList();
+		}
+		catch (Exception ex)
+		{
+			LogError(modName, "Backup Error: " + ex.Message);
+		}
+	}
+
 	/// <summary>Runs <see cref="ModFileSystem.PruneBackups"/> for every mod that has backups on disk.</summary>
 	private void PruneAllBackups()
 	{
-		if (!Directory.Exists(backupsPath)) return;
+		if (!Directory.Exists(backupsPath))
+		{
+			Speak(Loc.T("backups.pruneNone"));
+			return;
+		}
+
 		int before = Directory.GetFiles(backupsPath, "*.zip").Length;
 		HashSet<string> modNames = new HashSet<string>();
 		foreach (string f in Directory.GetFiles(backupsPath, "*.zip"))
 			modNames.Add(Regex.Replace(Path.GetFileNameWithoutExtension(f), @"_\d{8}_\d{6}$", ""));
+
+		if (modNames.Count == 0)
+		{
+			Speak(Loc.T("backups.pruneNone"));
+			return;
+		}
+
 		foreach (string modName in modNames)
 			ModFileSystem.PruneBackups(modName, backupsPath, _settings.MaxBackupsPerMod);
 		int deleted = before - Directory.GetFiles(backupsPath, "*.zip").Length;
+
+		if (deleted > 0)
+		{
+			RefreshBackupsList();
+			Speak(Loc.T("backups.pruneComplete", deleted));
+			return;
+		}
+
+		// Nothing was over the limit — and nothing ever will be, because the same trim runs automatically every
+		// time a backup is made. Reporting "deleted 0 backups" and stopping made the command look broken when it
+		// had simply found nothing to do. So say that plainly, and offer the clean-up the user actually came
+		// here for: keep the newest backup of each mod and let the older ones go.
+		int extra = modNames.Sum(name =>
+			Math.Max(0, Directory.GetFiles(backupsPath, name + "_*.zip").Length - 1));
+
+		if (extra == 0)
+		{
+			Speak(Loc.T("backups.pruneAlreadyMinimal", _settings.MaxBackupsPerMod));
+			return;
+		}
+
+		if (SpeakBox(Loc.T("backups.trimOffer", _settings.MaxBackupsPerMod, extra),
+				Loc.T("backups.trimTitle"), MessageBoxButtons.YesNo) != DialogResult.Yes)
+		{
+			SpeakAfterPrompt(Loc.T("backups.trimCancelled"));
+			return;
+		}
+
+		foreach (string modName in modNames)
+			ModFileSystem.PruneBackups(modName, backupsPath, 1);
+		int trimmed = before - Directory.GetFiles(backupsPath, "*.zip").Length;
+
 		RefreshBackupsList();
-		Speak(Loc.T("backups.pruneComplete", deleted));
+		SpeakAfterPrompt(Loc.T("backups.trimComplete", trimmed));
 	}
 
 	/// <summary>
@@ -438,7 +507,19 @@ public partial class Form1
 			// archive routinely installs several mods where only one (or none) declares a key. Recording the id
 			// against each installed mod's UniqueID is what makes them all updatable afterwards.
 			if (!string.IsNullOrEmpty(nexusId) && _settings.ActiveGame == "StardewValley")
+			{
 				LinkModsInstalledFrom(name, nexusId!, zipPath);
+			}
+			else if (!string.IsNullOrEmpty(nexusId))
+			{
+				// The other games write the Nexus id into the mod's own manifest as they install, so linking is
+				// already done — but the RELEASE that was installed still has to be recorded, and only the
+				// download's file name knows it. Without this the update check falls back to comparing the
+				// version the mod declares against the version on its page, and for the many mods whose authors
+				// never bump the number in the mod itself, that offers the same update forever.
+				if (ModFileSystem.ExtractVersionFromFileName(zipPath, nexusId) is string installedRelease)
+					RecordInstalledDownloadVersion("Nexus:" + nexusId, installedRelease);
+			}
 
 			// RefreshModList already added the new mod to the priority/plugin order and wrote plugins.txt.
 			// Re-sync assets with forceRelink so the new mod's files are linked even on a reinstall that

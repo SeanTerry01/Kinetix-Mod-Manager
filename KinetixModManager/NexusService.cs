@@ -97,19 +97,14 @@ public class NexusService
 		HourlyRemaining = HourlyLimit = DailyRemaining = DailyLimit = -1;
 	}
 
-	public string CurrentGameDomain => _settings.ActiveGame switch
-	{
-		"SkyrimSE" => "skyrimspecialedition",
-		"Fallout4" => "fallout4",
-		_ => "stardewvalley"
-	};
+	// With no game loaded ("None") these still have to return something usable — parts of the UI read them
+	// before a session exists — so they fall back to Stardew Valley, the manager's original game, exactly as
+	// they did when each game was spelled out here. Every known game now comes from the one registry.
+	public string CurrentGameDomain =>
+		GameProfiles.Find(_settings.ActiveGame)?.NexusDomain ?? "stardewvalley";
 
-	public string CurrentGameId => _settings.ActiveGame switch
-	{
-		"SkyrimSE" => "1704",
-		"Fallout4" => "1151",
-		_ => "1303"
-	};
+	public string CurrentGameId =>
+		GameProfiles.Find(_settings.ActiveGame)?.NexusGameId ?? "1303";
 
 	// -------------------------------------------------------------------------
 	// Authentication
@@ -341,6 +336,13 @@ public class NexusService
 		return (all, total);
 	}
 
+	/// <summary>Reads a whole-number field from a GraphQL node, or <c>-1</c> when it is absent or unparseable.</summary>
+	private static long ReadCount(JToken? token)
+	{
+		if (token == null || token.Type == JTokenType.Null) return -1;
+		return long.TryParse(token.ToString(), out long value) && value >= 0 ? value : -1;
+	}
+
 	/// <summary>Runs a single Nexus GraphQL search request for <paramref name="count"/> mods starting at
 	/// <paramref name="offset"/> (<paramref name="count"/> must not exceed <see cref="MaxModsPerRequest"/>).</summary>
 	private async Task<(List<GameMod> Results, int Total)> FetchModsPageAsync(
@@ -364,7 +366,7 @@ public class NexusService
 			filter["name"] = new[] { new { value = searchTerm, op = "WILDCARD" } };
 			gqlQuery = @"query SearchMods($filter: ModsFilter, $count: Int, $offset: Int) {
 				mods(filter: $filter, count: $count, offset: $offset) {
-					nodes { modId name summary author version }
+					nodes { modId name summary author version endorsements downloads }
 					totalCount
 				}
 			}";
@@ -372,22 +374,26 @@ public class NexusService
 		}
 		else
 		{
-			string sortField = searchType switch
+			// "All" lists the game's entire catalogue in alphabetical order, which is what makes it usable as a
+			// catalogue: you can work down it and know where you got to. The other modes are "best first", so
+			// they sort descending.
+			(string Field, string Direction) sort = searchType switch
 			{
-				"Most Popular" => "downloads",
-				"Recent"       => "updatedAt",
-				_              => "endorsements"
+				"Most Popular" => ("downloads",    "DESC"),
+				"Recent"       => ("updatedAt",    "DESC"),
+				"All"          => ("name",         "ASC"),
+				_              => ("endorsements", "DESC")   // Trending
 			};
 			gqlQuery = @"query ListMods($filter: ModsFilter, $sort: [ModsSort!], $count: Int, $offset: Int) {
 				mods(filter: $filter, sort: $sort, count: $count, offset: $offset) {
-					nodes { modId name summary author version }
+					nodes { modId name summary author version endorsements downloads }
 					totalCount
 				}
 			}";
 			variables = new
 			{
 				filter,
-				sort   = new[] { new Dictionary<string, object> { { sortField, new { direction = "DESC" } } } },
+				sort   = new[] { new Dictionary<string, object> { { sort.Field, new { direction = sort.Direction } } } },
 				count  = pageSize,
 				offset
 			};
@@ -424,12 +430,57 @@ public class NexusService
 					Description  = node["summary"]?.ToString() ?? "",
 					NexusID      = node["modId"]?.ToString(),
 					UniqueId     = node["modId"]?.ToString()   ?? Guid.NewGuid().ToString(),
+					// -1 keeps "the API didn't say" distinct from a genuine zero, so a brand-new mod with no
+					// downloads yet reads as "0 downloads" rather than silently omitting the figure.
+					Downloads    = ReadCount(node["downloads"]),
+					Endorsements = ReadCount(node["endorsements"]),
 					IsSearchResult = true
 				});
 			}
 			return (results, total);
 		}
 		catch { return (new(), 0); }
+	}
+
+	/// <summary>
+	/// How many mods the active game has in total, ignoring any language filter, or <c>-1</c> when it can't be
+	/// determined.
+	///
+	/// This exists to explain a genuinely baffling result. Nexus only knows a mod's language if its author filled
+	/// that field in, and most don't — of Moonlight Peaks' 80 mods, 9 declare a language and only 5 say English.
+	/// So a search with the language set to English silently hides 71 mods that are, in fact, in English. Knowing
+	/// the unfiltered total lets the manager say "showing 5 of 80" instead of leaving the user to conclude the
+	/// mods they are looking for aren't on Nexus.
+	/// </summary>
+	public async Task<int> GetUnfilteredModCountAsync()
+	{
+		try
+		{
+			const string gql = @"query ModCount($filter: ModsFilter) {
+				mods(filter: $filter, count: 0) { totalCount }
+			}";
+			var variables = new
+			{
+				filter = new Dictionary<string, object>
+				{
+					["gameId"] = new[] { new { value = CurrentGameId, op = "EQUALS" } }
+				}
+			};
+
+			using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.nexusmods.com/v2/graphql");
+			req.Headers.Add("apikey", _settings.ApiKey);
+			req.Headers.Add("User-Agent", $"KinetixModManager/{AppVersion}");
+			req.Content = new StringContent(
+				JsonConvert.SerializeObject(new { query = gql, variables }), Encoding.UTF8, "application/json");
+
+			var resp = await HttpClient.SendAsync(req);
+			if (!resp.IsSuccessStatusCode) return -1;
+
+			JObject data = JObject.Parse(await resp.Content.ReadAsStringAsync());
+			JToken? count = data["data"]?["mods"]?["totalCount"];
+			return count != null ? (int)count : -1;
+		}
+		catch { return -1; }
 	}
 
 	/// <summary>

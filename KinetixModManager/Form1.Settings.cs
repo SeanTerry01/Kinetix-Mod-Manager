@@ -81,13 +81,9 @@ public partial class Form1
 			Font = new Font("Segoe UI", 10f),
 			AccessibleName = Loc.T("settings.configurePaths")
 		};
-		cmbSettingsGame.Items.AddRange(new string[] { "Stardew Valley", "Skyrim Special Edition", "Fallout 4" });
-		cmbSettingsGame.SelectedItem = _settings.ActiveGame switch
-		{
-			"SkyrimSE" => "Skyrim Special Edition",
-			"Fallout4" => "Fallout 4",
-			_ => "Stardew Valley"
-		};
+		cmbSettingsGame.Items.AddRange(GameProfiles.AllDisplayNames.ToArray());
+		cmbSettingsGame.SelectedItem = GameProfiles.Find(_settings.ActiveGame)?.DisplayName
+			?? GameProfiles.Require(GameProfiles.StardewValley).DisplayName;
 		tabPaths.Controls.Add(cmbSettingsGame, 0, pr++);
 
 		tabPaths.Controls.Add(new Label
@@ -168,9 +164,12 @@ public partial class Form1
 		tPath.Text = _settings.CurrentModsPath;
 		tGamePath.Text = _settings.CurrentGamePath;
 
+		// Stardew Valley is the one game whose mods path implies its game folder (the Mods folder sits inside the
+		// install), so it alone hides the separate game-folder field.
 		Action updateVisibility = () =>
 		{
-			bool isStardew = (cmbSettingsGame.SelectedIndex == 0);
+			bool isStardew = GameProfiles.IdForDisplayName(cmbSettingsGame.SelectedItem as string)
+				== GameProfiles.StardewValley;
 			lblGamePath.Visible = !isStardew;
 			panelGame.Visible = !isStardew;
 		};
@@ -182,12 +181,8 @@ public partial class Form1
 			tempModsPaths[lastGameKey] = tPath.Text.Trim();
 			tempGamePaths[lastGameKey] = tGamePath.Text.Trim();
 
-			string newGameKey = cmbSettingsGame.SelectedIndex switch
-			{
-				1 => "SkyrimSE",
-				2 => "Fallout4",
-				_ => "StardewValley"
-			};
+			string newGameKey = GameProfiles.IdForDisplayName(cmbSettingsGame.SelectedItem as string)
+				?? GameProfiles.StardewValley;
 
 			currentEditingGame = newGameKey;
 			tPath.Text = tempModsPaths.TryGetValue(newGameKey, out string? p) ? p : "";

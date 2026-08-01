@@ -44,6 +44,12 @@
     <Compile Include="..\KinetixModManager\ModManifest.cs" />
     <!-- Self-contained "is this Nexus search result the same mod?" rules (BCL + GameMod metadata). -->
     <Compile Include="..\KinetixModManager\ModNameMatch.cs" />
+    <!-- Self-contained registry of the supported games and their per-game constants (depends only on the BCL). -->
+    <Compile Include="..\KinetixModManager\GameProfiles.cs" />
+    <!-- Self-contained BepInEx plugin identity reader (BCL only; System.Reflection.Metadata ships in-box). -->
+    <Compile Include="..\KinetixModManager\BepInExPlugin.cs" />
+    <!-- Self-contained "where does a mod folder live when enabled/disabled?" rules (BCL + GameProfiles). -->
+    <Compile Include="..\KinetixModManager\ModEnableState.cs" />
   </ItemGroup>
 
 </Project>

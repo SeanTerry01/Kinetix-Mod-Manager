@@ -222,13 +222,7 @@ public partial class Form1
 	}
 
 	/// <summary>Friendly game name for messages. Falls back to the raw id for anything unexpected.</summary>
-	private static string GameDisplayName(string game) => game switch
-	{
-		"SkyrimSE" => "Skyrim Special Edition",
-		"Fallout4" => "Fallout 4",
-		"StardewValley" => "Stardew Valley",
-		_ => game
-	};
+	private static string GameDisplayName(string game) => GameProfiles.Find(game)?.DisplayName ?? game;
 
 	/// <summary>
 	/// Writes the active game's load order (mod priority + plugin order) to a JSON file the user chooses, so it

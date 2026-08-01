@@ -319,8 +319,7 @@ public partial class Form1
 			string activeGameWalkthroughTitle = _settings.ActiveGame switch
 			{
 				"SkyrimSE" => "Skyrim",
-				"Fallout4" => "Fallout 4",
-				_ => "Stardew Valley"
+				_ => GameProfiles.DisplayNameFor(_settings.ActiveGame)
 			};
 			text = Loc.T("help.walkthroughs", activeGameWalkthroughTitle);
 			break;
@@ -427,15 +426,28 @@ public partial class Form1
 			if (results.Count > 0 && (offset + results.Count) < total)
 				listDiscovery.Items.Add(new DiscoveryLoadMoreRow());
 
+			// A language filter can hide most of a game's mods without saying so, because Nexus only knows a
+			// mod's language when its author filled that field in — and most don't. On a fresh, language-filtered
+			// search, check what the catalogue holds without the filter and say so when it is more, so a thin
+			// result reads as "the filter is narrow" rather than "these mods aren't on Nexus".
+			string hiddenByLanguage = "";
+			if (!loadMore && !string.IsNullOrEmpty(language))
+			{
+				int unfiltered = await _nexusService.GetUnfilteredModCountAsync();
+				if (unfiltered > total)
+					hiddenByLanguage = " " + Loc.T("discovery.languageHiding", total, unfiltered, language);
+			}
+
 			if (results.Count > 0)
 			{
-				Speak(loadMore ? Loc.T("discovery.added", results.Count) : Loc.T("discovery.found", results.Count));
+				Speak((loadMore ? Loc.T("discovery.added", results.Count) : Loc.T("discovery.found", results.Count))
+					+ hiddenByLanguage);
 				// Fresh search lands on the first result; Load more lands on the first new result.
 				listDiscovery.SelectedIndex = loadMore ? firstNewIndex : 0;
 			}
 			else
 			{
-				Speak(loadMore ? Loc.T("discovery.noMore") : Loc.T("discovery.none"));
+				Speak((loadMore ? Loc.T("discovery.noMore") : Loc.T("discovery.none")) + hiddenByLanguage);
 			}
 		}
 		catch (Exception ex)

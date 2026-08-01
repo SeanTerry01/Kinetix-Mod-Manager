@@ -34,29 +34,16 @@ public partial class Form1
 		string folder = DetectInstalledGameFolder(game);
 		if (!string.IsNullOrEmpty(folder)) return folder;
 
-		return game switch
-		{
-			"SkyrimSE" => @"C:\Program Files (x86)\Steam\steamapps\common\Skyrim Special Edition",
-			"Fallout4" => @"C:\Program Files (x86)\Steam\steamapps\common\Fallout 4",
-			_ => @"C:\Program Files (x86)\Steam\steamapps\common\Stardew Valley"
-		};
+		return GameProfiles.Find(game)?.DefaultInstallFolder ?? "";
 	}
 
 	private string DetectInstalledGameFolder(string game)
 	{
-		string steamAppId = game switch
-		{
-			"SkyrimSE" => "489830",
-			"Fallout4" => "377160",
-			_ => "413150" // Stardew Valley
-		};
+		GameProfile? profile = GameProfiles.Find(game);
+		if (profile == null) return "";
 
-		string gogProductId = game switch
-		{
-			"SkyrimSE" => "1711230643",
-			"Fallout4" => "1998527297",
-			_ => "1453375253"
-		};
+		string steamAppId = profile.SteamAppId;
+		string? gogProductId = profile.GogProductId;
 
 		try
 		{
@@ -76,31 +63,30 @@ public partial class Form1
 		string steamLib = DetectSteamLibraryGameFolder(steamAppId);
 		if (!string.IsNullOrEmpty(steamLib)) return steamLib;
 
+		// Games that aren't sold on GOG have no product id and skip this entirely.
 		try
 		{
-			string[] gogKeys = {
-				$@"SOFTWARE\GOG.com\Games\{gogProductId}",
-				$@"SOFTWARE\WOW6432Node\GOG.com\Games\{gogProductId}"
-			};
-			foreach (var subkey in gogKeys)
+			if (!string.IsNullOrEmpty(gogProductId))
 			{
-				using var gogKey = Registry.LocalMachine.OpenSubKey(subkey);
-				if (gogKey != null)
+				string[] gogKeys = {
+					$@"SOFTWARE\GOG.com\Games\{gogProductId}",
+					$@"SOFTWARE\WOW6432Node\GOG.com\Games\{gogProductId}"
+				};
+				foreach (var subkey in gogKeys)
 				{
-					string? path = gogKey.GetValue("path")?.ToString() ?? gogKey.GetValue("InstallPath")?.ToString();
-					if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
-						return path;
+					using var gogKey = Registry.LocalMachine.OpenSubKey(subkey);
+					if (gogKey != null)
+					{
+						string? path = gogKey.GetValue("path")?.ToString() ?? gogKey.GetValue("InstallPath")?.ToString();
+						if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
+							return path;
+					}
 				}
 			}
 		}
 		catch { }
 
-		string fallback = game switch
-		{
-			"SkyrimSE" => @"C:\Program Files (x86)\Steam\steamapps\common\Skyrim Special Edition",
-			"Fallout4" => @"C:\Program Files (x86)\Steam\steamapps\common\Fallout 4",
-			_ => @"C:\Program Files (x86)\Steam\steamapps\common\Stardew Valley"
-		};
+		string fallback = profile.DefaultInstallFolder;
 
 		if (Directory.Exists(fallback))
 			return fallback;
@@ -151,32 +137,20 @@ public partial class Form1
 
 	private bool IsGameInstalled(string game)
 	{
-		string gamePath = game switch
-		{
-			"SkyrimSE" => _settings.GamePaths.TryGetValue("SkyrimSE", out string? p) ? p : "",
-			"Fallout4" => _settings.GamePaths.TryGetValue("Fallout4", out string? p) ? p : "",
-			_ => _settings.GamePaths.TryGetValue("StardewValley", out string? p) ? p : ""
-		};
+		if (GameProfiles.Find(game) == null) return false;
 
-		if (!string.IsNullOrEmpty(gamePath) && Directory.Exists(gamePath))
-		{
-			string checkExe = game switch
-			{
-				"SkyrimSE" => "SkyrimSE.exe",
-				"Fallout4" => "Fallout4.exe",
-				_ => "Stardew Valley.exe"
-			};
-			if (File.Exists(Path.Combine(gamePath, checkExe)) || File.Exists(Path.Combine(gamePath, game switch { "SkyrimSE" => "skse64_loader.exe", "Fallout4" => "f4se_loader.exe", _ => "StardewModdingAPI.exe" })))
-				return true;
-		}
+		string gamePath = _settings.GamePaths.TryGetValue(game, out string? p) ? p : "";
+
+		if (FolderContainsGameExe(game, gamePath))
+			return true;
 
 		if (game == "StardewValley")
 		{
-			string stardewMods = _settings.GameModsPaths.TryGetValue("StardewValley", out string? p) ? p : "";
+			string stardewMods = _settings.GameModsPaths.TryGetValue("StardewValley", out string? sp) ? sp : "";
 			if (!string.IsNullOrEmpty(stardewMods) && Directory.Exists(stardewMods))
 			{
 				string parent = Path.GetDirectoryName(stardewMods) ?? "";
-				if (File.Exists(Path.Combine(parent, "Stardew Valley.exe")) || File.Exists(Path.Combine(parent, "StardewModdingAPI.exe")))
+				if (FolderContainsGameExe(game, parent))
 					return true;
 			}
 		}
@@ -203,13 +177,7 @@ public partial class Form1
 	{
 		if (game == "None" || IsGameInstalled(game)) return true;
 
-		string targetName = game switch
-		{
-			"SkyrimSE" => "Skyrim Special Edition",
-			"Fallout4" => "Fallout 4",
-			"StardewValley" => "Stardew Valley",
-			_ => game
-		};
+		string targetName = GameProfiles.Find(game)?.DisplayName ?? game;
 
 		GameNotInstalledChoice choice = ShowGameNotInstalledDialog(targetName);
 
@@ -346,25 +314,21 @@ public partial class Form1
 		return true;
 	}
 
-	/// <summary>True when <paramref name="path"/> holds the game's main executable or its script-extender loader.</summary>
+	/// <summary>
+	/// True when <paramref name="path"/> holds the game's own executable or its mod loader's launcher. Games
+	/// whose loader has no launcher of its own (BepInEx, which hooks the game through a winhttp.dll shim) are
+	/// identified by the game executable alone.
+	/// </summary>
 	private bool FolderContainsGameExe(string game, string path)
 	{
 		if (string.IsNullOrEmpty(path) || !Directory.Exists(path)) return false;
 
-		string checkExe = game switch
-		{
-			"SkyrimSE" => "SkyrimSE.exe",
-			"Fallout4" => "Fallout4.exe",
-			_ => "Stardew Valley.exe"
-		};
-		string loaderExe = game switch
-		{
-			"SkyrimSE" => "skse64_loader.exe",
-			"Fallout4" => "f4se_loader.exe",
-			_ => "StardewModdingAPI.exe"
-		};
+		GameProfile? profile = GameProfiles.Find(game);
+		if (profile == null) return false;
 
-		return File.Exists(Path.Combine(path, checkExe)) || File.Exists(Path.Combine(path, loaderExe));
+		if (File.Exists(Path.Combine(path, profile.GameExeName))) return true;
+		return !string.IsNullOrEmpty(profile.LoaderExeName) &&
+			   File.Exists(Path.Combine(path, profile.LoaderExeName));
 	}
 
 	private void UpdateGamesMenu()
@@ -372,29 +336,21 @@ public partial class Form1
 		if (_menuGames == null) return;
 		_menuGames.DropDownItems.Clear();
 
-		bool stardewInstalled = IsGameInstalled("StardewValley");
-		bool skyrimInstalled = IsGameInstalled("SkyrimSE");
-		bool falloutInstalled = IsGameInstalled("Fallout4");
+		var installed = GameProfiles.All.ToDictionary(g => g.Id, g => IsGameInstalled(g.Id));
 
-		if (!stardewInstalled && !skyrimInstalled && !falloutInstalled)
+		// When nothing at all is detected, list every game rather than an empty menu: the user may own one the
+		// detection missed, and picking it leads to the "locate the folder" flow.
+		if (installed.Values.All(v => !v))
 		{
-			stardewInstalled = true;
-			skyrimInstalled = true;
-			falloutInstalled = true;
+			foreach (string id in GameProfiles.AllIds) installed[id] = true;
 		}
 
-		// Listed alphabetically.
-		if (falloutInstalled || _settings.ActiveGame == "Fallout4")
+		// GameProfiles.All is already in alphabetical display order.
+		foreach (GameProfile profile in GameProfiles.All)
 		{
-			_menuGames.DropDownItems.Add("Fallout 4", null, delegate { SwitchActiveGame("Fallout4"); });
-		}
-		if (skyrimInstalled || _settings.ActiveGame == "SkyrimSE")
-		{
-			_menuGames.DropDownItems.Add("Skyrim Special Edition", null, delegate { SwitchActiveGame("SkyrimSE"); });
-		}
-		if (stardewInstalled || _settings.ActiveGame == "StardewValley")
-		{
-			_menuGames.DropDownItems.Add("Stardew Valley", null, delegate { SwitchActiveGame("StardewValley"); });
+			if (!installed[profile.Id] && _settings.ActiveGame != profile.Id) continue;
+			string gameId = profile.Id;
+			_menuGames.DropDownItems.Add(profile.DisplayName, null, delegate { SwitchActiveGame(gameId); });
 		}
 
 		// Close session option is in the File menu
@@ -453,9 +409,7 @@ public partial class Form1
 			AccessibleName = Loc.T("store.selectGamePurchase")
 		};
 		// Listed alphabetically.
-		lstGames.Items.Add("Fallout 4");
-		lstGames.Items.Add("Skyrim Special Edition");
-		lstGames.Items.Add("Stardew Valley");
+		foreach (string name in GameProfiles.AllDisplayNames) lstGames.Items.Add(name);
 		layout.Controls.Add(lstGames, 0, 1);
 
 		Button btnSelect = new Button
@@ -527,8 +481,12 @@ public partial class Form1
 			Font = new Font("Segoe UI", 11f),
 			AccessibleName = Loc.T("store.selectStorePage")
 		};
+		// Only offer the stores that actually sell this game — Moonlight Peaks, for one, is Steam only, and
+		// offering a GOG page that doesn't exist just sends the user to a dead end.
+		GameProfile? storeProfile = GameProfiles.All.FirstOrDefault(g => g.DisplayName == gameName);
 		lstStores.Items.Add("Steam");
-		lstStores.Items.Add("GOG (DRM-Free)");
+		if (storeProfile == null || !string.IsNullOrEmpty(storeProfile.GogStoreUrl))
+			lstStores.Items.Add("GOG (DRM-Free)");
 		layout.Controls.Add(lstStores, 0, 1);
 
 		Button btnOpen = new Button
@@ -553,23 +511,8 @@ public partial class Form1
 			if (lstStores.SelectedIndex == -1) return;
 			string store = lstStores.SelectedItem?.ToString() ?? "";
 			bool isGog = store.StartsWith("GOG", StringComparison.OrdinalIgnoreCase);
-			string url = "";
-
-			if (gameName == "Stardew Valley")
-			{
-				url = isGog ? "https://www.gog.com/game/stardew_valley" 
-				            : "https://store.steampowered.com/app/413150/Stardew_Valley/";
-			}
-			else if (gameName == "Skyrim Special Edition")
-			{
-				url = isGog ? "https://www.gog.com/game/the_elder_scrolls_v_skyrim_special_edition" 
-				            : "https://store.steampowered.com/app/489830/The_Elder_Scrolls_V_Skyrim_Special_Edition/";
-			}
-			else if (gameName == "Fallout 4")
-			{
-				url = isGog ? "https://www.gog.com/game/fallout_4_game_of_the_year_edition" 
-				            : "https://store.steampowered.com/app/377160/Fallout_4/";
-			}
+			GameProfile? chosen = GameProfiles.All.FirstOrDefault(g => g.DisplayName == gameName);
+			string url = chosen == null ? "" : (isGog ? chosen.GogStoreUrl ?? "" : chosen.SteamStoreUrl);
 
 			if (!string.IsNullOrEmpty(url))
 			{
@@ -607,20 +550,18 @@ public partial class Form1
 				gamePath = DetectGameFolder(game);
 			}
 
-			string exeName = game switch
-			{
-				"SkyrimSE" => "skse64_loader.exe",
-				"Fallout4" => "f4se_loader.exe",
-				_ => "StardewModdingAPI.exe"
-			};
+			GameProfile profile = GameProfiles.Require(game);
+
+			// Start through the mod loader's launcher where there is one (SMAPI, SKSE, F4SE). BepInEx has none —
+			// it hooks the game through a winhttp.dll shim — so for those games the game's own exe IS the modded
+			// launch, and falling back to it is not a degraded path.
+			string exeName = string.IsNullOrEmpty(profile.LoaderExeName) ? profile.GameExeName : profile.LoaderExeName;
 
 			string exePath = Path.Combine(gamePath, exeName);
 
 			if (!File.Exists(exePath))
 			{
-				if (game == "SkyrimSE") exePath = Path.Combine(gamePath, "SkyrimSE.exe");
-				else if (game == "Fallout4") exePath = Path.Combine(gamePath, "Fallout4.exe");
-				else exePath = Path.Combine(gamePath, "Stardew Valley.exe");
+				exePath = Path.Combine(gamePath, profile.GameExeName);
 			}
 
 			if (!File.Exists(exePath))
@@ -638,6 +579,10 @@ public partial class Form1
 
 			if (File.Exists(exePath))
 			{
+				// Starting a BepInEx game without BepInEx runs the game with none of its mods — nothing in the
+				// game says so, so the manager does, before it happens.
+				if (!ConfirmBepInExBeforeLaunch(gamePath)) { SetStatus(Loc.T("launch.cancelled")); return; }
+
 				string gameName = GameDisplayName();
 				// Warn if the installed script extender won't load because it doesn't match the game's build —
 				// the common reason MCM and other SKSE/F4SE features disappear after a game update.
@@ -653,8 +598,8 @@ public partial class Form1
 					if (choice == DialogResult.No) { SetStatus(Loc.T("launch.cancelled")); return; }
 				}
 
+				// SetStatus speaks by default, so it announces the launch on its own.
 				SetStatus(Loc.T("launch.launching", gameName));
-				Speak(Loc.T("launch.launching", gameName));
 
 				// Skyrim SE and Fallout 4 rewrite plugins.txt as they run — starting a new game deactivates every
 				// Creation and reshuffles the load order. Write the manager's order out one last time and, unless
@@ -666,30 +611,25 @@ public partial class Form1
 					ModFileSystem.SetPluginsTxtProtection(game, _settings.ProtectPluginOrder, LogError);
 				}
 
-				Process p = new Process();
-				p.StartInfo = new ProcessStartInfo(exePath)
+				// Prefer letting Steam start it where that applies. A Steam game started from its own exe
+				// notices it wasn't launched by Steam and restarts itself — which means the game loads twice,
+				// mods announce themselves twice, and there is a stretch in the middle where no process of the
+				// game exists at all. Asking Steam in the first place simply avoids all of that. Mods are
+				// unaffected: BepInEx loads through a DLL beside the exe, whoever starts it.
+				if (TryLaunchViaSteam(profile, gamePath))
 				{
-					WorkingDirectory = Path.GetDirectoryName(exePath)
-				};
-				p.EnableRaisingEvents = true;
-				p.Exited += async delegate
+					_ = TrackGameSessionAsync(null, profile, exePath);
+				}
+				else
 				{
-					SetStatus(Loc.T("launch.gameClosed"));
-					// If the game did manage to rewrite plugins.txt (the guard is off, or the file was writable),
-					// put the manager's order — including the active Creations — back now that it has let go.
-					RestorePluginOrderAfterPlay();
-					await Task.Delay(5000);
-					SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser));
-				};
-				p.Start();
-				Task.Run(async delegate
-				{
-					await Task.Delay(3000);
-					if (!p.HasExited)
+					Process p = new Process();
+					p.StartInfo = new ProcessStartInfo(exePath)
 					{
-						SetStatus(Loc.T("launch.gameRunning"));
-					}
-				});
+						WorkingDirectory = Path.GetDirectoryName(exePath)
+					};
+					p.Start();
+					_ = TrackGameSessionAsync(p, profile, exePath);
+				}
 			}
 			else
 			{
@@ -700,5 +640,198 @@ public partial class Form1
 		{
 			SpeakBox(Loc.T("launch.failed", FriendlyError(ex)));
 		}
+	}
+
+	/// <summary>
+	/// Asks Steam to start the game, returning <c>true</c> when that was done.
+	///
+	/// Only for games the manager starts through their own executable. Where a mod loader has a launcher of its
+	/// own — SMAPI, SKSE, F4SE — that launcher must be the thing that runs, or the mods don't load at all, so
+	/// those are never routed through Steam. BepInEx has no launcher (it hooks the game through a DLL beside the
+	/// exe, which loads however the game is started), so Moonlight Peaks both can and should go through Steam.
+	///
+	/// Declines for a copy that isn't a Steam install, so a GOG or otherwise non-Steam game still starts directly.
+	/// </summary>
+	private bool TryLaunchViaSteam(GameProfile profile, string gamePath)
+	{
+		try
+		{
+			if (!string.IsNullOrEmpty(profile.LoaderExeName)) return false;
+			if (string.IsNullOrEmpty(profile.SteamAppId)) return false;
+			if (string.IsNullOrEmpty(GetSteamInstallPath())) return false;
+
+			// Confirm this really is the Steam copy: Steam's own library records have to point at the same folder
+			// the session is using. Without this a non-Steam copy sitting elsewhere would be abandoned in favour
+			// of whatever Steam happens to have installed.
+			string steamFolder = DetectSteamLibraryGameFolder(profile.SteamAppId);
+			if (string.IsNullOrEmpty(steamFolder)) return false;
+
+			string a = Path.GetFullPath(gamePath).TrimEnd(Path.DirectorySeparatorChar);
+			string b = Path.GetFullPath(steamFolder).TrimEnd(Path.DirectorySeparatorChar);
+			if (!string.Equals(a, b, StringComparison.OrdinalIgnoreCase)) return false;
+
+			Process.Start(new ProcessStartInfo($"steam://rungameid/{profile.SteamAppId}") { UseShellExecute = true });
+			return true;
+		}
+		catch (Exception ex)
+		{
+			// Steam refused or isn't reachable — fall back to starting the executable directly.
+			LogError("LaunchGame", "Could not launch through Steam: " + ex.Message);
+			return false;
+		}
+	}
+
+	/// <summary>
+	/// How long to wait for the game's process to appear. Generous, because when the launch is handed to Steam
+	/// and Steam isn't running yet, it has to start up and sign in before the game even begins loading.
+	/// </summary>
+	private const int GameAppearGraceSeconds = 60;
+
+	/// <summary>
+	/// How long the game must be absent before a young session is called closed.
+	///
+	/// A Steam game started from its own executable restarts itself through Steam, and on Moonlight Peaks that
+	/// restart was measured at about 15 seconds — during which no process of the game exists at all. The first
+	/// run gets far enough to load BepInEx and for mods to announce themselves, so it cannot be told apart from
+	/// a real session by how long it lived. Waiting this long before believing the game has closed is what
+	/// stops the manager announcing a shutdown in the middle of the restart.
+	/// </summary>
+	private const int GameRestartSettleSeconds = 45;
+
+	/// <summary>
+	/// How long the game must be absent before an established session is called closed. Short, because a Steam
+	/// restart only ever happens at startup — once the game has been up for a while, its process disappearing
+	/// really does mean the user quit, and they should hear so promptly.
+	/// </summary>
+	private const int GameCloseSettleSeconds = 8;
+
+	/// <summary>How long a session counts as "young", i.e. still within range of a startup restart.</summary>
+	private const int GameYoungSessionSeconds = 180;
+
+	/// <summary>
+	/// A launcher we started that hands off to the game exits within seconds (a script extender's loader
+	/// injects and quits). One that is still alive after this long is not a launcher but the game's host —
+	/// SMAPI runs Stardew Valley inside its own process — so its exit is the end of the session.
+	/// </summary>
+	private const int GameLauncherLifetimeSeconds = 30;
+
+	/// <summary>True when at least one process for <paramref name="gameExeName"/> is running.</summary>
+	private static bool IsGameProcessRunning(string gameExeName)
+	{
+		Process[] found = Array.Empty<Process>();
+		try
+		{
+			found = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(gameExeName));
+			return found.Length > 0;
+		}
+		catch
+		{
+			return false;
+		}
+		finally
+		{
+			foreach (Process proc in found) proc.Dispose();
+		}
+	}
+
+	/// <summary>
+	/// Follows a launched game until it has really exited, then announces that and returns the status bar to rest.
+	///
+	/// The process the manager starts is often not the process the user ends up playing. A Steam game launched
+	/// from its own executable typically re-launches itself through Steam and the copy we started exits within
+	/// seconds — so treating our process handle ending as "the game closed" announced the game shut down while it
+	/// was still loading, and then re-announced the Nexus connection over the top of it. That is why this watches
+	/// for the game <em>by name</em> after our handle goes away, and only calls it closed once nothing by that
+	/// name is running any more.
+	/// </summary>
+	private async Task TrackGameSessionAsync(Process? launched, GameProfile profile, string launchedExePath)
+	{
+		string gameExeName = profile.GameExeName;
+		bool launchedIsGameExe = string.Equals(
+			Path.GetFileNameWithoutExtension(launchedExePath),
+			Path.GetFileNameWithoutExtension(gameExeName),
+			StringComparison.OrdinalIgnoreCase);
+
+		DateTime launchedAt = DateTime.UtcNow;
+		bool announcedRunning = false;
+
+		void AnnounceRunningOnce()
+		{
+			if (announcedRunning) return;
+			announcedRunning = true;
+			SetStatus(Loc.T("launch.gameRunning"));
+		}
+
+		try
+		{
+			// Give it a moment to get going before saying it is up. Ask by name as well as by our own handle,
+			// since a handoff to Steam's copy may already have happened.
+			await Task.Delay(3000);
+			bool ourProcessAlive = false;
+			try { ourProcessAlive = launched != null && !launched.HasExited; } catch { }
+			if (ourProcessAlive || IsGameProcessRunning(gameExeName)) AnnounceRunningOnce();
+
+			TimeSpan ourProcessLived = TimeSpan.Zero;
+			if (launched != null)
+			{
+				try { await launched.WaitForExitAsync(); } catch { }
+				ourProcessLived = DateTime.UtcNow - launchedAt;
+			}
+
+			// What we started has gone. Was it the game itself, or something that starts the game? Handing the
+			// launch to Steam leaves us no process of our own, so there is nothing to have hosted the game.
+			bool weHostedTheGame =
+				launched != null &&
+				!launchedIsGameExe &&
+				ourProcessLived >= TimeSpan.FromSeconds(GameLauncherLifetimeSeconds) &&
+				!IsGameProcessRunning(gameExeName);
+
+			if (!weHostedTheGame)
+			{
+				// Either a launcher that handed off, or the game's own executable — which may restart itself
+				// through Steam. Wait for the game to appear, then follow it by name, tolerating it vanishing
+				// and coming back.
+				DateTime appearDeadline = DateTime.UtcNow.AddSeconds(GameAppearGraceSeconds);
+				while (DateTime.UtcNow < appearDeadline && !IsGameProcessRunning(gameExeName))
+					await Task.Delay(1000);
+
+				DateTime? absentSince = IsGameProcessRunning(gameExeName) ? null : DateTime.UtcNow;
+				while (true)
+				{
+					if (IsGameProcessRunning(gameExeName))
+					{
+						AnnounceRunningOnce();
+						absentSince = null;
+					}
+					else
+					{
+						absentSince ??= DateTime.UtcNow;
+						// A startup restart is only plausible early on, so a young session is given long enough
+						// for one; an established session that has gone is simply over.
+						bool young = (DateTime.UtcNow - launchedAt).TotalSeconds < GameYoungSessionSeconds;
+						int settleSeconds = young ? GameRestartSettleSeconds : GameCloseSettleSeconds;
+						if ((DateTime.UtcNow - absentSince.Value).TotalSeconds >= settleSeconds) break;
+					}
+					await Task.Delay(2000);
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			LogError("LaunchGame", "Could not follow the game process: " + ex.Message);
+		}
+		finally
+		{
+			try { launched?.Dispose(); } catch { }
+		}
+
+		SetStatus(Loc.T("launch.gameClosed"));
+		// If the game did manage to rewrite plugins.txt (the guard is off, or the file was writable),
+		// put the manager's order — including the active Creations — back now that it has let go.
+		RestorePluginOrderAfterPlay();
+		await Task.Delay(5000);
+		// Return the title to its resting state silently: "game closed" has already been spoken, and speaking
+		// the Nexus connection on top of it just sounds like something else happened.
+		ResetStatus();
 	}
 }

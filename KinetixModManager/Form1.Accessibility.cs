@@ -741,12 +741,7 @@ public partial class Form1
 	/// </summary>
 	private void ShowAccessibilityControls()
 	{
-		string gameName = _settings.ActiveGame switch
-		{
-			"SkyrimSE" => "Skyrim Special Edition",
-			"Fallout4" => "Fallout 4",
-			_ => "Stardew Valley"
-		};
+		string gameName = GameProfiles.DisplayNameFor(_settings.ActiveGame);
 
 		Hide();
 		Form controlsForm = new Form

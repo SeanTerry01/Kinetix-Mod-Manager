@@ -62,6 +62,16 @@ public partial class Form1
 				new WalkthroughGuide { Title = "Fallout 4 Wiki Settlements Guide", Url = "https://fallout.fandom.com/wiki/Fallout_4_settlements" },
 				new WalkthroughGuide { Title = "Fallout 4 Wiki Endings Guide", Url = "https://fallout.fandom.com/wiki/Fallout_4_endings" }
 			},
+			"MoonlightPeaks" => new[]
+			{
+				new WalkthroughGuide { Title = "Moonlight Peaks Wiki Getting Started Guide", Url = "https://moonlightpeaks.wiki.gg/wiki/Getting_Started" },
+				new WalkthroughGuide { Title = "Moonlight Peaks Wiki Farming Guide", Url = "https://moonlightpeaks.wiki.gg/wiki/Farming" },
+				new WalkthroughGuide { Title = "Moonlight Peaks Wiki Crops Guide", Url = "https://moonlightpeaks.wiki.gg/wiki/Crops" },
+				new WalkthroughGuide { Title = "Moonlight Peaks Wiki Spells Guide", Url = "https://moonlightpeaks.wiki.gg/wiki/Spells" },
+				new WalkthroughGuide { Title = "Moonlight Peaks Wiki Romance Guide", Url = "https://moonlightpeaks.wiki.gg/wiki/Romance" },
+				new WalkthroughGuide { Title = "Moonlight Peaks Wiki Quests Guide", Url = "https://moonlightpeaks.wiki.gg/wiki/Quests" },
+				new WalkthroughGuide { Title = "Moonlight Peaks Wiki Controls Guide", Url = "https://moonlightpeaks.wiki.gg/wiki/Controls" }
+			},
 			_ => Array.Empty<WalkthroughGuide>()
 		};
 
@@ -122,6 +132,8 @@ public partial class Form1
 		{
 			"SkyrimSE" => new ModWikiLink { Title = "UESP Skyrim Wiki (main game wiki)", Url = "https://en.uesp.net/wiki/Skyrim:Skyrim", ApiUrl = "https://en.uesp.net/w/api.php", ArticleBase = "https://en.uesp.net/wiki/", IsGameWiki = true, CategoryPrefix = "Skyrim" },
 			"Fallout4" => new ModWikiLink { Title = "Fallout Wiki (main game wiki)", Url = "https://fallout.fandom.com/wiki/Fallout_4", ApiUrl = "https://fallout.fandom.com/api.php", ArticleBase = "https://fallout.fandom.com/wiki/", IsGameWiki = true, CategoryPrefix = "Fallout 4" },
+			// The official wiki.gg wiki is the actively maintained one; the older Fandom wiki is offered below.
+			"MoonlightPeaks" => new ModWikiLink { Title = "Moonlight Peaks Wiki (main game wiki)", Url = "https://moonlightpeaks.wiki.gg/", ApiUrl = "https://moonlightpeaks.wiki.gg/api.php", ArticleBase = "https://moonlightpeaks.wiki.gg/wiki/", IsGameWiki = true },
 			_ => new ModWikiLink { Title = "Stardew Valley Wiki (main game wiki)", Url = "https://stardewvalleywiki.com/", ApiUrl = "https://stardewvalleywiki.com/mediawiki/api.php", ArticleBase = "https://stardewvalleywiki.com/", IsGameWiki = true }
 		};
 
@@ -149,6 +161,15 @@ public partial class Form1
 				BrowseOnly("Sim Settlements 2 Wiki", "https://wiki.simsettlements2.com/"),
 				BrowseOnly("Fallout: London Wiki", "https://fallout.wiki/wiki/Mod:Fallout_London"),
 				BrowseOnly("America Rising 2 — Legacy of the Enclave Wiki", "https://fallout.wiki/wiki/Mod:America_Rising_2_-_Legacy_of_the_Enclave")
+			},
+			// Moonlight Peaks is young enough that no content mod has its own wiki yet. What it does have is a
+			// second community wiki on Fandom (searchable in-app) and a guides site that is a normal website
+			// rather than a MediaWiki, so that one is browse-only.
+			"MoonlightPeaks" => new[]
+			{
+				Fandom("Moonlight Peaks Wiki (Fandom community wiki)", "moonlightpeaks.fandom.com"),
+				BrowseOnly("Moonlight Peaks Guides & Walkthroughs", "https://moonlightpeaks.wiki/guides/"),
+				BrowseOnly("Moonlight Peaks Mods (Nexus Mods)", "https://www.nexusmods.com/moonlightpeaks")
 			},
 			// Dedicated wikis for Stardew Valley "world expansion" content mods (new towns, NPCs, quests). Most are
 			// on wiki.gg (fully searchable in-app); Downtown Zuzu (Miraheze) and Stoffton are browse-only.
@@ -415,6 +436,7 @@ public partial class Form1
 		{
 			"SkyrimSE" => "https://en.uesp.net/w/api.php",
 			"Fallout4" => "https://fallout.fandom.com/api.php",
+			"MoonlightPeaks" => "https://moonlightpeaks.wiki.gg/api.php",
 			_ => "https://stardewvalleywiki.com/mediawiki/api.php"
 		};
 
@@ -425,6 +447,7 @@ public partial class Form1
 		{
 			"SkyrimSE" => "https://en.uesp.net/wiki/",
 			"Fallout4" => "https://fallout.fandom.com/wiki/",
+			"MoonlightPeaks" => "https://moonlightpeaks.wiki.gg/wiki/",
 			_ => "https://stardewvalleywiki.com/"
 		};
 
@@ -441,6 +464,8 @@ public partial class Form1
 		{
 			"SkyrimSE" => new string[] { "Quests", "Items", "Skills", "NPCs", "Magic", "Factions", "Locations" },
 			"Fallout4" => new string[] { "Quests", "Weapons", "Perks", "Characters", "Factions", "Locations", "Items" },
+			// These are the wiki's own category titles, so unlike Skyrim/Fallout 4 they need no name mapping below.
+			"MoonlightPeaks" => new string[] { "Characters", "Crops", "Farming", "Cooking", "Crafting", "Fishing", "Locations" },
 			_ => new string[] { "Villagers", "Crops", "Fish", "Artisan Goods", "Cooking", "Mining", "Animals" }
 		};
 		cmbWikiCategories.Items.AddRange(categories);

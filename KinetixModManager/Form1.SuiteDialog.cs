@@ -29,15 +29,33 @@ namespace KinetixModManager;
 /// <summary>The accessibility-mod suite installer dialog and its helpers for Form1.</summary>
 public partial class Form1
 {
+	// -------------------------------------------------------------------------
+	// Moonlight Access — the Moonlight Peaks accessibility mod
+	// -------------------------------------------------------------------------
+	// This is the one suite entry the manager cannot yet fetch on its own, because the mod is not published
+	// anywhere it can download from. Everything else about it is wired up: it appears in the suite list, its
+	// installed state is detected, and the F3 documentation viewer knows about it. Only the source is missing.
+	//
+	// TO ENABLE DOWNLOADING, set both constants below and nothing else needs to change:
+	//   * published on Nexus     -> Type = "Nexus",        Source = the numeric mod id, e.g. "42"
+	//   * GitHub releases        -> Type = "GitHub",       Source = "owner/repo"
+	//   * a fixed release asset  -> Type = "GitHubStatic", Source = the full .zip URL
+	// While Source is empty the entry is shown as unavailable and the installer skips it with a spoken note,
+	// rather than failing partway through installing the rest of the suite.
+
+	/// <summary>How Moonlight Access should be fetched once it is published. See the note above.</summary>
+	private const string MoonlightAccessType = "Nexus";
+
+	/// <summary>Where Moonlight Access is fetched from; empty until the mod is published.</summary>
+	private const string MoonlightAccessSource = "";
+
+	/// <summary>The plugin GUID Moonlight Access registers itself under, used to spot it among installed mods.</summary>
+	private const string MoonlightAccessGuid = "com.moonlightaccess.core";
+
 	private void ShowAccessibilitySuiteDialog()
 	{
 		string game = _settings.ActiveGame;
-		string gameName = game switch
-		{
-			"SkyrimSE" => "Skyrim Special Edition",
-			"Fallout4" => "Fallout 4",
-			_ => "Stardew Valley"
-		};
+		string gameName = GameProfiles.DisplayNameFor(game);
 
 		Form dialog = new Form
 		{
@@ -119,6 +137,20 @@ public partial class Form1
 			suiteItems.Add(new SuiteItem("Stay At The System Page - AE", HasModNameContains("Stay At The System Page") || HasModNameContains("StayAtTheSystemPage"), "Nexus", "67883"));
 			suiteItems.Add(new SuiteItem("Skyrim Access", HasModNameContains("Skyrim Access") || HasModNameContains("SkyrimAccess") || HasModNameContains("SkyrimTTS"), "Nexus", "181131"));
 		}
+		else if (game == "MoonlightPeaks")
+		{
+			string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder("MoonlightPeaks") : _settings.CurrentGamePath;
+			loaderInstalled = IsBepInExInstalled(gameFolder);
+
+			suiteItems.Add(new SuiteItem("BepInEx (Mod Loader)", loaderInstalled, "Loader", "https://github.com/BepInEx/BepInEx"));
+			// Matched by GUID first (the plugin's own stable id) and by name second, so it is recognised whether
+			// it was installed through the manager or dropped in by hand.
+			suiteItems.Add(new SuiteItem(
+				"Moonlight Access",
+				HasModUniqueId(MoonlightAccessGuid) || HasModNameContains("Moonlight Access") || HasModNameContains("MoonlightAccess"),
+				MoonlightAccessType,
+				MoonlightAccessSource));
+		}
 		else
 		{
 			string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder("Fallout4") : _settings.CurrentGamePath;
@@ -160,15 +192,15 @@ public partial class Form1
 		// GitHubStatic entries are a direct zip link.
 		string SuiteItemUrl(SuiteItem item)
 		{
+			// An entry with no source yet (a mod the manager knows about but that isn't published) has no page
+			// to open, so it falls through to the game's own mod listing rather than a broken link.
+			if (string.IsNullOrEmpty(item.Source) && item.Type != "Loader")
+				return $"https://www.nexusmods.com/{_nexusService.CurrentGameDomain}";
+
 			switch (item.Type)
 			{
 				case "Nexus":
-					string domain = game switch
-					{
-						"SkyrimSE" => "skyrimspecialedition",
-						"Fallout4" => "fallout4",
-						_          => "stardewvalley"
-					};
+					string domain = _nexusService.CurrentGameDomain;
 					return $"https://www.nexusmods.com/{domain}/mods/{item.Source}?tab=files";
 				case "GitHub":
 					return $"https://github.com/{item.Source}/releases";
@@ -229,11 +261,32 @@ public partial class Form1
 				{
 					loaderInstalled = await InstallSmapiAsync(ResolveStardewFolder());
 				}
+				// BepInEx is Moonlight Peaks' loader and installs the same way: first, and on its own, so the
+				// accessibility mod below has something to load it.
+				else if (!loaderInstalled && game == "MoonlightPeaks")
+				{
+					loaderInstalled = await InstallBepInExAsync(
+						string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder("MoonlightPeaks") : _settings.CurrentGamePath);
+				}
 
 				foreach (var item in suiteItems)
 				{
 					if (item.IsInstalled) continue;
-					if (item.Type == "Loader" && game == "StardewValley") continue;
+					if (item.Type == "Loader" && (game == "StardewValley" || game == "MoonlightPeaks")) continue;
+
+					// An entry with no source is one the manager knows about but cannot fetch yet (see the
+					// Moonlight Access note at the top of this file). Say so and carry on with the rest rather
+					// than stopping the whole suite install on it.
+					if (string.IsNullOrEmpty(item.Source))
+					{
+						Speak(Loc.T("suite.noSourceSpeak", item.Name));
+						SpeakBox(
+							Loc.T("suite.noSourceBox", item.Name),
+							Loc.T("suite.noSourceTitle"),
+							MessageBoxButtons.OK,
+							MessageBoxIcon.Information);
+						continue;
+					}
 
 					// SSE Engine Fixes is a two-part install (main mod + root-folder preloader);
 					// handle both parts together so the user never has to place the DLL manually.
@@ -287,12 +340,7 @@ public partial class Form1
 							}
 						}
 						
-						string gameDomain = game switch
-						{
-							"SkyrimSE" => "skyrimspecialedition",
-							"Fallout4" => "fallout4",
-							_ => "stardewvalley"
-						};
+						string gameDomain = _nexusService.CurrentGameDomain;
 						Speak(Loc.T("suite.manualDownloadSpeak", item.Name));
 						Process.Start(new ProcessStartInfo($"https://www.nexusmods.com/{gameDomain}/mods/{item.Source}?tab=files") { UseShellExecute = true });
 						SpeakBox(Loc.T("suite.manualDownloadBox1", item.Name), Loc.T("suite.manualDownloadTitle"));

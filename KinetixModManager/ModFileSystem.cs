@@ -132,6 +132,10 @@ public static class ModFileSystem
 				}
 			}
 		}
+		else if (GameProfiles.Find(activeGame)?.IsBepInEx == true)
+		{
+			mods.AddRange(ScanBepInExMods(modsPath, nexusIdMap, settings, logError));
+		}
 		else
 		{
 			// Skyrim / Fallout 4: scan direct subdirectories of modsPath
@@ -239,7 +243,10 @@ public static class ModFileSystem
 			}
 		}
 
-		if (activeGame != "StardewValley" && mods.Count > 1)
+		// Duplicate collapsing exists for the Bethesda games, where the same mod is routinely re-downloaded into a
+		// second "-1234-" folder and both copies then deploy their files. It deletes a mod folder, so it stays
+		// strictly limited to those games: BepInEx mods install in place and are never duplicated this way.
+		if (GameProfiles.Find(activeGame)?.IsBethesda == true && mods.Count > 1)
 		{
 			var duplicateGroups = mods
 				.GroupBy(m => !string.IsNullOrEmpty(m.NexusID) ? ("id_" + m.NexusID) : ("name_" + m.Name.ToLowerInvariant()))
@@ -290,6 +297,216 @@ public static class ModFileSystem
 		}
 
 		return mods;
+	}
+
+	// -------------------------------------------------------------------------
+	// BepInEx games (Moonlight Peaks)
+	// -------------------------------------------------------------------------
+
+	/// <summary>
+	/// The folder disabled BepInEx mods are parked in, beside <c>plugins</c>. BepInEx has no notion of a disabled
+	/// plugin: its chainloader scans <c>plugins</c> recursively for DLLs and ignores folder names entirely, so the
+	/// leading-dot convention that disables a Stardew or Skyrim mod would leave a BepInEx mod running. Moving the
+	/// mod out of the scanned folder is what actually turns it off, and it keeps the mod whole so enabling is just
+	/// the move back.
+	/// </summary>
+	public const string BepInExDisabledFolderName = ModEnableState.BepInExDisabledFolderName;
+
+	/// <summary>The disabled-mods folder that sits beside the given <c>BepInEx\plugins</c> folder.</summary>
+	public static string BepInExDisabledFolder(string pluginsPath)
+	{
+		string parent = Path.GetDirectoryName(pluginsPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)) ?? "";
+		return parent.Length == 0 ? "" : Path.Combine(parent, BepInExDisabledFolderName);
+	}
+
+	/// <summary>BepInEx's own log, which sits beside the plugins folder and records every plugin it loaded.</summary>
+	public static string BepInExLogPath(string pluginsPath)
+	{
+		string parent = Path.GetDirectoryName(pluginsPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)) ?? "";
+		return parent.Length == 0 ? "" : Path.Combine(parent, "LogOutput.log");
+	}
+
+	/// <summary>
+	/// Scans a BepInEx game's mods: every folder under <c>BepInEx\plugins</c> (enabled) and under
+	/// <c>BepInEx\plugins-disabled</c> (disabled). Each folder's real name, version and GUID come from the
+	/// <c>[BepInPlugin]</c> attribute in its DLLs, with BepInEx's log as a second source — see
+	/// <see cref="BepInExPlugin"/> for why neither the file version nor the folder name can be trusted for this.
+	/// </summary>
+	private static List<GameMod> ScanBepInExMods(
+		string pluginsPath, JObject nexusIdMap, AppSettings settings, Action<string, string> logError)
+	{
+		var mods = new List<GameMod>();
+
+		// A mod shipped as a bare DLL gets a folder of its own first, so everything below is folder-based.
+		AdoptLooseBepInExPlugins(pluginsPath, logError);
+
+		Dictionary<string, string> logged = BepInExPlugin.ParseLoadedPluginsFromLog(BepInExLogPath(pluginsPath));
+		string disabledPath = BepInExDisabledFolder(pluginsPath);
+
+		foreach ((string root, bool enabled) in new[] { (pluginsPath, true), (disabledPath, false) })
+		{
+			if (string.IsNullOrEmpty(root) || !Directory.Exists(root)) continue;
+
+			foreach (string dir in Directory.GetDirectories(root))
+			{
+				string folderName = Path.GetFileName(dir);
+				string manifestPath = Path.Combine(dir, ".manager_manifest.json");
+
+				try
+				{
+					BepInExPluginInfo info = BepInExPlugin.Identify(dir, logged);
+
+					JObject manifest = File.Exists(manifestPath)
+						? JObject.Parse(File.ReadAllText(manifestPath))
+						: new JObject();
+
+					// A Nexus download unpacks as "Mod Name-1234-1-0-0.zip", so the mod id is recoverable from the
+					// folder name when the manifest doesn't already carry it.
+					string? nexusId = ManifestString(manifest, "NexusID");
+					if (string.IsNullOrEmpty(nexusId))
+					{
+						var match = System.Text.RegularExpressions.Regex.Match(folderName, @"-(\d{3,9})-");
+						if (match.Success) nexusId = match.Groups[1].Value;
+					}
+
+					// The plugin's own declaration wins over anything the manager guessed earlier and wrote to the
+					// manifest, because it is the author's answer rather than an inference from a file name.
+					string name = info.Name.Length > 0 ? info.Name : (ManifestString(manifest, "Name") ?? folderName);
+					string version = info.Version.Length > 0
+						? info.Version
+						: (ManifestString(manifest, "Version") ?? ExtractVersionFromFileName(folderName, nexusId) ?? "1.0.0");
+					string uniqueId = info.Guid.Length > 0 ? info.Guid : (ManifestString(manifest, "UniqueID") ?? folderName);
+
+					var mod = new GameMod
+					{
+						Name        = name,
+						Version     = version,
+						Author      = ManifestString(manifest, "Author") ?? "Unknown",
+						UniqueId    = uniqueId,
+						Description = ManifestString(manifest, "Description") ?? "Installed BepInEx plugin.",
+						NexusID     = nexusId,
+						GitHubRepo  = ManifestString(manifest, "GitHubRepo"),
+						FolderPath  = dir,
+						IsEnabled   = enabled
+					};
+
+					if (nexusIdMap.TryGetValue(mod.UniqueId, out JToken? mappedId))
+						mod.NexusID = mappedId?.ToString();
+
+					mod.Category = settings.ModCategories.TryGetValue(mod.UniqueId, out string? cat) ? cat
+						: DetectCategory(mod.Name, mod.Description);
+					mod.Note = settings.ModNotes.TryGetValue(mod.UniqueId, out string? note) ? note : "";
+
+					WriteBepInExManifest(manifestPath, mod);
+
+					mods.Add(mod);
+				}
+				catch (Exception ex)
+				{
+					logError(dir, "Scan Error: " + ex.Message);
+				}
+			}
+		}
+
+		return mods;
+	}
+
+	/// <summary>
+	/// Records what the manager knows about a BepInEx mod so its Nexus link survives the next scan. Written only
+	/// when something actually changed: the mod list is rebuilt often, and rewriting an identical file into every
+	/// mod folder each time would churn the game folder and reset every mod's modification date for nothing.
+	/// </summary>
+	private static void WriteBepInExManifest(string manifestPath, GameMod mod)
+	{
+		try
+		{
+			var manifest = new JObject
+			{
+				["Name"]        = mod.Name,
+				["Version"]     = mod.Version,
+				["Author"]      = mod.Author,
+				["UniqueID"]    = mod.UniqueId,
+				["Description"] = mod.Description,
+				["NexusID"]     = mod.NexusID,
+				["GitHubRepo"]  = mod.GitHubRepo
+			};
+			string updated = manifest.ToString(Formatting.Indented);
+
+			if (File.Exists(manifestPath) && File.ReadAllText(manifestPath) == updated) return;
+
+			File.WriteAllText(manifestPath, updated);
+		}
+		catch
+		{
+			// A read-only or locked mod folder is not a reason to fail the scan; the mod still lists correctly,
+			// it just re-derives its metadata next time.
+		}
+	}
+
+	/// <summary>
+	/// Gives a mod shipped as a bare DLL — dropped straight into <c>plugins</c> rather than into a folder — a
+	/// folder of its own named after the plugin. BepInEx loads it identically either way, but a mod with a folder
+	/// can be listed, enabled, disabled, backed up and removed as one thing.
+	///
+	/// Only files that actually declare a <c>[BepInPlugin]</c> are moved. A loose DLL without one is a shared
+	/// library that some other plugin loads from this folder, and moving it would break that plugin.
+	/// </summary>
+	private static void AdoptLooseBepInExPlugins(string pluginsPath, Action<string, string> logError)
+	{
+		try
+		{
+			if (!Directory.Exists(pluginsPath)) return;
+
+			foreach (string dll in Directory.GetFiles(pluginsPath, "*.dll", SearchOption.TopDirectoryOnly))
+			{
+				BepInExPluginInfo? info = BepInExPlugin.ReadFromAssembly(dll);
+				if (info == null) continue;
+
+				string folderName = SanitiseFolderName(
+					info.Name.Length > 0 ? info.Name : Path.GetFileNameWithoutExtension(dll));
+				if (folderName.Length == 0) continue;
+
+				string target = Path.Combine(pluginsPath, folderName);
+				if (Directory.Exists(target)) continue; // a folder of that name already owns this mod
+
+				Directory.CreateDirectory(target);
+				File.Move(dll, Path.Combine(target, Path.GetFileName(dll)));
+			}
+		}
+		catch (Exception ex)
+		{
+			logError(pluginsPath, "Could not tidy loose plugin DLLs: " + ex.Message);
+		}
+	}
+
+	/// <summary>Strips the characters Windows forbids in a folder name, so a plugin name can become a folder.</summary>
+	private static string SanitiseFolderName(string name)
+	{
+		var invalid = Path.GetInvalidFileNameChars();
+		string cleaned = new string(name.Where(c => !invalid.Contains(c)).ToArray()).Trim();
+		return cleaned.TrimEnd('.');
+	}
+
+	/// <summary>
+	/// Enables or disables an installed mod and returns its new folder path.
+	///
+	/// How a mod is switched off depends on the game. Stardew Valley and the Bethesda games use the long-standing
+	/// leading-dot convention (SMAPI skips dot-prefixed folders, and the manager's deployment skips them too).
+	/// BepInEx ignores folder names entirely, so a Moonlight Peaks mod is moved between <c>BepInEx\plugins</c> and
+	/// <c>BepInEx\plugins-disabled</c> instead — see <see cref="BepInExDisabledFolderName"/>.
+	/// </summary>
+	public static string SetModEnabled(string modFolderPath, bool enable, string activeGame)
+	{
+		string target = ModEnableState.TargetPath(modFolderPath, enable, activeGame);
+
+		if (string.Equals(target, modFolderPath, StringComparison.OrdinalIgnoreCase)) return modFolderPath;
+
+		// The disabled folder doesn't exist until the first mod is switched off.
+		string? targetParent = Path.GetDirectoryName(target);
+		if (!string.IsNullOrEmpty(targetParent)) Directory.CreateDirectory(targetParent);
+
+		Directory.Move(modFolderPath, target);
+		return target;
 	}
 
 	/// <summary>
@@ -380,11 +597,58 @@ public static class ModFileSystem
 	/// <summary>
 	/// Creates a timestamped <c>.zip</c> backup of a mod folder.
 	/// </summary>
-	public static void CreateBackup(string folderPath, string modName, string backupsPath)
+	/// <summary>
+	/// Zips a mod folder into the backups folder. Supply <paramref name="progress"/> (0–100) to be told how far
+	/// along it is — a large mod can take long enough that silence looks like the manager has hung.
+	/// </summary>
+	public static void CreateBackup(string folderPath, string modName, string backupsPath,
+		IProgress<double>? progress = null)
 	{
 		if (!Directory.Exists(folderPath)) return;
+		Directory.CreateDirectory(backupsPath);
 		string dest = Path.Combine(backupsPath, $"{modName}_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
-		ZipFile.CreateFromDirectory(folderPath, dest);
+
+		if (progress == null)
+		{
+			ZipFile.CreateFromDirectory(folderPath, dest);
+			return;
+		}
+
+		// Written entry by entry so progress can be reported, and measured in BYTES rather than files: mods are
+		// routinely one large archive beside a handful of small files, and counting files would race to 90% and
+		// then sit there for the entire wait — the opposite of reassuring.
+		string[] files = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories);
+		long total = 0;
+		foreach (string file in files)
+		{
+			try { total += new FileInfo(file).Length; } catch { }
+		}
+		if (total <= 0) total = 1;
+
+		string root = Path.GetFullPath(folderPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+		long done = 0;
+
+		using (var zip = ZipFile.Open(dest, ZipArchiveMode.Create))
+		{
+			foreach (string file in files)
+			{
+				string relative = Path.GetFullPath(file).Substring(root.Length);
+				zip.CreateEntryFromFile(file, relative);
+				try { done += new FileInfo(file).Length; } catch { }
+				progress.Report(Math.Min(100.0, done * 100.0 / total));
+			}
+
+			// ZipFile.CreateFromDirectory records empty folders; keep doing so, or restoring a backup would
+			// quietly drop a folder a mod expects to exist.
+			foreach (string dir in Directory.GetDirectories(folderPath, "*", SearchOption.AllDirectories))
+			{
+				if (Directory.EnumerateFileSystemEntries(dir).Any()) continue;
+				string relative = Path.GetFullPath(dir).Substring(root.Length).Replace(Path.DirectorySeparatorChar, '/');
+				zip.CreateEntry(relative + "/");
+			}
+		}
+
+		progress.Report(100.0);
 	}
 
 	/// <summary>
@@ -593,6 +857,39 @@ public static class ModFileSystem
 	/// where the toggle doesn't apply (everything except Fallout 4). Uses Fallout4Custom.ini — the file the engine
 	/// merges over its generated Fallout4.ini — so the toggle is non-destructive and never edits a game-owned INI.
 	/// </summary>
+	/// <summary>
+	/// Every BepInEx plugin's configuration file for a Moonlight Peaks install, as (display label, full path)
+	/// pairs sorted by label. BepInEx writes one <c>.cfg</c> per plugin that has settings, into
+	/// <c>BepInEx\config</c>. They are INI files in all but name — sections, <c>key = value</c>, and <c>#</c>
+	/// comment lines — so the manager's accessible INI editor reads and writes them unchanged.
+	///
+	/// Each file names its own plugin in its header, so the list shows "Moonlight Access" rather than
+	/// "com.moonlightaccess.core.cfg", falling back to the file name when there is no header to read.
+	/// </summary>
+	public static List<(string Label, string Path)> BepInExConfigFiles(string gameRoot)
+	{
+		var files = new List<(string Label, string Path)>();
+		try
+		{
+			if (string.IsNullOrEmpty(gameRoot)) return files;
+			string configDir = Path.Combine(gameRoot, "BepInEx", "config");
+			if (!Directory.Exists(configDir)) return files;
+
+			foreach (string path in Directory.GetFiles(configDir, "*.cfg", SearchOption.TopDirectoryOnly))
+			{
+				BepInExPluginInfo? info = BepInExPlugin.ReadFromConfig(path);
+				string label = info != null && info.Name.Length > 0
+					? info.Name
+					: Path.GetFileNameWithoutExtension(path);
+				files.Add((label, path));
+			}
+		}
+		catch { }
+
+		files.Sort((a, b) => string.Compare(a.Label, b.Label, StringComparison.CurrentCultureIgnoreCase));
+		return files;
+	}
+
 	public static string? ArchiveInvalidationIniPath(string activeGame)
 	{
 		if (activeGame != "Fallout4") return null;
@@ -1337,6 +1634,13 @@ public static class ModFileSystem
 					throw new InvalidOperationException($"Unsafe archive: entry escapes the extraction directory ({entry}).");
 			}
 
+			if (GameProfiles.Find(activeGame)?.IsBepInEx == true)
+			{
+				return await FinalizeBepInExModAsync(
+					tempDir, Path.GetFileNameWithoutExtension(zipPath), zipPath, modsPath, installedMods,
+					backupsPath, maxBackups, logError, nexusId, nexusService, gitHubRepo);
+			}
+
 			if (activeGame != "StardewValley")
 			{
 				// Script extender (SKSE/F4SE)? Its loader exe and DLLs belong in the GAME ROOT, with its scripts
@@ -1653,6 +1957,164 @@ public static class ModFileSystem
 		File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
 
 		return targetFolderName;
+	}
+
+	/// <summary>
+	/// Installs an extracted BepInEx mod into <c>BepInEx\plugins</c> as a folder of its own, and returns the name
+	/// that folder was given.
+	///
+	/// BepInEx mods arrive in two shapes. Most are "extract this over your game folder" archives that carry a
+	/// <c>BepInEx\</c> tree inside, in which case the plugins, patchers and default configs within it each belong
+	/// somewhere different. The rest are a bare DLL, or a folder holding one. Both end up the same way here: the
+	/// plugin's own files in one folder under <c>plugins</c>, named after the plugin rather than after whatever
+	/// the archive happened to be called, so the mod list shows the name the author gave it.
+	/// </summary>
+	private static async Task<string> FinalizeBepInExModAsync(
+		string tempDir, string archiveName, string zipPath, string modsPath, List<GameMod> installedMods,
+		string backupsPath, int maxBackups, Action<string, string> logError,
+		string? nexusId, NexusService? nexusService, string? gitHubRepo)
+	{
+		string bepInExRoot = Path.GetDirectoryName(modsPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)) ?? "";
+
+		// An archive built to be dropped on the game folder has a BepInEx\ directory somewhere inside it.
+		string? packagedBepInEx = Directory.GetDirectories(tempDir, "BepInEx", SearchOption.AllDirectories).FirstOrDefault();
+
+		string modSource;
+		if (packagedBepInEx != null)
+		{
+			string packagedPlugins = Path.Combine(packagedBepInEx, "plugins");
+
+			// Preloader patchers load before the game does and cannot live under plugins\, so they go to their own
+			// folder. A default config is copied only when the user has none, so reinstalling never overwrites
+			// settings the user has already changed.
+			CopyBepInExSideFolder(Path.Combine(packagedBepInEx, "patchers"), Path.Combine(bepInExRoot, "patchers"), overwrite: true, logError);
+			CopyBepInExSideFolder(Path.Combine(packagedBepInEx, "config"), Path.Combine(bepInExRoot, "config"), overwrite: false, logError);
+
+			modSource = Directory.Exists(packagedPlugins) ? ResolveBepInExModRoot(packagedPlugins) : StripWrapperFolders(tempDir);
+		}
+		else
+		{
+			modSource = ResolveBepInExModRoot(tempDir);
+		}
+
+		// Name the folder after the plugin itself where we can read it, falling back to the archive name.
+		BepInExPluginInfo identity = BepInExPlugin.Identify(modSource);
+		string targetFolderName = SanitiseFolderName(identity.Name.Length > 0 ? identity.Name : archiveName);
+		if (targetFolderName.Length == 0) targetFolderName = SanitiseFolderName(archiveName);
+
+		string destModFolder = Path.Combine(modsPath, targetFolderName);
+
+		// Back up and clear whatever is already installed, whether the manager knows it as this mod (matched by
+		// Nexus id) or simply as a folder of the same name. A disabled copy counts too — it is the same mod.
+		GameMod? existing = FindExistingInstall(installedMods, nexusId, targetFolderName);
+		if (existing != null && Directory.Exists(existing.FolderPath))
+		{
+			CreateBackup(existing.FolderPath, targetFolderName, backupsPath);
+			PruneBackups(targetFolderName, backupsPath, maxBackups);
+			ForceDeleteDirectory(existing.FolderPath);
+		}
+		if (Directory.Exists(destModFolder))
+			ForceDeleteDirectory(destModFolder);
+
+		Directory.CreateDirectory(destModFolder);
+		foreach (string dir in Directory.GetDirectories(modSource, "*", SearchOption.AllDirectories))
+			Directory.CreateDirectory(dir.Replace(modSource, destModFolder));
+		foreach (string file in Directory.GetFiles(modSource, "*.*", SearchOption.AllDirectories))
+			RobustCopy(file, file.Replace(modSource, destModFolder));
+
+		// Keep whatever documentation the author shipped, so the controls viewer can read the mod's keybindings.
+		CaptureModDocs(tempDir, destModFolder);
+
+		string mName = identity.Name.Length > 0 ? identity.Name : targetFolderName;
+		string mVersion = identity.Version.Length > 0
+			? identity.Version
+			: (ExtractVersionFromFileName(zipPath, nexusId) ?? "1.0.0");
+		string mAuthor = "Unknown";
+		string mDesc = "Installed BepInEx plugin.";
+
+		if (!string.IsNullOrEmpty(nexusId) && nexusService != null)
+		{
+			try
+			{
+				var details = await nexusService.GetModDetailsAsync(nexusId);
+				if (details != null)
+				{
+					// The plugin's own name and version stay authoritative — the Nexus page's version is the
+					// version of the download, which routinely differs from what the plugin reports.
+					mAuthor = details["author"]?.ToString() ?? mAuthor;
+					mDesc = details["summary"]?.ToString() ?? mDesc;
+					if (identity.Name.Length == 0) mName = details["name"]?.ToString() ?? mName;
+				}
+			}
+			catch { }
+		}
+
+		var manifest = new JObject
+		{
+			["Name"]        = mName,
+			["Version"]     = mVersion,
+			["Author"]      = mAuthor,
+			["UniqueID"]    = identity.Guid.Length > 0 ? identity.Guid : targetFolderName,
+			["Description"] = mDesc,
+			["NexusID"]     = nexusId,
+			["GitHubRepo"]  = gitHubRepo
+		};
+		File.WriteAllText(Path.Combine(destModFolder, ".manager_manifest.json"), manifest.ToString(Formatting.Indented));
+
+		return targetFolderName;
+	}
+
+	/// <summary>
+	/// Finds the folder inside an extracted BepInEx archive that holds the mod itself, peeling off the "MyMod
+	/// v1.2\" style wrapper folders archives are usually built with. A folder holding the plugin DLLs directly is
+	/// the answer; a single subfolder containing them means the archive wrapped the mod one level deeper.
+	/// </summary>
+	private static string ResolveBepInExModRoot(string dir)
+	{
+		try
+		{
+			while (true)
+			{
+				// DLLs at this level mean this is the mod.
+				if (Directory.GetFiles(dir, "*.dll", SearchOption.TopDirectoryOnly).Length > 0) return dir;
+
+				string[] children = Directory.GetDirectories(dir);
+				if (children.Length != 1) return dir;
+				dir = children[0];
+			}
+		}
+		catch
+		{
+			return dir;
+		}
+	}
+
+	/// <summary>
+	/// Copies one of the folders that sit beside <c>plugins</c> (<c>patchers</c>, <c>config</c>) out of an
+	/// archive into the game's own BepInEx folder. With <paramref name="overwrite"/> false an existing file is
+	/// left alone, which is what a shipped default config wants: the user's edited settings must survive a
+	/// reinstall.
+	/// </summary>
+	private static void CopyBepInExSideFolder(string source, string target, bool overwrite, Action<string, string> logError)
+	{
+		try
+		{
+			if (!Directory.Exists(source)) return;
+			Directory.CreateDirectory(target);
+
+			foreach (string file in Directory.GetFiles(source, "*.*", SearchOption.AllDirectories))
+			{
+				string relative = file.Substring(source.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+				string destination = Path.Combine(target, relative);
+				if (!overwrite && File.Exists(destination)) continue;
+				Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+				RobustCopy(file, destination);
+			}
+		}
+		catch (Exception ex)
+		{
+			logError(source, "Could not install BepInEx side folder: " + ex.Message);
+		}
 	}
 
 	/// <summary>

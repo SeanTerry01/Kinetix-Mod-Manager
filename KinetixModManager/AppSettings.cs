@@ -258,13 +258,7 @@ public class AppSettings
 	/// folder does not exist yet (e.g. Skyrim/Fallout 4 before their themes are authored) will
 	/// simply play the Default sounds.
 	/// </summary>
-	public static string ThemeForGame(string game) => game switch
-	{
-		"StardewValley" => "Stardew Valley",
-		"SkyrimSE"      => "Skyrim",
-		"Fallout4"      => "Fallout 4",
-		_               => "Default"
-	};
+	public static string ThemeForGame(string game) => GameProfiles.Find(game)?.SoundTheme ?? "Default";
 
 	public Dictionary<string, string> IgnoredVersions { get; set; } = new Dictionary<string, string>();
 
@@ -436,15 +430,17 @@ public class AppSettings
 
 	public void InitializeDefaults()
 	{
+		// Every supported game gets an entry in both path maps, so a game added in a later version appears for
+		// users upgrading with an existing settings file rather than only for fresh installs.
 		if (GameModsPaths == null) GameModsPaths = new Dictionary<string, string>();
-		if (!GameModsPaths.ContainsKey("StardewValley")) GameModsPaths["StardewValley"] = ModsPath;
-		if (!GameModsPaths.ContainsKey("SkyrimSE")) GameModsPaths["SkyrimSE"] = "";
-		if (!GameModsPaths.ContainsKey("Fallout4")) GameModsPaths["Fallout4"] = "";
-
 		if (GamePaths == null) GamePaths = new Dictionary<string, string>();
-		if (!GamePaths.ContainsKey("StardewValley")) GamePaths["StardewValley"] = "";
-		if (!GamePaths.ContainsKey("SkyrimSE")) GamePaths["SkyrimSE"] = "";
-		if (!GamePaths.ContainsKey("Fallout4")) GamePaths["Fallout4"] = "";
+		foreach (string gameId in GameProfiles.AllIds)
+		{
+			// Stardew's mods path predates the per-game map and is still mirrored in the legacy ModsPath field.
+			if (!GameModsPaths.ContainsKey(gameId))
+				GameModsPaths[gameId] = gameId == GameProfiles.StardewValley ? ModsPath : "";
+			if (!GamePaths.ContainsKey(gameId)) GamePaths[gameId] = "";
+		}
 
 		if (InstalledDownloadVersions == null) InstalledDownloadVersions = new Dictionary<string, Dictionary<string, string>>();
 		if (ModBundledWith == null) ModBundledWith = new Dictionary<string, Dictionary<string, string>>();

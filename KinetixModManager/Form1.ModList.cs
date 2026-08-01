@@ -145,23 +145,34 @@ public partial class Form1
 		HashSet<string> hashSet = new HashSet<string>(_allInstalledMods.Select(m => m.Category));
 		Invoke(delegate
 		{
-			cmbCategoryFilter.BeginUpdate();
-			string text2 = cmbCategoryFilter.SelectedItem?.ToString() ?? "All Categories";
-			cmbCategoryFilter.Items.Clear();
-			cmbCategoryFilter.Items.Add("All Categories");
-			foreach (string item2 in hashSet.OrderBy((string c) => c))
+			// Refilling this list changes its selection, which would otherwise rebuild the mod list and speak
+			// the focused mod — once on the Clear and again on the restored selection — before the rebuild
+			// below does it properly. The list is rebuilt once, immediately after this.
+			_suppressInstalledFilterEvent = true;
+			try
 			{
-				cmbCategoryFilter.Items.Add(item2);
+				cmbCategoryFilter.BeginUpdate();
+				string text2 = cmbCategoryFilter.SelectedItem?.ToString() ?? "All Categories";
+				cmbCategoryFilter.Items.Clear();
+				cmbCategoryFilter.Items.Add("All Categories");
+				foreach (string item2 in hashSet.OrderBy((string c) => c))
+				{
+					cmbCategoryFilter.Items.Add(item2);
+				}
+				if (cmbCategoryFilter.Items.Contains(text2))
+				{
+					cmbCategoryFilter.SelectedItem = text2;
+				}
+				else
+				{
+					cmbCategoryFilter.SelectedIndex = 0;
+				}
+				cmbCategoryFilter.EndUpdate();
 			}
-			if (cmbCategoryFilter.Items.Contains(text2))
+			finally
 			{
-				cmbCategoryFilter.SelectedItem = text2;
+				_suppressInstalledFilterEvent = false;
 			}
-			else
-			{
-				cmbCategoryFilter.SelectedIndex = 0;
-			}
-			cmbCategoryFilter.EndUpdate();
 		});
 		Invoke(delegate
 		{
@@ -215,10 +226,10 @@ public partial class Form1
 					listUpdates.SelectedIndex = Math.Min(Math.Max(0, oldSelectedIndex), listUpdates.Items.Count - 1);
 				}
 
+				// Position only — the screen reader reads the re-selected row itself. See RebuildInstalledListBox.
 				if (listUpdates.Focused && listUpdates.SelectedItem != null)
 				{
-					string itemText = listUpdates.SelectedItem.ToString() ?? "";
-					Speak(Loc.T("common.itemPos", itemText, listUpdates.SelectedIndex + 1, listUpdates.Items.Count));
+					Speak(Loc.T("common.position", listUpdates.SelectedIndex + 1, listUpdates.Items.Count));
 				}
 			}
 			else if (listUpdates.Focused && oldSelectedIndex != -1)
@@ -377,10 +388,13 @@ public partial class Form1
 		{
 			listInstalled.SelectedIndex = 0;
 		}
+		// Position only. Rebuilding empties the list and re-selects the row, which the screen reader reads by
+		// itself — exactly as it does when you arrow onto a row, where the manager likewise adds only "X of Y".
+		// Speaking the row's text here as well is what made enabling, disabling or deleting a mod read the whole
+		// entry twice.
 		if (listInstalled.Focused && listInstalled.SelectedItem != null && !_suppressRebuildSpeak)
 		{
-			string itemText = listInstalled.SelectedItem.ToString() ?? "";
-			Speak(Loc.T("common.itemPos", itemText, listInstalled.SelectedIndex + 1, listInstalled.Items.Count));
+			Speak(Loc.T("common.position", listInstalled.SelectedIndex + 1, listInstalled.Items.Count));
 		}
 		listInstalled.EndUpdate();
 	}
@@ -432,9 +446,10 @@ public partial class Form1
 			}
 			listBackups.SelectedIndex = Math.Min(Math.Max(newIndex, oldIndex), listBackups.Items.Count - 1);
 
+			// Position only — the screen reader reads the re-selected row itself. See RebuildInstalledListBox.
 			if (listBackups.Focused && listBackups.SelectedItem != null)
 			{
-				Speak(Loc.T("common.itemPos", listBackups.SelectedItem, listBackups.SelectedIndex + 1, listBackups.Items.Count));
+				Speak(Loc.T("common.position", listBackups.SelectedIndex + 1, listBackups.Items.Count));
 			}
 		}
 		else if (listBackups.Focused && oldIndex != -1)
@@ -472,6 +487,65 @@ public partial class Form1
 	/// report passes the mod its row stands for, so a mod can be linked straight from where the problem
 	/// was reported without hunting for it in the list first.
 	/// </param>
+	/// <summary>The file the manager records a mod's metadata in — the author's own manifest for Stardew Valley,
+	/// the manager's sidecar for every other game.</summary>
+	private string ManifestPathFor(StardewMod mod) => Path.Combine(mod.FolderPath,
+		_settings.ActiveGame == "StardewValley" ? "manifest.json" : ".manager_manifest.json");
+
+	/// <summary>
+	/// Fills in what only Nexus knows about a mod that has just been linked to a mod page — its author, a real
+	/// summary, and a proper name for a mod the manager could only name after its folder — and writes that into
+	/// the mod's manifest so it survives the next rescan. Safe to call for any linked mod; does nothing when the
+	/// page can't be read.
+	///
+	/// ⭐ It deliberately does NOT touch the mod's VERSION, and that is the whole point of doing this in one
+	/// place. The version a mod reports is the version you have <em>installed</em>; the version on its Nexus page
+	/// is the newest one <em>published</em>. Writing the page's version over the installed one tells the manager
+	/// the mod is already up to date — so a mod linked by hand would never report an update again, which is
+	/// exactly the opposite of why anyone links a mod in the first place.
+	/// </summary>
+	private async Task EnrichLinkedModFromNexusAsync(StardewMod mod, string nexusId)
+	{
+		if (string.IsNullOrEmpty(nexusId)) return;
+
+		JObject? details = await _nexusService.GetModDetailsAsync(nexusId);
+		if (details == null) return;
+
+		string? author  = details["author"]?.ToString();
+		string? summary = details["summary"]?.ToString();
+		string? pageName = details["name"]?.ToString();
+
+		if (!string.IsNullOrWhiteSpace(author)) mod.Author = author;
+		if (!string.IsNullOrWhiteSpace(summary)) mod.Description = summary;
+
+		// Only rename a mod the manager had to name after its folder — an archive unpacked as
+		// "SkyUI-12604-5-2SE" is not what the mod is called. A mod that declared its own name (a Stardew
+		// manifest, a BepInEx plugin) keeps it: that is the name it goes by in game.
+		string folderName = Path.GetFileName(mod.FolderPath.TrimEnd(Path.DirectorySeparatorChar));
+		if (folderName.StartsWith(".")) folderName = folderName.Substring(1);
+		if (!string.IsNullOrWhiteSpace(pageName) &&
+			string.Equals(mod.Name, folderName, StringComparison.OrdinalIgnoreCase))
+		{
+			mod.Name = pageName;
+		}
+
+		try
+		{
+			string manifestPath = ManifestPathFor(mod);
+			JObject manifest = File.Exists(manifestPath)
+				? JObject.Parse(File.ReadAllText(manifestPath))
+				: new JObject();
+			manifest["Name"] = mod.Name;
+			manifest["Author"] = mod.Author;
+			manifest["Description"] = mod.Description;
+			File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
+		}
+		catch (Exception ex)
+		{
+			LogError(mod.Name, "Could not save mod details: " + ex.Message);
+		}
+	}
+
 	private async Task LinkModUpdateSource(StardewMod? target = null)
 	{
 		if ((target ?? listInstalled.SelectedItem as StardewMod) is StardewMod stardewMod3)
@@ -559,16 +633,12 @@ public partial class Form1
 								var details = JObject.Parse(await resp.Content.ReadAsStringAsync());
 								stardewMod3.Name = details["name"]?.ToString() ?? stardewMod3.Name;
 								stardewMod3.Description = details["description"]?.ToString() ?? stardewMod3.Description;
-								
-								string? latestTag = await GetGitHubLatestReleaseVersionAsync(val);
-								if (latestTag != null)
-								{
-									stardewMod3.Version = latestTag;
-								}
 
+								// The repository's latest release is NOT the version installed here — recording it
+								// as such would mark the mod up to date and hide every future update. The version
+								// stays whatever the installed copy reports.
 								manifest = JObject.Parse(File.ReadAllText(manifestPath));
 								manifest["Name"] = stardewMod3.Name;
-								manifest["Version"] = stardewMod3.Version;
 								manifest["Description"] = stardewMod3.Description;
 								File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
 							}
@@ -576,21 +646,7 @@ public partial class Form1
 						else
 						{
 							Speak(Loc.T("link.updatingNexus"));
-							var details = await _nexusService.GetModDetailsAsync(val);
-							if (details != null)
-							{
-								stardewMod3.Name = details["name"]?.ToString() ?? stardewMod3.Name;
-								stardewMod3.Version = details["version"]?.ToString() ?? stardewMod3.Version;
-								stardewMod3.Author = details["author"]?.ToString() ?? stardewMod3.Author;
-								stardewMod3.Description = details["summary"]?.ToString() ?? stardewMod3.Description;
-
-								manifest = JObject.Parse(File.ReadAllText(manifestPath));
-								manifest["Name"] = stardewMod3.Name;
-								manifest["Version"] = stardewMod3.Version;
-								manifest["Author"] = stardewMod3.Author;
-								manifest["Description"] = stardewMod3.Description;
-								File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
-							}
+							await EnrichLinkedModFromNexusAsync(stardewMod3, val!);
 						}
 					}
 

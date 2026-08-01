@@ -157,7 +157,7 @@ public partial class Form1
 	/// Enables or disables all mods in the currently selected category at once,
 	/// after prompting the user to confirm the batch operation.
 	/// </summary>
-	private void BatchManageCategory()
+	private async void BatchManageCategory()
 	{
 		string category = cmbCategoryFilter.SelectedItem?.ToString() ?? "All Categories";
 		List<StardewMod> list = _allInstalledMods.Where((StardewMod m) => category == "All Categories" || m.Category == category).ToList();
@@ -179,15 +179,10 @@ public partial class Form1
 			{
 				if (item.IsEnabled != flag)
 				{
-					string path = Path.GetDirectoryName(item.FolderPath) ?? "";
-					string fileName = Path.GetFileName(item.FolderPath);
-					string text = (flag ? Path.Combine(path, fileName.Substring(1)) : Path.Combine(path, "." + fileName));
-					Directory.Move(item.FolderPath, text);
-					item.FolderPath = text;
+					item.FolderPath = ModFileSystem.SetModEnabled(item.FolderPath, flag, _settings.ActiveGame);
 					item.IsEnabled = flag;
 				}
 			}
-			_ = RefreshModList(checkUpdates: false);
 			if (flag)
 			{
 				_soundEngine.Play("enable");
@@ -197,9 +192,14 @@ public partial class Form1
 				_soundEngine.Play("disable");
 			}
 			Speak(Loc.T("modactions.batchComplete", list.Count, flag ? Loc.T("modactions.batchEnabled") : Loc.T("modactions.batchDisabled")));
+
+			// "Enabling 12 mods…" describes work that is now finished, so the title must not keep saying it.
+			await RefreshModList(checkUpdates: false);
+			ResetStatus();
 		}
 		catch (Exception ex)
 		{
+			ResetStatus();
 			SpeakBox(Loc.T("modactions.batchFailedBox", FriendlyError(ex)));
 		}
 	}
@@ -241,10 +241,10 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Toggles the selected mod between enabled and disabled by renaming its folder
-	/// with or without a leading dot.
+	/// Toggles the selected mod between enabled and disabled. How that is done on disk depends on the game —
+	/// see <see cref="ModFileSystem.SetModEnabled"/>.
 	/// </summary>
-	private void ToggleModStatus()
+	private async void ToggleModStatus()
 	{
 		if (!(listInstalled.SelectedItem is StardewMod stardewMod))
 		{
@@ -252,17 +252,10 @@ public partial class Form1
 		}
 		try
 		{
-			string path = Path.GetDirectoryName(stardewMod.FolderPath) ?? "";
-			string fileName = Path.GetFileName(stardewMod.FolderPath);
-			string text = (stardewMod.IsEnabled ? Path.Combine(path, "." + fileName) : Path.Combine(path, fileName.StartsWith(".") ? fileName.Substring(1) : fileName));
-
-			Directory.Move(stardewMod.FolderPath, text);
-			stardewMod.FolderPath = text;
+			stardewMod.FolderPath = ModFileSystem.SetModEnabled(
+				stardewMod.FolderPath, !stardewMod.IsEnabled, _settings.ActiveGame);
 			stardewMod.IsEnabled = !stardewMod.IsEnabled;
 
-			// Asset deployment and plugins.txt are reconciled inside RefreshModList, which re-scans the
-			// toggled enabled set and rewrites both for Skyrim/Fallout 4.
-			_ = RefreshModList(checkUpdates: false);
 			if (stardewMod.IsEnabled)
 			{
 				_soundEngine.Play("enable");
@@ -271,10 +264,20 @@ public partial class Form1
 			{
 				_soundEngine.Play("disable");
 			}
-			SetStatus(Loc.T("modactions.toggleStatus", stardewMod.Name, stardewMod.IsEnabled ? Loc.T("modactions.enabled") : Loc.T("modactions.disabled")));
+			// Spoken straight away — waiting for the list to rebuild would delay the one confirmation that
+			// says the key press worked. It is only spoken, not set as the status: "X is now disabled" is
+			// news about a moment, and leaving it in the title bar leaves it reading as the current state of
+			// the program long after it stopped being true.
+			Speak(Loc.T("modactions.toggleStatus", stardewMod.Name, stardewMod.IsEnabled ? Loc.T("modactions.enabled") : Loc.T("modactions.disabled")));
+
+			// Asset deployment and plugins.txt are reconciled inside RefreshModList, which re-scans the
+			// toggled enabled set and rewrites both for Skyrim/Fallout 4.
+			await RefreshModList(checkUpdates: false);
+			ResetStatus();
 		}
 		catch (Exception ex)
 		{
+			ResetStatus();
 			SpeakBox(Loc.T("modactions.toggleFailedBox", FriendlyError(ex)));
 		}
 	}
@@ -283,7 +286,7 @@ public partial class Form1
 	/// Creates a safety backup of the selected mod, then permanently deletes its folder
 	/// after the user confirms.
 	/// </summary>
-	private void DeleteSelectedMod()
+	private async void DeleteSelectedMod()
 	{
 		if (listInstalled.SelectedItem is not StardewMod stardewMod || stardewMod.IsGroup) return;
 
@@ -300,19 +303,24 @@ public partial class Form1
 
 		try
 		{
-			BackupMod(stardewMod.FolderPath, stardewMod.Name + "_Delete");
+			// Deleting keeps a backup first, and zipping a large mod is not instant. Say what is happening and
+			// report progress the way downloads and installs do, so a long pause is never mistaken for a hang.
+			SetStatus(Loc.T("modactions.deletingStatus", stardewMod.Name));
+			await BackupModWithProgressAsync(stardewMod.FolderPath, stardewMod.Name + "_Delete", stardewMod.Name);
 
 			// ForceDelete (via ModFileSystem) clears read-only attributes first; a plain Directory.Delete throws
 			// "Access to the path '…' is denied" on mods that ship a read-only file such as SkyPatcher's DLL.
-			ModFileSystem.DeleteModFolder(stardewMod.FolderPath);
+			await Task.Run(() => ModFileSystem.DeleteModFolder(stardewMod.FolderPath));
 			// RefreshModList below re-scans without the deleted mod and reconciles deployment and
 			// plugins.txt, pruning its files/plugins and restoring any provider it had overridden.
 			_soundEngine.Play("disable");
-			SetStatus(Loc.T("modactions.deletedStatus", stardewMod.Name));
-			_ = RefreshModList(checkUpdates: false);
+			Speak(Loc.T("modactions.deletedStatus", stardewMod.Name));
+			await RefreshModList(checkUpdates: false);
+			ResetStatus();
 		}
 		catch (Exception ex)
 		{
+			ResetStatus();
 			_soundEngine.Play("error");
 			SpeakBox(Loc.T("modactions.deleteFailedBox", FriendlyError(ex)));
 		}

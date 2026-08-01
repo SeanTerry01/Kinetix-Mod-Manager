@@ -632,12 +632,8 @@ public partial class Form1
 		if (updated == null) return;
 		try
 		{
-			string dir = Path.GetDirectoryName(updated.FolderPath) ?? "";
-			string folderName = Path.GetFileName(updated.FolderPath);
-			if (folderName.StartsWith(".")) return;   // already disabled
-			string target = Path.Combine(dir, "." + folderName);
-			Directory.Move(updated.FolderPath, target);
-			updated.FolderPath = target;
+			if (!updated.IsEnabled) return;   // already disabled
+			updated.FolderPath = ModFileSystem.SetModEnabled(updated.FolderPath, false, _settings.ActiveGame);
 			updated.IsEnabled = false;
 			_soundEngine.Play("disable");
 			await RefreshModList(checkUpdates: false);
@@ -725,6 +721,51 @@ public partial class Form1
 		return matched;
 	}
 
+	/// <summary>
+	/// True when a mod is linked to a Nexus page but the manager still has no real author or description for it
+	/// — the state every mod is in that the manager did not install itself, because nothing on disk records
+	/// either. The placeholder texts here are the ones the scanners write when they have nothing better.
+	/// </summary>
+	private static bool NeedsNexusDetails(StardewMod mod)
+	{
+		bool noAuthor = string.IsNullOrWhiteSpace(mod.Author) ||
+						mod.Author.Equals("Unknown", StringComparison.OrdinalIgnoreCase) ||
+						mod.Author.Equals("User", StringComparison.OrdinalIgnoreCase);
+
+		string description = (mod.Description ?? "").Trim();
+		bool noDescription = description.Length == 0 ||
+							 description == "Installed local mod." ||
+							 description == "Installed BepInEx plugin.";
+
+		return noAuthor || noDescription;
+	}
+
+	/// <summary>
+	/// Fetches the author and summary for every linked mod that is still missing them, and returns how many were
+	/// filled in. The installed version is never touched — see <see cref="EnrichLinkedModFromNexusAsync"/>.
+	/// </summary>
+	private async Task<int> FillInMissingNexusDetailsAsync()
+	{
+		List<StardewMod> needing = _allInstalledMods
+			.Where(m => !m.IsGroup && !string.IsNullOrEmpty(m.NexusID) && NeedsNexusDetails(m))
+			.ToList();
+		if (needing.Count == 0) return 0;
+
+		int filled = 0;
+		for (int i = 0; i < needing.Count; i++)
+		{
+			StardewMod mod = needing[i];
+			SetStatus(Loc.T("updates.fillingDetails", i + 1, needing.Count, mod.Name), speak: false);
+
+			string before = mod.Author + "" + mod.Description;
+			await EnrichLinkedModFromNexusAsync(mod, mod.NexusID!);
+			if (before != mod.Author + "" + mod.Description) filled++;
+
+			await Task.Delay(250);
+		}
+		return filled;
+	}
+
 	private async Task AutoMatchNexusIDs()
 	{
 		int matchCount = 0;
@@ -761,20 +802,32 @@ public partial class Form1
 				SetStatus(Loc.T("updates.matchingStatus", current, targetMods.Count, mod.Name));
 				Speak(Loc.T("updates.searchingFor", mod.Name));
 
-				var (results, total) = await _nexusService.SearchModsAsync("Search", mod.Name, 1, 5);
-				if (results.Count > 0)
+				// A mod goes by more than one name: what the mod itself declares, the folder it was installed
+				// into, and (for a BepInEx plugin) the parts of its GUID. Any of them can be the one its Nexus
+				// page is titled with, so each is searched in turn until one produces a confident match. The
+				// language filter is deliberately not applied — most authors leave that field blank, and
+				// filtering here would hide the very page we are trying to find.
+				GameMod? bestMatch = null;
+				bool anyResults = false;
+				foreach (string alias in ModNameMatch.SearchAliases(mod))
 				{
-					GameMod? bestMatch = results.FirstOrDefault(r => ModNameMatch.IsConfident(mod, r));
+					var (results, _) = await _nexusService.SearchModsAsync("Search", alias, 1, 10);
+					if (results.Count == 0) continue;
+					anyResults = true;
 
+					bestMatch = results.FirstOrDefault(r => ModNameMatch.IsConfident(mod, r));
+					if (bestMatch != null) break;
+
+					await Task.Delay(250);
+				}
+
+				if (anyResults)
+				{
 					if (bestMatch != null)
 					{
 						mod.NexusID = bestMatch.NexusID;
 
-						string manifestPath = Path.Combine(mod.FolderPath, ".manager_manifest.json");
-						if (_settings.ActiveGame == "StardewValley")
-						{
-							manifestPath = Path.Combine(mod.FolderPath, "manifest.json");
-						}
+						string manifestPath = ManifestPathFor(mod);
 
 						if (File.Exists(manifestPath))
 						{
@@ -789,6 +842,11 @@ public partial class Form1
 							}
 							File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
 						}
+
+						// A mod the manager had to identify by name usually has no author and no real summary
+						// recorded — nothing local ever knew them. Now that its page is known, fetch them. The
+						// installed version is deliberately left alone; see EnrichLinkedModFromNexusAsync.
+						await EnrichLinkedModFromNexusAsync(mod, bestMatch.NexusID!);
 
 						matchCount++;
 						Speak(Loc.T("updates.matchedWith", bestMatch.Name));
@@ -806,10 +864,18 @@ public partial class Form1
 				await Task.Delay(500);
 			}
 
+			// Mods linked on an earlier run, or by an install, can still be missing the things only the mod page
+			// knows — who wrote it, what it actually does. Fill those in as well, so auto-match leaves every
+			// linked mod complete rather than only the ones it matched just now. Only mods that are actually
+			// missing something are fetched, so running it again costs nothing.
+			int detailed = await FillInMissingNexusDetailsAsync();
+
 			_isLoading = false;
 			_soundEngine.Play("load_complete");
 			Speak(Loc.T("updates.autoMatchComplete", matchCount, totalMods));
-			_ = RefreshModList(checkUpdates: false);
+			if (detailed > 0)
+				Speak(Loc.T(detailed == 1 ? "updates.detailsFilledOne" : "updates.detailsFilled", detailed));
+			await RefreshModList(checkUpdates: false);
 		}
 		catch (Exception ex)
 		{

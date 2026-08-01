@@ -36,10 +36,10 @@ public partial class Form1
 	private void OpenGameLog()
 	{
 		if (_settings.ActiveGame == "StardewValley") { OpenRawSmapiLog(); return; }
-		if (!IsBethesdaGame) { SpeakBox(Loc.T("log.notFound")); return; }
+		if (!GameHasLogTab(_settings.ActiveGame)) { SpeakBox(Loc.T("log.notFound")); return; }
 
-		string folder = BethesdaLogFolder();
-		string primary = Path.Combine(folder, _settings.ActiveGame == "SkyrimSE" ? "skse64.log" : "f4se.log");
+		string folder = GameLogFolder();
+		string primary = Path.Combine(folder, PrimaryGameLogName());
 		if (File.Exists(primary))
 			Process.Start(new ProcessStartInfo("notepad.exe", primary) { UseShellExecute = true });
 		else if (Directory.Exists(folder))
@@ -62,6 +62,44 @@ public partial class Form1
 			_          => ""
 		};
 	}
+
+	/// <summary>
+	/// True when the active game's mod loader keeps a log the manager can show in the Log tab. Skyrim SE and
+	/// Fallout 4 have their script-extender logs; Moonlight Peaks has BepInEx's <c>LogOutput.log</c>. Stardew
+	/// Valley is deliberately excluded — it has its own richer SMAPI Log tab instead.
+	/// </summary>
+	private static bool GameHasLogTab(string game)
+	{
+		GameProfile? profile = GameProfiles.Find(game);
+		return profile != null && (profile.IsBethesda || profile.IsBepInEx);
+	}
+
+	/// <summary>
+	/// The folder the active game's loader writes its logs to: <c>Documents\My Games\&lt;game&gt;\SKSE</c> (or
+	/// <c>\F4SE</c>) for the Bethesda games, and the game's own <c>BepInEx</c> folder for Moonlight Peaks, where
+	/// BepInEx writes <c>LogOutput.log</c> next to its config and plugins. Empty for games with no loader log.
+	/// </summary>
+	private string GameLogFolder()
+	{
+		GameProfile? profile = GameProfiles.Find(_settings.ActiveGame);
+		if (profile == null) return "";
+		if (profile.IsBethesda) return BethesdaLogFolder();
+		if (profile.IsBepInEx)
+		{
+			string root = _settings.CurrentGamePath;
+			return string.IsNullOrEmpty(root) ? "" : Path.Combine(root, "BepInEx");
+		}
+		return "";
+	}
+
+	/// <summary>The loader's own log file name for the active game — the one the Log tab opens by default.</summary>
+	private string PrimaryGameLogName() => _settings.ActiveGame switch
+	{
+		"SkyrimSE"       => "skse64.log",
+		"Fallout4"       => "f4se.log",
+		"MoonlightPeaks" => "LogOutput.log",
+		_                => ""
+	};
 
 	/// <summary>Opens the SMAPI log file in Notepad for manual inspection.</summary>
 	private void OpenRawSmapiLog()

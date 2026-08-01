@@ -118,9 +118,15 @@ public partial class Form1
 			// blank ("UpdateKeys": [""] / ["Nexus: "]) — an author's typo. Both need the same fix from the
 			// user, but knowing the mod isn't simply unknown to the world is the difference between an
 			// actionable report and a mystery.
+			// "Update key" is a Stardew Valley concept: SMAPI reads it from the mod's own manifest.json. The
+			// other games have no such thing — a mod is linked by the Nexus mod ID the manager records for it —
+			// so telling a Moonlight Peaks or Skyrim user their "manifest lists no update key" describes a file
+			// and a field that don't exist, and gives them nothing to act on.
 			string reason = info.Reason == UncheckedReason.BlankUpdateKey
 				? Loc.T("coverage.reasonBlankKey")
-				: Loc.T("coverage.reasonNoKey");
+				: _settings.ActiveGame == "StardewValley"
+					? Loc.T("coverage.reasonNoKey")
+					: Loc.T("coverage.reasonNoNexusId");
 			rows.Add(new ReportRow
 			{
 				Text = Loc.T("coverage.rowUnchecked", m.Name, m.Version, reason, m.UniqueId, DisplayFolder(m)),
@@ -204,14 +210,19 @@ public partial class Form1
 	/// Links a mod to a Nexus page the user picked, remembering it in the manager's own map rather than editing
 	/// the author's manifest, then re-scans so the mod is immediately checkable.
 	/// </summary>
-	private void ApplyNexusLink(StardewMod mod, string nexusId, string pageName)
+	private async void ApplyNexusLink(StardewMod mod, string nexusId, string pageName)
 	{
 		mod.NexusID = nexusId;
 		mod.GitHubRepo = null;
 		PersistNexusIdLinks(new Dictionary<string, string> { [mod.UniqueId] = nexusId });
 		_soundEngine.Play("enable");
 		Speak(Loc.T("coverage.linked", mod.Name, pageName));
-		_ = RefreshModList(checkUpdates: false);
+
+		// Pick up the author and summary now the page is known — the installed version is left as it is, so the
+		// mod can actually report an update. See EnrichLinkedModFromNexusAsync.
+		await EnrichLinkedModFromNexusAsync(mod, nexusId);
+
+		await RefreshModList(checkUpdates: false);
 	}
 
 	/// <summary>

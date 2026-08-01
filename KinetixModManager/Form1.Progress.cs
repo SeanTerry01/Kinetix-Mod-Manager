@@ -55,10 +55,14 @@ public partial class Form1
 	private string ComputeGameDisplayName()
 	{
 		string game = _settings.ActiveGame;
-		if (game != "SkyrimSE" && game != "Fallout4")
-			return "Stardew Valley"; // unchanged fallback for Stardew Valley / no game loaded
 
-		string baseName = game == "SkyrimSE" ? "Skyrim Special Edition" : "Fallout 4";
+		// Only Skyrim SE and Fallout 4 get a version suffix — they are the games whose exact build decides which
+		// mod files are compatible. Every other game is simply its own name; an unknown game or no session at all
+		// is the empty string, which the two title-bar callers already handle by showing the bare app title.
+		if (game != "SkyrimSE" && game != "Fallout4")
+			return GameProfiles.DisplayNameFor(game);
+
+		string baseName = GameProfiles.Require(game).DisplayName;
 		(int major, int minor, int build)? ver = ReadGameRuntimeVersion(game, _settings.CurrentGamePath);
 		if (ver == null)
 			return baseName; // exe unreadable -> plain product name

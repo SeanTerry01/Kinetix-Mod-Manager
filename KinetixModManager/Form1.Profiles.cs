@@ -128,7 +128,7 @@ public partial class Form1
 	/// Enables or disables mod folders on disk to match the saved state in <paramref name="profile"/>,
 	/// then optionally switches the audio theme if the profile has a <see cref="ModProfile.ThemeOverride"/>.
 	/// </summary>
-	private void ApplyProfile(ModProfile profile)
+	private async void ApplyProfile(ModProfile profile)
 	{
 		if (SpeakBox(Loc.T("profiles.applyConfirm", profile.Name), Loc.T("profiles.applyTitle"), MessageBoxButtons.YesNo) == DialogResult.No)
 		{
@@ -150,11 +150,8 @@ public partial class Form1
 				{
 					// Asset deployment and plugins.txt are reconciled once by RefreshModList at the end
 					// (a profile can flip many mods at once), so only the folder enable/disable happens here.
-					string path = Path.GetDirectoryName(allInstalledMod.FolderPath) ?? "";
-					string fileName = Path.GetFileName(allInstalledMod.FolderPath);
-					string text = (flag3 ? Path.Combine(path, fileName.StartsWith(".") ? fileName.Substring(1) : fileName) : Path.Combine(path, "." + fileName));
-					Directory.Move(allInstalledMod.FolderPath, text);
-					allInstalledMod.FolderPath = text;
+					allInstalledMod.FolderPath = ModFileSystem.SetModEnabled(
+						allInstalledMod.FolderPath, flag3, _settings.ActiveGame);
 					allInstalledMod.IsEnabled = flag3;
 
 					if (flag3)
@@ -184,7 +181,6 @@ public partial class Form1
 				_settings.Save();
 				Speak(Loc.T("profiles.themeSwitched", profile.ThemeOverride));
 			}
-			_ = RefreshModList(checkUpdates: false);
 			if (flag)
 			{
 				_soundEngine.Play("enable");
@@ -197,10 +193,15 @@ public partial class Form1
 			{
 				_soundEngine.Play("load_complete");
 			}
-			SetStatus(Loc.T("profiles.applied", profile.Name));
+			// Announced, then the title goes back to resting — "Applied profile X" is something that happened,
+			// not the state the program is in.
+			Speak(Loc.T("profiles.applied", profile.Name));
+			await RefreshModList(checkUpdates: false);
+			ResetStatus();
 		}
 		catch (Exception ex)
 		{
+			ResetStatus();
 			SpeakBox(Loc.T("profiles.applyFailed", FriendlyError(ex)));
 		}
 	}

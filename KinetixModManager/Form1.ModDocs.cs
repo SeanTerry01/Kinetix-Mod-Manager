@@ -65,9 +65,134 @@ public partial class Form1
 		};
 	}
 
+	/// <summary>
+	/// Builds a settings reference for every installed BepInEx plugin, as Markdown the normal doc drill-down can
+	/// parse. This is what F3 offers for Moonlight Peaks, and it is not a poor substitute for shipped docs — it is
+	/// closer to the mod than a README would be. BepInEx plugins almost never ship documentation, but every plugin
+	/// with settings writes a config file in which the author explains each setting in prose, alongside its type,
+	/// its default, and the value currently in force. Reading those files back gives a reference that is written
+	/// by the mod's author, covers exactly the version installed, and cannot go stale.
+	/// </summary>
+	private List<DocNode> BuildBepInExSettingsDocs()
+	{
+		var roots = new List<DocNode>();
+
+		foreach ((string label, string path) in ModFileSystem.BepInExConfigFiles(_settings.CurrentGamePath))
+		{
+			string markdown = BepInExSettingsMarkdown(label, path);
+			if (string.IsNullOrWhiteSpace(markdown)) continue;
+			roots.Add(BuildDocSourceNode(new ModDocSource(label, "", Array.Empty<string>(), null), markdown));
+		}
+
+		return roots;
+	}
+
+	/// <summary>
+	/// Converts one BepInEx config file into Markdown: a heading per section, a heading per setting, then the
+	/// author's own description followed by the setting's type, default and current value.
+	///
+	/// The format is BepInEx's own: <c>##</c> lines are the author's description of the setting below, single
+	/// <c>#</c> lines are the generated metadata (type, default, accepted values), <c>[Section]</c> groups
+	/// settings, and a bare <c>Key = Value</c> is the setting itself.
+	/// </summary>
+	private static string BepInExSettingsMarkdown(string pluginName, string configPath)
+	{
+		try
+		{
+			if (!File.Exists(configPath)) return "";
+
+			var output = new System.Text.StringBuilder();
+			output.AppendLine("# " + pluginName);
+			output.AppendLine();
+
+			var description = new List<string>();
+			var metadata = new List<string>();
+			bool wroteAnySetting = false;
+
+			foreach (string raw in File.ReadAllLines(configPath))
+			{
+				string line = raw.Trim();
+
+				if (line.Length == 0) continue;
+
+				if (line.StartsWith("[") && line.EndsWith("]"))
+				{
+					output.AppendLine("## " + line.Substring(1, line.Length - 2).Trim());
+					output.AppendLine();
+					description.Clear();
+					metadata.Clear();
+					continue;
+				}
+
+				if (line.StartsWith("##"))
+				{
+					string text = line.Substring(2).Trim();
+					// The file's own two header lines name the plugin and its GUID, which the heading above
+					// already says.
+					if (text.StartsWith("Settings file was created by plugin", StringComparison.OrdinalIgnoreCase) ||
+						text.StartsWith("Plugin GUID:", StringComparison.OrdinalIgnoreCase))
+						continue;
+					if (text.Length > 0) description.Add(text);
+					continue;
+				}
+
+				if (line.StartsWith("#"))
+				{
+					string text = line.Substring(1).Trim();
+					if (text.Length > 0) metadata.Add(text);
+					continue;
+				}
+
+				int equals = line.IndexOf('=');
+				if (equals <= 0) continue;
+
+				string key = line.Substring(0, equals).Trim();
+				string value = line.Substring(equals + 1).Trim();
+
+				output.AppendLine("### " + key);
+				output.AppendLine();
+				foreach (string d in description) output.AppendLine(d);
+				if (description.Count > 0) output.AppendLine();
+				output.AppendLine(Loc.T("moddocs.settingCurrent", value.Length > 0 ? value : Loc.T("moddocs.settingEmpty")));
+				foreach (string m in metadata) output.AppendLine(m);
+				output.AppendLine();
+
+				description.Clear();
+				metadata.Clear();
+				wroteAnySetting = true;
+			}
+
+			return wroteAnySetting ? output.ToString() : "";
+		}
+		catch
+		{
+			return "";
+		}
+	}
+
 	/// <summary>F3: opens the active game's accessibility-mod documentation as a drill-down chooser.</summary>
 	private async void ShowModDocs()
 	{
+		// BepInEx games document themselves through their config files rather than shipped Markdown, so their
+		// docs are built from what is installed instead of from a fixed source list.
+		if (GameProfiles.Find(_settings.ActiveGame)?.IsBepInEx == true)
+		{
+			SetStatus(Loc.T("moddocs.loading"));
+			Speak(Loc.T("moddocs.loading"));
+
+			List<DocNode> bepInExRoots = BuildBepInExSettingsDocs();
+			ResetStatus();
+
+			if (bepInExRoots.Count == 0)
+			{
+				SpeakBox(Loc.T("moddocs.noBepInExConfigs"));
+				return;
+			}
+
+			ShowDocDrilldown(bepInExRoots, Loc.T("moddocs.windowTitle"), Loc.T("moddocs.toc"), Loc.T("moddocs.topicInfo"));
+			return;
+		}
+
 		List<ModDocSource> sources = DocSourcesForActiveGame();
 		if (sources.Count == 0)
 		{

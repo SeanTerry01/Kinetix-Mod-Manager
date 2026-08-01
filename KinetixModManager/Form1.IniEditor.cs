@@ -36,16 +36,28 @@ public partial class Form1
 
     /// <summary>
     /// Mods-menu command: lets the user pick one of the active game's configuration INI files and edit it in the
-    /// accessible editor. Bethesda-only (Stardew mods use JSON, edited elsewhere).
+    /// accessible editor: the game's own INIs for Skyrim SE / Fallout 4, and each installed plugin's BepInEx
+    /// config file for Moonlight Peaks. Not offered for Stardew Valley, whose mods use JSON.
     /// </summary>
     private void EditGameIni()
     {
-        if (!IsBethesdaGame)
+        // Skyrim/Fallout 4 have the game's own INIs; Moonlight Peaks has one config file per BepInEx plugin,
+        // which is the same format and edits identically. Stardew mods use JSON and are edited elsewhere.
+        List<(string Label, string Path)> files;
+        if (IsBethesdaGame)
+        {
+            files = ModFileSystem.GameIniFiles(_settings.ActiveGame);
+        }
+        else if (IsBepInExGame)
+        {
+            files = ModFileSystem.BepInExConfigFiles(_settings.CurrentGamePath);
+        }
+        else
         {
             Speak(Loc.T("ini.notApplicable"));
             return;
         }
-        List<(string Label, string Path)> files = ModFileSystem.GameIniFiles(_settings.ActiveGame);
+
         if (files.Count == 0)
         {
             Speak(Loc.T("ini.noFiles"));

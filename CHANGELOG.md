@@ -1,3 +1,104 @@
+# Unreleased
+
+Moonlight Peaks joins the manager as a fully supported game, alongside Stardew Valley, Skyrim Special Edition and Fallout 4.
+
+---
+
+## ✨ New: Moonlight Peaks support
+
+### 🌙 A fourth game
+*   **Moonlight Peaks** now appears in the game list, the **Games** menu, the Settings paths picker, and the "where to buy it" store links. The manager finds it automatically wherever Steam has put it, on any drive.
+*   It gets everything the other games get: the installed mod list, install and uninstall, enable and disable, backups, profiles, collections, mod notes, the Nexus **Find New Mods** search, update checks, endorsements, and the API-request counter — all working against Moonlight Peaks' own Nexus Mods listing.
+*   A **Moonlight Peaks Wiki** tab (searchable, with categories for Characters, Crops, Farming, Cooking, Crafting, Fishing and Locations), a **Moonlight Peaks Walkthroughs** tab, and the community Fandom wiki and guides site in the **Mod Wikis** dropdown.
+
+### 🔌 BepInEx, handled for you
+*   Moonlight Peaks loads mods through **BepInEx**, and the manager now manages it the way it already manages SMAPI and SKSE/F4SE. Load a session without BepInEx installed and it **says so out loud and offers to install it** — which matters here, because without BepInEx the game starts normally with none of your mods running and nothing in the game explains why.
+*   BepInEx is pinned to **5.4.23.5**, the version Moonlight Peaks mods are built against. If you already run a different version, the manager mentions it once and leaves your install alone.
+*   Pressing **F5** with BepInEx missing warns you *before* the game starts.
+
+### 🔀 Disabling a mod actually disables it
+*   BepInEx takes no notice of folder names, so the leading-dot trick that disables a Stardew or Skyrim mod would have left a Moonlight Peaks mod running. Disabling one now **moves it to a `BepInEx\plugins-disabled` folder** instead, and enabling moves it back. The mod is never altered or re-downloaded.
+*   A mod previously installed as a bare `.dll` dropped into `plugins` is tidied into a folder of its own, so it can be listed, toggled, backed up and removed like any other. Shared library files that aren't mods are left alone.
+
+### 🏷️ Real mod names and versions
+*   Moonlight Peaks mods carry no manifest file, and their program files frequently report a version of `0.0.0.0`. The manager now reads each mod's **declared name, version and ID from the mod itself**, falling back to what BepInEx recorded in its log. The installed list shows the name the author gave the mod rather than the folder or download name.
+
+### ⚙️ Mod settings and documentation
+*   **Mods → Edit Mod Settings (Config Files)** lists every installed mod that has settings, by name, and opens it in the same accessible editor used for the Skyrim and Fallout INI files.
+*   **F3 (Mod Documentation)** builds a settings reference for every installed mod from its own configuration file — each setting with the author's description, the current value, the default and the accepted values. Because it reads what's installed, it always matches the version you actually have.
+
+### 📋 BepInEx Log tab
+*   A **BepInEx Log** tab, working like the Skyrim and Fallout log tabs: the filter for errors and warnings, the search box, **Ctrl + Shift + R** to re-read it live, **F4** to open it, **Ctrl + C** to copy lines. BepInEx records every mod it loaded with its version, so it's the quickest way to confirm a mod is running.
+
+## ✨ Also new
+
+### 🗄️ "Delete Old Backups" no longer reports 0 every time
+*   The command could only ever say *"Deleted 0 old backups"* — not because pruning was broken, but because there was never anything to prune. Old backups are already trimmed to your per-mod limit **automatically, every time a backup is made**, so by the time you ask, everything is already within the limit.
+*   It now says so plainly, and offers the clean-up you actually came for: keeping only the **newest** backup of each mod, telling you how many that would remove before it does anything. Choosing No changes nothing.
+
+### 💬 Prompts happen inside the window, not in a window of their own
+*   **Every** confirmation and message in the manager — around 117 of them — is now shown as a panel laid over the window that raised it, instead of a separate message box. Nothing new opens, so nothing announces a new window.
+*   This removes the noise that came with it. A message box made the screen reader read out a window caption and the name of the focused button *before* the question was ever heard; closing it made the reader re-read the window underneath, talking over whatever the action had just reported — which is how results like *"Deleted X. 15 searches left."* went missing halfway through. Neither can be suppressed from outside a message box. Neither happens now.
+*   A prompt reads as **the question, then the choice your fingers are on** — *"Delete "auto" from the search history? Yes, Alt Y."* The keys are unchanged: access keys (Alt+Y, Alt+N) work, **Enter** takes the focused choice, **Escape** cancels, and **Tab** moves between the choices. The rest of the window is disabled while a prompt is up, so nothing behind it can be reached by mistake.
+*   Prompts follow your **High Contrast** and **text size** settings, which message boxes never did.
+*   Confirmations raised from the **Search History** window also used that window's full title — *"Search History - Press Escape to Close"* — as their caption, so that whole phrase was read ahead of every question. Prompts now carry a short caption naming the action ("Delete Search", "Clear Search History").
+*   If a prompt ever has no window to appear in (before the main window exists, or from a background thread), it falls back to an ordinary message box — a prompt that can't be shown must never be a prompt that's silently skipped.
+
+### 🗑️ Remove a single search from the history
+*   Press **Delete** on a term in the **Search History** window to remove just that one, after a *"Delete &lt;term&gt; from the search history?"* confirmation. Until now the only way to be rid of a search you mistyped — one that found nothing and stayed in the list forever — was to clear the entire history.
+*   Every recording of that term is removed, so it doesn't reappear the moment the list redraws; the manager then says how many searches are left and puts you on the entry that took its place, so several can be tidied up in a row.
+
+### 📈 Downloads and endorsements in the search results
+*   Every result on the **Find New Mods** tab now says **how many downloads and endorsements** the mod has — *"Serena's Grimoire (ID: 23). 3,428 downloads, 50 endorsements. Dark magic, dramatic rituals…"* — so you can judge whether a mod is widely used and well liked without leaving the manager to open its page.
+*   They're read **before** the description deliberately: they're the fastest way to rule a mod in or out, so you can move to the next result without waiting through a description you've already decided against.
+*   A mod with genuinely no downloads yet reads as "0 downloads" rather than quietly omitting the figure, so an unknown value and a real zero can't be confused.
+
+### 🔎 An "All" listing in the search types
+*   The **Type** dropdown on the Find New Mods tab gains **All**, which lists **every mod the game has** in **alphabetical order**. Unlike Trending or Most Popular nothing is left out, and because the order is alphabetical you can tell where you got to — so it works for hunting down a specific mod, or for going through the catalogue to find the mods you already have. It honours the Language dropdown like the other browse modes.
+
+### 🗣️ The language filter now admits what it's hiding
+*   Nexus only knows a mod's language if its author filled that field in, and **most don't** — so a language filter, *including the default English*, silently excludes them. On Moonlight Peaks that means searching with English finds 5 of the game's 80 mods; on Stardew Valley it hides about half of the 32,000.
+*   Whenever a language filter is in force and mods exist outside it, the manager now says so: *"That is 5 of this game's 80 mods. The English language filter hides the rest…"* A thin result no longer looks like the mods simply aren't on Nexus.
+
+### 🔗 Auto-match finds far more mods
+*   **Auto-match Nexus IDs** used to search only for the name a mod calls itself, and its one fallback — a partial name match backed by the same author — could never apply to a Moonlight Peaks mod, because a BepInEx plugin doesn't record an author the manager can read. On a real 11-mod install it linked 2.
+*   It now tries **every name a mod goes by**: the declared name, **the folder it was installed into**, and **the parts of its plugin ID** (which conventionally hold both the author's handle and the mod's real name). Run-together names are split into words too, since Nexus searches by word — a page called "Mod Menu" is found by "Mod Menu", never by "modmenu". The same 11-mod install now links **7** — every one that has a Nexus page at all.
+*   The bar for accepting a match is unchanged and still deliberately high: an exact match on one of those names, or a partial match with the author agreeing. Mods it isn't sure of are still left unlinked rather than pointed at the wrong page.
+
+## 🛠️ Fixes
+
+### ⏳ Deleting a mod says what it's doing
+*   Deleting a mod zips it into your backups folder first, and for a large mod that took long enough to look like the manager had frozen — it said nothing and the window stopped responding.
+*   It now announces *"Deleting <mod>. Backing it up first…"*, reports progress through **your chosen download/install feedback** (tones, spoken percentages, both, or off), and does the work off the interface thread so the window stays responsive. Progress follows **bytes rather than file count**, so a mod that is one big archive plus a few small files doesn't leap to 90% and then stall.
+
+### 🏷️ Mods you installed yourself now get their real details, and can actually be checked for updates
+*   ⚠️ **Linking a mod by hand stopped it ever reporting an update.** Pressing **Ctrl + K** and entering a Nexus ID wrote *the mod page's current version* in as your installed version — so the manager immediately believed you were up to date and never offered that mod an update again. The GitHub path did the same with the latest release tag. The installed version is now left exactly as it is: it's the version you actually have, and it's what an update has to be compared against.
+*   **Auto-match now fills in the details, not just the link.** A mod the manager didn't install has no author and no description recorded anywhere on disk — nothing local ever knew them. Once its page is identified, its **author** and **summary** are fetched and saved to the mod's manifest, so they survive a rescan and show in the mod list. Mods linked on an earlier run are filled in too, so you don't have to unlink anything; a second run costs nothing because only mods that are actually missing something are fetched.
+*   A mod whose name the manager could only take from its folder (an archive unpacked as `SkyUI-12604-5-2SE`) is renamed to its real page name. A mod that declares its own name — a Stardew manifest, a BepInEx plugin — keeps it, since that's the name it goes by in game.
+*   **Installing a mod outside Stardew Valley now records which release went on disk.** That was already done for Stardew; for Skyrim, Fallout 4 and Moonlight Peaks it wasn't, so their update checks fell back to comparing the version a mod declares against the version on its page — which, for the many mods whose authors never bump the number inside the mod, offers the same update forever.
+
+### 🔁 The focused mod is no longer announced twice after an action
+*   Enabling, disabling or deleting a mod read the focused entry — name, author, version, category, status — **twice**. Two separate causes, both fixed:
+    *   Refreshing the mod list refills the **Category** filter dropdown, and changing that dropdown's contents raises its own "selection changed" event, which rebuilt the list; the refresh then rebuilt it again, and clearing the dropdown could trigger a third. The filter dropdowns are now left quiet while they are refilled from code, which also removes two wasted rebuilds of the whole list per action.
+    *   After rebuilding, the manager spoke the selected row's **full text plus its position**. But rebuilding re-selects the row, which the screen reader reads by itself — so the row was read twice. It now adds only "X of Y", exactly as it does when you arrow onto a row.
+*   This covers every action that refreshes a list: toggling, deleting, installing, updating and applying a profile. The Available Updates and Backups lists had the same duplicate and are fixed too.
+
+### 🧹 Status messages no longer stick in the title bar
+*   **Enabling or disabling a mod**, **batch enable/disable by category**, **deleting a mod**, **applying a profile** and **installing BepInEx** all left their message sitting in the title bar as though it were the program's current state, until something else happened to replace it. Each now speaks its outcome and then returns the title to your Nexus connection status, matching every other action in the manager. Failures reset it too.
+
+### 🚀 "Game closed" no longer announced while the game is still starting
+*   Launching a game said *"Launching…"* **twice**. The status update already speaks, and the launch code spoke the same sentence again on top of it. Fixed for all games.
+*   A Steam game started from its own program file notices it wasn't launched by Steam and **restarts itself**: the game loads, your mods load and announce themselves, then it shuts down and starts again about fifteen seconds later. The manager was watching the program it started rather than the game, so it announced *"Game closed"* the moment that first copy exited — mid-restart, while the game was still coming up — and then spoke the Nexus connection over the top of it. It now follows the game itself, allows for a restart during the first minutes of a session, and reports a real close within a few seconds. This also fixes Skyrim and Fallout 4, where SKSE's and F4SE's loaders exit immediately after starting the game and produced the same false "closed".
+*   **Moonlight Peaks now starts through Steam**, which avoids that restart entirely — so the game loads once and your mods announce themselves once. Mods are unaffected: BepInEx loads through a file beside the game program regardless of who starts it. Games with their own loader (SMAPI, SKSE, F4SE) are never routed through Steam, since bypassing the loader would mean no mods; nor are non-Steam copies.
+*   After a game closes, the manager no longer *speaks* the Nexus connection status a few seconds later — that read as though something else had happened. The title bar still returns to it.
+
+### 🗣️ "No update key" no longer said to games that have no such thing
+*   The Update Coverage Report told users of every game that an unlinked mod's *"manifest lists no update key"*. Update keys are a **Stardew Valley** concept that SMAPI reads from a mod's `manifest.json`; a Moonlight Peaks, Skyrim or Fallout 4 mod has neither the file nor the field, so the report described something that doesn't exist and gave nothing to act on. Those games now hear that the mod has no Nexus mod ID yet, and are pointed at Auto-match or at linking it themselves.
+
+## 🛠️ Internal
+
+*   The per-game constants — Steam app id, executable, mods folder, Nexus domain — used to be spread across a dozen separate lookups that each quietly defaulted to Stardew Valley for anything unrecognised. They now live in one place, so an unsupported game is an obvious failure rather than a wrong answer.
+
 # Version 1.4.5
 
 A round of fixes for things that bit real installs: deleting mods that ship read-only files, installing mods that arrive as 7z or RAR, and the Settings window announcing where you've landed.

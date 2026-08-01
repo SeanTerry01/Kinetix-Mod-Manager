@@ -1,13 +1,13 @@
 # Kinetix Mod Manager - User Manual
 
-Welcome to Kinetix Mod Manager! This is a fully keyboard-driven, screen-reader-accessible mod manager built for the blind and visually impaired gaming community. It currently supports **Stardew Valley**, **Skyrim Special Edition**, and **Fallout 4**, and works with NVDA, JAWS, and SAPI-based screen readers via Tolk.
+Welcome to Kinetix Mod Manager! This is a fully keyboard-driven, screen-reader-accessible mod manager built for the blind and visually impaired gaming community. It currently supports **Stardew Valley**, **Skyrim Special Edition**, **Fallout 4**, and **Moonlight Peaks**, and works with NVDA, JAWS, and SAPI-based screen readers via Tolk.
 
 You choose which game you're managing from the **Games** menu (press **Alt**, then arrow to **Games**), and the manager tailors its mod list, updates, wiki, and other features to that game. Most of this manual applies to every supported game; where something is specific to one game — such as the SMAPI log viewer for Stardew Valley — it is called out.
 
 ## Getting Started & First-Time Setup
 
 1.  **Your First Launch (Setup Wizard)**: When you run the manager for the first time, a guided **Setup Wizard** opens automatically. It's a short, spoken **checklist** of the three things needed to get going — **choose a game**, **set your Nexus API key**, and **confirm your game folder** — and it tells you which steps are **done** and which are **not done yet**. Arrow up and down the steps and press **Enter** on one to complete it (this opens the game chooser, or the Settings window). The checklist refreshes as you finish each step, so you always know what's left. Press **Escape** to close it and finish later. You can reopen it any time from **Help → Setup Wizard (Getting Started)**.
-2.  **Configuring Paths**: The app attempts to find your mods folder automatically for the selected game (the `Mods` folder for Stardew Valley, or the `Data` folder for Skyrim Special Edition and Fallout 4). It detects games on **any drive**, including secondary Steam libraries. If it succeeds, the path will be pre-filled. If not, please use the "Browse" button in settings to select it.
+2.  **Configuring Paths**: The app attempts to find your mods folder automatically for the selected game (the `Mods` folder for Stardew Valley, the `Data` folder for Skyrim Special Edition and Fallout 4, or the `BepInEx\plugins` folder for Moonlight Peaks). It detects games on **any drive**, including secondary Steam libraries. If it succeeds, the path will be pre-filled. If not, please use the "Browse" button in settings to select it.
     *   **If a game can't be found**, picking it offers a small dialog with three choices — **Locate Installed Folder** (browse to the folder yourself, useful for unusual install locations or when running under Linux/Wine, where you point it at the game folder on your `Z:` drive), **View Store Links** (where to buy the game), or **Cancel**.
 3.  **Nexus Integration**: To search for mods or check for updates, you **must** provide a **Nexus Mods API Key** (sometimes called a Nexus ID). This is a standard requirement for all mod managers. See the **"Nexus Mods Setup"** section below for instructions on how to get yours for free.
 4.  **Closing Settings**: If you aren't ready to configure everything yet, you can press **Escape** or click **Cancel** to close the settings and browse the app. You can reopen this screen at any time by pressing **Ctrl + P**.
@@ -103,6 +103,18 @@ Open the Settings Dashboard at any time with **Ctrl + P**. Everything you can co
 
 ---
 
+## Confirmations and Messages
+
+When the manager needs to ask you something — "Delete this mod?", "Launch anyway?" — the question appears **inside the window you're already in**, not in a separate pop-up window. You'll hear **the question first, then the choice your fingers are on**, for example *"Delete "auto" from the search history? Yes, Alt Y."*
+
+*   **Enter** takes the choice you're on, and **Tab** moves between the choices.
+*   **Alt plus the underlined letter** picks a choice directly — **Alt + Y** for Yes, **Alt + N** for No.
+*   **Escape** cancels (answering No, or Cancel where there is one).
+
+While a question is on screen the rest of the window is switched off, so nothing behind it can be reached by mistake. Answer it and you're returned to exactly where you were.
+
+---
+
 ## Keyboard Shortcuts
 
 Kinetix Mod Manager is fully keyboard-driven. The shortcuts are grouped by where they apply, and each group has its own topic in this manual's contents list, just below this one. Here is what each group covers:
@@ -140,7 +152,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 
 ### Mod List Shortcuts (Installed Mods Tab)
 *   **Space**: Enable or Disable the selected mod.
-*   **Delete**: Permanently delete the selected mod folder (creates a backup first).
+*   **Delete**: Permanently delete the selected mod folder (creates a backup first). Because that backup is a zip of the whole mod, a large one takes a moment: the manager says *"Deleting <mod>. Backing it up first…"* and reports progress using whatever download-and-install feedback you've chosen in Settings (tones, spoken percentages, both, or off), then confirms *"Deleted <mod>"* when it's done.
 *   **Ctrl + F**: **Search** - Focus the search bar to filter your installed mods.
 *   **Ctrl + J**: **Change Category** - Assign a custom category to the selected mod.
 *   **Ctrl + Shift + J**: **Batch Category Action** - Enable or Disable all mods in the currently filtered category.
@@ -244,10 +256,10 @@ This shortcut is especially useful when a page is very long, as it allows you to
 ---
 
 ## Wiki Integration
-The Wiki tab (e.g. **Stardew Wiki**, **Skyrim Wiki**, or **Fallout 4 Wiki**) provides a built-in, accessible way to browse the official game wiki.
+The Wiki tab (e.g. **Stardew Wiki**, **Skyrim Wiki**, **Fallout 4 Wiki**, or **Moonlight Peaks Wiki**) provides a built-in, accessible way to browse the official game wiki.
 1.  **Search**: Type any item, quest, villager, or mechanic into the search box and press **Enter**.
-2.  **Browse by Category**: Use the **Categories** dropdown to quickly find lists of pages — for example Villagers, Crops, and Fish in Stardew Valley, or Quests, Factions, Weapons, and Locations in Skyrim and Fallout 4. The categories listed always match the wiki you are currently browsing.
-3.  **Switch Wikis with the Mod Wikis dropdown**: The **Mod Wikis** dropdown lets you choose which wiki you are searching. Alongside the main game wiki, it lists dedicated wikis for popular content mods — world-expansion wikis for Stardew Valley (such as Stardew Valley Expanded, Ridgeside Village, and East Scarp), and large quest or new-land mod wikis for Skyrim and Fallout 4 (such as the Elder Scrolls Mods Wiki, Legacy of the Dragonborn, and Sim Settlements 2). Choosing a wiki points the Search box, the Categories dropdown, and the Web View at that wiki. A few wikis are "browse-only" (they open in the Web View, but can't be searched in-app); the manager tells you when that's the case.
+2.  **Browse by Category**: Use the **Categories** dropdown to quickly find lists of pages — for example Villagers, Crops, and Fish in Stardew Valley; Quests, Factions, Weapons, and Locations in Skyrim and Fallout 4; or Characters, Crops, Farming, Cooking, and Crafting in Moonlight Peaks. The categories listed always match the wiki you are currently browsing.
+3.  **Switch Wikis with the Mod Wikis dropdown**: The **Mod Wikis** dropdown lets you choose which wiki you are searching. Alongside the main game wiki, it lists dedicated wikis for popular content mods — world-expansion wikis for Stardew Valley (such as Stardew Valley Expanded, Ridgeside Village, and East Scarp), and large quest or new-land mod wikis for Skyrim and Fallout 4 (such as the Elder Scrolls Mods Wiki, Legacy of the Dragonborn, and Sim Settlements 2). Moonlight Peaks is new enough that no content mod has a wiki of its own yet, so its dropdown offers the community Fandom wiki, a guides site, and its Nexus Mods listing instead. Choosing a wiki points the Search box, the Categories dropdown, and the Web View at that wiki. A few wikis are "browse-only" (they open in the Web View, but can't be searched in-app); the manager tells you when that's the case.
 4.  **Navigation**: The results list shows pages and sub-categories. You can "drill down" into categories by pressing **Enter** and go back up by pressing **Backspace**.
 5.  **Accessible Reading**: When you press **Enter** on a page, it loads in the integrated **Web View**. This view is fully compatible with screen readers, allowing you to use standard web navigation commands:
     *   **H**: Jump between Headings.
@@ -261,7 +273,7 @@ The Wiki tab (e.g. **Stardew Wiki**, **Skyrim Wiki**, or **Fallout 4 Wiki**) pro
 ---
 
 ## Walkthroughs & Guides Integration
-The Walkthroughs tab (e.g. **Stardew Walkthroughs**, **Skyrim Walkthroughs**, or **Fallout 4 Walkthroughs**) lists high-quality, text-only walkthroughs and community guides for the selected game.
+The Walkthroughs tab (e.g. **Stardew Walkthroughs**, **Skyrim Walkthroughs**, **Fallout 4 Walkthroughs**, or **Moonlight Peaks Walkthroughs**) lists high-quality, text-only walkthroughs and community guides for the selected game.
 1.  **Guides List**: Select a guide from the list using the Up/Down arrow keys. The guide content automatically loads in the Web View on selection.
 2.  **Accessible Reading**: Press **F6** or **Tab** to enter the **Web View** pane. Since these walkthroughs are text-based guides, screen reader browse-mode commands (like **H** to jump between headings and **T** for tables) work seamlessly to make navigation easy for blind players.
 3.  **Exit Content**: Press **F6** at any time to escape the web view and return to the main tab headers.
@@ -283,15 +295,19 @@ The manager speaks how many mods match as you filter. Clear the search box and s
 ## Searching for Mods
 The **Search for Mods** tab allows you to browse and search for mods on Nexus Mods without leaving the app.
 1.  **Search**: Type a mod name in the search box and press Enter.
-2.  **Types**: Use the **Type** dropdown to see **Trending**, **Most Popular**, or **Recent** mods.
-3.  **Language Filter**: Use the **Language** dropdown to restrict results to a single language. It defaults to **English**, and your choice is remembered between sessions. The list is built from the languages that actually have mods for the game you're currently managing, with a count beside each — for example "English (16362)". Choose **"Any language"** at the top of the list to turn the filter off and see results in every language. The filter applies to keyword searches and to the Trending, Most Popular, and Recent lists alike.
-    *   *Note:* The language comes from how each mod's author tagged it on Nexus Mods, so on rare occasions a mod tagged incorrectly by its author may still appear. Switching to "Any language" always shows the complete results.
-4.  **Results per load**: Use the **Results** dropdown to choose how many results to load at a time (10, 20, 30, 50, or 100). Changing it here applies to your current searches only; to make a number stick between sessions, set **"Search Results per Load"** in **Settings** instead — the Search tab then starts from your saved choice.
-5.  **Loading more results**: When more results are available than were loaded, a **"Load more results"** row sits at the very bottom of the results list. Arrow down to it and press **Enter** to load the next batch — the new results are added to the list, your focus lands on the first new one, and the "Load more results" row moves to the new bottom. It isn't counted in the "X of Y" position announcements, so the real results still read "1 of 20", "2 of 20", and so on.
-6.  **Search History**: The manager can remember the searches you run so you can browse and repeat them. It is **off by default** — turn on **"Save Mod Search History"** in **Settings** to start recording. Once it's on, open your history with the **History** button beside the search box, or by pressing **Ctrl + Shift + H** anywhere. In the history window:
+2.  **Types**: Use the **Type** dropdown to choose what the tab lists — **Search** (your keyword), **All**, **Trending**, **Most Popular**, or **Recent**. The four browse modes ignore the search box.
+    *   **All** lists **every mod the game has**, in **alphabetical order** by name. This is the one to use when you're looking for a specific mod you already know exists, or working through the whole catalogue to find the mods you already have installed — unlike Trending or Most Popular, nothing is left out, and because the order is alphabetical you can always tell where you got to. Pair it with a large **Results per load** to pull in more at a time.
+3.  **Language Filter**: Use the **Language** dropdown to restrict results to a single language. It defaults to **English**, and your choice is remembered between sessions. The list is built from the languages that actually have mods for the game you're currently managing, with a count beside each — for example "English (16362)". Choose **"Any language"** at the top of the list to turn the filter off and see results in every language. The filter applies to keyword searches and to the All, Trending, Most Popular, and Recent lists alike.
+    *   ⚠️ **Important — the language filter hides more than you'd expect.** Nexus Mods only knows a mod's language if its author filled that field in, and **most authors leave it blank**. Those mods are then excluded by *any* language filter, including English, even though they're in English. The effect can be dramatic on newer games: Moonlight Peaks has 80 mods, but only 5 of them declare English, so searching with the English filter finds 5. For this reason, whenever a language filter is in force and it's hiding mods, the manager now **tells you** — "That is 5 of this game's 80 mods…" — so a thin result never looks like the mods simply aren't there. If you're hunting for a particular mod, set **Language** to **"Any language"**.
+4.  **What each result tells you**: A result reads as its **name and Nexus ID**, then **how many downloads and endorsements** it has, then its **short description** — for example *"Serena's Grimoire (ID: 23). 3,428 downloads, 50 endorsements. Dark magic, dramatic rituals…"*. The two numbers come before the description on purpose: they're the quickest way to judge whether a mod is widely used and well liked, so you can move on to the next result without sitting through a description you've already ruled out. Previously you had to open the mod's page to find that out.
+    *   *Note:* the short description is however much of it Nexus provides, which for a long one is **not all of it** — the API supplies it already cut off at around 240 characters, often mid-sentence. That's Nexus's own limit and nothing can recover the rest from there; press **Ctrl + Shift + I** to read the mod's **full description** instead.
+5.  **Results per load**: Use the **Results** dropdown to choose how many results to load at a time (10, 20, 30, 50, or 100). Changing it here applies to your current searches only; to make a number stick between sessions, set **"Search Results per Load"** in **Settings** instead — the Search tab then starts from your saved choice.
+6.  **Loading more results**: When more results are available than were loaded, a **"Load more results"** row sits at the very bottom of the results list. Arrow down to it and press **Enter** to load the next batch — the new results are added to the list, your focus lands on the first new one, and the "Load more results" row moves to the new bottom. It isn't counted in the "X of Y" position announcements, so the real results still read "1 of 20", "2 of 20", and so on.
+7.  **Search History**: The manager can remember the searches you run so you can browse and repeat them. It is **off by default** — turn on **"Save Mod Search History"** in **Settings** to start recording. Once it's on, open your history with the **History** button beside the search box, or by pressing **Ctrl + Shift + H** anywhere. In the history window:
     *   Choose **"All searches"** or a specific **date** from the **Show** dropdown (most recent first), then press **Tab** to move into the list of terms.
     *   Press **Enter** on a term to run that search again — the manager fills the search box and searches straight away.
-    *   Press **Clear History** to erase it (you'll be asked to confirm first).
+    *   Press **Delete** on a term to remove **just that one** — useful for a search you mistyped, which found nothing and would otherwise sit in the list forever. You're asked *"Delete <term> from the search history?"* first; answer **No** and nothing changes. After a deletion the manager tells you how many searches are left and moves you onto the entry that took its place, so you can tidy up several in a row without re-navigating. Every recording of that term goes, so it doesn't reappear.
+    *   Press **Clear History** to erase it all (you'll be asked to confirm first).
     *   History is kept **per game**, so a Skyrim session shows only Skyrim searches, Fallout 4 only Fallout 4, and Stardew Valley only Stardew searches.
 
 ---
@@ -507,7 +523,11 @@ Before it reports, the manager tries to repair the links itself, from most relia
 
 Anything still unlinked after that is what the report lists. From then on the manager records the Nexus page of **every mod a download installs** at install time, so newly installed mods never end up in this state.
 
-At the end of an update check you hear how many updates were found, plus — if any apply — how many mods **couldn't be checked at all** because nothing knows where they came from: no Nexus or GitHub link, not in SMAPI's database, and not part of another mod's download. Those are usually mods copied in by hand. Use **Auto-match Nexus IDs** (Mods → Install and Update Mods) to link them. It works from the most reliable source to the least: your downloaded files first, then SMAPI's mod database, and only then a Nexus search by name — accepting a search result only when the name matches exactly, or the name is a close match **and** the author is the same. Names are compared with any leading content-pack tag removed, so `[CP] Stoned Valley` matches the Nexus page called "Stoned Valley". A mod it isn't confident about is left unlinked rather than pointed at the wrong page.
+At the end of an update check you hear how many updates were found, plus — if any apply — how many mods **couldn't be checked at all** because nothing knows where they came from: no Nexus or GitHub link, not in SMAPI's database, and not part of another mod's download. Those are usually mods copied in by hand. Use **Auto-match Nexus IDs** (Mods → Install and Update Mods) to link them. It works from the most reliable source to the least: your downloaded files first, then SMAPI's mod database, and only then a Nexus search by name.
+
+**Every name a mod goes by is tried, not just the one it calls itself.** A mod's page is very often titled differently from the mod itself, so the search also uses **the folder it was installed into** and, for a Moonlight Peaks BepInEx mod, **the parts of its plugin ID** — which conventionally contain both the author's handle and the mod's real name. Run-together names are split into words as well, because Nexus searches by word: a page called "Mod Menu" is found by "Mod Menu" but not by "modmenu". So a plugin calling itself "Bigger Stacks for Items" in a folder called `BiggerStacks` finds the page named "BiggerStacks"; one calling itself "Moonlight Peaks Mod Menu" with the plugin ID `elsia.modmenu` finds the page named "Mod Menu".
+
+The bar for accepting a result stays high, because a mod linked to the wrong page reports someone else's version and "updating" it downloads an unrelated archive. A result is accepted only when **one of those names matches exactly** (ignoring case and punctuation), or **one name contains the other and the author agrees** — where the author may come from the plugin ID, so "Always Show Item Value" is confidently matched to the page "Always Show Item Value (sell price)" because the plugin ID `padme4000.…` matches the page's author Padme4000. Leading content-pack tags are ignored, so `[CP] Stoned Valley` matches "Stoned Valley". The game's own name and framework words (`moonlightpeaks`, `bepinex`, `com`, and so on) are never treated as a mod's name or author. **A mod it isn't confident about is left unlinked rather than pointed at the wrong page** — press **Ctrl + K** on it to enter the ID yourself.
 
 > **If an update fails with "that download doesn't contain a mod for this game"**, the mod is almost certainly linked to the **wrong Nexus page** — so the file it downloaded belongs to some other mod. Select the mod in the Installed list, press **Ctrl + K**, and enter the correct Nexus mod ID (the number in its Nexus web address).
 
@@ -569,9 +589,11 @@ On a save in the list:
 
 ## Smart Game Launching (F5)
 The manager does more than just launch the game:
-*   It announces when it starts launching the game through its mod loader (SMAPI for Stardew Valley, SKSE for Skyrim Special Edition, F4SE for Fallout 4).
+*   It announces when it starts launching the game through its mod loader (SMAPI for Stardew Valley, SKSE for Skyrim Special Edition, F4SE for Fallout 4). Moonlight Peaks has no separate loader to run — BepInEx hooks the game itself — so for that game the manager **asks Steam to start it**, which is also what stops the game restarting itself (see below).
 *   It speaks and displays *"Game is loaded and running"* once the game is active.
-*   It instantly detects when you close the game and announces *"Game closed."*
+*   It detects when you close the game and announces *"Game closed."*
+    *   **Why that isn't always instant.** A Steam game started from its own program file notices it wasn't launched by Steam and **restarts itself** — the game loads, your mods load and announce themselves, and then the whole thing shuts down and starts again about fifteen seconds later. The manager used to take that first shutdown at face value and announce *"Game closed"* while the game was in fact still starting. It now follows the game itself rather than the program it started, and allows for a restart during the first few minutes of a session, so a startup restart is no longer mistaken for you quitting. Once a session has been running a while, closing the game is announced within a few seconds as before.
+    *   For Moonlight Peaks the restart is avoided altogether, because the manager asks Steam to start the game in the first place. Your mods are unaffected either way: BepInEx loads through a file sitting beside the game program, whoever starts it. Games launched through SMAPI, SKSE or F4SE are **never** routed through Steam, since bypassing those loaders would mean no mods at all; nor is a non-Steam copy, which is started directly as always.
 *   **Script-extender version check (Skyrim & Fallout 4):** before launching, it checks that the installed **SKSE/F4SE matches your game's version**. SKSE and F4SE only work when built for the exact game build, so if your game has updated and the script extender no longer matches, it silently won't load — which is the usual reason the **Mod Configuration Menu** and other script-extender features suddenly disappear. When this happens the manager **warns you and asks whether to launch anyway**; to fix it, reinstall the script extender from the Accessibility Suite so it matches your game.
 
 ---
@@ -768,7 +790,41 @@ For Skyrim Special Edition and Fallout 4, a **Log** tab — shown as **"Skyrim L
 *   **Refresh**: Press **Ctrl + Shift + R** to re-read the log at any time, even while the game is running — handy right after a crash.
 *   **Open or copy**: Press **F4** to open the selected log in Notepad, or **Ctrl + C** to copy the selected line(s) to the clipboard.
 
-(For Stardew Valley, the equivalent is the **SMAPI Log** tab described elsewhere in this manual.)
+(For Stardew Valley, the equivalent is the **SMAPI Log** tab described elsewhere in this manual. For Moonlight Peaks, it is the **BepInEx Log** tab described below.)
+
+---
+
+## Moonlight Peaks and BepInEx
+
+Moonlight Peaks loads its mods through **BepInEx**, a mod loader for Unity games. It works differently from SMAPI or the Skyrim/Fallout script extenders in a few ways that are worth knowing, because the manager handles them for you.
+
+### BepInEx itself
+
+*   **There is nothing separate to launch.** BepInEx hooks into the game through a file called `winhttp.dll` that sits next to the game program. That means pressing **F5** starts Moonlight Peaks normally, and that *is* the modded launch — there's no "launch with mods" versus "launch without". Because there's no loader to run, the manager asks **Steam** to start the game, which avoids the game restarting itself and loading your mods twice.
+*   **The manager installs BepInEx for you.** When you load a Moonlight Peaks session and BepInEx isn't there, the manager says so out loud and offers to download and install it. This matters more here than for other games: without BepInEx the game starts perfectly happily with **none** of your mods running, and nothing in the game tells you why. You can also install it any time from **Mods → Install Accessibility Suite**, where it's listed as "BepInEx (Mod Loader)".
+*   **The version is pinned deliberately.** The manager installs **BepInEx 5.4.23.5**, because Moonlight Peaks mods are built against BepInEx 5 and will not load under BepInEx 6. If you already have a different version installed, the manager mentions it once and otherwise leaves it alone.
+*   If you press **F5** with BepInEx missing, the manager warns you before the game starts, so you don't spend ten minutes wondering where your mods went.
+
+### Where mods live, and how enabling works
+
+Moonlight Peaks mods are folders of program files (`.dll`) inside `BepInEx\plugins` in the game folder. Unlike the other supported games, they are **not** disabled by renaming the folder — BepInEx pays no attention to folder names and would happily keep loading a "disabled" mod. Instead, when you disable a mod (**Space** on the installed list) the manager **moves it to a `BepInEx\plugins-disabled` folder** next door, and moves it back when you enable it. The mod stays completely intact either way, so nothing is lost and nothing is re-downloaded.
+
+If you've previously installed a mod by dropping a single `.dll` straight into `plugins`, the manager tidies it into a folder of its own the first time it scans, so it can be listed, enabled, disabled, backed up and removed like any other mod. Shared library files that aren't mods themselves are left exactly where they are.
+
+### Mod names and versions
+
+Moonlight Peaks mods don't ship a manifest file the way Stardew mods do. Instead, each one declares its name, version and ID inside the program file itself, and the manager reads that — so the installed list shows the name the author gave the mod, not the name of the folder or the download. Where a mod is quiet about its version, the manager falls back to what BepInEx recorded in its log when it loaded the mod.
+
+### Mod settings (Mods menu)
+
+Most Moonlight Peaks mods keep their settings in a configuration file that BepInEx writes for them, and those files contain the author's own explanation of what every setting does. Two features use this:
+
+*   **Mods → Edit Mod Settings (Config Files)** lists every installed mod that has settings, by name. Choose one to edit it in the same accessible editor used for the Skyrim and Fallout INI files.
+*   **F3 (Mod Documentation)** builds a settings reference for every installed mod, straight from those same files — so each mod's settings are listed with the author's description, the current value, the default, and the accepted values. Because it's read from what's installed, it always matches the version you actually have. If nothing appears, run the game once so the mods can write their settings files.
+
+### The BepInEx Log tab
+
+Moonlight Peaks gets a **BepInEx Log** tab, working exactly like the Skyrim and Fallout log tabs described above. BepInEx writes a single `LogOutput.log` recording every mod it loaded, with each mod's name and version, plus anything the mods themselves reported. It's the quickest way to confirm a mod is actually running, and the first place to look when one isn't.
 
 ---
 

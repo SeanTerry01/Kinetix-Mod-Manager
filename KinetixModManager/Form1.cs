@@ -246,6 +246,14 @@ public partial class Form1 : Form, IMessageFilter
 	private ComboBox cmbDiscoveryPageSize = null!;
 	// Suppresses the language combo's change handler while its list is rebuilt (e.g. on game switch).
 	private bool _suppressDiscoveryLanguageEvent;
+
+	/// <summary>
+	/// Set while the Installed tab's filter dropdowns are being repopulated from code, so their change events
+	/// don't rebuild the mod list. Refilling the Category list raises SelectedIndexChanged — on the Clear and
+	/// again on the restored selection — and each one rebuilt the list and announced the focused mod, on top of
+	/// the rebuild the refresh does itself. Toggling a mod therefore read the same entry two or three times.
+	/// </summary>
+	private bool _suppressInstalledFilterEvent;
 	private ComboBox cmbLogFilter = null!;
 	private ComboBox cmbCategoryFilter = null!;
 	private ComboBox cmbStatusFilter = null!;
@@ -306,30 +314,36 @@ public partial class Form1 : Form, IMessageFilter
 			}
 		}
 
-		if (string.IsNullOrEmpty(_settings.GameModsPaths["SkyrimSE"]) || !Directory.Exists(_settings.GameModsPaths["SkyrimSE"]))
+		// Every other supported game. Stardew is handled above because its mods path is also mirrored into the
+		// legacy ModsPath field; the rest fall into one of two patterns the profile already describes — mods
+		// staged in a manager-owned folder outside the game (Skyrim SE, Fallout 4), or mods that live inside the
+		// install (Moonlight Peaks' BepInEx\plugins).
+		foreach (GameProfile profile in GameProfiles.All)
 		{
-			string folder = DetectGameFolder("SkyrimSE");
-			if (Directory.Exists(folder))
-			{
-				_settings.GamePaths["SkyrimSE"] = folder;
-				string localSkyrimMods = Path.Combine(dataBasePath, "SkyrimSEMods");
-				if (!Directory.Exists(localSkyrimMods)) Directory.CreateDirectory(localSkyrimMods);
-				_settings.GameModsPaths["SkyrimSE"] = localSkyrimMods;
-				_settings.Save();
-			}
-		}
+			if (profile.Id == GameProfiles.StardewValley) continue;
 
-		if (string.IsNullOrEmpty(_settings.GameModsPaths["Fallout4"]) || !Directory.Exists(_settings.GameModsPaths["Fallout4"]))
-		{
-			string folder = DetectGameFolder("Fallout4");
-			if (Directory.Exists(folder))
+			string current = _settings.GameModsPaths.TryGetValue(profile.Id, out string? existing) ? existing : "";
+			if (!string.IsNullOrEmpty(current) && Directory.Exists(current)) continue;
+
+			string folder = DetectGameFolder(profile.Id);
+			if (!Directory.Exists(folder)) continue;
+
+			_settings.GamePaths[profile.Id] = folder;
+
+			if (!string.IsNullOrEmpty(profile.StagingFolderName))
 			{
-				_settings.GamePaths["Fallout4"] = folder;
-				string localFallout4Mods = Path.Combine(dataBasePath, "Fallout4Mods");
-				if (!Directory.Exists(localFallout4Mods)) Directory.CreateDirectory(localFallout4Mods);
-				_settings.GameModsPaths["Fallout4"] = localFallout4Mods;
-				_settings.Save();
+				string staged = Path.Combine(dataBasePath, profile.StagingFolderName);
+				if (!Directory.Exists(staged)) Directory.CreateDirectory(staged);
+				_settings.GameModsPaths[profile.Id] = staged;
 			}
+			else
+			{
+				// Not created here: for a BepInEx game this folder appears when BepInEx is installed, and the
+				// manager offers to do that. An empty path would leave the session pointing at nothing.
+				_settings.GameModsPaths[profile.Id] = profile.ModsFolderFor(folder);
+			}
+
+			_settings.Save();
 		}
 	}
 

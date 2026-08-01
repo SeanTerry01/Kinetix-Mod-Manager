@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace KinetixModManager;
 
@@ -67,6 +68,17 @@ public class GameMod
 	/// <summary>True when this instance was populated from a Nexus search result.</summary>
 	public bool IsSearchResult { get; set; }
 
+	/// <summary>
+	/// How many times the mod has been downloaded, and how many people endorsed it, as reported by Nexus.
+	/// <c>-1</c> means not known — nothing on disk records either, so they are only filled in for search
+	/// results. Together they are the quickest read on whether a mod is widely used and well thought of, which
+	/// otherwise means leaving the manager and opening the mod's page.
+	/// </summary>
+	public long Downloads { get; set; } = -1;
+
+	/// <inheritdoc cref="Downloads"/>
+	public long Endorsements { get; set; } = -1;
+
 	/// <summary>True when this instance represents a pending update in the Updates tab.</summary>
 	public bool IsUpdateResult { get; set; }
 
@@ -111,7 +123,23 @@ public class GameMod
 		}
 		if (IsSearchResult)
 		{
-			return $"{Name} (ID: {NexusID}). {Description}";
+			// Downloads and endorsements come BEFORE the summary on purpose. They are the two numbers that
+			// decide whether a result is worth more of your time, and putting them first means you can move on
+			// to the next result without sitting through a description you have already ruled out. It also keeps
+			// them clear of the row's length limit, which the summary can push against on its own.
+			string popularity = "";
+			if (Downloads >= 0 || Endorsements >= 0)
+			{
+				string downloads = Downloads >= 0 ? $"{Downloads:N0} downloads" : "";
+				string endorsements = Endorsements >= 0 ? $"{Endorsements:N0} endorsements" : "";
+				string joined = string.Join(", ", new[] { downloads, endorsements }.Where(p => p.Length > 0));
+				if (joined.Length > 0) popularity = joined + ". ";
+			}
+
+			// The summary here is however much of it Nexus returns, which for a long one is NOT all of it:
+			// the API's summary field arrives already truncated at roughly 240 characters, often mid-word.
+			// Nothing can recover the rest — the full text lives in the mod's description (Ctrl+Shift+I).
+			return $"{Name} (ID: {NexusID}). {popularity}{Description}";
 		}
 		string noteSuffix = string.IsNullOrEmpty(Note) ? "" : $" Note: {Note}.";
 		return $"{value2}{Name} by {Author}, version {Version}. Category: {Category}. {value3}{value4}{noteSuffix}";
