@@ -319,100 +319,92 @@ public partial class Form1
 	/// it (used by the requirements report). An empty result shows <paramref name="emptyMessage"/> as the only row.
 	/// </summary>
 	private void ShowReportDialog(string title, string header, string emptyMessage, List<ReportRow> rows, string? actionHint,
-		Action<ReportRow>? onIgnore = null, string? listName = null, string? openingNote = null)
-	{
-		var f = new Form
+			Action<ReportRow>? onIgnore = null, string? listName = null, string? openingNote = null)
 		{
-			Text = title,
-			Size = new Size(760, 520),
-			StartPosition = FormStartPosition.CenterParent,
-			KeyPreview = true,
-			MinimizeBox = false,
-			MaximizeBox = false
-		};
-		var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
-		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-
-		layout.Controls.Add(new Label { Text = header, AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 8) }, 0, 0);
-
-		// Give the list its own accessible name — deliberately distinct from BOTH the window title (which the
-		// screen reader already announces when the dialog opens) and the header (spoken once in the opening
-		// announcement). Reusing either would make the screen reader say it a second time the instant focus lands
-		// on the list. Callers pass a name like "Broken Mods List"; the default covers reports that don't.
-		var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = listName ?? Loc.T("reports.listGeneric"), IntegralHeight = false, HorizontalScrollbar = true };
-		bool hasRows = rows.Count > 0;
-		// With findings, add them and pre-select the first so it's the focused (and thus spoken) item on open —
-		// with a single finding there's nothing to arrow onto, so without an initial selection the lone row is
-		// never read. With no findings, leave the list genuinely empty: the empty message is already spoken in the
-		// opening announcement, and an empty list makes the screen reader say "List is empty" (nothing to arrow
-		// through) rather than reading that same message again as a lone, navigable row.
-		if (hasRows)
-		{
-			foreach (ReportRow r in rows) list.Items.Add(r);
-			list.SelectedIndex = 0;
-		}
-		layout.Controls.Add(list, 0, 1);
-		f.Controls.Add(layout);
-
-		WireAccessibleDialogList(list);
-		f.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) f.Close(); };
-		list.KeyDown += (_, e) =>
-		{
-			if (list.SelectedItem is not ReportRow row) return;
-
-			// F9 asks the configured AI provider about the selected finding.
-			if (e.KeyCode == Keys.F9 && hasRows && _aiService.IsConfigured)
+			// Shown inside the main window rather than as one of its own — see Form1.InlineView.
+			ShowInlineView(title, (container, closeView) =>
 			{
-				e.Handled = e.SuppressKeyPress = true;
-				f.Close();
-				AskAiAbout(title, Loc.T("ai.aboutReportRow", title, row.Text));
-				return;
+			var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
+			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+			layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+
+			layout.Controls.Add(new Label { Text = header, AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 8) }, 0, 0);
+
+			// Give the list its own accessible name — deliberately distinct from BOTH the window title (which the
+			// screen reader already announces when the dialog opens) and the header (spoken once in the opening
+			// announcement). Reusing either would make the screen reader say it a second time the instant focus lands
+			// on the list. Callers pass a name like "Broken Mods List"; the default covers reports that don't.
+			var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = listName ?? Loc.T("reports.listGeneric"), IntegralHeight = false, HorizontalScrollbar = true };
+			bool hasRows = rows.Count > 0;
+			// With findings, add them and pre-select the first so it's the focused (and thus spoken) item on open —
+			// with a single finding there's nothing to arrow onto, so without an initial selection the lone row is
+			// never read. With no findings, leave the list genuinely empty: the empty message is already spoken in the
+			// opening announcement, and an empty list makes the screen reader say "List is empty" (nothing to arrow
+			// through) rather than reading that same message again as a lone, navigable row.
+			if (hasRows)
+			{
+				foreach (ReportRow r in rows) list.Items.Add(r);
+				list.SelectedIndex = 0;
 			}
+			layout.Controls.Add(list, 0, 1);
+			container.Controls.Add(layout);
 
-			// Delete hides a requirement warning the manager can't auto-resolve (e.g. an optional/alternative-
-			// satisfied Nexus requirement). Only rows that opted in (IgnoreKey set) and reports that supplied an
-			// onIgnore handler are ignorable.
-			if (e.KeyCode == Keys.Delete && onIgnore != null && !string.IsNullOrEmpty(row.IgnoreKey))
+			WireAccessibleDialogList(list);
+			// Escape is handled by the view itself (see Form1.InlineView).
+			list.KeyDown += (_, e) =>
 			{
-				e.Handled = e.SuppressKeyPress = true;
-				onIgnore(row);
-				int idx = list.SelectedIndex;
-				list.Items.Remove(row);
-				if (list.Items.Count == 0) { Speak(Loc.T("reports.ignoredLast")); f.Close(); return; }
-				list.SelectedIndex = Math.Min(idx, list.Items.Count - 1);
-				Speak(Loc.T("reports.ignored", list.Items.Count));
-				return;
-			}
+				if (list.SelectedItem is not ReportRow row) return;
 
-			if (e.KeyCode != Keys.Enter) return;
-			if (row.OnEnter != null)
-			{
-				// Close first: the action opens its own dialog (and may refresh the lists behind this one).
-				e.Handled = e.SuppressKeyPress = true;
-				f.Close();
-				_ = row.OnEnter();
-				return;
-			}
-			if (!string.IsNullOrEmpty(row.SearchTerm))
-			{
-				if (SpeakBox(f, Loc.T("reports.searchConfirm", row.SearchTerm), Loc.T("reports.searchTitle"),
-						MessageBoxButtons.YesNo) == DialogResult.Yes)
+				// F9 asks the configured AI provider about the selected finding.
+				if (e.KeyCode == Keys.F9 && hasRows && _aiService.IsConfigured)
 				{
-					f.Close();
-					SelectTab(AppTab.Discovery);
-					txtSearch.Text = row.SearchTerm;
-					_ = RunDiscovery();
+					e.Handled = e.SuppressKeyPress = true;
+					closeView();
+					AskAiAbout(title, Loc.T("ai.aboutReportRow", title, row.Text));
+					return;
 				}
-			}
-			else if (!string.IsNullOrEmpty(row.OpenUrl))
-			{
-				try { Process.Start(new ProcessStartInfo(row.OpenUrl) { UseShellExecute = true }); } catch { }
-			}
-		};
 
-		f.Shown += (_, _) =>
-		{
+				// Delete hides a requirement warning the manager can't auto-resolve (e.g. an optional/alternative-
+				// satisfied Nexus requirement). Only rows that opted in (IgnoreKey set) and reports that supplied an
+				// onIgnore handler are ignorable.
+				if (e.KeyCode == Keys.Delete && onIgnore != null && !string.IsNullOrEmpty(row.IgnoreKey))
+				{
+					e.Handled = e.SuppressKeyPress = true;
+					onIgnore(row);
+					int idx = list.SelectedIndex;
+					list.Items.Remove(row);
+					if (list.Items.Count == 0) { Speak(Loc.T("reports.ignoredLast")); closeView(); return; }
+					list.SelectedIndex = Math.Min(idx, list.Items.Count - 1);
+					Speak(Loc.T("reports.ignored", list.Items.Count));
+					return;
+				}
+
+				if (e.KeyCode != Keys.Enter) return;
+				if (row.OnEnter != null)
+				{
+					// Close first: the action opens its own dialog (and may refresh the lists behind this one).
+					e.Handled = e.SuppressKeyPress = true;
+					closeView();
+					_ = row.OnEnter();
+					return;
+				}
+				if (!string.IsNullOrEmpty(row.SearchTerm))
+				{
+					if (SpeakBox(Loc.T("reports.searchConfirm", row.SearchTerm), Loc.T("reports.searchTitle"),
+							MessageBoxButtons.YesNo) == DialogResult.Yes)
+					{
+						closeView();
+						SelectTab(AppTab.Discovery);
+						txtSearch.Text = row.SearchTerm;
+						_ = RunDiscovery();
+					}
+				}
+				else if (!string.IsNullOrEmpty(row.OpenUrl))
+				{
+					try { Process.Start(new ProcessStartInfo(row.OpenUrl) { UseShellExecute = true }); } catch { }
+				}
+			};
+
 			// The header may already end in a period (the broken-mods and verify headers do); strip it before adding
 			// the ". " separator so screen readers don't speak a stray ".." pause. Likewise say "1 item", not
 			// "1 items", for a single finding.
@@ -426,9 +418,7 @@ public partial class Form1
 			// list rows themselves can stay short and scannable, rather than each carrying a paragraph.
 			if (hasRows && !string.IsNullOrEmpty(openingNote)) opening += ". " + openingNote;
 			Speak(opening);
-			list.Focus();
-		};
-		StyleDialog(f);
-		f.ShowDialog(this);
+			return list;
+			});
+		}
 	}
-}

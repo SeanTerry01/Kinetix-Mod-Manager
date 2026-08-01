@@ -1,0 +1,395 @@
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Windows.Forms;
+
+namespace KinetixModManager;
+
+/// <summary>
+/// The manager's confirmation prompts, shown <em>inside</em> the window that raised them rather than as a
+/// separate message box.
+///
+/// A <see cref="MessageBox"/> is a window of its own, and that is what made prompts noisy to listen to. Opening
+/// one made the screen reader announce a new window — its caption, then the name of the focused button — before
+/// the question was ever heard, and closing it made the reader re-read the window underneath, talking over
+/// whatever the action had just reported. Neither is something the app can suppress from the outside; both stop
+/// happening once no window is created.
+///
+/// So a prompt is now a panel laid over the window it belongs to. Focus moves into it, the rest of the window is
+/// disabled behind it, and the question is spoken followed by the choice sitting under your fingers — "Delete
+/// "auto" from the search history? Yes, Alt Y." The keys are unchanged: the access keys work, Enter takes the
+/// focused choice, Escape cancels.
+/// </summary>
+public partial class Form1
+{
+	/// <summary>
+	/// Blocks the calling thread until a message arrives in its queue. This is what a normal Windows message
+	/// loop waits on, and using it keeps a prompt's nested loop idle instead of spinning.
+	/// </summary>
+	[System.Runtime.InteropServices.DllImport("user32.dll")]
+	private static extern bool WaitMessage();
+
+	/// <summary>One choice on a prompt: the label (with its &amp; access key) and what it answers.</summary>
+	private readonly record struct PromptChoice(string Label, DialogResult Result);
+
+	/// <summary>The choices a prompt offers, in order. The first is the one focus starts on.</summary>
+	private static PromptChoice[] ChoicesFor(MessageBoxButtons buttons) => buttons switch
+	{
+		MessageBoxButtons.OKCancel => new[]
+		{
+			new PromptChoice(Loc.T("prompt.ok"), DialogResult.OK),
+			new PromptChoice(Loc.T("prompt.cancel"), DialogResult.Cancel)
+		},
+		MessageBoxButtons.YesNo => new[]
+		{
+			new PromptChoice(Loc.T("prompt.yes"), DialogResult.Yes),
+			new PromptChoice(Loc.T("prompt.no"), DialogResult.No)
+		},
+		MessageBoxButtons.YesNoCancel => new[]
+		{
+			new PromptChoice(Loc.T("prompt.yes"), DialogResult.Yes),
+			new PromptChoice(Loc.T("prompt.no"), DialogResult.No),
+			new PromptChoice(Loc.T("prompt.cancel"), DialogResult.Cancel)
+		},
+		MessageBoxButtons.RetryCancel => new[]
+		{
+			new PromptChoice(Loc.T("prompt.retry"), DialogResult.Retry),
+			new PromptChoice(Loc.T("prompt.cancel"), DialogResult.Cancel)
+		},
+		MessageBoxButtons.AbortRetryIgnore => new[]
+		{
+			new PromptChoice(Loc.T("prompt.abort"), DialogResult.Abort),
+			new PromptChoice(Loc.T("prompt.retry"), DialogResult.Retry),
+			new PromptChoice(Loc.T("prompt.ignore"), DialogResult.Ignore)
+		},
+		_ => new[] { new PromptChoice(Loc.T("prompt.ok"), DialogResult.OK) }
+	};
+
+	/// <summary>What Escape answers: Cancel where there is one, otherwise No, otherwise the only choice.</summary>
+	private static DialogResult EscapeResult(PromptChoice[] choices)
+	{
+		foreach (DialogResult preferred in new[] { DialogResult.Cancel, DialogResult.No })
+			if (choices.Any(c => c.Result == preferred)) return preferred;
+		return choices[^1].Result;
+	}
+
+	/// <summary>Collects every button under <paramref name="root"/>, in the order they were added.</summary>
+	private static void CollectButtons(Control root, List<Button> found)
+	{
+		foreach (Control child in root.Controls)
+		{
+			if (child is Button button) found.Add(button);
+			if (child.HasChildren) CollectButtons(child, found);
+		}
+	}
+
+	/// <summary>
+	/// The window a prompt should appear inside: the caller's own window if it named one, otherwise whichever
+	/// window of ours is active, falling back to the main window.
+	/// </summary>
+	private Form? PromptHost(IWin32Window? owner)
+	{
+		if (owner is Form named && !named.IsDisposed && named.Visible) return named;
+
+		Form? active = Form.ActiveForm;
+		if (active != null && !active.IsDisposed && active.Visible) return active;
+
+		return !IsDisposed && Visible ? this : null;
+	}
+
+	/// <summary>
+	/// Shows a prompt inside <paramref name="owner"/> (or the active window) and waits for an answer.
+	///
+	/// Falls back to a real <see cref="MessageBox"/> when there is no window to host it, or when called from a
+	/// background thread — a prompt that cannot be shown must never be a prompt that is silently skipped.
+	/// </summary>
+	private DialogResult ShowPrompt(IWin32Window? owner, string text, string caption, MessageBoxButtons buttons)
+	{
+		Form? host = PromptHost(owner);
+		if (host == null || host.InvokeRequired)
+		{
+			SpeakPrompt(text);
+			return MessageBox.Show(text, caption, buttons);
+		}
+
+		PromptChoice[] choices = ChoicesFor(buttons);
+		DialogResult? answer = null;
+
+		Panel overlay = BuildPromptPanel(text, caption, choices, result => answer = result, out Button firstButton);
+
+		RunOverlay(host, overlay, firstButton,
+			finished: () => answer != null,
+			onEscape: () => answer = EscapeResult(choices),
+			afterShown: () =>
+			{
+				// The question first. The buttons are unnamed at this point so nothing from the screen reader
+				// competes with it; restoring their names a moment later is what makes the reader announce the
+				// focused choice — "Yes, Alt Y" — immediately after.
+				SpeakPromptQuestion(text);
+				RestoreChoiceNames(overlay, choices);
+			});
+
+		return answer ?? EscapeResult(choices);
+	}
+
+	/// <summary>How many overlays (prompts or in-window views) are currently up. See <see cref="RunOverlay"/>.</summary>
+	private int _overlayDepth;
+
+	/// <summary>True while a prompt or an in-window view is covering the window.</summary>
+	private bool OverlayIsOpen => _overlayDepth > 0;
+
+	/// <summary>
+	/// Puts <paramref name="overlay"/> over <paramref name="host"/>, hands it the keyboard, and waits until
+	/// <paramref name="finished"/> says it is done — then puts the window back exactly as it was. This is the
+	/// whole of what makes something modal without being a window, and both the prompts and the in-window views
+	/// are built on it.
+	/// </summary>
+	private void RunOverlay(Form host, Panel overlay, Control focusFirst,
+		Func<bool> finished, Action onEscape, Action? afterShown = null)
+	{
+		// Remember what to put back: the overlay borrows the window's focus, its Enter/Escape handling and the
+		// enabled state of everything already in it.
+		Control? focusBefore = host.ActiveControl;
+		bool keyPreviewBefore = host.KeyPreview;
+		IButtonControl? acceptBefore = host.AcceptButton;
+		IButtonControl? cancelBefore = host.CancelButton;
+		var disabled = new List<Control>();
+
+		_overlayDepth++;
+		try
+		{
+			// Disable what is already there rather than hiding it, so nothing behind the overlay can be reached
+			// by keyboard. Only controls that were enabled are recorded, so nothing gets switched ON afterwards
+			// that the window had deliberately switched off.
+			foreach (Control existing in host.Controls)
+			{
+				if (!existing.Enabled) continue;
+				existing.Enabled = false;
+				disabled.Add(existing);
+			}
+
+			// The host's own Escape/Enter handling must not fire while the overlay is up — several windows close
+			// themselves on Escape, which would otherwise close the window out from under what is on top of it.
+			// Escape is delivered to the overlay's own controls instead, below.
+			host.KeyPreview = false;
+			host.AcceptButton = null;
+			host.CancelButton = null;
+
+			host.Controls.Add(overlay);
+			overlay.BringToFront();
+			StylePromptPanel(overlay);
+			AttachEscape(overlay, onEscape);
+
+			if (!focusFirst.IsDisposed && focusFirst.CanFocus) focusFirst.Focus();
+			afterShown?.Invoke();
+
+			// A nested message loop. It ends when the caller says so, or if the window underneath goes away.
+			//
+			// The wait between rounds is WaitMessage, NOT a sleep. Sleeping leaves the thread holding the
+			// message queue while not pumping it, so for that whole slice the window answers nothing Windows
+			// asks of it — which is felt as everything crawling, right down to Alt+Tab, because switching
+			// windows needs this one to respond. WaitMessage instead parks the thread in the same wait a normal
+			// message loop uses: nothing is burned while idle, and the moment a key, click or timer arrives it
+			// wakes and is pumped immediately.
+			while (!finished())
+			{
+				if (host.IsDisposed || !host.Visible) { onEscape(); break; }
+				Application.DoEvents();
+				if (!finished() && !host.IsDisposed) WaitMessage();
+			}
+		}
+		finally
+		{
+			_overlayDepth--;
+			try
+			{
+				if (!host.IsDisposed)
+				{
+					host.Controls.Remove(overlay);
+					foreach (Control restore in disabled)
+						if (!restore.IsDisposed) restore.Enabled = true;
+
+					host.KeyPreview = keyPreviewBefore;
+					host.AcceptButton = acceptBefore;
+					host.CancelButton = cancelBefore;
+
+					if (focusBefore != null && !focusBefore.IsDisposed && focusBefore.CanFocus)
+						focusBefore.Focus();
+				}
+			}
+			catch { }
+			overlay.Dispose();
+		}
+	}
+
+	/// <summary>
+	/// Wires Escape on every control inside an overlay. The window's own key preview is switched off while an
+	/// overlay is up, so Escape has to be caught on the controls that can actually hold focus — and it must work
+	/// from all of them, not just whichever one happens to be first.
+	/// </summary>
+	private static void AttachEscape(Control root, Action onEscape)
+	{
+		foreach (Control child in root.Controls)
+		{
+			child.KeyDown += delegate (object? s, KeyEventArgs e)
+			{
+				if (e.KeyCode != Keys.Escape) return;
+				e.Handled = true;
+				e.SuppressKeyPress = true;
+				onEscape();
+			};
+			if (child.HasChildren) AttachEscape(child, onEscape);
+		}
+	}
+
+	/// <summary>Builds the prompt's panel: the caption, the question, and a row of choices.</summary>
+	private Panel BuildPromptPanel(string text, string caption, PromptChoice[] choices,
+		Action<DialogResult> answer, out Button firstButton)
+	{
+		var overlay = new Panel
+		{
+			Dock = DockStyle.Fill,
+			BackColor = SystemColors.Control,
+			Padding = new Padding(20),
+			// Named so the screen reader has something sensible if it ever reaches the container itself.
+			AccessibleName = caption,
+			AccessibleRole = AccessibleRole.Pane
+		};
+
+		var layout = new TableLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			ColumnCount = 1,
+			RowCount = 3
+		};
+		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+		layout.Controls.Add(new Label
+		{
+			Text = caption,
+			Font = new Font("Segoe UI", 14f, FontStyle.Bold),
+			AutoSize = true,
+			Dock = DockStyle.Top,
+			Margin = new Padding(0, 0, 0, 10)
+		}, 0, 0);
+
+		layout.Controls.Add(new Label
+		{
+			Text = text,
+			Font = new Font("Segoe UI", 12f),
+			Dock = DockStyle.Fill,
+			AccessibleName = text
+		}, 0, 1);
+
+		var row = new FlowLayoutPanel
+		{
+			Dock = DockStyle.Bottom,
+			FlowDirection = FlowDirection.LeftToRight,
+			AutoSize = true,
+			WrapContents = false
+		};
+
+		DialogResult escape = EscapeResult(choices);
+		Button? first = null;
+
+		foreach (PromptChoice choice in choices)
+		{
+			// Deliberately unnamed for now. Focus landing on a named button makes the screen reader start saying
+			// "Yes" of its own accord, and the question — spoken a moment later — then cut it off part-way, which
+			// is heard as a stray "ye" in front of every prompt. A blank name gives the reader nothing to say, so
+			// the question is the first thing heard; the real names are restored a moment later (see
+			// RestoreChoiceNames) so Tab still announces each choice properly.
+			var button = new Button
+			{
+				Text = choice.Label,
+				AutoSize = true,
+				MinimumSize = new Size(120, 42),
+				Font = new Font("Segoe UI", 11f, FontStyle.Bold),
+				Margin = new Padding(0, 0, 10, 0),
+				AccessibleName = " "
+			};
+			DialogResult chosen = choice.Result;
+			button.Click += delegate { answer(chosen); };
+			button.KeyDown += delegate (object? s, KeyEventArgs e)
+			{
+				// Enter is handled here rather than left to the window's default button, because the prompt
+				// deliberately clears that while it is up — otherwise Enter would fire whatever the window
+				// behind considers its default action.
+				if (e.KeyCode == Keys.Enter)
+				{
+					e.Handled = true;
+					e.SuppressKeyPress = true;
+					answer(chosen);
+					return;
+				}
+				if (e.KeyCode != Keys.Escape) return;
+				e.Handled = true;
+				e.SuppressKeyPress = true;
+				answer(escape);
+			};
+			row.Controls.Add(button);
+			first ??= button;
+		}
+
+		layout.Controls.Add(row, 0, 2);
+		overlay.Controls.Add(layout);
+
+		firstButton = first!;
+		return overlay;
+	}
+
+	/// <summary>Applies the user's contrast and text-size settings to a prompt, as dialogs get.</summary>
+	private void StylePromptPanel(Panel overlay)
+	{
+		if (_settings.DisplayContrast == DisplayContrast.Off && _settings.TextSize == TextSize.Normal) return;
+		var colors = ContrastColors(_settings.DisplayContrast);
+		float factor = TextScaleFactor();
+		if (colors is { } c) { overlay.BackColor = c.Back; overlay.ForeColor = c.Fore; }
+		var scratch = new Dictionary<Control, float>();
+		foreach (Control child in overlay.Controls)
+			ThemeControlTree(child, colors, factor, scratch);
+	}
+
+	/// <summary>
+	/// Speaks a prompt's question. Spoken immediately: the choice buttons start out unnamed (see
+	/// BuildPromptPanel), so there is nothing from the screen reader to talk over or be cut off by.
+	///
+	/// Just the question — the choice is not appended. Giving the buttons their names back a moment later is
+	/// itself a change the screen reader reports, so it announces "Yes, Alt Y" on its own straight afterwards;
+	/// saying it here as well had it read out twice.
+	/// </summary>
+	private void SpeakPromptQuestion(string text)
+	{
+		Speak(text, interrupt: true);
+	}
+
+	/// <summary>
+	/// Gives the choice buttons their real accessible names back, shortly after the prompt has been announced.
+	///
+	/// They open unnamed so the reader stays quiet while the question is read. By the time this runs the reader
+	/// has already taken the name it was going to announce for the initial focus, so restoring them now changes
+	/// nothing that has been said — it only means Tabbing between the choices from here on announces "Yes" and
+	/// "No" as it should.
+	/// </summary>
+	private static void RestoreChoiceNames(Control root, PromptChoice[] choices)
+	{
+		var timer = new System.Windows.Forms.Timer { Interval = 700 };
+		timer.Tick += (s, e) =>
+		{
+			timer.Stop();
+			timer.Dispose();
+			try
+			{
+				var buttons = new List<Button>();
+				CollectButtons(root, buttons);
+				for (int i = 0; i < buttons.Count && i < choices.Length; i++)
+					buttons[i].AccessibleName = choices[i].Label.Replace("&", "");
+			}
+			catch { }
+		};
+		timer.Start();
+	}
+}

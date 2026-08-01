@@ -124,50 +124,40 @@ public partial class Form1
 
 	private void ShowTrackedModsDialog(string domain, int trackedTotal, List<TrackedRow> rows)
 	{
-		var f = new Form
-		{
-			Text = Loc.T("tracked.title"),
-			Size = new Size(760, 520),
-			StartPosition = FormStartPosition.CenterParent,
-			KeyPreview = true,
-			MinimizeBox = false,
-			MaximizeBox = false
-		};
-		var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
-		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-		layout.Controls.Add(new Label { Text = Loc.T("tracked.header", GameDisplayName()), AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 8) }, 0, 0);
-
-		var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("tracked.listName"), IntegralHeight = false, HorizontalScrollbar = true };
-		foreach (TrackedRow r in rows) list.Items.Add(r);
-		if (list.Items.Count > 0) list.SelectedIndex = 0;
-		layout.Controls.Add(list, 0, 1);
-		f.Controls.Add(layout);
-
-		WireAccessibleDialogList(list);
-		f.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) f.Close(); };
-		list.KeyDown += (_, e) =>
-		{
-			if (e.KeyCode != Keys.Enter || list.SelectedItem is not TrackedRow row) return;
-			e.Handled = e.SuppressKeyPress = true;
-			try
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
+		ShowInlineView(Loc.T("tracked.title"), (container, closeView) =>
 			{
-				string url = $"https://www.nexusmods.com/{domain}/mods/{row.ModId}?tab=files";
-				Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-			}
-			catch { }
-		};
+			var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
+			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+			layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+			layout.Controls.Add(new Label { Text = Loc.T("tracked.header", GameDisplayName()), AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 8) }, 0, 0);
 
-		f.Shown += (_, _) =>
-		{
+			var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("tracked.listName"), IntegralHeight = false, HorizontalScrollbar = true };
+			foreach (TrackedRow r in rows) list.Items.Add(r);
+			if (list.Items.Count > 0) list.SelectedIndex = 0;
+			layout.Controls.Add(list, 0, 1);
+			container.Controls.Add(layout);
+
+			WireAccessibleDialogList(list);
+			// Escape is handled by the view itself (see Form1.InlineView).
+			list.KeyDown += (_, e) =>
+			{
+				if (e.KeyCode != Keys.Enter || list.SelectedItem is not TrackedRow row) return;
+				e.Handled = e.SuppressKeyPress = true;
+				try
+				{
+					string url = $"https://www.nexusmods.com/{domain}/mods/{row.ModId}?tab=files";
+					Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+				}
+				catch { }
+			};
+
 			int notInstalled = rows.Count(r => !r.Installed);
 			int updates = rows.Count - notInstalled;
 			string opening = Loc.T("tracked.header", GameDisplayName()) + " "
 				+ Loc.T("tracked.summary", rows.Count, notInstalled, updates) + " " + Loc.T("tracked.actionHint");
 			Speak(opening);
-			list.Focus();
-		};
-		StyleDialog(f);
-		f.ShowDialog(this);
+			return list;
+		});
 	}
 }

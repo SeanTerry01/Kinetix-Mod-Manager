@@ -69,63 +69,53 @@ public partial class Form1
 
 	private void ShowDownloadsDialog(List<DownloadItem> items)
 	{
-		var f = new Form
-		{
-			Text = Loc.T("downloads.title"),
-			Size = new Size(760, 520),
-			StartPosition = FormStartPosition.CenterParent,
-			KeyPreview = true,
-			MinimizeBox = false,
-			MaximizeBox = false
-		};
-		var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
-		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-		layout.Controls.Add(new Label { Text = Loc.T("downloads.header", GameDisplayName()), AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 8) }, 0, 0);
-
-		var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("downloads.listName"), IntegralHeight = false, HorizontalScrollbar = true };
-		foreach (DownloadItem d in items) list.Items.Add(d);
-		if (list.Items.Count > 0) list.SelectedIndex = 0;
-		layout.Controls.Add(list, 0, 1);
-		f.Controls.Add(layout);
-
-		WireAccessibleDialogList(list);
-		f.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) f.Close(); };
-		list.KeyDown += (_, e) =>
-		{
-			if (list.SelectedItem is not DownloadItem item) return;
-
-			if (e.KeyCode == Keys.Enter)
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
+		ShowInlineView(Loc.T("downloads.title"), (container, closeView) =>
 			{
-				e.Handled = e.SuppressKeyPress = true;
-				string path = item.FullPath;
-				f.Close();
-				// Same route as picking an archive by hand; it runs its own progress and overwrite prompt.
-				_ = InstallFromZip(path, confirmReinstall: true);
-			}
-			else if (e.KeyCode == Keys.Delete)
-			{
-				e.Handled = e.SuppressKeyPress = true;
-				DeleteDownload(f, list, item);
-			}
-		};
+			var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
+			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+			layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+			layout.Controls.Add(new Label { Text = Loc.T("downloads.header", GameDisplayName()), AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 8) }, 0, 0);
 
-		f.Shown += (_, _) =>
-		{
+			var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("downloads.listName"), IntegralHeight = false, HorizontalScrollbar = true };
+			foreach (DownloadItem d in items) list.Items.Add(d);
+			if (list.Items.Count > 0) list.SelectedIndex = 0;
+			layout.Controls.Add(list, 0, 1);
+			container.Controls.Add(layout);
+
+			WireAccessibleDialogList(list);
+			// Escape is handled by the view itself (see Form1.InlineView).
+			list.KeyDown += (_, e) =>
+			{
+				if (list.SelectedItem is not DownloadItem item) return;
+
+				if (e.KeyCode == Keys.Enter)
+				{
+					e.Handled = e.SuppressKeyPress = true;
+					string path = item.FullPath;
+					closeView();
+					// Same route as picking an archive by hand; it runs its own progress and overwrite prompt.
+					_ = InstallFromZip(path, confirmReinstall: true);
+				}
+				else if (e.KeyCode == Keys.Delete)
+				{
+					e.Handled = e.SuppressKeyPress = true;
+					DeleteDownload(closeView, list, item);
+				}
+			};
+
 			string opening = Loc.T("downloads.header", GameDisplayName()) + " "
 				+ Loc.T(items.Count == 1 ? "downloads.countOne" : "downloads.count", items.Count)
 				+ " " + Loc.T("downloads.actionHint");
 			Speak(opening);
-			list.Focus();
-		};
-		StyleDialog(f);
-		f.ShowDialog(this);
+			return list;
+		});
 	}
 
 	/// <summary>Sends a downloaded archive to the Recycle Bin after confirmation and drops it from the list.</summary>
-	private void DeleteDownload(Form owner, ListBox list, DownloadItem item)
+	private void DeleteDownload(Action closeView, ListBox list, DownloadItem item)
 	{
-		if (SpeakBox(owner, Loc.T("downloads.deleteConfirm", Path.GetFileName(item.FullPath)), Loc.T("downloads.deleteTitle"),
+		if (SpeakBox(Loc.T("downloads.deleteConfirm", Path.GetFileName(item.FullPath)), Loc.T("downloads.deleteTitle"),
 				MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
 			return;
 
@@ -146,7 +136,7 @@ public partial class Form1
 		int idx = list.SelectedIndex;
 		list.Items.Remove(item);
 		_soundEngine.Play("disable");
-		if (list.Items.Count == 0) { Speak(Loc.T("downloads.deletedLast")); owner.Close(); return; }
+		if (list.Items.Count == 0) { Speak(Loc.T("downloads.deletedLast")); closeView(); return; }
 		list.SelectedIndex = Math.Min(idx, list.Items.Count - 1);
 		Speak(Loc.T("downloads.deleted", list.Items.Count));
 	}

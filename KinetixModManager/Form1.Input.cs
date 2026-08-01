@@ -30,6 +30,12 @@ public partial class Form1
 {
 	private void Form1_KeyDown(object? sender, KeyEventArgs e)
 	{
+		// While a prompt or an in-window view is covering the window, the window's own shortcuts must stay out
+		// of the way — F5 must not launch the game from behind a confirmation, and Escape belongs to whatever
+		// is on top, which handles it itself. The overlay disables the controls beneath it, but key preview
+		// reaches the form whatever has focus, so it has to be turned away here.
+		if (OverlayIsOpen) return;
+
 		if (_settings.ActiveGame == "None")
 		{
 			// On the game-selection screen most shortcuts act on a mod list that isn't loaded yet, but the

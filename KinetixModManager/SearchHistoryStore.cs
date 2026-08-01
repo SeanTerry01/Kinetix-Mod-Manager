@@ -66,6 +66,41 @@ public static class SearchHistoryStore
 		catch { /* history is a convenience; never fail a search over it */ }
 	}
 
+	/// <summary>
+	/// Removes one search term from a game's history and returns how many stored entries went with it.
+	///
+	/// Every occurrence of the term goes, not just the most recent one: the history list shows each term once
+	/// however many times it was searched, so leaving older copies behind would delete a row that immediately
+	/// came back. Matching ignores case for the same reason the list de-duplicates that way.
+	/// </summary>
+	public static int RemoveTerm(string game, string term)
+	{
+		term = term?.Trim() ?? "";
+		if (string.IsNullOrEmpty(term) || string.IsNullOrEmpty(game) || game == "None") return 0;
+
+		try
+		{
+			var entries = LoadRaw(game);
+			int removed = entries.RemoveAll(e => string.Equals(e.Term, term, StringComparison.OrdinalIgnoreCase));
+			if (removed == 0) return 0;
+
+			string path = HistoryPath(game);
+			if (entries.Count == 0)
+			{
+				// Nothing left: drop the file entirely rather than leave an empty one behind, which is exactly
+				// what Clear does and what Load already treats as "no history".
+				if (File.Exists(path)) File.Delete(path);
+			}
+			else
+			{
+				Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+				File.WriteAllText(path, JsonConvert.SerializeObject(entries, Formatting.Indented));
+			}
+			return removed;
+		}
+		catch { return 0; }
+	}
+
 	/// <summary>Deletes a game's entire search history.</summary>
 	public static void Clear(string game)
 	{
