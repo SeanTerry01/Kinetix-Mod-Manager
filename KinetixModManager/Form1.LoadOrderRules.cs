@@ -39,57 +39,47 @@ public partial class Form1
 			return;
 		}
 
-		var f = new Form
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
+		ShowInlineView(Loc.T("rules.addTitle", subject.Name), (container, closeView) =>
 		{
-			Text = Loc.T("rules.addTitle", subject.Name),
-			Size = new Size(720, 500),
-			StartPosition = FormStartPosition.CenterParent,
-			KeyPreview = true,
-			MinimizeBox = false,
-			MaximizeBox = false
-		};
-		var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
-		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-		layout.Controls.Add(new Label { Text = Loc.T("rules.addHeader", subject.Name), AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 8) }, 0, 0);
+			var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
+			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+			layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+			layout.Controls.Add(new Label { Text = Loc.T("rules.addHeader", subject.Name), AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 8) }, 0, 0);
 
-		var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("rules.pickListName"), IntegralHeight = false, HorizontalScrollbar = true };
-		foreach (string n in others) list.Items.Add(n);
-		if (list.Items.Count > 0) list.SelectedIndex = 0;
-		layout.Controls.Add(list, 0, 1);
-		f.Controls.Add(layout);
+			var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("rules.pickListName"), IntegralHeight = false, HorizontalScrollbar = true };
+			foreach (string n in others) list.Items.Add(n);
+			if (list.Items.Count > 0) list.SelectedIndex = 0;
+			layout.Controls.Add(list, 0, 1);
+			container.Controls.Add(layout);
 
-		WireAccessibleDialogList(list);
-		f.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) f.Close(); };
-		list.KeyDown += (_, e) =>
-		{
-			if (list.SelectedItem is not string target) return;
-
-			// Enter: subject loads AFTER target. B: subject loads BEFORE target (stored as target-after-subject).
-			if (e.KeyCode == Keys.Enter)
+			WireAccessibleDialogList(list);
+			// Escape is handled by the view itself (see Form1.InlineView).
+			list.KeyDown += (_, e) =>
 			{
-				e.Handled = e.SuppressKeyPress = true;
-				if (AddRule(subject.Name, target)) Speak(Loc.T("rules.addedAfter", subject.Name, target));
-				else Speak(Loc.T("rules.duplicate"));
-				f.Close();
-			}
-			else if (e.KeyCode == Keys.B)
-			{
-				e.Handled = e.SuppressKeyPress = true;
-				if (AddRule(target, subject.Name)) Speak(Loc.T("rules.addedBefore", subject.Name, target));
-				else Speak(Loc.T("rules.duplicate"));
-				f.Close();
-			}
-		};
+				if (list.SelectedItem is not string target) return;
 
-		f.Shown += (_, _) =>
-		{
+				// Enter: subject loads AFTER target. B: subject loads BEFORE target (stored as target-after-subject).
+				if (e.KeyCode == Keys.Enter)
+				{
+					e.Handled = e.SuppressKeyPress = true;
+					if (AddRule(subject.Name, target)) Speak(Loc.T("rules.addedAfter", subject.Name, target));
+					else Speak(Loc.T("rules.duplicate"));
+					closeView();
+				}
+				else if (e.KeyCode == Keys.B)
+				{
+					e.Handled = e.SuppressKeyPress = true;
+					if (AddRule(target, subject.Name)) Speak(Loc.T("rules.addedBefore", subject.Name, target));
+					else Speak(Loc.T("rules.duplicate"));
+					closeView();
+				}
+			};
+
 			Speak(Loc.T("rules.addHeader", subject.Name) + " " + Loc.T("rules.addHint", subject.Name) + " "
 				+ Loc.T(others.Count == 1 ? "rules.pickCountOne" : "rules.pickCount", others.Count));
-			list.Focus();
-		};
-		StyleDialog(f);
-		f.ShowDialog(this);
+			return list;
+		});
 	}
 
 	/// <summary>Adds a "plugin loads after 'after'" rule for the active game; returns false if it already exists.</summary>
@@ -119,52 +109,42 @@ public partial class Form1
 			return;
 		}
 
-		var f = new Form
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
+		ShowInlineView(Loc.T("rules.manageTitle"), (container, closeView) =>
 		{
-			Text = Loc.T("rules.manageTitle"),
-			Size = new Size(720, 500),
-			StartPosition = FormStartPosition.CenterParent,
-			KeyPreview = true,
-			MinimizeBox = false,
-			MaximizeBox = false
-		};
-		var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
-		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-		layout.Controls.Add(new Label { Text = Loc.T("rules.manageHeader", GameDisplayName()), AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 8) }, 0, 0);
+			var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
+			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+			layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+			layout.Controls.Add(new Label { Text = Loc.T("rules.manageHeader", GameDisplayName()), AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 8) }, 0, 0);
 
-		var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("rules.listName"), IntegralHeight = false, HorizontalScrollbar = true };
-		foreach (AppSettings.LoadOrderRule r in rules) list.Items.Add(new RuleItem { Rule = r, Summary = Loc.T("rules.row", r.Plugin, r.After) });
-		if (list.Items.Count > 0) list.SelectedIndex = 0;
-		layout.Controls.Add(list, 0, 1);
-		f.Controls.Add(layout);
+			var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("rules.listName"), IntegralHeight = false, HorizontalScrollbar = true };
+			foreach (AppSettings.LoadOrderRule r in rules) list.Items.Add(new RuleItem { Rule = r, Summary = Loc.T("rules.row", r.Plugin, r.After) });
+			if (list.Items.Count > 0) list.SelectedIndex = 0;
+			layout.Controls.Add(list, 0, 1);
+			container.Controls.Add(layout);
 
-		WireAccessibleDialogList(list);
-		f.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) f.Close(); };
-		list.KeyDown += (_, e) =>
-		{
-			if (e.KeyCode != Keys.Delete || list.SelectedItem is not RuleItem item) return;
-			e.Handled = e.SuppressKeyPress = true;
-			rules.Remove(item.Rule);
-			if (rules.Count == 0) _settings.LoadOrderRules.Remove(_settings.ActiveGame);
-			_settings.Save();
+			WireAccessibleDialogList(list);
+			// Escape is handled by the view itself (see Form1.InlineView).
+			list.KeyDown += (_, e) =>
+			{
+				if (e.KeyCode != Keys.Delete || list.SelectedItem is not RuleItem item) return;
+				e.Handled = e.SuppressKeyPress = true;
+				rules.Remove(item.Rule);
+				if (rules.Count == 0) _settings.LoadOrderRules.Remove(_settings.ActiveGame);
+				_settings.Save();
 
-			int idx = list.SelectedIndex;
-			list.Items.Remove(item);
-			_soundEngine.Play("disable");
-			if (list.Items.Count == 0) { Speak(Loc.T("rules.removedLast")); f.Close(); return; }
-			list.SelectedIndex = Math.Min(idx, list.Items.Count - 1);
-			Speak(Loc.T("rules.removed", list.Items.Count));
-		};
+				int idx = list.SelectedIndex;
+				list.Items.Remove(item);
+				_soundEngine.Play("disable");
+				if (list.Items.Count == 0) { Speak(Loc.T("rules.removedLast")); closeView(); return; }
+				list.SelectedIndex = Math.Min(idx, list.Items.Count - 1);
+				Speak(Loc.T("rules.removed", list.Items.Count));
+			};
 
-		f.Shown += (_, _) =>
-		{
 			Speak(Loc.T("rules.manageHeader", GameDisplayName()) + " "
 				+ Loc.T(rules.Count == 1 ? "rules.countOne" : "rules.count", rules.Count) + " " + Loc.T("rules.manageHint"));
-			list.Focus();
-		};
-		StyleDialog(f);
-		f.ShowDialog(this);
+			return list;
+		});
 	}
 
 	/// <summary>One row in the rules list.</summary>

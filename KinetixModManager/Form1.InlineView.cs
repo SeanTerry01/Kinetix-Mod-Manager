@@ -24,8 +24,12 @@ public partial class Form1
 	/// <paramref name="build"/> is handed the container to fill and a <c>close</c> callback to call when the
 	/// view is done with — the direct equivalent of a dialog's <c>Close()</c>. Whatever control it returns is
 	/// the one focus starts on.
+	///
+	/// <paramref name="onClosed"/> runs once the view has gone, however it went — a button, or Escape. It is
+	/// what a dialog would have done in its FormClosing handler, and is the place for anything that has to
+	/// happen on the way out no matter which route was taken.
 	/// </summary>
-	private void ShowInlineView(string title, Func<Panel, Action, Control> build)
+	private void ShowInlineView(string title, Func<Panel, Action, Control> build, Action? onClosed = null)
 	{
 		Form host = this;
 		bool closed = false;
@@ -65,5 +69,7 @@ public partial class Form1
 		Control focusFirst = build(content, Close);
 
 		RunOverlay(host, view, focusFirst, finished: () => closed, onEscape: Close);
+
+		onClosed?.Invoke();
 	}
 }

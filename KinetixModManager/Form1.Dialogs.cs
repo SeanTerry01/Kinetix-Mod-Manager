@@ -31,20 +31,11 @@ public partial class Form1
 	/// <summary>Opens a modal dialog that lets the user browse and preview all available app sounds.</summary>
 	private void ShowSoundDemo()
 	{
-		Hide();
 		string previewTheme = _settings.CurrentTheme;
-		Form demoForm = new Form
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView. The window used to
+		// be hidden while this was open; there is nothing to hide now, and Escape is handled by the view.
+		ShowInlineView(Loc.T("soundDemo.title"), (container, closeView) =>
 		{
-			Text = Loc.T("soundDemo.title"),
-			Size = new Size(500, 600),
-			StartPosition = FormStartPosition.CenterScreen,
-			KeyPreview = true
-		};
-		// Escape closes from anywhere in the dialog (the form has KeyPreview), not only from the sound list.
-		demoForm.KeyDown += delegate (object? s, KeyEventArgs e)
-		{
-			if (e.KeyCode == Keys.Escape) demoForm.Close();
-		};
 		TableLayoutPanel tableLayoutPanel = new TableLayoutPanel
 		{
 			Dock = DockStyle.Fill,
@@ -110,46 +101,39 @@ public partial class Form1
 			{
 				_soundEngine.Play(lb.SelectedItem.ToString() ?? "", previewTheme);
 			}
-			if (pe.KeyCode == Keys.Escape)
-			{
-				demoForm.Close();
-			}
-		};
-		demoForm.FormClosing += delegate
-		{
-			Show();
 		};
 		tableLayoutPanel.Controls.Add(lb, 0, 2);
-		demoForm.Controls.Add(tableLayoutPanel);
+		container.Controls.Add(tableLayoutPanel);
 		// Select the first sound on open so the list lands on a real item (and announces it)
 		// rather than an empty selection.
 		if (lb.Items.Count > 0) lb.SelectedIndex = 0;
-		ApplyScreenReaderPauses(demoForm);
-		demoForm.ShowDialog();
+		ApplyScreenReaderPauses(container);
+		return lb;
+		});
 	}
 
 	/// <summary>Opens the audio theme manager dialog for creating, renaming, and switching sound themes.</summary>
 	private void ShowThemeManager()
 	{
-		Form f = new Form
-		{
-			Text = Loc.T("themeMgr.title"),
-			Size = new Size(500, 600),
-			StartPosition = FormStartPosition.CenterScreen,
-			KeyPreview = true
-		};
-		TableLayoutPanel tableLayoutPanel = new TableLayoutPanel
-		{
-			Dock = DockStyle.Fill,
-			Padding = new Padding(15),
-			RowCount = 6
-		};
+		// Declared out here because RefreshList (below) is a local function that uses them, and because the
+		// "was anything saved?" flag has to outlive the view to decide what onClosed announces.
 		string tempActiveTheme = _settings.CurrentTheme;
+		bool saved = false;
 		ListBox lb = new ListBox
 		{
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 12f),
 			AccessibleName = Loc.T("themeMgr.installedThemes")
+		};
+
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
+		ShowInlineView(Loc.T("themeMgr.title"), (container, closeView) =>
+		{
+		TableLayoutPanel tableLayoutPanel = new TableLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			Padding = new Padding(15),
+			RowCount = 6
 		};
 		RefreshList();
 		Button button = new Button
@@ -259,7 +243,8 @@ public partial class Form1
 		{
 			_settings.CurrentTheme = tempActiveTheme;
 			_settings.Save();
-			f.Close();
+			saved = true;
+			closeView();
 			Speak(Loc.T("themeMgr.saved"));
 		};
 		Button button6 = new Button
@@ -270,8 +255,7 @@ public partial class Form1
 		};
 		button6.Click += delegate
 		{
-			Speak(Loc.T("common.changesCancelled"));
-			f.Close();
+			closeView();
 		};
 		flowLayoutPanel.Controls.AddRange(button5, button6);
 		tableLayoutPanel.Controls.Add(lb, 0, 0);
@@ -280,17 +264,14 @@ public partial class Form1
 		tableLayoutPanel.Controls.Add(button3, 0, 3);
 		tableLayoutPanel.Controls.Add(button4, 0, 4);
 		tableLayoutPanel.Controls.Add(flowLayoutPanel, 0, 5);
-		f.Controls.Add(tableLayoutPanel);
-		f.KeyDown += delegate(object? s, KeyEventArgs pe)
-		{
-			if (pe.KeyCode == Keys.Escape)
-			{
-				Speak(Loc.T("common.changesCancelled"));
-				f.Close();
-			}
-		};
-		ApplyScreenReaderPauses(f);
-		f.ShowDialog();
+		container.Controls.Add(tableLayoutPanel);
+		// Escape is handled by the view itself; "changes cancelled" is announced from onClosed below so it is
+		// said whichever way the view was left — Escape or the Cancel button.
+		ApplyScreenReaderPauses(container);
+		return lb;
+		},
+		onClosed: () => { if (!saved) Speak(Loc.T("common.changesCancelled")); });
+
 		void RefreshList()
 		{
 			lb.Items.Clear();
@@ -303,25 +284,25 @@ public partial class Form1
 	/// <summary>Opens the keyboard shortcut re-binding dialog.</summary>
 	private void ShowShortcutManager()
 	{
-		Form f = new Form
-		{
-			Text = Loc.T("shortcutMgr.title"),
-			Size = new Size(500, 600),
-			StartPosition = FormStartPosition.CenterScreen,
-			KeyPreview = true
-		};
-		TableLayoutPanel tableLayoutPanel = new TableLayoutPanel
-		{
-			Dock = DockStyle.Fill,
-			Padding = new Padding(15),
-			RowCount = 4
-		};
+		// Declared out here because RefreshList (below) is a local function that uses them, and because the
+		// "was anything saved?" flag has to outlive the view to decide what onClosed announces.
 		Dictionary<string, Keys> tempShortcuts = new Dictionary<string, Keys>(_settings.Shortcuts);
+		bool saved = false;
 		ListBox lb = new ListBox
 		{
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 12f),
 			AccessibleName = Loc.T("shortcutMgr.actionList")
+		};
+
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
+		ShowInlineView(Loc.T("shortcutMgr.title"), (container, closeView) =>
+		{
+		TableLayoutPanel tableLayoutPanel = new TableLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			Padding = new Padding(15),
+			RowCount = 4
 		};
 		// Announce "X of Y" position the same way the main lists do, on focus and on arrow-key navigation.
 		lb.SelectedIndexChanged += List_SelectedIndexChanged;
@@ -339,25 +320,32 @@ public partial class Form1
 			{
 				string action = (lb.SelectedItem.ToString() ?? "").Split(':')[0].Trim();
 				Speak(Loc.T("shortcutMgr.pressFor", action));
-				Form prompt = new Form
+
+				// The key-capture prompt is a view of its own, stacked on the shortcut list. It needs a control
+				// that can actually hold focus to receive the keystroke, so the instruction is a button rather
+				// than a label. Escape closes the capture without binding anything, which is what it did before.
+				ShowInlineView(Loc.T("shortcutMgr.pressKeys"), (promptBox, closePrompt) =>
 				{
-					Text = Loc.T("shortcutMgr.pressKeys"),
-					Size = new Size(300, 150),
-					StartPosition = FormStartPosition.CenterParent,
-					FormBorderStyle = FormBorderStyle.FixedDialog,
-					KeyPreview = true
-				};
-				prompt.KeyDown += delegate(object? ps, KeyEventArgs e)
-				{
-					if (e.KeyCode != Keys.ControlKey && e.KeyCode != Keys.ShiftKey && e.KeyCode != Keys.Menu)
+					var capture = new Button
 					{
+						Text = Loc.T("shortcutMgr.pressFor", action),
+						Dock = DockStyle.Fill,
+						Font = new Font("Segoe UI", 12f),
+						AccessibleName = Loc.T("shortcutMgr.pressFor", action)
+					};
+					capture.KeyDown += delegate (object? ps, KeyEventArgs e)
+					{
+						if (e.KeyCode == Keys.ControlKey || e.KeyCode == Keys.ShiftKey || e.KeyCode == Keys.Menu) return;
+						if (e.KeyCode == Keys.Escape) return;   // the view closes on Escape; bind nothing
+						e.Handled = e.SuppressKeyPress = true;
 						tempShortcuts[action] = e.KeyData;
-						prompt.Close();
+						closePrompt();
 						Speak(Loc.T("shortcutMgr.remapped", action));
 						RefreshList();
-					}
-				};
-				prompt.ShowDialog();
+					};
+					promptBox.Controls.Add(capture);
+					return capture;
+				});
 			}
 		};
 		Button button2 = new Button
@@ -397,7 +385,8 @@ public partial class Form1
 		{
 			_settings.Shortcuts = tempShortcuts;
 			_settings.Save();
-			f.Close();
+			saved = true;
+			closeView();
 			Speak(Loc.T("shortcutMgr.saved"));
 			SetupAccessibleUI();
 		};
@@ -409,25 +398,21 @@ public partial class Form1
 		};
 		button4.Click += delegate
 		{
-			Speak(Loc.T("common.changesCancelled"));
-			f.Close();
+			closeView();
 		};
 		flowLayoutPanel.Controls.AddRange(button3, button4);
 		tableLayoutPanel.Controls.Add(lb, 0, 0);
 		tableLayoutPanel.Controls.Add(button, 0, 1);
 		tableLayoutPanel.Controls.Add(button2, 0, 2);
 		tableLayoutPanel.Controls.Add(flowLayoutPanel, 0, 3);
-		f.Controls.Add(tableLayoutPanel);
-		f.KeyDown += delegate(object? s, KeyEventArgs pe)
-		{
-			if (pe.KeyCode == Keys.Escape)
-			{
-				Speak(Loc.T("common.changesCancelled"));
-				f.Close();
-			}
-		};
-		ApplyScreenReaderPauses(f);
-		f.ShowDialog();
+		container.Controls.Add(tableLayoutPanel);
+		// Escape is handled by the view itself; "changes cancelled" is announced from onClosed below so it is
+		// said whichever way the view was left — Escape or the Cancel button.
+		ApplyScreenReaderPauses(container);
+		return lb;
+		},
+		onClosed: () => { if (!saved) Speak(Loc.T("common.changesCancelled")); });
+
 		void RefreshList()
 		{
 			lb.Items.Clear();

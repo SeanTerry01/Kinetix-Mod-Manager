@@ -69,22 +69,16 @@ public partial class Form1
     /// <summary>Shows the accessible file chooser; on Enter it opens the selected INI (creating a missing custom INI).</summary>
     private void ChooseIniFileThenEdit(List<(string Label, string Path)> files)
     {
-        var form = new Form
+        // Shown inside the main window rather than as one of its own — see Form1.InlineView.
+        ShowInlineView(Loc.T("ini.chooseTitle"), (container, closeView) =>
         {
-            Text = Loc.T("ini.chooseTitle"),
-            Size = new Size(560, 420),
-            StartPosition = FormStartPosition.CenterParent,
-            KeyPreview = true,
-            MinimizeBox = false,
-            MaximizeBox = false,
-        };
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 1, Padding = new Padding(10) };
         var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("ini.chooseListName"), IntegralHeight = false, HorizontalScrollbar = true };
         foreach (var (label, path) in files)
             list.Items.Add(new IniFileChoice(label, path, File.Exists(path)));
         if (list.Items.Count > 0) list.SelectedIndex = 0;
         layout.Controls.Add(list, 0, 0);
-        form.Controls.Add(layout);
+        container.Controls.Add(layout);
 
         // GotFocus announces the position on entry; SelectedIndexChanged keeps announcing "X of Y" as the user
         // arrows through — matching every other list in the app.
@@ -114,7 +108,7 @@ public partial class Form1
                     return;
                 }
             }
-            // Open the editor as a nested dialog and leave this chooser open behind it, so Escape from the editor
+            // Open the editor as a nested view and leave this chooser open behind it, so Escape from the editor
             // returns here (the file list) and a second Escape closes the chooser back to the main window.
             ShowIniEditor(choice.Path, choice.Label);
         }
@@ -125,11 +119,10 @@ public partial class Form1
             if (e.KeyCode == Keys.Left || e.KeyCode == Keys.Right) { e.Handled = e.SuppressKeyPress = true; }
             else if (e.KeyCode == Keys.Enter) { e.Handled = e.SuppressKeyPress = true; OpenSelected(); }
         };
-        form.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) form.Close(); };
-        form.Shown += (_, _) => { Speak(Loc.T("ini.chooseOpening", files.Count)); list.Focus(); };
-
-        StyleDialog(form);
-        form.ShowDialog(this);
+        // Escape is handled by the view itself (see Form1.InlineView).
+        Speak(Loc.T("ini.chooseOpening", files.Count));
+        return list;
+        });
     }
 
     /// <summary>The accessible editor for a single INI file at <paramref name="path"/> (<paramref name="fileLabel"/> is its name).</summary>
@@ -142,15 +135,10 @@ public partial class Form1
         // Snapshot the game INIs + load order once before any edits, so a bad change is one restore away.
         CreateSafetyBackup(Loc.T("safety.reasonIni", fileLabel));
 
-        var form = new Form
+        // Shown inside the main window rather than as one of its own — see Form1.InlineView. Opened from the
+        // file chooser, this stacks on top of it, so Escape here returns to the file list.
+        ShowInlineView(Loc.T("ini.editorTitle", fileLabel), (container, closeView) =>
         {
-            Text = Loc.T("ini.editorTitle", fileLabel),
-            Size = new Size(820, 560),
-            StartPosition = FormStartPosition.CenterParent,
-            KeyPreview = true,
-            MinimizeBox = false,
-            MaximizeBox = false,
-        };
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -176,7 +164,7 @@ public partial class Form1
 
         layout.Controls.Add(list, 0, 0);
         layout.Controls.Add(buttons, 0, 1);
-        form.Controls.Add(layout);
+        container.Controls.Add(layout);
 
         // GotFocus announces the position on entry; SelectedIndexChanged keeps announcing "X of Y" as the user
         // arrows through — matching every other list in the app.
@@ -240,7 +228,7 @@ public partial class Form1
         }
 
         btnAdd.Click += (_, _) => AddSetting();
-        btnClose.Click += (_, _) => form.Close();
+        btnClose.Click += (_, _) => closeView();
         list.KeyDown += (_, e) =>
         {
             // Left/Right would otherwise move the selection like Up/Down in a single-column list box; suppress them.
@@ -248,15 +236,10 @@ public partial class Form1
             else if (e.KeyCode == Keys.Enter) { e.Handled = e.SuppressKeyPress = true; EditSelected(); }
             else if (e.KeyCode == Keys.Delete) { e.Handled = e.SuppressKeyPress = true; DeleteSelected(); }
         };
-        form.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) form.Close(); };
+        // Escape is handled by the view itself (see Form1.InlineView).
 
-        form.Shown += (_, _) =>
-        {
-            Speak(Loc.T("ini.opening", fileLabel, list.Items.Count));
-            list.Focus();
-        };
-
-        StyleDialog(form);
-        form.ShowDialog(this);
+        Speak(Loc.T("ini.opening", fileLabel, list.Items.Count));
+        return list;
+        });
     }
 }
