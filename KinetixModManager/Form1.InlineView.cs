@@ -18,6 +18,9 @@ namespace KinetixModManager;
 /// </summary>
 public partial class Form1
 {
+	/// <summary>The margin around an in-window view, and the gap the painted heading sits in.</summary>
+	private const int MARGIN = 12;
+
 	/// <summary>
 	/// Shows an in-window view built by <paramref name="build"/> and returns when it closes.
 	///
@@ -35,75 +38,85 @@ public partial class Form1
 		bool closed = false;
 		void Close() => closed = true;
 
+		// The heading is PAINTED, not built as a control — see the comment on MARGIN below for why nothing that
+		// holds the title as text can live in this view.
+		var headingFont = new Font("Segoe UI", 14f * TextScaleFactor(), FontStyle.Bold);
+		int headingHeight = TextRenderer.MeasureText(title, headingFont).Height + 8;
+
 		var view = new Panel
 		{
 			Dock = DockStyle.Fill,
 			BackColor = SystemColors.Control,
-			Padding = new Padding(12),
+			// Room at the top for the painted heading, then the usual margin on every side.
+			Padding = new Padding(MARGIN, MARGIN + headingHeight, MARGIN, MARGIN),
 			// Deliberately unnamed. A named container is announced by the screen reader every time focus enters
 			// it — which for a view built from tabs or several controls meant hearing the view's title again on
-			// every Tab and every tab change. A blank name is enough here because a Panel has no visible Text for
-			// the reader to fall back to; a Label does, which is why the heading below needs SilentLabel instead.
+			// every Tab and every tab change. A Panel has no visible Text for the reader to fall back to, so a
+			// blank name really does silence it.
 			AccessibleName = " ",
 			AccessibleRole = AccessibleRole.Pane
 		};
 
-		var layout = new TableLayoutPanel
+		// The title, drawn straight onto the panel.
+		//
+		// This started as a Label, and the screen reader read it out again on every Tab press and every tab
+		// change in Settings. Two things were tried and neither stopped it: blanking AccessibleName (Windows
+		// treats a blank name as "none given" and falls back to the control's visible Text), and overriding the
+		// control's accessibility object to answer an empty name and no role. What remains after both is the
+		// label's own window text — a Label is a real window, its caption is the title string, and a reader that
+		// finds no accessible name falls back to asking the window what its text is. There is no way to leave the
+		// text on a control and keep it from being reachable.
+		//
+		// So the view does not contain the title at all. Painted pixels have nothing to announce, and the heading
+		// still reads normally on screen. Its size is applied here because the display theme scales the fonts of
+		// controls, and this is no longer one.
+		view.Paint += delegate (object? s, PaintEventArgs e)
 		{
-			Dock = DockStyle.Fill,
-			ColumnCount = 1,
-			RowCount = 2
+			TextRenderer.DrawText(e.Graphics, title, headingFont, new Point(MARGIN, MARGIN / 2), view.ForeColor);
 		};
-		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-
-		// The heading is for the eye only — the user already knows which view they opened, and hearing its title
-		// again on every Tab press and every tab change is noise. See SilentLabel for why it has to be this and
-		// not simply a blank accessible name.
-		layout.Controls.Add(new SilentLabel
-		{
-			Text = title,
-			Font = new Font("Segoe UI", 14f, FontStyle.Bold),
-			AutoSize = true,
-			Dock = DockStyle.Top,
-			Margin = new Padding(0, 0, 0, 8)
-		}, 0, 0);
+		view.Disposed += delegate { headingFont.Dispose(); };
 
 		var content = new Panel { Dock = DockStyle.Fill };
-		layout.Controls.Add(content, 0, 1);
-		view.Controls.Add(layout);
+		view.Controls.Add(content);
 
 		Control focusFirst = build(content, Close);
+		SilenceUnnamedContainers(view);
 
-		RunOverlay(host, view, focusFirst, finished: () => closed, onEscape: Close);
+		// The view says its name once, on the way in — "Settings", then the reader's own announcement of whatever
+		// focus landed on. This is the one announcement the title is worth: it tells the user which screen opened.
+		// It is said deliberately, once, rather than left for the reader to borrow from a heading on every focus
+		// change, which is what made the title such noise before. Queued rather than interrupting, so it follows
+		// whatever was being said as the view opened instead of cutting it off.
+		RunOverlay(host, view, focusFirst, finished: () => closed, onEscape: Close,
+			afterShown: () => Speak(title));
 
 		onClosed?.Invoke();
 	}
 
 	/// <summary>
-	/// A label that is drawn on screen but says nothing to a screen reader.
+	/// Gives every unnamed container inside a view a blank accessible name.
 	///
-	/// Setting <see cref="Control.AccessibleName"/> to a blank string does <em>not</em> do this. Windows reads a
-	/// blank name as "no name was given" and falls back to the control's visible <see cref="Control.Text"/> —
-	/// which is the text we are trying to keep it from announcing, so the blank name changes nothing. The name
-	/// has to be answered as genuinely empty by the accessibility object itself, which means overriding it.
+	/// A container with no name of its own is not simply left unnamed by the screen reader — the reader goes
+	/// looking for one nearby, and what is nearby is the main window sitting behind the overlay. That is how the
+	/// Settings tab strip came to be announced as "Search:", the label of the main window's search box: the tab
+	/// strip had no name, so the reader borrowed the nearest one it could find. Before the heading was removed it
+	/// borrowed that instead, which is why the view kept saying its own title on every tab change.
 	///
-	/// Used for headings that repeat something the user already knows. A heading sits at the top of a container,
-	/// so the reader offers it whenever focus enters that container — on every Tab press, and on every tab change
-	/// in a view built from tabs. Silencing the heading leaves the text on screen for anyone reading it.
+	/// A blank name is still a name, so the search stops there. These containers only group controls on screen and
+	/// have nothing of their own to say; the controls inside them are named individually.
+	///
+	/// TabPages are left alone — a page's Text is the name of its tab, and blanking it would leave the tabs
+	/// themselves unnamed. Anything the view named deliberately is left alone too.
 	/// </summary>
-	private sealed class SilentLabel : Label
+	private static void SilenceUnnamedContainers(Control root)
 	{
-		protected override AccessibleObject CreateAccessibilityInstance() => new SilentAccessibleObject(this);
-
-		private sealed class SilentAccessibleObject : ControlAccessibleObject
+		foreach (Control child in root.Controls)
 		{
-			public SilentAccessibleObject(Label owner) : base(owner) { }
+			// TabPage derives from Panel, hence the explicit exception.
+			if (string.IsNullOrEmpty(child.AccessibleName) && child is Panel or TabControl && child is not TabPage)
+				child.AccessibleName = " ";
 
-			public override string? Name { get => string.Empty; set { } }
-
-			// No role at all, so the label is not offered as a thing to land on or to name what surrounds it.
-			public override AccessibleRole Role => AccessibleRole.None;
+			if (child.HasChildren) SilenceUnnamedContainers(child);
 		}
 	}
 }

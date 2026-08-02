@@ -1076,22 +1076,9 @@ public partial class Form1
 		// said whichever way Settings was left — Escape or the Cancel button — and not at all after a Save.
 
 		// Focus lands on the tab strip so the user can arrow between tabs before tabbing into the first setting,
-		// rather than dropping straight onto one control. Programmatic focus alone doesn't reliably make the screen
-		// reader announce the active tab, so speak it ourselves after a short delay — the same "let the SR read the
-		// control first, then add detail" timing the lists use.
-		_ = Task.Run(async () =>
-		{
-			await Task.Delay(150);
-			try
-			{
-				Invoke(delegate
-				{
-					if (!tabs.IsDisposed && tabs.Focused)
-						Speak(Loc.T("common.tabSuffix", tabs.SelectedTab?.Text ?? ""));
-				});
-			}
-			catch { }
-		});
+		// rather than dropping straight onto one control. The active tab is NOT spoken here: the screen reader
+		// announces it on its own, and saying it as well had it read out twice — "Paths & Account Tab" from us,
+		// then "Paths & Account selected" from the reader.
 
 		// Add the "name then pause then value" reading to every combo/checkbox/list in the view.
 		ApplyScreenReaderPauses(container);
