@@ -316,15 +316,13 @@ public partial class Form1
 			};
 		}).ToList();
 
-		using var dlg = new Form
+		// Null unless the user actively confirms a profile, so leaving any other way — Escape included — imports
+		// nothing. Captured before the view closes and returned once it has.
+		string? chosenDir = null;
+
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
+		ShowInlineView(Loc.T("mo2.chooseProfileTitle"), (container, closeView) =>
 		{
-			Text = Loc.T("mo2.chooseProfileTitle"),
-			Size = new Size(480, 420),
-			StartPosition = FormStartPosition.CenterScreen,
-			KeyPreview = true,
-			MinimizeBox = false,
-			MaximizeBox = false
-		};
 		var layout = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 3, Padding = new Padding(12) };
 		layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34f));
 		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
@@ -354,30 +352,38 @@ public partial class Form1
 			if (!lb.Focused) return;
 			Speak(Loc.T("common.position", lb.SelectedIndex + 1, lb.Items.Count));
 		};
+		void Confirm()
+		{
+			if (lb.SelectedItem is not Mo2ProfileEntry picked) return;
+			chosenDir = picked.Dir;
+			closeView();
+		}
+
 		lb.KeyDown += delegate (object? s, KeyEventArgs ke)
 		{
 			if (ke.KeyCode == Keys.Return && lb.SelectedItem != null)
 			{
-				dlg.DialogResult = DialogResult.OK;
-				dlg.Close();
+				ke.Handled = ke.SuppressKeyPress = true;
+				Confirm();
 			}
 		};
 		layout.Controls.Add(lb, 0, 1);
 
 		var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
-		var btnOk = new Button { Text = Loc.T("common.confirm"), Width = 110, Height = 34, DialogResult = DialogResult.OK };
-		var btnCancel = new Button { Text = Loc.T("common.cancel"), Width = 100, Height = 34, DialogResult = DialogResult.Cancel };
+		var btnOk = new Button { Text = Loc.T("common.confirm"), Width = 110, Height = 34 };
+		var btnCancel = new Button { Text = Loc.T("common.cancel"), Width = 100, Height = 34 };
+		btnOk.Click += (_, _) => Confirm();
+		btnCancel.Click += (_, _) => closeView();
 		buttons.Controls.Add(btnOk);
 		buttons.Controls.Add(btnCancel);
 		layout.Controls.Add(buttons, 0, 2);
 
-		dlg.Controls.Add(layout);
-		dlg.AcceptButton = btnOk;
-		dlg.CancelButton = btnCancel;
-		dlg.Shown += delegate { lb.Focus(); };
+		container.Controls.Add(layout);
+		ApplyScreenReaderPauses(container);
+		return lb;
+		});
 
-		ApplyScreenReaderPauses(dlg);
-		return dlg.ShowDialog() == DialogResult.OK && lb.SelectedItem is Mo2ProfileEntry chosen ? chosen.Dir : null;
+		return chosenDir;
 	}
 
 	/// <summary>Maps an MO2 game name to our internal game id, or null for games this manager does not model.</summary>

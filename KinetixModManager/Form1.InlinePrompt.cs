@@ -159,16 +159,6 @@ public partial class Form1
 		_overlayDepth++;
 		try
 		{
-			// Disable what is already there rather than hiding it, so nothing behind the overlay can be reached
-			// by keyboard. Only controls that were enabled are recorded, so nothing gets switched ON afterwards
-			// that the window had deliberately switched off.
-			foreach (Control existing in host.Controls)
-			{
-				if (!existing.Enabled) continue;
-				existing.Enabled = false;
-				disabled.Add(existing);
-			}
-
 			// The host's own Escape/Enter handling must not fire while the overlay is up — several windows close
 			// themselves on Escape, which would otherwise close the window out from under what is on top of it.
 			// Escape is delivered to the overlay's own controls instead, below.
@@ -181,7 +171,22 @@ public partial class Form1
 			StylePromptPanel(overlay);
 			AttachEscape(overlay, onEscape);
 
+			// Focus moves into the overlay BEFORE anything behind it is disabled. Disabling the control that
+			// currently has focus makes the screen reader announce it as "unavailable" — heard as a stray word
+			// in front of whatever the overlay was opened to say. Moving focus out of the way first means the
+			// control being switched off is not the one being spoken about.
 			if (!focusFirst.IsDisposed && focusFirst.CanFocus) focusFirst.Focus();
+
+			// Disable what is already there rather than hiding it, so nothing behind the overlay can be reached
+			// by keyboard. Only controls that were enabled are recorded, so nothing gets switched ON afterwards
+			// that the window had deliberately switched off.
+			foreach (Control existing in host.Controls)
+			{
+				if (existing == overlay || !existing.Enabled) continue;
+				existing.Enabled = false;
+				disabled.Add(existing);
+			}
+
 			afterShown?.Invoke();
 
 			// A nested message loop. It ends when the caller says so, or if the window underneath goes away.
@@ -234,7 +239,10 @@ public partial class Form1
 		{
 			child.KeyDown += delegate (object? s, KeyEventArgs e)
 			{
-				if (e.KeyCode != Keys.Escape) return;
+				// A control that has already dealt with Escape keeps it. This is what lets a view put itself
+				// into a mode Escape should leave rather than close out of — capturing a keystroke, say.
+				// Handlers added while the view was built run before this one, so their Handled flag is seen.
+				if (e.Handled || e.KeyCode != Keys.Escape) return;
 				e.Handled = true;
 				e.SuppressKeyPress = true;
 				onEscape();

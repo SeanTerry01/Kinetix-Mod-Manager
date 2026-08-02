@@ -32,8 +32,8 @@
   "shortcutMgr.actionList": "Action List",
   "shortcutMgr.remap": "Remap Selected Action",
   "shortcutMgr.pressFor": "Press the new key combination for {0}...",
-  "shortcutMgr.pressKeys": "Press Keys...",
-  "shortcutMgr.remapped": "{0} remapped. Press Save to confirm.",
+  "shortcutMgr.remapped": "{0} remapped to {1}. Press Save to confirm.",
+  "shortcutMgr.remapCancelled": "Remapping {0} cancelled.",
   "shortcutMgr.reset": "Reset All to Defaults",
   "shortcutMgr.resetConfirm": "Reset all shortcuts to defaults?",
   "shortcutMgr.resetDone": "Reset to defaults. Press Save to confirm.",
@@ -302,6 +302,7 @@
   "about.close": "Close About dialog",
   "about.spoken": "About Kinetix Mod Manager. Version {0}.",
   "about.windowTitle": "About Kinetix Mod Manager. Press Escape to close.",
+  "about.viewTitle": "About Kinetix Mod Manager",
   "about.body": "Kinetix Mod Manager\nVersion: {0}\nPublisher: Audi Venture Games\nWebsite: https://github.com/SeanTerry01/Kinetix-Mod-Manager\n\nKinetix Mod Manager is a fully keyboard-driven, screen-reader-accessible mod manager for Stardew Valley, Skyrim Special Edition, and Fallout 4. It is built for the blind and visually impaired gaming community, with spoken feedback, full keyboard control, and audio cues throughout.\n\nWith it you can install and manage your mods, check for and apply updates through Nexus Mods, discover new mods, save and switch between mod profiles, keep automatic backups, browse an accessible game wiki, and review the SMAPI log for Stardew Valley.\n\nKinetix Mod Manager works with NVDA, JAWS, and SAPI-based screen readers via Tolk.\n\nCopyright (C) 2026 Audi Venture Games.\nProvided as-is for personal and community use.",
 
   "controls.availableMods": "Available Mods and Guides",

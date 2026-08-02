@@ -347,21 +347,10 @@ public partial class Form1
 	{
 		string about = Loc.T("about.body", NexusService.AppVersion).Replace("\n", Environment.NewLine);
 
-		Form aboutForm = new Form
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView. Escape is handled
+		// by the view, and there is no longer a window to hide the main one behind.
+		ShowInlineView(Loc.T("about.viewTitle"), (container, closeView) =>
 		{
-			Text = Loc.T("about.windowTitle"),
-			Size = new Size(600, 460),
-			StartPosition = FormStartPosition.CenterScreen,
-			KeyPreview = true,
-			MinimizeBox = false,
-			MaximizeBox = false,
-			FormBorderStyle = FormBorderStyle.FixedDialog
-		};
-		aboutForm.KeyDown += delegate (object? s, KeyEventArgs e)
-		{
-			if (e.KeyCode == Keys.Escape) aboutForm.Close();
-		};
-
 		TableLayoutPanel layout = new TableLayoutPanel
 		{
 			Dock = DockStyle.Fill,
@@ -397,35 +386,15 @@ public partial class Form1
 			Font = new Font("Segoe UI", 12f, FontStyle.Bold),
 			AccessibleName = Loc.T("about.close")
 		};
-		btnClose.Click += delegate { aboutForm.Close(); };
+		btnClose.Click += delegate { closeView(); };
 
 		layout.Controls.Add(tbAbout, 0, 0);
 		layout.Controls.Add(btnClose, 0, 1);
-		aboutForm.Controls.Add(layout);
-		aboutForm.AcceptButton = btnClose;
-		aboutForm.CancelButton = btnClose;
-		aboutForm.Shown += delegate
-		{
-			// Just land focus on the text. The window title is announced by the screen reader on open, and the
-			// version is in the text itself, so a separate spoken line would only repeat the title.
-			tbAbout.Focus();
-		};
-		// Hide the main window while the About window is open (it's a separate top-level window), and restore it
-		// when About closes — the same focus-keeping pattern the suite installer uses.
-		bool wasVisible = Visible;
-		if (wasVisible) Hide();
-		try
-		{
-			aboutForm.ShowDialog();
-		}
-		finally
-		{
-			if (wasVisible)
-			{
-				Show();
-				Activate();
-			}
-		}
+		container.Controls.Add(layout);
+		// Focus lands on the text. The view's heading already says "About Kinetix Mod Manager" and the version is
+		// in the text itself, so a separate spoken line would only repeat it.
+		return tbAbout;
+		});
 	}
 
 	/// <summary>One control line: a parsed key plus its description, or (when <see cref="Key"/> is null) a

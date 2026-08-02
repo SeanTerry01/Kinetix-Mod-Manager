@@ -308,6 +308,20 @@ public partial class Form1
 		lb.SelectedIndexChanged += List_SelectedIndexChanged;
 		lb.GotFocus += List_Enter;
 		RefreshList();
+
+		// Remapping happens on the list itself rather than in a prompt of its own. The list already has focus,
+		// so the next keystroke is already going there — putting it into a "waiting for the key" mode means no
+		// second control to focus, nothing extra for the screen reader to announce, and the instruction is
+		// heard exactly once. A window (and then a view) for this was what read the instruction twice.
+		string? awaitingFor = null;
+
+		void BeginRemap()
+		{
+			if (lb.SelectedItem == null) return;
+			awaitingFor = (lb.SelectedItem.ToString() ?? "").Split(':')[0].Trim();
+			Speak(Loc.T("shortcutMgr.pressFor", awaitingFor));
+		}
+
 		Button button = new Button
 		{
 			Text = Loc.T("shortcutMgr.remap"),
@@ -316,37 +330,45 @@ public partial class Form1
 		};
 		button.Click += delegate
 		{
-			if (lb.SelectedItem != null)
-			{
-				string action = (lb.SelectedItem.ToString() ?? "").Split(':')[0].Trim();
-				Speak(Loc.T("shortcutMgr.pressFor", action));
+			BeginRemap();
+			// The keystroke has to land on the list, so send focus back there to catch it.
+			if (awaitingFor != null) lb.Focus();
+		};
 
-				// The key-capture prompt is a view of its own, stacked on the shortcut list. It needs a control
-				// that can actually hold focus to receive the keystroke, so the instruction is a button rather
-				// than a label. Escape closes the capture without binding anything, which is what it did before.
-				ShowInlineView(Loc.T("shortcutMgr.pressKeys"), (promptBox, closePrompt) =>
+		lb.KeyDown += delegate (object? s, KeyEventArgs e)
+		{
+			if (awaitingFor == null)
+			{
+				// Enter starts a remap without reaching for the button — the quick route.
+				if (e.KeyCode == Keys.Enter)
 				{
-					var capture = new Button
-					{
-						Text = Loc.T("shortcutMgr.pressFor", action),
-						Dock = DockStyle.Fill,
-						Font = new Font("Segoe UI", 12f),
-						AccessibleName = Loc.T("shortcutMgr.pressFor", action)
-					};
-					capture.KeyDown += delegate (object? ps, KeyEventArgs e)
-					{
-						if (e.KeyCode == Keys.ControlKey || e.KeyCode == Keys.ShiftKey || e.KeyCode == Keys.Menu) return;
-						if (e.KeyCode == Keys.Escape) return;   // the view closes on Escape; bind nothing
-						e.Handled = e.SuppressKeyPress = true;
-						tempShortcuts[action] = e.KeyData;
-						closePrompt();
-						Speak(Loc.T("shortcutMgr.remapped", action));
-						RefreshList();
-					};
-					promptBox.Controls.Add(capture);
-					return capture;
-				});
+					e.Handled = e.SuppressKeyPress = true;
+					BeginRemap();
+				}
+				return;
 			}
+
+			// Waiting for a key. A modifier on its own is not a shortcut, so keep waiting for the real key.
+			if (e.KeyCode == Keys.ControlKey || e.KeyCode == Keys.ShiftKey || e.KeyCode == Keys.Menu) return;
+
+			e.Handled = e.SuppressKeyPress = true;
+			string action = awaitingFor;
+			awaitingFor = null;
+
+			// Escape leaves the waiting state rather than closing the whole list — the view's own Escape
+			// handler stands down because this one has already marked the key handled.
+			if (e.KeyCode == Keys.Escape)
+			{
+				Speak(Loc.T("shortcutMgr.remapCancelled", action));
+				return;
+			}
+
+			tempShortcuts[action] = e.KeyData;
+			// Rebuild, landing back on the action just changed rather than at the top of 48 of them.
+			RefreshList(action);
+			// Read the key back from the same formatter the list rows use, so what is spoken is exactly what is
+			// now shown against the action — and you can hear whether the combination you meant is what landed.
+			Speak(Loc.T("shortcutMgr.remapped", action, GetShortcutStringForMap(tempShortcuts, action)));
 		};
 		Button button2 = new Button
 		{
@@ -413,14 +435,39 @@ public partial class Form1
 		},
 		onClosed: () => { if (!saved) Speak(Loc.T("common.changesCancelled")); });
 
-		void RefreshList()
+		/// <summary>
+		/// Rebuilds the action list, landing back on the action named by <paramref name="selectAction"/> — or on
+		/// whichever action was selected before, when none is named.
+		///
+		/// Rebuilding empties the list and loses the selection. With 48 actions that dropped you at the top after
+		/// every single remap, so changing two shortcuts near the bottom meant arrowing all the way down twice.
+		/// </summary>
+		void RefreshList(string? selectAction = null)
 		{
+			string? keep = selectAction ?? ActionOfSelectedRow();
+
+			lb.BeginUpdate();
 			lb.Items.Clear();
 			foreach (KeyValuePair<string, Keys> item in tempShortcuts)
 			{
 				lb.Items.Add(item.Key + ": " + GetShortcutStringForMap(tempShortcuts, item.Key));
 			}
+			lb.EndUpdate();
+
+			if (keep == null) return;
+			for (int i = 0; i < lb.Items.Count; i++)
+			{
+				if (!string.Equals(ActionOfRow(lb.Items[i]), keep, StringComparison.Ordinal)) continue;
+				lb.SelectedIndex = i;
+				return;
+			}
 		}
+
+		/// <summary>The action name from a row, which is stored as "Action: Key".</summary>
+		string ActionOfRow(object? row) => (row?.ToString() ?? "").Split(':')[0].Trim();
+
+		/// <summary>The action currently selected in the list, or null when nothing is.</summary>
+		string? ActionOfSelectedRow() => lb.SelectedItem == null ? null : ActionOfRow(lb.SelectedItem);
 	}
 
 	/// <summary>

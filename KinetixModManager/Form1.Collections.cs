@@ -255,15 +255,13 @@ public partial class Form1
 	/// </summary>
 	private bool ShowCollectionPreflight(string summary, List<string> lines)
 	{
-		using var f = new Form
+		// Cancel unless the user actively chooses Install, so leaving any other way — Escape included — installs
+		// nothing. Captured before the view closes and returned once it has.
+		bool install = false;
+
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
+		ShowInlineView(Loc.T("collection.installTitle"), (container, closeView) =>
 		{
-			Text = Loc.T("collection.installTitle"),
-			Size = new Size(760, 520),
-			StartPosition = FormStartPosition.CenterParent,
-			KeyPreview = true,
-			MinimizeBox = false,
-			MaximizeBox = false
-		};
 		var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Padding = new Padding(10) };
 		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
@@ -276,23 +274,21 @@ public partial class Form1
 		layout.Controls.Add(list, 0, 1);
 
 		var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, FlowDirection = FlowDirection.RightToLeft, AutoSize = true };
-		var install = new Button { Text = Loc.T("collection.preflightInstallBtn"), DialogResult = DialogResult.OK, AutoSize = true };
-		var cancel = new Button { Text = Loc.T("collection.preflightCancelBtn"), DialogResult = DialogResult.Cancel, AutoSize = true };
-		buttons.Controls.Add(install);
-		buttons.Controls.Add(cancel);
+		var btnInstall = new Button { Text = Loc.T("collection.preflightInstallBtn"), AutoSize = true };
+		var btnCancel = new Button { Text = Loc.T("collection.preflightCancelBtn"), AutoSize = true };
+		btnInstall.Click += (_, _) => { install = true; closeView(); };
+		btnCancel.Click += (_, _) => closeView();
+		buttons.Controls.Add(btnInstall);
+		buttons.Controls.Add(btnCancel);
 		layout.Controls.Add(buttons, 0, 2);
 
-		f.Controls.Add(layout);
-		f.AcceptButton = install;
-		f.CancelButton = cancel;
+		container.Controls.Add(layout);
 
-		f.Shown += (_, _) =>
-		{
-			Speak(summary + " " + Loc.T("collection.preflightOpen"));
-			list.Focus();
-		};
-		StyleDialog(f);
-		return f.ShowDialog(this) == DialogResult.OK;
+		Speak(summary + " " + Loc.T("collection.preflightOpen"));
+		return list;
+		});
+
+		return install;
 	}
 
 	/// <summary>

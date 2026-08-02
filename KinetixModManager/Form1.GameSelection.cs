@@ -204,20 +204,14 @@ public partial class Form1
 	/// </summary>
 	private GameNotInstalledChoice ShowGameNotInstalledDialog(string gameName)
 	{
+		// Cancel is the default, so closing with Escape (or any other way out) answers Cancel — the safe answer,
+		// since it leaves the current session untouched.
 		GameNotInstalledChoice choice = GameNotInstalledChoice.Cancel;
 
-		Form dialog = new Form
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView. The answer is
+		// captured in `choice` above before the view closes, and returned once it has.
+		ShowInlineView(Loc.T("session.notInstalledDialogTitle", gameName), (container, closeView) =>
 		{
-			Text = Loc.T("session.notInstalledDialogTitle", gameName),
-			Size = new Size(480, 260),
-			StartPosition = FormStartPosition.CenterScreen,
-			FormBorderStyle = FormBorderStyle.FixedDialog,
-			MaximizeBox = false,
-			MinimizeBox = false,
-			KeyPreview = true
-		};
-		dialog.KeyDown += (s, e) => { if (e.KeyCode == Keys.Escape) dialog.Close(); };
-
 		TableLayoutPanel layout = new TableLayoutPanel
 		{
 			Dock = DockStyle.Fill,
@@ -265,19 +259,19 @@ public partial class Form1
 			Font = new Font("Segoe UI", 11f, FontStyle.Bold)
 		};
 
-		btnLocate.Click += (s, e) => { choice = GameNotInstalledChoice.Locate; dialog.Close(); };
-		btnPurchase.Click += (s, e) => { choice = GameNotInstalledChoice.Purchase; dialog.Close(); };
-		btnCancel.Click += (s, e) => { choice = GameNotInstalledChoice.Cancel; dialog.Close(); };
+		btnLocate.Click += (s, e) => { choice = GameNotInstalledChoice.Locate; closeView(); };
+		btnPurchase.Click += (s, e) => { choice = GameNotInstalledChoice.Purchase; closeView(); };
+		btnCancel.Click += (s, e) => { choice = GameNotInstalledChoice.Cancel; closeView(); };
 
 		buttons.Controls.AddRange(new Control[] { btnLocate, btnPurchase, btnCancel });
-		dialog.CancelButton = btnCancel;
 		layout.Controls.Add(buttons, 0, 1);
-		dialog.Controls.Add(layout);
+		container.Controls.Add(layout);
 
 		Speak(Loc.T("session.notInstalledSpeak", gameName));
-		dialog.Shown += (s, e) => { btnLocate.Focus(); };
-		ApplyScreenReaderPauses(dialog);
-		dialog.ShowDialog();
+		ApplyScreenReaderPauses(container);
+		return btnLocate;
+		});
+
 		return choice;
 	}
 
@@ -375,15 +369,14 @@ public partial class Form1
 
 	private void ShowPurchaseGameDialog()
 	{
-		Form dialog = new Form
-		{
-			Text = Loc.T("store.purchaseDialogTitle"),
-			Size = new Size(400, 300),
-			StartPosition = FormStartPosition.CenterScreen,
-			KeyPreview = true
-		};
-		dialog.KeyDown += (s, e) => { if (e.KeyCode == Keys.Escape) dialog.Close(); };
+		// The chosen game is remembered rather than acted on inside the view: the store list is a view of its
+		// own, and opening it from within this one would stack it on top instead of replacing it. Declared out
+		// here so both the view and its onClosed can see it.
+		string? chosenGame = null;
 
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
+		ShowInlineView(Loc.T("store.purchaseDialogTitle"), (container, closeView) =>
+		{
 		TableLayoutPanel layout = new TableLayoutPanel
 		{
 			Dock = DockStyle.Fill,
@@ -432,31 +425,25 @@ public partial class Form1
 		btnSelect.Click += (s, e) =>
 		{
 			if (lstGames.SelectedIndex == -1) return;
-			string selectedGame = lstGames.SelectedItem?.ToString() ?? "";
-			dialog.Close();
-			ShowStoreSelectionDialog(selectedGame);
+			chosenGame = lstGames.SelectedItem?.ToString() ?? "";
+			closeView();
 		};
 
 		layout.Controls.Add(btnSelect, 0, 2);
-		dialog.Controls.Add(layout);
+		container.Controls.Add(layout);
 
 		Speak(Loc.T("store.selectGameSpeak"));
-		dialog.Shown += (s, e) => { lstGames.Focus(); };
-		ApplyScreenReaderPauses(dialog);
-		dialog.ShowDialog();
+		ApplyScreenReaderPauses(container);
+		return lstGames;
+		},
+		onClosed: () => { if (!string.IsNullOrEmpty(chosenGame)) ShowStoreSelectionDialog(chosenGame); });
 	}
 
 	private void ShowStoreSelectionDialog(string gameName)
 	{
-		Form dialog = new Form
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
+		ShowInlineView(Loc.T("store.purchaseTitle", gameName), (container, closeView) =>
 		{
-			Text = Loc.T("store.purchaseTitle", gameName),
-			Size = new Size(400, 300),
-			StartPosition = FormStartPosition.CenterScreen,
-			KeyPreview = true
-		};
-		dialog.KeyDown += (s, e) => { if (e.KeyCode == Keys.Escape) dialog.Close(); };
-
 		TableLayoutPanel layout = new TableLayoutPanel
 		{
 			Dock = DockStyle.Fill,
@@ -526,16 +513,16 @@ public partial class Form1
 					SpeakBox(Loc.T("store.couldNotOpenLink", ex.Message));
 				}
 			}
-			dialog.Close();
+			closeView();
 		};
 
 		layout.Controls.Add(btnOpen, 0, 2);
-		dialog.Controls.Add(layout);
+		container.Controls.Add(layout);
 
 		Speak(Loc.T("store.whereBuy", gameName));
-		dialog.Shown += (s, e) => { lstStores.Focus(); };
-		ApplyScreenReaderPauses(dialog);
-		dialog.ShowDialog();
+		ApplyScreenReaderPauses(container);
+		return lstStores;
+		});
 	}
 
 	/// <summary>Locates and launches the active game's executable or mod loader.</summary>
