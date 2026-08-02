@@ -113,20 +113,11 @@ public partial class Form1
 		var history = new Stack<int>();
 		int current = first;
 
-		Form dialog = new Form
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView. `outcome` stays null
+		// unless the user reaches the end and confirms, so leaving any other way — Escape, Cancel — installs
+		// nothing, exactly as a DialogResult other than OK did.
+		ShowInlineView(Loc.T("fomod.wizardTitle", config.ModuleName), (container, closeView) =>
 		{
-			Text = Loc.T("fomod.wizardTitle", config.ModuleName),
-			Size = new Size(640, 560),
-			StartPosition = FormStartPosition.CenterScreen,
-			MinimizeBox = false,
-			MaximizeBox = false,
-			KeyPreview = true
-		};
-		dialog.KeyDown += (s, e) =>
-		{
-			if (e.KeyCode == Keys.Escape) { dialog.DialogResult = DialogResult.Cancel; dialog.Close(); }
-		};
-
 		var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(12), ColumnCount = 1, RowCount = 3 };
 		layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
 		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
@@ -155,7 +146,7 @@ public partial class Form1
 		layout.Controls.Add(header, 0, 0);
 		layout.Controls.Add(content, 0, 1);
 		layout.Controls.Add(buttonRow, 0, 2);
-		dialog.Controls.Add(layout);
+		container.Controls.Add(layout);
 
 		// Speaks an option's description shortly after it gains focus, so the screen reader reads the
 		// control name and state first — the same pattern the main form's lists use.
@@ -169,18 +160,22 @@ public partial class Form1
 			};
 		}
 
-		// Keeps the Next/Install button label, its accessible name, and the title-bar step counter in sync
-		// with the current selection. Re-run after any option toggle, because a flag-setting choice can show
-		// or hide a later step — so the button must read "Install" once the current step is the last visible
-		// one, and the title bar's "Step N of M" must reflect the new visible-step count. The title also
-		// drives what NVDA+T announces; ordinary (non-FOMOD) installs never open this dialog.
+		// Keeps the Next/Install button label, its accessible name, and the step counter in sync with the current
+		// selection. Re-run after any option toggle, because a flag-setting choice can show or hide a later step
+		// — so the button must read "Install" once the current step is the last visible one, and "Step N of M"
+		// must reflect the new visible-step count.
+		//
+		// The counter used to live in the window's title bar, which is where NVDA+T read it from. There is no
+		// title bar now, so it goes into the step heading instead — where it is both visible and reachable by
+		// arrowing to the top of the view, rather than only via a title-reading command.
 		void UpdateNav()
 		{
 			bool isLast = NextVisible(current) == -1;
 			btnNext.Text = isLast ? Loc.T("fomod.install") : Loc.T("fomod.next");
 			btnNext.AccessibleName = btnNext.Text;
-			dialog.Text = Loc.T("fomod.windowTitle", config.ModuleName,
+			header.Text = Loc.T("fomod.windowTitle", config.ModuleName,
 				VisiblePosition(current), VisibleCount(), config.InstallSteps[current].Name);
+			header.AccessibleName = header.Text;
 		}
 
 		void Render()
@@ -189,7 +184,7 @@ public partial class Form1
 			content.Controls.Clear();
 
 			FomodInstallStep step = config.InstallSteps[current];
-			header.Text = step.Name;
+			// The heading text is set by UpdateNav at the end of this method, which knows the step counter too.
 			Dictionary<string, string> flags = BuildFlags(current - 1);
 			int boxWidth = content.ClientSize.Width - 28;
 
@@ -328,7 +323,7 @@ public partial class Form1
 			return true;
 		}
 
-		btnCancel.Click += (s, e) => { dialog.DialogResult = DialogResult.Cancel; dialog.Close(); };
+		btnCancel.Click += (s, e) => closeView();
 		btnBack.Click += (s, e) =>
 		{
 			if (history.Count == 0) return;
@@ -340,7 +335,7 @@ public partial class Form1
 			if (!ValidateStep(current, out string error))
 			{
 				Speak(error);
-				SpeakBox(dialog, error, Loc.T("fomod.wizardTitle", config.ModuleName), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				SpeakBox(error, Loc.T("fomod.wizardTitle", config.ModuleName), MessageBoxButtons.OK, MessageBoxIcon.Warning);
 				return;
 			}
 			int next = NextVisible(current);
@@ -348,8 +343,7 @@ public partial class Form1
 			{
 				outcome = BuildResult();
 				Speak(Loc.T("fomod.installing"));
-				dialog.DialogResult = DialogResult.OK;
-				dialog.Close();
+				closeView();
 			}
 			else
 			{
@@ -359,10 +353,13 @@ public partial class Form1
 			}
 		};
 
-		dialog.Shown += (s, e) => Render();
-		DialogResult dr = dialog.ShowDialog(this);
+		// Draw the first step now, and hand back the control Render just focused so the view doesn't focus
+		// something else over the top of it.
+		Render();
+		return FirstFocusableOption(content) ?? (Control)btnNext;
+		});
 
-		if (dr != DialogResult.OK)
+		if (outcome == null)
 		{
 			Speak(Loc.T("fomod.cancelled"));
 			return null;

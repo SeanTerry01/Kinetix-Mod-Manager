@@ -39,14 +39,13 @@ public partial class Form1
 			return;
 		}
 		_isSettingsOpen = true;
-		Form f = new Form
-		{
-			Text = Loc.T("settings.title"),
-			Size = new Size(540, 620),
-			StartPosition = FormStartPosition.CenterScreen,
-			KeyPreview = true
-		};
 
+		// True once Save has run, so the "changes cancelled" announcement on the way out knows to stay quiet.
+		bool saved = false;
+
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
+		ShowInlineView(Loc.T("settings.title"), (container, closeView) =>
+		{
 		// Settings are grouped into tabs to keep the dialog readable as it grows. Each tab is a single-column
 		// TableLayoutPanel (same layout mechanics the dialog used when it was one long table), and the Save/Cancel
 		// buttons live outside the tabs so they're always reachable. Tab order within a tab follows add order.
@@ -303,7 +302,8 @@ public partial class Form1
 		};
 		cmbLogo.SelectedIndexChanged += delegate
 		{
-			if (f.Visible && !suppressLogoPreview)
+			// Only a deliberate change previews; repopulating the list sets suppressLogoPreview while it works.
+			if (!suppressLogoPreview)
 			{
 				PreviewLogo();
 			}
@@ -1011,7 +1011,8 @@ public partial class Form1
 				// A changed game path can change the detected edition/build, so drop the cached display name.
 				InvalidateGameDisplayName();
 				UpdateGamesMenu();
-				f.Close();
+				saved = true;
+				closeView();
 				Task.Delay(100).ContinueWith(delegate
 				{
 					Invoke(delegate
@@ -1032,45 +1033,44 @@ public partial class Form1
 		};
 		button4.Click += delegate
 		{
-			Speak(Loc.T("common.changesCancelled"));
-			f.Close();
+			closeView();
 		};
 		flowLayoutPanel5.Controls.AddRange(button3, button4);
-		f.FormClosing += delegate
-		{
-			_isSettingsOpen = false;
-		};
-		f.Controls.Add(flowLayoutPanel5);
-		f.Controls.Add(tabs);
+		container.Controls.Add(flowLayoutPanel5);
+		container.Controls.Add(tabs);
 		// The buttons panel is added first (so the tabs dock-fill above it), which would otherwise make the Save
 		// button the first tab stop and the window's initial focus — the screen reader then announces "Save" even
 		// after we move focus to the tabs. Put the tab strip first in tab order so initial focus lands on it and
 		// the active tab is what gets announced.
 		tabs.TabIndex = 0;
 		flowLayoutPanel5.TabIndex = 1;
-		f.KeyDown += delegate(object? s, KeyEventArgs pe)
-		{
-			if (pe.KeyCode == Keys.Escape)
-			{
-				Speak(Loc.T("common.changesCancelled"));
-				f.Close();
-			}
-		};
-		// Land focus on the tab strip so the user can arrow between tabs before tabbing into the first setting,
+		// Escape is handled by the view itself; "changes cancelled" is announced from onClosed below, so it is
+		// said whichever way Settings was left — Escape or the Cancel button — and not at all after a Save.
+
+		// Focus lands on the tab strip so the user can arrow between tabs before tabbing into the first setting,
 		// rather than dropping straight onto one control. Programmatic focus alone doesn't reliably make the screen
-		// reader announce the active tab (the window-open announcement wins the race), so speak it ourselves after a
-		// short delay — the same "let the SR read the control first, then add detail" timing the lists use.
-		f.Shown += async delegate
+		// reader announce the active tab, so speak it ourselves after a short delay — the same "let the SR read the
+		// control first, then add detail" timing the lists use.
+		_ = Task.Run(async () =>
 		{
-			tabs.Focus();
-			await Task.Delay(100);
-			if (!f.IsDisposed && tabs.Focused)
-				Speak(Loc.T("common.tabSuffix", tabs.SelectedTab?.Text ?? ""));
-		};
-		// Add the "name then pause then value" reading to every combo/checkbox/list in the dialog.
-		ApplyScreenReaderPauses(f);
-		StyleDialog(f);
-		f.ShowDialog();
+			await Task.Delay(150);
+			try
+			{
+				Invoke(delegate
+				{
+					if (!tabs.IsDisposed && tabs.Focused)
+						Speak(Loc.T("common.tabSuffix", tabs.SelectedTab?.Text ?? ""));
+				});
+			}
+			catch { }
+		});
+
+		// Add the "name then pause then value" reading to every combo/checkbox/list in the view.
+		ApplyScreenReaderPauses(container);
+
+		// These two are local functions of the view, not of the method: they use controls built above, which now
+		// live inside this lambda. C# allows a local function to be used before it is declared, so the handlers
+		// wired further up still reach them.
 		void PreviewLogo()
 		{
 			if (cmbLogo.SelectedItem != null)
@@ -1107,5 +1107,13 @@ public partial class Form1
 				suppressLogoPreview = false;
 			}
 		}
+
+		return tabs;
+		},
+		onClosed: () =>
+		{
+			_isSettingsOpen = false;
+			if (!saved) Speak(Loc.T("common.changesCancelled"));
+		});
 	}
 }

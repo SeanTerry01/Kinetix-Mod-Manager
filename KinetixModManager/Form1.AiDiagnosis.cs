@@ -150,15 +150,9 @@ public partial class Form1
 	/// </summary>
 	private void ShowAiConversation(string title, string system, List<AiTurn> turns)
 	{
-		using var f = new Form
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
+		ShowInlineView(title, (container, closeView) =>
 		{
-			Text = title,
-			Size = new Size(760, 600),
-			StartPosition = FormStartPosition.CenterParent,
-			KeyPreview = true,
-			MinimizeBox = false,
-			MaximizeBox = false,
-		};
 		var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Padding = new Padding(10) };
 		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f)); // transcript
 		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));       // follow-up box
@@ -196,13 +190,11 @@ public partial class Form1
 
 		var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, FlowDirection = FlowDirection.RightToLeft, AutoSize = true };
 		var send = new Button { Text = Loc.T("ai.chatSend"), AutoSize = true };
-		var close = new Button { Text = Loc.T("ai.chatClose"), AutoSize = true, DialogResult = DialogResult.Cancel };
+		var close = new Button { Text = Loc.T("ai.chatClose"), AutoSize = true };
 		buttons.Controls.Add(send);
 		buttons.Controls.Add(close);
 		layout.Controls.Add(buttons, 0, 2);
-		f.Controls.Add(layout);
-		f.AcceptButton = send;
-		f.CancelButton = close;
+		container.Controls.Add(layout);
 
 		async void SendFollowUp()
 		{
@@ -225,7 +217,7 @@ public partial class Form1
 			{
 				turns.RemoveAt(turns.Count - 1); // drop the unanswered question so a retry starts clean
 				_soundEngine.Play("error");
-				SpeakBox(f, Loc.T("ai.failed", ex.Message), Loc.T("ai.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				SpeakBox(Loc.T("ai.failed", ex.Message), Loc.T("ai.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
 			}
 			finally
 			{
@@ -234,15 +226,22 @@ public partial class Form1
 			}
 		}
 		send.Click += delegate { SendFollowUp(); };
-		f.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) f.Close(); };
-		f.Shown += (_, _) =>
+		close.Click += delegate { closeView(); };
+		// Enter in the question box sends it. The form's AcceptButton did this before; a view deliberately
+		// clears the window's default button, so the key is wired to the box it belongs to.
+		input.KeyDown += (_, e) =>
 		{
-			transcript.Focus();
-			transcript.SelectionStart = 0;
-			transcript.SelectionLength = 0;
-			string firstAnswer = turns.LastOrDefault(t => !t.IsUser)?.Text ?? "";
-			SpeakLong(firstAnswer, interrupt: false);
+			if (e.KeyCode != Keys.Enter) return;
+			e.Handled = e.SuppressKeyPress = true;
+			SendFollowUp();
 		};
-		f.ShowDialog(this);
+		// Escape is handled by the view itself (see Form1.InlineView).
+
+		transcript.SelectionStart = 0;
+		transcript.SelectionLength = 0;
+		string firstAnswer = turns.LastOrDefault(t => !t.IsUser)?.Text ?? "";
+		SpeakLong(firstAnswer, interrupt: false);
+		return transcript;
+		});
 	}
 }

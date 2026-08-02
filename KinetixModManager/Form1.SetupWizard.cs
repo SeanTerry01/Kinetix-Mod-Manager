@@ -20,15 +20,13 @@ public partial class Form1
 
 	private void ShowSetupWizard()
 	{
-		var f = new Form
+		// Choosing a game happens on the main window's own game list, which sits behind this view — so that step
+		// is remembered here and acted on from onClosed, once the view is out of the way.
+		bool sendToGameList = false;
+
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
+		ShowInlineView(Loc.T("wizard.title"), (container, closeView) =>
 		{
-			Text = Loc.T("wizard.title"),
-			Size = new Size(720, 460),
-			StartPosition = FormStartPosition.CenterParent,
-			KeyPreview = true,
-			MinimizeBox = false,
-			MaximizeBox = false
-		};
 		var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
 		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
@@ -36,7 +34,7 @@ public partial class Form1
 
 		var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("wizard.listName"), IntegralHeight = false, HorizontalScrollbar = true };
 		layout.Controls.Add(list, 0, 1);
-		f.Controls.Add(layout);
+		container.Controls.Add(layout);
 
 		string Row(bool done, string labelKey) =>
 			Loc.T("wizard.row", Loc.T(labelKey), Loc.T(done ? "wizard.done" : "wizard.todo"));
@@ -54,7 +52,7 @@ public partial class Form1
 		Rebuild(0);
 
 		WireAccessibleDialogList(list);
-		f.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) f.Close(); };
+		// Escape is handled by the view itself (see Form1.InlineView).
 		list.KeyDown += (_, e) =>
 		{
 			if (e.KeyCode != Keys.Enter) return;
@@ -63,9 +61,9 @@ public partial class Form1
 
 			if (step == 0)
 			{
-				// Choosing a game is a main-window action (the game list sits behind the wizard); drop the user there.
-				f.Close();
-				if (!HasGameChosen && _lstGames != null) { _lstGames.Focus(); Speak(Loc.T("wizard.goPickGame")); }
+				// Choosing a game is a main-window action; leave and hand over once this view has gone.
+				sendToGameList = true;
+				closeView();
 				return;
 			}
 			if (step == 2 && !HasGameChosen)
@@ -80,15 +78,17 @@ public partial class Form1
 				Loc.T((step == 1 ? HasApiKey : HasGameFolder) ? "wizard.done" : "wizard.todo")));
 		};
 
-		f.Shown += (_, _) =>
+		bool allDone = HasGameChosen && HasApiKey && HasGameFolder;
+		string opening = Loc.T("wizard.header") + " "
+			+ (allDone ? Loc.T("wizard.allDone") : Loc.T("wizard.openingHint"));
+		Speak(opening);
+		return list;
+		},
+		onClosed: () =>
 		{
-			bool allDone = HasGameChosen && HasApiKey && HasGameFolder;
-			string opening = Loc.T("wizard.header") + " "
-				+ (allDone ? Loc.T("wizard.allDone") : Loc.T("wizard.openingHint"));
-			Speak(opening);
-			list.Focus();
-		};
-		StyleDialog(f);
-		f.ShowDialog(this);
+			if (!sendToGameList || HasGameChosen || _lstGames == null) return;
+			_lstGames.Focus();
+			Speak(Loc.T("wizard.goPickGame"));
+		});
 	}
 }
