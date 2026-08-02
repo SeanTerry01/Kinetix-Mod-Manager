@@ -57,15 +57,12 @@ public partial class Form1
 		string game = _settings.ActiveGame;
 		string gameName = GameProfiles.DisplayNameFor(game);
 
-		Form dialog = new Form
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView. Escape is handled by
+		// the view. The main window used to be hidden while this was open, to keep the per-mod confirmations and
+		// progress on the panel rather than flashing to the window behind; being part of that window now achieves
+		// the same thing without hiding anything.
+		ShowInlineView(Loc.T("suite.installerTitle", gameName), (container, closeView) =>
 		{
-			Text = Loc.T("suite.installerTitle", gameName),
-			Size = new Size(500, 450),
-			StartPosition = FormStartPosition.CenterScreen,
-			KeyPreview = true
-		};
-		dialog.KeyDown += (s, e) => { if (e.KeyCode == Keys.Escape) dialog.Close(); };
-
 		TableLayoutPanel layout = new TableLayoutPanel
 		{
 			Dock = DockStyle.Fill,
@@ -248,7 +245,7 @@ public partial class Form1
 			isInstalling = true;
 			btnInstall.Enabled = false;
 			btnInstall.Text = Loc.T("suite.installing");
-			dialog.UseWaitCursor = true;
+			UseWaitCursor = true;
 
 			try
 			{
@@ -411,7 +408,7 @@ public partial class Form1
 				}
 
 				Speak(Loc.T("suite.setupComplete"));
-				dialog.Close();
+				closeView();
 			}
 			catch (Exception ex)
 			{
@@ -419,7 +416,7 @@ public partial class Form1
 			}
 			finally
 			{
-				dialog.UseWaitCursor = false;
+				UseWaitCursor = false;
 				btnInstall.Enabled = true;
 				btnInstall.Text = Loc.T("suite.installMissing");
 				isInstalling = false;
@@ -428,33 +425,10 @@ public partial class Form1
 			}
 		};
 
-		// Focusing the list raises its Enter handler (List_Enter), which announces the position after the screen
-		// reader reads the list name and selected item. Defer the focus to after the dialog's own open/foreground
-		// announcement (BeginInvoke) so the screen reader doesn't read the selected item twice — once for the
-		// foreground change and once for this synchronous focus call racing it.
-		dialog.Shown += (s, e) => dialog.BeginInvoke(new Action(() => lstStatus.Focus()));
-
-		dialog.Controls.Add(layout);
-
-		// Keep all screen-reader focus on the suite installer while it's open. Hiding the main window means the
-		// per-mod "installed" confirmations and progress return to this panel instead of flashing to the main
-		// window behind it, and the main window comes back when the panel closes. Scoped to the suite only —
-		// ordinary installs (Find New Mods, Ctrl+I) leave the main window in place as before.
-		bool wasVisible = Visible;
-		if (wasVisible) Hide();
-		ApplyScreenReaderPauses(dialog);
-		try
-		{
-			dialog.ShowDialog();
-		}
-		finally
-		{
-			if (wasVisible)
-			{
-				Show();
-				Activate();
-			}
-		}
+		container.Controls.Add(layout);
+		ApplyScreenReaderPauses(container);
+		return lstStatus;
+		});
 	}
 
 	/// <summary>

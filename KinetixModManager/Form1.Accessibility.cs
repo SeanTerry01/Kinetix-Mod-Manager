@@ -343,9 +343,24 @@ public partial class Form1
 	/// Shows a standard, screen-reader-friendly "About" dialog: a brief description of the program, its version,
 	/// publisher, website, and licensing — the kind of dialog most applications expose from their Help menu.
 	/// </summary>
+	/// <summary>
+	/// The supported games as a sentence — "Fallout 4, Moonlight Peaks, Skyrim Special Edition and Stardew
+	/// Valley". Built from <see cref="GameProfiles"/> so it is right by construction whenever a game is added.
+	/// </summary>
+	private static string SupportedGamesInProse()
+	{
+		var names = GameProfiles.AllDisplayNames;
+		if (names.Count == 0) return "";
+		if (names.Count == 1) return names[0];
+		return Loc.T("common.listAnd", string.Join(", ", names.Take(names.Count - 1)), names[^1]);
+	}
+
 	private void ShowAbout()
 	{
-		string about = Loc.T("about.body", NexusService.AppVersion).Replace("\n", Environment.NewLine);
+		// The supported games are listed from the registry rather than written into the text, so adding a game
+		// updates this on its own — the sentence had gone stale once already.
+		string about = Loc.T("about.body", NexusService.AppVersion, SupportedGamesInProse())
+			.Replace("\n", Environment.NewLine);
 
 		// Shown inside the main window rather than as one of its own — see Form1.InlineView. Escape is handled
 		// by the view, and there is no longer a window to hide the main one behind.
@@ -1379,13 +1394,10 @@ public partial class Form1
 			return;
 		}
 
-		Form editorForm = new Form
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
+		ShowInlineView(Loc.T("config.editorTitle", fileLabel, modName), (container, closeView) =>
 		{
-			Text = Loc.T("config.editorTitle", fileLabel, modName),
-			Size = new Size(800, 600),
-			StartPosition = FormStartPosition.CenterParent,
-			KeyPreview = true
-		};
+		bool saved = false;
 
 		TableLayoutPanel mainLayout = new TableLayoutPanel
 		{
@@ -1436,7 +1448,7 @@ public partial class Form1
 
 		mainLayout.Controls.Add(tbJson, 0, 0);
 		mainLayout.Controls.Add(buttonLayout, 0, 1);
-		editorForm.Controls.Add(mainLayout);
+		container.Controls.Add(mainLayout);
 
 		Action saveAction = delegate
 		{
@@ -1458,8 +1470,8 @@ public partial class Form1
 				File.WriteAllText(configPath, editedText);
 				Speak(Loc.T("config.saved", fileLabel));
 				onSaveSuccess?.Invoke();
-				editorForm.DialogResult = DialogResult.OK;
-				editorForm.Close();
+				saved = true;
+				closeView();
 			}
 			catch (Exception ex)
 			{
@@ -1468,40 +1480,50 @@ public partial class Form1
 			}
 		};
 
-		btnSave.Click += delegate { saveAction(); };
-		btnCancel.Click += delegate { editorForm.Close(); };
-
-		editorForm.KeyDown += delegate(object? s, KeyEventArgs pe)
+		// Leaving with unsaved edits asks first, and answering No has to KEEP the editor open. A view's own
+		// Escape can only close, so Escape is claimed here instead: marking the key handled makes the view's
+		// generic Escape stand down (see AttachEscape), leaving this in charge of whether it closes at all.
+		void TryClose()
 		{
-			if (pe.KeyCode == Keys.S && pe.Control)
+			if (!saved && tbJson.Text != originalJson)
 			{
-				pe.Handled = true;
-				pe.SuppressKeyPress = true;
-				saveAction();
-			}
-			else if (pe.KeyCode == Keys.Escape)
-			{
-				pe.Handled = true;
-				pe.SuppressKeyPress = true;
-				editorForm.Close();
-			}
-		};
-
-		editorForm.FormClosing += delegate(object? s, FormClosingEventArgs pe)
-		{
-			if (editorForm.DialogResult != DialogResult.OK && tbJson.Text != originalJson)
-			{
-				var res = SpeakBox(Loc.T("config.discardConfirm"), Loc.T("config.confirmCancelTitle"), MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-				if (res == DialogResult.No)
-				{
-					pe.Cancel = true;
+				if (SpeakBox(Loc.T("config.discardConfirm"), Loc.T("config.confirmCancelTitle"),
+						MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
 					return;
-				}
 				Speak(Loc.T("common.changesCancelled"));
 			}
-		};
+			closeView();
+		}
+
+		btnSave.Click += delegate { saveAction(); };
+		btnCancel.Click += delegate { TryClose(); };
+
+		// The form used to catch these for the whole window via KeyPreview; without a form of its own they are
+		// wired to the controls that can hold focus.
+		void WireEditorKeys(Control c)
+		{
+			c.KeyDown += delegate (object? s, KeyEventArgs pe)
+			{
+				if (pe.KeyCode == Keys.S && pe.Control)
+				{
+					pe.Handled = true;
+					pe.SuppressKeyPress = true;
+					saveAction();
+				}
+				else if (pe.KeyCode == Keys.Escape)
+				{
+					pe.Handled = true;
+					pe.SuppressKeyPress = true;
+					TryClose();
+				}
+			};
+		}
+		WireEditorKeys(tbJson);
+		WireEditorKeys(btnSave);
+		WireEditorKeys(btnCancel);
 
 		Speak(Loc.T("config.editing", fileLabel.ToLower(), modName));
-		editorForm.ShowDialog();
+		return tbJson;
+		});
 	}
 }
