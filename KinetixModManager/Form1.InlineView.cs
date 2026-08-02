@@ -31,8 +31,13 @@ public partial class Form1
 	/// <paramref name="onClosed"/> runs once the view has gone, however it went — a button, or Escape. It is
 	/// what a dialog would have done in its FormClosing handler, and is the place for anything that has to
 	/// happen on the way out no matter which route was taken.
+	///
+	/// <paramref name="hint"/> is spoken once after the title, for a view whose keys are worth a word on the way
+	/// in — the drill-downs say how to move between levels. It must not be spoken by the view itself: anything
+	/// said while <paramref name="build"/> runs lands before the title.
 	/// </summary>
-	private void ShowInlineView(string title, Func<Panel, Action, Control> build, Action? onClosed = null)
+	private void ShowInlineView(string title, Func<Panel, Action, Control> build, Action? onClosed = null,
+		string? hint = null)
 	{
 		Form host = this;
 		bool closed = false;
@@ -82,15 +87,54 @@ public partial class Form1
 		Control focusFirst = build(content, Close);
 		SilenceUnnamedContainers(view);
 
-		// The view says its name once, on the way in — "Settings", then the reader's own announcement of whatever
-		// focus landed on. This is the one announcement the title is worth: it tells the user which screen opened.
-		// It is said deliberately, once, rather than left for the reader to borrow from a heading on every focus
-		// change, which is what made the title such noise before. Queued rather than interrupting, so it follows
-		// whatever was being said as the view opened instead of cutting it off.
-		RunOverlay(host, view, focusFirst, finished: () => closed, onEscape: Close,
-			afterShown: () => Speak(title));
+		// A view that moves focus itself — the drill-downs bounce it through the window to force the reader to
+		// re-read a rebuilt list — leaves focus on the form for an instant, and the reader announces the form by
+		// name when that happens. Unnamed, it would fall back to the window's caption, so drilling in would say
+		// "Kinetix Mod Manager" every time. Blank while the view is up, put back exactly as found afterwards.
+		string? hostNameBefore = host.AccessibleName;
+		host.AccessibleName = " ";
+		try
+		{
+			// The view says its name once, on the way in — "Settings", then the reader's own announcement of
+			// whatever focus landed on. This is the one announcement the title is worth: it tells the user which
+			// screen opened. It is said deliberately, once, rather than left for the reader to borrow from a
+			// heading on every focus change, which is what made the title such noise before. Queued rather than
+			// interrupting, so it follows whatever was being said as the view opened instead of cutting it off.
+			RunOverlay(host, view, focusFirst, finished: () => closed, onEscape: Close,
+				afterShown: () =>
+				{
+					Speak(title);
+					if (!string.IsNullOrEmpty(hint)) Speak(hint);
+				});
+		}
+		finally
+		{
+			host.AccessibleName = hostNameBefore;
+		}
 
 		onClosed?.Invoke();
+	}
+
+	/// <summary>
+	/// Wires Shift+F1 on every control inside a view, so context help works wherever focus happens to be.
+	///
+	/// A view cannot use the window's own key preview for this — an overlay switches it off while it is up (see
+	/// <see cref="RunOverlay"/>) — so the key has to be caught on the controls that can hold focus, exactly as
+	/// Escape is. A control that has already dealt with the key keeps it.
+	/// </summary>
+	private static void AttachViewHelp(Control root, Action onHelp)
+	{
+		foreach (Control child in root.Controls)
+		{
+			child.KeyDown += delegate (object? s, KeyEventArgs e)
+			{
+				if (e.Handled || e.KeyCode != Keys.F1 || !e.Shift) return;
+				e.Handled = true;
+				e.SuppressKeyPress = true;
+				onHelp();
+			};
+			if (child.HasChildren) AttachViewHelp(child, onHelp);
+		}
 	}
 
 	/// <summary>

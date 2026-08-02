@@ -145,25 +145,19 @@ public partial class Form1
 	/// <summary>
 	/// Shows the shared, screen-reader-friendly document viewer: a drill-down list of headings on the left and the
 	/// selected heading's text on the right. Up/Down move; Right or Enter opens a heading that has sub-topics;
-	/// Left or Backspace goes back up; Tab reads the text; Escape closes. Hides the main window while open and
-	/// restores it on close. Used by both the manual and the change log so they look and operate identically.
-	/// The drill-down mirrors the Ctrl+H controls viewer (focus bounce on level change, breadcrumb as the list
-	/// title, position spoken just after the item) so the two navigate the same way.
+	/// Left or Backspace goes back up; Tab reads the text; Escape closes. Used by both the manual and the change
+	/// log so they look and operate identically. The drill-down mirrors the Ctrl+H controls viewer (focus bounce
+	/// on level change, breadcrumb as the list title, position spoken just after the item) so the two navigate
+	/// the same way.
 	/// </summary>
 	private void ShowDocDrilldown(List<DocNode> roots, string windowTitle, string tocName, string contentName)
 	{
-		Hide();
-		Form docForm = new Form
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView. The window this
+		// used to be hid the main one behind it; there is nothing to hide now, and nothing to restore on the
+		// way out. The blank accessible name the window carried for the focus bounce is handled by
+		// ShowInlineView, which does the same for the main window while any view is up.
+		ShowInlineView(windowTitle, (container, closeView) =>
 		{
-			Text = windowTitle,
-			Size = new Size(900, 600),
-			StartPosition = FormStartPosition.CenterScreen,
-			KeyPreview = true,
-			// Drilling between levels briefly bounces focus through the form to force a clean list re-read; a
-			// blank accessible name keeps the screen reader from announcing the window title on every bounce.
-			AccessibleName = " "
-		};
-
 		TableLayoutPanel layout = new TableLayoutPanel
 		{
 			Dock = DockStyle.Fill,
@@ -191,7 +185,7 @@ public partial class Form1
 
 		layout.Controls.Add(list, 0, 0);
 		layout.Controls.Add(tbContent, 1, 0);
-		docForm.Controls.Add(layout);
+		container.Controls.Add(layout);
 
 		// --- Drill-down navigation state ---------------------------------------------------------------
 		List<DocNode> currentNodes = new List<DocNode>();
@@ -251,9 +245,11 @@ public partial class Form1
 
 		// Moves to a new level by rebuilding the list while it is briefly unfocused, then refocusing it, so the
 		// screen reader gives its normal "list title (breadcrumb), then selected item" readout exactly once.
+		// The focus is bounced through the main window now that the view lives inside it — the same bounce, and
+		// ShowInlineView keeps the window from announcing itself as focus passes through.
 		void GoToLevel(List<DocNode> nodes, string crumb, int selectIndex)
 		{
-			docForm.ActiveControl = null;
+			ActiveControl = null;
 			ShowLevel(nodes, crumb, selectIndex);
 			list.Focus();
 		}
@@ -313,30 +309,16 @@ public partial class Form1
 			tbContent.ScrollToCaret();
 		};
 
-		docForm.KeyDown += delegate(object? s, KeyEventArgs pe)
-		{
-			if (pe.KeyCode == Keys.Escape)
-			{
-				docForm.Close();
-			}
-			else if (pe.KeyCode == Keys.F1 && pe.Shift)
-			{
-				pe.Handled = true;
-				pe.SuppressKeyPress = true;
-				Speak(Loc.T("doc.help"));
-			}
-		};
-
-		docForm.FormClosing += delegate { Show(); };
+		// Escape is wired by the view itself, on every control, so it closes from the list or the text box alike.
+		// Shift+F1 needs the same treatment: the window's key preview is switched off while a view is up, so a
+		// form-level handler would never see it.
+		AttachViewHelp(container, () => Speak(Loc.T("doc.help")));
 
 		ShowLevel(roots, "", 0);
-		docForm.Shown += delegate
-		{
-			list.Focus();
-			Speak(Loc.T("doc.navHint"));
-		};
-		ApplyScreenReaderPauses(docForm);
-		docForm.ShowDialog();
+		ApplyScreenReaderPauses(container);
+		return list;
+		},
+		hint: Loc.T("doc.navHint"));
 	}
 
 	/// <summary>
@@ -727,19 +709,11 @@ public partial class Form1
 	{
 		string gameName = GameProfiles.DisplayNameFor(_settings.ActiveGame);
 
-		Hide();
-		Form controlsForm = new Form
+		// Shown inside the main window rather than as one of its own — see Form1.InlineView. The window this used
+		// to be hid the main one behind it and carried a blank accessible name so the focus bounce between levels
+		// stayed quiet; ShowInlineView does that for the main window now, for the whole time a view is up.
+		ShowInlineView(Loc.T("controls.windowTitle", gameName), (container, closeView) =>
 		{
-			Text = Loc.T("controls.windowTitle", gameName),
-			Size = new Size(900, 600),
-			StartPosition = FormStartPosition.CenterScreen,
-			KeyPreview = true,
-			// Drilling between levels briefly bounces focus through the form to force a clean list re-read.
-			// A blank accessible name keeps the screen reader from announcing the window title on every bounce
-			// (the title bar text itself is unchanged for sighted users and NVDA+T).
-			AccessibleName = " "
-		};
-
 		TableLayoutPanel mainFormLayout = new TableLayoutPanel
 		{
 			Dock = DockStyle.Fill,
@@ -791,7 +765,7 @@ public partial class Form1
 
 		mainFormLayout.Controls.Add(list, 0, 0);
 		mainFormLayout.Controls.Add(bottomLayout, 0, 1);
-		controlsForm.Controls.Add(mainFormLayout);
+		container.Controls.Add(mainFormLayout);
 
 		// --- Drill-down navigation state ---------------------------------------------------------------
 		List<NavNode> currentNodes = new List<NavNode>();
@@ -859,9 +833,11 @@ public partial class Form1
 		// refocus gives the screen reader's normal "list title (the breadcrumb path), then selected item"
 		// readout exactly once — reliable order, no duplicate item — and the focus handler adds the position.
 		// (Changing the selection while the list stayed focused is what caused the item to be read twice.)
+		// The focus is bounced through the main window now that the view lives inside it — the same bounce, and
+		// ShowInlineView keeps the window from announcing itself as focus passes through.
 		void GoToLevel(List<NavNode> nodes, string crumb, int selectIndex)
 		{
-			controlsForm.ActiveControl = null;
+			ActiveControl = null;
 			ShowLevel(nodes, crumb, selectIndex);
 			list.Focus();
 		}
@@ -946,33 +922,18 @@ public partial class Form1
 				TriggerConfigEdit(mod);
 		};
 
-		btnClose.Click += delegate { controlsForm.Close(); };
+		btnClose.Click += delegate { closeView(); };
 
-		controlsForm.KeyDown += delegate(object? s, KeyEventArgs pe)
-		{
-			if (pe.KeyCode == Keys.Escape)
-			{
-				controlsForm.Close();
-			}
-			else if (pe.KeyCode == Keys.F1 && pe.Shift)
-			{
-				// Context help for this window, mirroring Shift+F1 in the main program.
-				pe.Handled = true;
-				pe.SuppressKeyPress = true;
-				Speak(Loc.T("controls.help"));
-			}
-		};
-
-		controlsForm.FormClosing += delegate { Show(); };
+		// Escape is wired by the view itself, on every control, so it closes from the list or either button.
+		// Shift+F1 (context help, mirroring the main program) needs wiring the same way: the window's key preview
+		// is switched off while a view is up, so a form-level handler would never see it.
+		AttachViewHelp(container, () => Speak(Loc.T("controls.help")));
 
 		LoadControls();
-		controlsForm.Shown += delegate
-		{
-			list.Focus();
-			Speak(Loc.T("controls.navHint"));
-		};
-		ApplyScreenReaderPauses(controlsForm);
-		controlsForm.ShowDialog();
+		ApplyScreenReaderPauses(container);
+		return list;
+		},
+		hint: Loc.T("controls.navHint"));
 	}
 
 	/// <summary>
