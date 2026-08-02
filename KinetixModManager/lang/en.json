@@ -40,7 +40,7 @@
   "shortcutMgr.saved": "Shortcuts saved.",
   "shortcutMgr.unmapped": "Unmapped",
 
-  "settings.title": "Settings - Escape to Cancel",
+  "settings.title": "Settings",
   "settings.configurePaths": "Configure Paths for Game",
   "settings.modsPath": "Mods Folder Path",
   "settings.gamePath": "Game Install Directory",
@@ -93,6 +93,9 @@
   "settings.aiRefreshFail": "Could not load models: {0}",
   "settings.aiKey": "API Key for this provider",
   "settings.aiTest": "Test Connection",
+  "settings.aiGetKey": "Get an API Key",
+  "settings.aiGetKeyName": "Get an API key for the selected provider. Opens their website in your browser.",
+  "settings.aiGetKeyOpening": "Opening the {0} API key page in your browser.",
   "settings.aiTestNeedsKey": "Enter a model and API key first.",
   "settings.aiTestWorking": "Testing the connection, please wait...",
   "settings.aiTestOk": "Success. The AI provider responded.",

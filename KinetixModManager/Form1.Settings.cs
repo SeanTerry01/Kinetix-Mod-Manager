@@ -736,6 +736,31 @@ public partial class Form1
 		Label lblAiKeyHelp = new Label { Text = "", AutoSize = true, MaximumSize = new Size(480, 0), Padding = new Padding(0, 4, 0, 0) };
 		tabAi.Controls.Add(lblAiKeyHelp, 0, air++);
 
+		// Opens the selected provider's own key page. The help text above says where to go; this saves finding
+		// it. Hidden for the custom endpoint, which could be any service and so has no page to send anyone to.
+		Button btnAiGetKey = new Button
+		{
+			Text = Loc.T("settings.aiGetKey"),
+			AutoSize = true,
+			Padding = new Padding(0, 4, 0, 0),
+			AccessibleName = Loc.T("settings.aiGetKeyName")
+		};
+		btnAiGetKey.Click += delegate
+		{
+			string url = (cmbAiProvider.SelectedItem as AiProviderInfo)?.KeyUrl ?? "";
+			if (string.IsNullOrEmpty(url)) return;
+			try
+			{
+				Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+				Speak(Loc.T("settings.aiGetKeyOpening", (cmbAiProvider.SelectedItem as AiProviderInfo)?.Display ?? ""));
+			}
+			catch (Exception ex)
+			{
+				SpeakBox(Loc.T("store.couldNotOpenLink", ex.Message));
+			}
+		};
+		tabAi.Controls.Add(btnAiGetKey, 0, air++);
+
 		Button btnAiTest = new Button { Text = Loc.T("settings.aiTest"), AutoSize = true, Padding = new Padding(0, 8, 0, 0) };
 		tabAi.Controls.Add(btnAiTest, 0, air++);
 
@@ -756,6 +781,9 @@ public partial class Form1
 			lblAiModel.Visible = cmbAiModel.Visible = on;
 			lblAiKey.Visible = tAiKey.Visible = on;
 			lblAiKeyHelp.Visible = on;
+			// Only shown when the selected provider actually has a key page of its own.
+			btnAiGetKey.Visible = on &&
+				!string.IsNullOrEmpty((cmbAiProvider.SelectedItem as AiProviderInfo)?.KeyUrl);
 			btnAiRefresh.Visible = on;
 			btnAiTest.Visible = on;
 			UpdateAiCustomVisibility(); // the Custom row also depends on the selected model
@@ -1113,6 +1141,8 @@ public partial class Form1
 		onClosed: () =>
 		{
 			_isSettingsOpen = false;
+			// Don't leave a logo preview playing after Settings has gone.
+			_soundEngine.StopLogoSound();
 			if (!saved) Speak(Loc.T("common.changesCancelled"));
 		});
 	}

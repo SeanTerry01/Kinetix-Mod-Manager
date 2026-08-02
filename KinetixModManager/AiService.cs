@@ -36,9 +36,14 @@ public sealed class AiProviderInfo
 	public string KeyHelp { get; }
 	/// <summary>True if this provider needs a user-supplied base URL (an OpenAI-compatible custom endpoint).</summary>
 	public bool NeedsBaseUrl { get; }
-	public AiProviderInfo(string id, string display, IReadOnlyList<AiModelOption> models, string defaultModel, string keyHelp, bool needsBaseUrl = false)
+	/// <summary>
+	/// The page where this provider's API keys are created, opened by Settings' "Get an API key" button. Empty
+	/// for the custom endpoint, which could be any service and so has no page to send anyone to.
+	/// </summary>
+	public string KeyUrl { get; }
+	public AiProviderInfo(string id, string display, IReadOnlyList<AiModelOption> models, string defaultModel, string keyHelp, bool needsBaseUrl = false, string keyUrl = "")
 	{
-		Id = id; Display = display; Models = models; DefaultModel = defaultModel; KeyHelp = keyHelp; NeedsBaseUrl = needsBaseUrl;
+		Id = id; Display = display; Models = models; DefaultModel = defaultModel; KeyHelp = keyHelp; NeedsBaseUrl = needsBaseUrl; KeyUrl = keyUrl;
 	}
 	public override string ToString() => Display;
 }
@@ -76,7 +81,8 @@ public class AiService
 				new("claude-opus-4-8",   "Claude Opus 4.8 (most capable)"),
 			},
 			defaultModel: "claude-haiku-4-5",
-			keyHelp: "Create a key at console.anthropic.com under API Keys. Pay-as-you-go, billed to your account. Use “Refresh model list” to load current models."),
+			keyHelp: "Create a key at console.anthropic.com under API Keys. Pay-as-you-go, billed to your account. Use “Refresh model list” to load current models.",
+			keyUrl: "https://console.anthropic.com/settings/keys"),
 
 		new AiProviderInfo(
 			"OpenAI", "OpenAI (GPT)",
@@ -86,7 +92,8 @@ public class AiService
 				new("gpt-4o",      "GPT-4o"),
 			},
 			defaultModel: "gpt-4o-mini",
-			keyHelp: "Create a key at platform.openai.com under API keys. Use “Refresh model list” after entering it to load your account’s current models."),
+			keyHelp: "Create a key at platform.openai.com under API keys. Use “Refresh model list” after entering it to load your account’s current models.",
+			keyUrl: "https://platform.openai.com/api-keys"),
 
 		new AiProviderInfo(
 			"Google", "Google (Gemini)",
@@ -96,7 +103,8 @@ public class AiService
 				new("gemini-1.5-pro",   "Gemini 1.5 Pro"),
 			},
 			defaultModel: "gemini-2.0-flash",
-			keyHelp: "Create a key at aistudio.google.com under Get API key. Gemini has a free tier. Use “Refresh model list” to load current models."),
+			keyHelp: "Create a key at aistudio.google.com under Get API key. Gemini has a free tier. Use “Refresh model list” to load current models.",
+			keyUrl: "https://aistudio.google.com/app/apikey"),
 
 		new AiProviderInfo(
 			OpenAiCompatibleId, "OpenAI-compatible / Custom endpoint",

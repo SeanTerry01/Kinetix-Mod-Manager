@@ -149,8 +149,13 @@ public class SoundEngine
 		if (!_settings.EnableUiSounds)
 			return;
 
+		// Arrowing down a list of logos starts one preview per item. Without stopping the one already playing
+		// they pile up on top of each other and nothing can be told apart — so a new preview replaces the old.
+		StopLogoSound();
+
 		Task.Run(() =>
 		{
+			WaveOutEvent? output = null;
 			try
 			{
 				string path = Path.Combine(_themesPath, theme, "logo", file);
@@ -158,14 +163,38 @@ public class SoundEngine
 					return;
 
 				using VorbisWaveReader reader = new VorbisWaveReader(path);
-				using WaveOutEvent output = new WaveOutEvent();
+				output = new WaveOutEvent();
+				lock (_logoLock) { _logoOutput = output; }
+
 				output.Volume = (float)_settings.SoundVolume / 100f;
 				output.Init(reader);
 				output.Play();
+				// Stopping from another thread ends playback, which ends this wait too.
 				while (output.PlaybackState == PlaybackState.Playing)
-					Thread.Sleep(100);
+					Thread.Sleep(50);
 			}
 			catch { /* audio failures are non-fatal */ }
+			finally
+			{
+				// Only clear the shared reference if it is still this preview's — a newer one may already own it.
+				lock (_logoLock)
+				{
+					if (ReferenceEquals(_logoOutput, output)) _logoOutput = null;
+				}
+				try { output?.Dispose(); } catch { }
+			}
 		});
+	}
+
+	/// <summary>The preview currently playing, so a new one (or leaving Settings) can cut it short.</summary>
+	private WaveOutEvent? _logoOutput;
+	private readonly object _logoLock = new object();
+
+	/// <summary>Stops a logo preview if one is playing. Safe to call when nothing is.</summary>
+	public void StopLogoSound()
+	{
+		WaveOutEvent? playing;
+		lock (_logoLock) { playing = _logoOutput; _logoOutput = null; }
+		try { playing?.Stop(); } catch { /* already finished or disposed */ }
 	}
 }

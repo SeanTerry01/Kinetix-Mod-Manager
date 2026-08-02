@@ -40,7 +40,11 @@ public partial class Form1
 			Dock = DockStyle.Fill,
 			BackColor = SystemColors.Control,
 			Padding = new Padding(12),
-			AccessibleName = title,
+			// Deliberately unnamed. A named container is announced by the screen reader every time focus enters
+			// it — which for a view built from tabs or several controls meant hearing the view's title again on
+			// every Tab and every tab change. A blank name is enough here because a Panel has no visible Text for
+			// the reader to fall back to; a Label does, which is why the heading below needs SilentLabel instead.
+			AccessibleName = " ",
 			AccessibleRole = AccessibleRole.Pane
 		};
 
@@ -53,7 +57,10 @@ public partial class Form1
 		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
 
-		layout.Controls.Add(new Label
+		// The heading is for the eye only — the user already knows which view they opened, and hearing its title
+		// again on every Tab press and every tab change is noise. See SilentLabel for why it has to be this and
+		// not simply a blank accessible name.
+		layout.Controls.Add(new SilentLabel
 		{
 			Text = title,
 			Font = new Font("Segoe UI", 14f, FontStyle.Bold),
@@ -71,5 +78,32 @@ public partial class Form1
 		RunOverlay(host, view, focusFirst, finished: () => closed, onEscape: Close);
 
 		onClosed?.Invoke();
+	}
+
+	/// <summary>
+	/// A label that is drawn on screen but says nothing to a screen reader.
+	///
+	/// Setting <see cref="Control.AccessibleName"/> to a blank string does <em>not</em> do this. Windows reads a
+	/// blank name as "no name was given" and falls back to the control's visible <see cref="Control.Text"/> —
+	/// which is the text we are trying to keep it from announcing, so the blank name changes nothing. The name
+	/// has to be answered as genuinely empty by the accessibility object itself, which means overriding it.
+	///
+	/// Used for headings that repeat something the user already knows. A heading sits at the top of a container,
+	/// so the reader offers it whenever focus enters that container — on every Tab press, and on every tab change
+	/// in a view built from tabs. Silencing the heading leaves the text on screen for anyone reading it.
+	/// </summary>
+	private sealed class SilentLabel : Label
+	{
+		protected override AccessibleObject CreateAccessibilityInstance() => new SilentAccessibleObject(this);
+
+		private sealed class SilentAccessibleObject : ControlAccessibleObject
+		{
+			public SilentAccessibleObject(Label owner) : base(owner) { }
+
+			public override string? Name { get => string.Empty; set { } }
+
+			// No role at all, so the label is not offered as a thing to land on or to name what surrounds it.
+			public override AccessibleRole Role => AccessibleRole.None;
+		}
 	}
 }
