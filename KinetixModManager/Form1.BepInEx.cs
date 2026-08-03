@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -121,6 +122,121 @@ public partial class Form1
 				Loc.T("bepinex.versionDiffersTitle"),
 				MessageBoxButtons.OK,
 				MessageBoxIcon.Information);
+		}
+
+		// Only worth asking about once the loader is there to run it.
+		OfferKeybindReader(gameRoot);
+	}
+
+	/// <summary>
+	/// Offers, once, to install the small plugin that reads the game's own key bindings out to a file the
+	/// controls list can read.
+	///
+	/// Some games settle their bindings while they run and keep nothing readable on disk — Moonlight Peaks uses
+	/// Rewired, so there is no input file to parse and a player's own remaps live inside Rewired's save data.
+	/// The only way to know what a key does is to ask the game from inside it, which is all this plugin does.
+	/// Without it the controls list still works, from the snapshot of stock bindings the manager ships; with it,
+	/// the list is the player's real keys including anything they have remapped.
+	///
+	/// It is <em>asked</em>, never assumed. Putting a file into someone's game folder is their decision, even a
+	/// file that only exists to make the game's controls readable — and the answer is remembered either way, so
+	/// a "no" stays no and removing the plugin later is not undone behind their back.
+	/// </summary>
+	private void OfferKeybindReader(string gameRoot)
+	{
+		GameProfile? profile = GameProfiles.Find(_settings.ActiveGame);
+		if (profile?.KeybindReaderFileName == null || profile.KeybindReaderFolderName == null) return;
+		if (string.IsNullOrEmpty(gameRoot) || !Directory.Exists(gameRoot)) return;
+
+		string bundled = Path.Combine(AppContext.BaseDirectory, "data", "plugins", profile.KeybindReaderFileName);
+		if (!File.Exists(bundled)) return;
+
+		string modsFolder = profile.ModsFolderFor(gameRoot);
+		if (string.IsNullOrEmpty(modsFolder)) return;
+
+		// Already there: keep it current, but don't ask again. Replacing a plugin the user already said yes to
+		// with a newer build of the same thing is maintenance, not a new decision — and without it, a reader
+		// installed once would stay on its first version for good.
+		string? existing = FindInstalledKeybindReader(profile, gameRoot, modsFolder);
+		if (existing != null)
+		{
+			string? have = BepInExPlugin.ReadFromAssembly(existing)?.Version;
+			string? ship = BepInExPlugin.ReadFromAssembly(bundled)?.Version;
+			if (have != null && ship != null && have != ship && CopyKeybindReader(bundled, existing))
+				Speak(Loc.T("keybindReader.updated", ship));
+			return;
+		}
+
+		string installedDll = Path.Combine(modsFolder, profile.KeybindReaderFolderName, profile.KeybindReaderFileName);
+
+		if (_settings.KeybindReaderOffered.Contains(_settings.ActiveGame, StringComparer.OrdinalIgnoreCase)) return;
+
+		// Recorded before the copy is attempted, so a failure doesn't turn into the same question every session.
+		_settings.KeybindReaderOffered.Add(_settings.ActiveGame);
+		_settings.Save();
+
+		Speak(Loc.T("keybindReader.offerSpeak"));
+		DialogResult choice = SpeakBox(
+			Loc.T("keybindReader.offerBox", GameProfiles.DisplayNameFor(_settings.ActiveGame)),
+			Loc.T("keybindReader.offerTitle"),
+			MessageBoxButtons.YesNo,
+			MessageBoxIcon.Question);
+
+		if (choice != DialogResult.Yes)
+		{
+			Speak(Loc.T("keybindReader.declined"));
+			return;
+		}
+
+		if (CopyKeybindReader(bundled, installedDll))
+			Speak(Loc.T("keybindReader.installed"));
+		else
+			Speak(Loc.T("keybindReader.installFailed"));
+	}
+
+	/// <summary>
+	/// Finds an already-installed keybind reader, wherever it sits, or <c>null</c> if there isn't one.
+	///
+	/// Not just the folder the manager would install it into: someone may have put it there themselves, and a
+	/// mod unpacked from a download often lands in a folder named after the download instead. Installing a
+	/// second copy would leave two plugins claiming the same id, which BepInEx has to resolve by ignoring one.
+	///
+	/// The disabled folder counts as found, too. A reader the user has deliberately switched off must not come
+	/// back as an offer to install the thing they just turned off.
+	/// </summary>
+	private static string? FindInstalledKeybindReader(GameProfile profile, string gameRoot, string modsFolder)
+	{
+		string bepInExRoot = Path.Combine(gameRoot, "BepInEx");
+		foreach (string root in new[] { modsFolder, Path.Combine(bepInExRoot, ModEnableState.BepInExDisabledFolderName) })
+		{
+			try
+			{
+				if (!Directory.Exists(root)) continue;
+				string? found = Directory
+					.EnumerateFiles(root, profile.KeybindReaderFileName!, SearchOption.AllDirectories)
+					.FirstOrDefault();
+				if (found != null) return found;
+			}
+			catch { }
+		}
+		return null;
+	}
+
+	/// <summary>Copies the bundled reader into the game, creating its folder. False if anything stopped it.</summary>
+	private bool CopyKeybindReader(string bundled, string installedDll)
+	{
+		try
+		{
+			string? folder = Path.GetDirectoryName(installedDll);
+			if (folder == null) return false;
+			Directory.CreateDirectory(folder);
+			File.Copy(bundled, installedDll, overwrite: true);
+			return true;
+		}
+		catch (Exception ex)
+		{
+			LogError(installedDll, "Keybind reader install failed: " + ex.Message);
+			return false;
 		}
 	}
 

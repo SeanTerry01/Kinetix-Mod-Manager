@@ -145,6 +145,15 @@ public class AppSettings
 	/// </summary>
 	public bool HasCompletedFirstRun { get; set; } = false;
 
+	/// <summary>
+	/// The games whose keybind reader the manager has already offered to install, whatever the user answered.
+	///
+	/// The offer is made once and then never again — a "no" is a decision, not something to be asked about on
+	/// every session, and deleting the reader afterwards is a decision too. Recorded per game id so a second
+	/// game with a reader of its own asks in its own right.
+	/// </summary>
+	public List<string> KeybindReaderOffered { get; set; } = new List<string>();
+
 	public bool ShowSplashScreen { get; set; } = true;
 
 	public bool RandomLogoStartup { get; set; } = true;

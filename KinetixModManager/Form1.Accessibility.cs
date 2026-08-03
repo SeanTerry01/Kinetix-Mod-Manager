@@ -866,6 +866,18 @@ public partial class Form1
 		void TriggerConfigEdit(ModKeybinds mod)
 		{
 			if (string.IsNullOrEmpty(mod.ConfigPath) || !File.Exists(mod.ConfigPath)) return;
+
+			// A BepInEx plugin's settings are an INI in all but name, so they open in the INI editor — the JSON
+			// editor would reject the whole file as malformed. Both are in-window views that stack on top of this
+			// one, so Escape from either comes back to the controls list; the list is rebuilt afterwards so an
+			// edited key reads correctly straight away.
+			if (mod.ConfigPath.EndsWith(".cfg", StringComparison.OrdinalIgnoreCase))
+			{
+				ShowIniEditor(mod.ConfigPath, mod.Name);
+				LoadControls();
+				return;
+			}
+
 			OpenConfigEditor(mod.Name, mod.ConfigPath, () => LoadControls());
 		}
 
@@ -945,21 +957,28 @@ public partial class Form1
 	{
 		var sources = new List<ModKeybinds>();
 
-		var baseMod = new ModKeybinds("Base Game Controls (Vanilla Defaults)");
-		var baseSection = new KbSection();
-		foreach (string line in BaseGameControlLines(_settings.ActiveGame))
-			baseSection.Entries.Add(MakeKbEntry(line));
-		baseMod.Sections.Add(baseSection);
-		sources.Add(baseMod);
+		// The game's own controls. Read from the game where a keybind export exists, otherwise the short
+		// hardcoded list, otherwise nothing at all — a game we have no list for gets no entry rather than
+		// another game's keys, because a blind player cannot see that the keys being read out are the wrong
+		// game's. (Moonlight Peaks used to fall through to Stardew Valley's.)
+		ModKeybinds? gameControls = BuildExportedGameControls() ?? BuildHardcodedGameControls();
+		if (gameControls != null) sources.Add(gameControls);
 
-		string modsFolder = _settings.CurrentModsPath;
-		if (string.IsNullOrEmpty(modsFolder) || !Directory.Exists(modsFolder)) return sources;
-
+		// The installed mods come from the manager's own scan rather than a directory walk of our own. Walking
+		// the Mods folder assumed every mod is a folder directly inside it, and two kinds of mod are not: a
+		// Stardew mod may sit a level deeper (Stardew Access ships as Mods\StardewAccess\StardewAccess, which is
+		// why it was missing from this list entirely), and a BepInEx plugin is identified from its DLL rather
+		// than a manifest. ScanMods already knows all of that, and its names are the ones the rest of the
+		// manager shows.
 		try
 		{
-			foreach (string dir in Directory.GetDirectories(modsFolder))
+			foreach (GameMod installed in _allInstalledMods)
 			{
-				var mod = new ModKeybinds(ReadModDisplayName(dir));
+				if (installed.IsGroup) continue;
+				string dir = installed.FolderPath;
+				if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) continue;
+
+				var mod = new ModKeybinds(installed.Name);
 
 				// Markdown docs the mod ships (e.g. README.md with a "Keybinds"/"Controls" section) become
 				// structured sections — the authoritative, version-current list straight from the author.
@@ -982,7 +1001,195 @@ public partial class Form1
 		}
 		catch { }
 
+		// A BepInEx plugin keeps its settings outside its own folder — BepInEx writes one .cfg per plugin into
+		// BepInEx\config — so nothing above can find them. They fold into the source of the same name where
+		// there is one (a plugin that also ships a README), and stand on their own where there is not.
+		foreach ((string label, string path) in ModFileSystem.BepInExConfigFiles(_settings.CurrentGamePath))
+		{
+			List<KbSection> keys = ParseBepInExKeybinds(path);
+			if (keys.Count == 0) continue;
+
+			ModKeybinds? existing = sources.FirstOrDefault(s => s.Name.Equals(label, StringComparison.OrdinalIgnoreCase));
+			if (existing != null)
+			{
+				existing.Sections.AddRange(keys);
+				if (string.IsNullOrEmpty(existing.ConfigPath)) existing.ConfigPath = path;
+				continue;
+			}
+
+			// The .cfg is what Edit Config opens for these — in the INI editor, not the JSON one (see
+			// TriggerConfigEdit in the viewer), since that is the format BepInEx writes.
+			var mod = new ModKeybinds(label, path);
+			mod.Sections.AddRange(keys);
+			sources.Add(mod);
+		}
+
 		return sources;
+	}
+
+	/// <summary>
+	/// The active game's own controls, read from a keybind export — the player's real bindings when the export
+	/// plugin has written them, otherwise the snapshot of stock bindings bundled with the manager.
+	///
+	/// Which of the two it is gets said, as the first line of the list: someone who has remapped a key and is
+	/// being shown the stock one needs to be able to tell that these are defaults rather than conclude the
+	/// manager is wrong about their game. That line carries no key, so it reads out but isn't counted in the
+	/// list's "x of y".
+	///
+	/// <c>null</c> when the game has no export of either kind, leaving the hardcoded list to answer.
+	/// </summary>
+	private ModKeybinds? BuildExportedGameControls()
+	{
+		GameKeybindExport? export = GameKeybindExport.Load(
+			GameProfiles.Find(_settings.ActiveGame), _settings.CurrentGamePath, AppContext.BaseDirectory);
+		if (export == null) return null;
+
+		var mod = new ModKeybinds(Loc.T(export.IsLive ? "controls.gameKeysLive" : "controls.gameKeysDefault"));
+		var section = new KbSection();
+
+		section.Entries.Add(new KbEntry
+		{
+			Text = export.IsLive
+				? Loc.T("controls.gameKeysLiveInfo", export.GeneratedUtc?.ToLocalTime().ToString("d MMMM yyyy") ?? "")
+				: Loc.T("controls.gameKeysDefaultInfo")
+		});
+
+		foreach (GameKeyBinding binding in export.Bindings)
+			section.Entries.Add(new KbEntry
+			{
+				Key = FriendlyCombo(binding),
+				// Every action on the key, because one key routinely does several things on different screens.
+				Text = binding.Actions.Count > 0 ? string.Join(", ", binding.Actions) : Loc.T("controls.gameKeysUnnamed")
+			});
+
+		mod.Sections.Add(section);
+		return mod;
+	}
+
+	/// <summary>The short hardcoded vanilla list, for a game with no keybind export. <c>null</c> when there
+	/// is no list for the active game either.</summary>
+	private ModKeybinds? BuildHardcodedGameControls()
+	{
+		List<string> lines = BaseGameControlLines(_settings.ActiveGame);
+		if (lines.Count == 0) return null;
+
+		var mod = new ModKeybinds("Base Game Controls (Vanilla Defaults)");
+		var section = new KbSection();
+		foreach (string line in lines) section.Entries.Add(MakeKbEntry(line));
+		mod.Sections.Add(section);
+		return mod;
+	}
+
+	/// <summary>
+	/// A binding rendered for reading aloud: "Control+Alpha1" becomes "Control plus 1".
+	///
+	/// The export deals in Unity <c>KeyCode</c> names, which are identifiers rather than labels — <c>Alpha1</c>
+	/// is the 1 key, <c>UpArrow</c> is the up arrow — and reading those out verbatim would be a small puzzle
+	/// every time. The <c>+</c> is left in for <see cref="KeyToSpeech"/> to turn into "plus".
+	/// </summary>
+	private static string FriendlyCombo(GameKeyBinding binding) =>
+		binding.Modifiers.Length > 0
+			? binding.Modifiers + "+" + FriendlyKeyName(binding.Key)
+			: FriendlyKeyName(binding.Key);
+
+	/// <summary>One <c>KeyCode</c> name as a person would say it: "Alpha1" to "1", "PageDown" to "Page Down".</summary>
+	private static string FriendlyKeyName(string key)
+	{
+		if (key.StartsWith("Alpha", StringComparison.Ordinal) && key.Length > 5 && key.Skip(5).All(char.IsDigit))
+			return key.Substring(5);
+		if (key.StartsWith("Keypad", StringComparison.Ordinal) && key.Length > 6)
+			return "Keypad " + FriendlyKeyName(key.Substring(6));
+		return HumanizePropertyName(key);
+	}
+
+	/// <summary>
+	/// The keybinds a BepInEx plugin exposes through its config file.
+	///
+	/// BepInEx writes each setting as the author's description (<c>##</c> lines), then generated metadata
+	/// (<c>#</c> lines: the setting's type, its default, and for an enum every value it will accept), then
+	/// <c>Name = Value</c>. For a key, that accepted-values line is the whole Unity KeyCode enum — several
+	/// hundred names on a single line. Only the type is read from the metadata and everything else is dropped,
+	/// so an entry is the key the bind is currently set to and what it does, and nothing else.
+	///
+	/// The type is what identifies a keybind, not the section it sits in: a <c>[Keys]</c> section is a
+	/// convention some plugins follow and others don't, and keys turn up alongside ordinary settings.
+	///
+	/// Returned as one flat section so the keys sit directly under the plugin in the drill-down. A plugin
+	/// usually has a handful, and making the user open a category to reach three keys is a step for nothing.
+	/// </summary>
+	private static List<KbSection> ParseBepInExKeybinds(string configPath)
+	{
+		var section = new KbSection();
+		try
+		{
+			var description = new List<string>();
+			string type = "";
+
+			foreach (string raw in File.ReadAllLines(configPath))
+			{
+				string line = raw.Trim();
+				if (line.Length == 0) continue;
+
+				// A section heading starts a new setting; the file's own header lines land in description and
+				// are cleared here before the first real one.
+				if (line.StartsWith("[") && line.EndsWith("]"))
+				{
+					description.Clear();
+					type = "";
+					continue;
+				}
+
+				if (line.StartsWith("##"))
+				{
+					string text = line.Substring(2).Trim();
+					if (text.Length > 0) description.Add(text);
+					continue;
+				}
+
+				if (line.StartsWith("#"))
+				{
+					Match t = Regex.Match(line, @"^#\s*Setting type:\s*(.+)$", RegexOptions.IgnoreCase);
+					if (t.Success) type = t.Groups[1].Value.Trim();
+					continue;
+				}
+
+				int eq = line.IndexOf('=');
+				if (eq > 0 && IsKeySettingType(type))
+				{
+					string name = line.Substring(0, eq).Trim();
+					string value = line.Substring(eq + 1).Trim();
+					section.Entries.Add(new KbEntry
+					{
+						Key = value.Length > 0 ? value : "None",
+						// The author's first sentence says what the key does; the rest is usually detail about
+						// why, which belongs in the mod documentation viewer rather than a list of controls.
+						Text = FirstSentence(description) ?? HumanizePropertyName(name)
+					});
+				}
+
+				description.Clear();
+				type = "";
+			}
+		}
+		catch { }
+
+		return section.Entries.Count > 0 ? new List<KbSection> { section } : new List<KbSection>();
+	}
+
+	/// <summary>True for the BepInEx setting types that hold a key: a plain key, or a key plus modifiers.</summary>
+	private static bool IsKeySettingType(string type) =>
+		type.Contains("KeyCode", StringComparison.OrdinalIgnoreCase) ||
+		type.Contains("KeyboardShortcut", StringComparison.OrdinalIgnoreCase) ||
+		type.Equals("Key", StringComparison.OrdinalIgnoreCase);
+
+	/// <summary>The first sentence of a setting's description, or null when it has none.</summary>
+	private static string? FirstSentence(List<string> description)
+	{
+		if (description.Count == 0) return null;
+		string text = description[0].Trim();
+		int stop = text.IndexOf(". ", StringComparison.Ordinal);
+		if (stop > 0) text = text.Substring(0, stop);
+		return text.TrimEnd('.').Trim() is { Length: > 0 } trimmed ? trimmed : null;
 	}
 
 	/// <summary>
@@ -1223,28 +1430,6 @@ public partial class Form1
 	private static NavNode Leaf(KbEntry e, ModKeybinds mod) =>
 		new NavNode(EntryDisplay(e), mod) { IsInfo = e.Key == null };
 
-	/// <summary>Reads a mod's display name from its manifest (SMAPI <c>manifest.json</c> or the manager's
-	/// <c>.manager_manifest.json</c>), falling back to the folder name.</summary>
-	private static string ReadModDisplayName(string dir)
-	{
-		foreach (string manifestName in new[] { "manifest.json", ".manager_manifest.json" })
-		{
-			string path = Path.Combine(dir, manifestName);
-			if (!File.Exists(path)) continue;
-			try
-			{
-				var manifest = JsonConvert.DeserializeObject<JObject>(File.ReadAllText(path));
-				if (manifest != null && manifest.TryGetValue("Name", StringComparison.OrdinalIgnoreCase, out var nameToken))
-				{
-					string name = nameToken.ToString();
-					if (!string.IsNullOrWhiteSpace(name)) return name;
-				}
-			}
-			catch { }
-		}
-		return Path.GetFileName(dir);
-	}
-
 	/// <summary>Reads keybind lines from a mod's HTML guide (docs/keybinds.html etc.) and SMAPI config.json,
 	/// and reports the config.json path (if any) so it can be offered for editing.</summary>
 	private static List<string> ReadHtmlAndConfigKeybinds(string dir, out string configPath)
@@ -1256,10 +1441,15 @@ public partial class Form1
 		if (!Directory.Exists(docsPath)) docsPath = Path.Combine(dir, "Docs");
 		if (Directory.Exists(docsPath))
 		{
+			// Searched right through the docs folder, not just its top level. Stardew Access keeps its keybinding
+			// page at docs\compiled-docs\keybindings.html, so looking only in docs\ found nothing and the mod was
+			// left with the bare property names from its config file instead of the author's own descriptions.
 			foreach (string htmlName in new[] { "keybinds.html", "keybindings.html", "controls.html" })
 			{
-				string htmlFile = Path.Combine(docsPath, htmlName);
-				if (File.Exists(htmlFile)) { keys.AddRange(ParseKeybindsHtml(htmlFile)); break; }
+				string? htmlFile = null;
+				try { htmlFile = Directory.EnumerateFiles(docsPath, htmlName, SearchOption.AllDirectories).FirstOrDefault(); }
+				catch { }
+				if (htmlFile != null) { keys.AddRange(ParseKeybindsHtml(htmlFile)); break; }
 			}
 		}
 
@@ -1283,7 +1473,14 @@ public partial class Form1
 		return keys;
 	}
 
-	/// <summary>The hardcoded vanilla base-game controls (the only non-mod-sourced list), per active game.</summary>
+	/// <summary>
+	/// The hardcoded vanilla base-game controls (the only non-mod-sourced list), per active game.
+	///
+	/// A game with no list of its own returns nothing, and the caller then shows no base-game entry at all.
+	/// This used to end in a fallback to Stardew Valley's keys, so Moonlight Peaks — added long after this was
+	/// written — presented Stardew's controls as its own. A player who cannot see the screen has no way to tell
+	/// that the keys being read out belong to a different game, so silence is the only safe default.
+	/// </summary>
 	private static List<string> BaseGameControlLines(string activeGame)
 	{
 		if (activeGame == "SkyrimSE")
@@ -1320,15 +1517,17 @@ public partial class Form1
 				"O: Toggle Radio",
 				"F5 and F9: Quick-save / Quick-load game",
 			};
-		return new List<string>
-		{
-			"W A S D: Move character up, left, down, right",
-			"Arrow Keys: Navigate through game menus",
-			"C or Right Click: Primary interact / action",
-			"X or Right Click: Secondary interact / use tool",
-			"1 to 0: Select active item in hotbar",
-			"Escape or E: Open / close game menu",
-		};
+		if (activeGame == "StardewValley")
+			return new List<string>
+			{
+				"W A S D: Move character up, left, down, right",
+				"Arrow Keys: Navigate through game menus",
+				"C or Right Click: Primary interact / action",
+				"X or Right Click: Secondary interact / use tool",
+				"1 to 0: Select active item in hotbar",
+				"Escape or E: Open / close game menu",
+			};
+		return new List<string>();
 	}
 
 	/// <summary>

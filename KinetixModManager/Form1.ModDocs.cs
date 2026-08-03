@@ -139,6 +139,11 @@ public partial class Form1
 				if (line.StartsWith("#"))
 				{
 					string text = line.Substring(1).Trim();
+					// "Acceptable values: ..." spells out every value an enum setting takes, which for a key is
+					// the entire Unity KeyCode list — several hundred names read out as one unbroken line. The
+					// type, the default and the current value all stay; only the enumeration goes. A numeric
+					// "Acceptable value range: From 0.02 to 1" is short and genuinely useful, so it stays too.
+					if (text.StartsWith("Acceptable values:", StringComparison.OrdinalIgnoreCase)) continue;
 					if (text.Length > 0) metadata.Add(text);
 					continue;
 				}

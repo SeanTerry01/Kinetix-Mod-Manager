@@ -95,6 +95,37 @@ public sealed class GameProfile
 	/// <summary>The sound theme folder under <c>sounds/</c> that follows this game.</summary>
 	public required string SoundTheme { get; init; }
 
+	/// <summary>
+	/// The file, relative to the game folder, that a keybind-export plugin writes the game's own keyboard
+	/// bindings to — or <c>null</c> for a game with no such plugin.
+	///
+	/// Some games resolve their bindings at runtime and keep nothing readable on disk: Moonlight Peaks uses
+	/// Rewired, so there is no input asset to parse and a player's remaps live inside Rewired's own save data.
+	/// The only way to know what a key does is to ask the game while it runs, which a small plugin does,
+	/// leaving the answer in a file the manager can read.
+	/// </summary>
+	public string? KeybindExportFileRelativeToGame { get; init; }
+
+	/// <summary>
+	/// The snapshot of this game's stock bindings that ships inside the manager, under <c>data\</c>, or
+	/// <c>null</c> when there is none.
+	///
+	/// This is what makes the controls list work for someone who has just bought the game: they have no export
+	/// plugin and have never launched it, and "the controls are empty until you install something and play
+	/// once" is a poor answer from the feature whose whole job is to say what the controls are. Same schema as
+	/// the live export, so one reader handles both.
+	/// </summary>
+	public string? BundledKeybindsFileName { get; init; }
+
+	/// <summary>
+	/// The keybind-reader plugin the manager carries for this game, under <c>data\plugins\</c>, or <c>null</c>
+	/// when there is none. Offered to the player once, never installed without them saying yes.
+	/// </summary>
+	public string? KeybindReaderFileName { get; init; }
+
+	/// <summary>The folder the keybind reader installs into, under the game's mods folder.</summary>
+	public string? KeybindReaderFolderName { get; init; }
+
 	/// <summary>True when this game's mods are BepInEx plugins.</summary>
 	public bool IsBepInEx => Layout == ModLayout.BepInExPlugins;
 
@@ -162,7 +193,12 @@ public static class GameProfiles
 			ModsFolderRelativeToGame = @"BepInEx\plugins",
 			NexusDomain          = "moonlightpeaks",
 			NexusGameId          = "9480",
-			SoundTheme           = "Moonlight Peaks"
+			SoundTheme           = "Moonlight Peaks",
+			// Written by the Moonlight Keybind Export plugin; the bundled snapshot stands in until it exists.
+			KeybindExportFileRelativeToGame = @"BepInEx\moonlight-keybinds.json",
+			BundledKeybindsFileName         = "moonlight-peaks.defaults.json",
+			KeybindReaderFileName           = "MoonlightKeybindExport.dll",
+			KeybindReaderFolderName         = "MoonlightKeybindExport"
 		},
 		new GameProfile
 		{

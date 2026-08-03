@@ -50,6 +50,8 @@
     <Compile Include="..\KinetixModManager\BepInExPlugin.cs" />
     <!-- Self-contained "where does a mod folder live when enabled/disabled?" rules (BCL + GameProfiles). -->
     <Compile Include="..\KinetixModManager\ModEnableState.cs" />
+    <!-- Self-contained reader for a game's exported keyboard bindings (BCL + Newtonsoft + GameProfiles). -->
+    <Compile Include="..\KinetixModManager\GameKeybindExport.cs" />
   </ItemGroup>
 
 </Project>

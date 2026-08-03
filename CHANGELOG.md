@@ -30,6 +30,19 @@ Moonlight Peaks joins the manager as a fully supported game, alongside Stardew V
 ### 📋 BepInEx Log tab
 *   A **BepInEx Log** tab, working like the Skyrim and Fallout log tabs: the filter for errors and warnings, the search box, **Ctrl + Shift + R** to re-read it live, **F4** to open it, **Ctrl + C** to copy lines. BepInEx records every mod it loaded with its version, so it's the quickest way to confirm a mod is running.
 
+### ⌨️ The controls list knows Moonlight Peaks
+*   **The game's own controls (Ctrl+H)** are now listed for Moonlight Peaks — all 33 keys, each with every action it performs, because one key routinely does several things on different screens. They're there **the moment you install the manager**: a snapshot of the game's stock bindings ships inside it, so the list works before you have installed a single mod or launched the game once.
+*   Install the **Moonlight Keybind Export** mod and start the game, and the list switches to **your own bindings**, including anything you have remapped. The list says which of the two you're looking at, and when your bindings were read, so defaults are never mistaken for yours.
+*   Moonlight Peaks resolves its controls while it runs and stores nothing readable on disk, which is why the game has to be asked. Nothing is hardcoded and nothing is guessed.
+*   **The Keybind Reader comes with the manager** — there is nothing to go and download. The first time you load a Moonlight Peaks session, the manager explains why the game needs one and **asks** whether to install it; nothing is put into your game folder unless you say yes. Your answer is remembered either way and you are never asked again, and deleting the reader later is treated as your decision, not something to undo. The manual explains the whole arrangement under **Accessibility Controls Viewer → The Keybind Reader**.
+*   **Moonlight Peaks mods now appear in the list at all.** Their keys live in each mod's BepInEx configuration file, outside the mod's own folder, which is the one place the controls list never looked — so every Moonlight Peaks mod came up empty. Each entry is now just the key it's set to and what it does.
+*   **Ctrl+E / Edit Configuration** works from the controls list for Moonlight Peaks mods, opening the accessible INI editor rather than refusing the file.
+
+### 🩹 Fixed in the controls list
+*   **Moonlight Peaks was showing Stardew Valley's controls** as its own. The base-game list ended in a fallback to Stardew for any game without one of its own, so a fourth game silently inherited a third game's keys. A game with no controls list of its own now shows none, rather than another game's.
+*   **Stardew Access was missing entirely** from Stardew Valley's controls list. It installs one folder deeper than the list looked, and its keybinding page sits deeper still — so the mod that most needs to be in there was the one mod that wasn't. Both are now found: 92 documented keybinds with the author's own descriptions, alongside its current settings. Any other mod installed in a nested folder appears now too.
+*   **F3 (Mod Documentation)** no longer reads out the entire list of accepted values for a key setting — several hundred key names in one unbroken line. The setting's type, default and current value all stay.
+
 ## ✨ Also new
 
 ### 🗄️ "Delete Old Backups" no longer reports 0 every time

@@ -51,6 +51,11 @@
     <None Update="lang\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <!-- Snapshots of games' stock keyboard bindings, so the controls list works before the game has ever
+         been launched. See GameKeybindExport. -->
+    <None Update="data\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="..\MANUAL.md">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>MANUAL.md</Link>

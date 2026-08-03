@@ -442,6 +442,20 @@ What it shows:
 *   **Base Game Controls (Vanilla Defaults)**: the standard controls for the active game.
 *   **Each installed mod's own controls**: read straight from what the mod documents — its README or guide, or its config file — captured when the mod was installed. Because they come from the mod itself, they stay correct even when the mod updates; nothing is hard-coded.
 *   **MCM keybinds (Skyrim & Fallout 4)**: mods that set their keys through the **Mod Configuration Menu** (such as Fallout 4 Access and Extended Dialogue Interface) have those keybinds read directly from MCM, showing the real key each action is bound to — including any you've changed in-game.
+*   **Moonlight Peaks mod keys**: read from each mod's BepInEx configuration file, showing the key it is currently set to and what that key does.
+
+### The Keybind Reader (Moonlight Peaks)
+
+Stardew Valley, Skyrim and Fallout 4 all use fixed, published controls, so the manager simply knows them. **Moonlight Peaks does not work that way.** It decides its key bindings while the game is running, using a system called Rewired, and stores them nowhere on your computer that another program can read. If you remap a key in the game's own options, that change lives inside the game's save data in a form no outside tool can make sense of.
+
+That leaves the manager two choices, and it uses both:
+
+*   **A snapshot of the game's standard keys ships inside the manager.** This is what you see straight away — before you have installed a single mod, and even if you have never launched the game. The controls list calls it **"Game Controls (Default Bindings)"**.
+*   **The Keybind Reader reads your real keys.** This is a very small mod (15 KB) that does one thing: while the game runs, it writes your current key bindings out to a file the manager can read. It has no keys of its own, no menus and no effect on how the game plays. With it installed, the controls list shows **"Game Controls (Your Bindings)"** and tells you the date they were read — so you always know whether you are looking at your keys or the standard ones.
+
+**You are asked before anything is installed.** The first time you load a Moonlight Peaks session with BepInEx present, the manager offers to install the Keybind Reader and explains why. Your answer is remembered either way, and you are never asked again. Nothing is downloaded — the reader is already included with the manager — and if you say no, everything still works using the standard keys.
+
+After you say yes, **play the game once**: the reader writes its file while the game runs, so your own bindings appear in the controls list from then on. Remapping a key later is picked up the next time you play. If you ever delete the reader from your mods, the manager takes that as your decision and does not put it back.
 
 ---
 
@@ -821,6 +835,10 @@ Most Moonlight Peaks mods keep their settings in a configuration file that BepIn
 
 *   **Mods → Edit Mod Settings (Config Files)** lists every installed mod that has settings, by name. Choose one to edit it in the same accessible editor used for the Skyrim and Fallout INI files.
 *   **F3 (Mod Documentation)** builds a settings reference for every installed mod, straight from those same files — so each mod's settings are listed with the author's description, the current value, the default, and the accepted values. Because it's read from what's installed, it always matches the version you actually have. If nothing appears, run the game once so the mods can write their settings files.
+
+### The game's own key bindings
+
+Moonlight Peaks settles its controls while it runs, and keeps them nowhere another program can read — so unlike the other three games, the manager cannot simply know what your keys are. It handles this with a snapshot of the game's standard keys that ships inside it, plus an optional 15 KB **Keybind Reader** mod that writes your real bindings out while you play. You are asked once whether to install the reader, and the controls list always says which of the two you are looking at. See **[The Keybind Reader](#the-keybind-reader-moonlight-peaks)** under the Accessibility Controls Viewer for the full explanation.
 
 ### The BepInEx Log tab
 

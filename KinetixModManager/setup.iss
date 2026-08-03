@@ -48,6 +48,8 @@ Source: "bin\Release\net10.0-windows\win-x64\publish\CHANGELOG.md"; DestDir: "{a
 Source: "bin\Release\net10.0-windows\win-x64\publish\lang\*"; DestDir: "{app}\lang"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 ; Bundled accessibility-mod documentation (offline fallback for the F3 Mod Documentation viewer)
 Source: "bin\Release\net10.0-windows\win-x64\publish\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+; Bundled snapshots of games' stock keyboard bindings (Ctrl+H before the game has ever been launched)
+Source: "bin\Release\net10.0-windows\win-x64\publish\data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 ; Sound themes and initial folders - using skipifsourcedoesntexist to allow empty folders
 Source: "bin\Release\net10.0-windows\win-x64\publish\sounds\*"; DestDir: "{app}\sounds"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "bin\Release\net10.0-windows\win-x64\publish\profiles\*"; DestDir: "{app}\profiles"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
