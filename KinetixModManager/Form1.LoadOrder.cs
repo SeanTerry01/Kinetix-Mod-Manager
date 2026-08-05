@@ -516,7 +516,7 @@ public partial class Form1
 
 		// The current plugins.txt order, used both to preserve external entries and to seed new entries in
 		// the order the game currently loads them (so an existing curated load order is not scrambled).
-		List<string> existingActive = ModFileSystem.ReadActivePlugins(game);
+		List<string> existingActive = ModFileSystem.ReadActivePlugins(game, _settings.GamePathOf(game));
 
 		// Skyrim SE and Fallout 4 rewrite plugins.txt themselves when a new game is started: they deactivate
 		// every Creation and reshuffle what is left. Our saved order is the user's actual intent, so any entry
@@ -593,7 +593,7 @@ public partial class Form1
 
 		_pluginClass = cls;
 		_pluginPaths = paths;
-		ModFileSystem.WritePluginsTxt(game, order, LogError, _settings.ProtectPluginOrder);
+		ModFileSystem.WritePluginsTxt(game, _settings.GamePathOf(game), order, LogError, _settings.ProtectPluginOrder);
 		// The list UI is refreshed by the caller on the UI thread (see RefreshModList).
 	}
 
@@ -619,12 +619,12 @@ public partial class Form1
 
 		// The game lists the base-game and DLC masters in plugins.txt; the manager's order leaves them implicit,
 		// so compare like with like or every play session would look like a change.
-		List<string> current = ModFileSystem.ReadActivePlugins(game)
+		List<string> current = ModFileSystem.ReadActivePlugins(game, _settings.GamePathOf(game))
 			.Where(n => !ModFileSystem.IsBaseMaster(game, n)).ToList();
 		if (current.SequenceEqual(order, StringComparer.OrdinalIgnoreCase)) return;
 
 		int missing = order.Count(n => !current.Contains(n, StringComparer.OrdinalIgnoreCase));
-		ModFileSystem.WritePluginsTxt(game, order, LogError, _settings.ProtectPluginOrder);
+		ModFileSystem.WritePluginsTxt(game, _settings.GamePathOf(game), order, LogError, _settings.ProtectPluginOrder);
 		// The restore itself is what matters and has already happened; only refresh and speak if the window is
 		// still around (the game can outlive the manager, and this runs when the game exits).
 		if (IsDisposed || !IsHandleCreated) return;
@@ -723,7 +723,7 @@ public partial class Form1
 
 		(order[idx], order[target]) = (order[target], order[idx]);
 		_settings.Save();
-		ModFileSystem.WritePluginsTxt(_settings.ActiveGame, order, LogError, _settings.ProtectPluginOrder);
+		ModFileSystem.WritePluginsTxt(_settings.ActiveGame, _settings.CurrentGamePath, order, LogError, _settings.ProtectPluginOrder);
 
 		_suppressPrioritySpeak = true;
 		RefreshPluginOrderList();
@@ -821,7 +821,7 @@ public partial class Form1
 		{
 			_settings.PluginOrder[game] = sorted;
 			_settings.Save();
-			ModFileSystem.WritePluginsTxt(game, sorted, LogError, _settings.ProtectPluginOrder);
+			ModFileSystem.WritePluginsTxt(game, _settings.GamePathOf(game), sorted, LogError, _settings.ProtectPluginOrder);
 			_suppressPrioritySpeak = true;
 			RefreshPluginOrderList();
 			_suppressPrioritySpeak = false;
@@ -923,7 +923,7 @@ public partial class Form1
 		if (!Directory.Exists(dataDir)) return list;
 
 		var active = new HashSet<string>(
-			ModFileSystem.ReadActivePlugins(_settings.ActiveGame), StringComparer.OrdinalIgnoreCase);
+			ModFileSystem.ReadActivePlugins(_settings.ActiveGame, _settings.CurrentGamePath), StringComparer.OrdinalIgnoreCase);
 
 		foreach (string file in Directory.GetFiles(dataDir))
 		{
@@ -1003,7 +1003,7 @@ public partial class Form1
 		if (listCreations.SelectedItem is not CreationEntry entry) return;
 		string game = _settings.ActiveGame;
 
-		List<string> active = ModFileSystem.ReadActivePlugins(game);
+		List<string> active = ModFileSystem.ReadActivePlugins(game, _settings.GamePathOf(game));
 		bool wasActive = active.Any(n => string.Equals(n, entry.File, StringComparison.OrdinalIgnoreCase));
 		if (wasActive)
 		{
@@ -1021,7 +1021,7 @@ public partial class Form1
 
 		// Write the toggled active set, then let the normal plugin sync adopt/drop it and re-normalise the
 		// order. Writing first means the sync reads the new state as the source of truth for externals.
-		ModFileSystem.WritePluginsTxt(game, active, LogError);
+		ModFileSystem.WritePluginsTxt(game, _settings.GamePathOf(game), active, LogError);
 		SyncBethesdaPlugins();
 		RefreshPluginOrderList();
 		RefreshCreationsList();

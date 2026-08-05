@@ -133,7 +133,7 @@ public partial class Form1
 		_settings.ModPriority[game] = mods.Select(m => m.Name).ToList();
 		List<string> activePlugins = Mo2ReadActivePluginOrder(profileDir, game);
 		_settings.PluginOrder[game] = new List<string>(activePlugins);
-		ModFileSystem.WritePluginsTxt(game, activePlugins, LogError);
+		ModFileSystem.WritePluginsTxt(game, _settings.GamePathOf(game), activePlugins, LogError);
 		_settings.Save();
 
 		_soundEngine.Play("load_complete");

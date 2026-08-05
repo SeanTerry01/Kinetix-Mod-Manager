@@ -96,6 +96,38 @@ public sealed class GameProfile
 	public required string SoundTheme { get; init; }
 
 	/// <summary>
+	/// The folder this game keeps its per-player files in — the INIs under <c>Documents\My Games\</c>, the saves
+	/// beneath them, and the active-plugins list under <c>%LOCALAPPDATA%\</c>. <c>null</c> for a game that keeps
+	/// none of that (Stardew Valley, Moonlight Peaks).
+	/// </summary>
+	public string? UserDataFolderName { get; init; }
+
+	/// <summary>
+	/// The same folder for a GOG copy of the game, when GOG's release names it differently.
+	///
+	/// Bethesda's GOG releases do exactly that, and it is not cosmetic: a GOG copy of Skyrim keeps its INIs and
+	/// its load order in "Skyrim Special Edition GOG", so a manager that assumes the Steam name edits the wrong
+	/// game's files. On a machine with both installed — which is how this was found — it would quietly rewrite
+	/// the Steam copy's load order while the user believed they were managing the GOG one.
+	/// </summary>
+	public string? GogUserDataFolderName { get; init; }
+
+	/// <summary>
+	/// The per-player data folder name for the copy installed at <paramref name="gameFolder"/>, choosing the GOG
+	/// name when that folder holds a GOG install. <c>""</c> for a game that keeps no such folder.
+	/// </summary>
+	public string UserDataFolderFor(string gameFolder)
+	{
+		if (string.IsNullOrEmpty(UserDataFolderName)) return "";
+
+		if (!string.IsNullOrEmpty(GogUserDataFolderName) &&
+			GogLibraryLocator.IsGogInstall(gameFolder, GogProductId))
+			return GogUserDataFolderName;
+
+		return UserDataFolderName;
+	}
+
+	/// <summary>
 	/// The file, relative to the game folder, that a keybind-export plugin writes the game's own keyboard
 	/// bindings to — or <c>null</c> for a game with no such plugin.
 	///
@@ -173,7 +205,12 @@ public static class GameProfiles
 			StagingFolderName    = "Fallout4Mods",
 			NexusDomain          = "fallout4",
 			NexusGameId          = "1151",
-			SoundTheme           = "Fallout 4"
+			SoundTheme           = "Fallout 4",
+			UserDataFolderName   = "Fallout4",
+			// Follows the same pattern as Skyrim's GOG release, which was read out of the GOG executable itself.
+			// Not verified against a GOG copy of Fallout 4 — if one ever proves otherwise, this is the one line
+			// to change, and a wrong value here is caught by the install simply not being detected as GOG.
+			GogUserDataFolderName = "Fallout4 GOG"
 		},
 		new GameProfile
 		{
@@ -216,7 +253,11 @@ public static class GameProfiles
 			StagingFolderName    = "SkyrimSEMods",
 			NexusDomain          = "skyrimspecialedition",
 			NexusGameId          = "1704",
-			SoundTheme           = "Skyrim"
+			SoundTheme           = "Skyrim",
+			UserDataFolderName   = "Skyrim Special Edition",
+			// Read out of the GOG build's own executable, not guessed. GOG installs the game into a folder called
+			// "Skyrim Anniversary Edition", which is a third name again — hence matching on neither.
+			GogUserDataFolderName = "Skyrim Special Edition GOG"
 		},
 		new GameProfile
 		{

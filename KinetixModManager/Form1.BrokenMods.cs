@@ -108,7 +108,7 @@ public partial class Form1
 				foreach (string p in ModPluginFiles(m))
 					installedPlugins.Add(Path.GetFileName(p));
 			var activePlugins = new HashSet<string>(
-				ModFileSystem.ReadActivePlugins(_settings.ActiveGame), StringComparer.OrdinalIgnoreCase);
+				ModFileSystem.ReadActivePlugins(_settings.ActiveGame, _settings.CurrentGamePath), StringComparer.OrdinalIgnoreCase);
 
 			// Map a plugin back to the mod that ships it, for friendlier report lines.
 			var ownerByPlugin = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -137,8 +137,8 @@ public partial class Form1
 			// failure: the game ships them but ignores them, so nothing appears to change. Flag it first, naming the
 			// mods. Applies only where the toggle is real (Fallout 4) — ArchiveInvalidationIniPath is null for games
 			// that always load loose files.
-			if (ModFileSystem.ArchiveInvalidationIniPath(_settings.ActiveGame) != null &&
-				!ModFileSystem.IsArchiveInvalidationEnabled(_settings.ActiveGame))
+			if (ModFileSystem.ArchiveInvalidationIniPath(_settings.ActiveGame, _settings.CurrentGamePath) != null &&
+				!ModFileSystem.IsArchiveInvalidationEnabled(_settings.ActiveGame, _settings.CurrentGamePath))
 			{
 				var looseFileMods = enabled.Where(ModHasLooseFiles).ToList();
 				if (looseFileMods.Count > 0)

@@ -42,7 +42,7 @@ public partial class Form1
 		}
 
 		string game = _settings.ActiveGame;
-		(string folder, string ext) = ModFileSystem.SavesLocation(game);
+		(string folder, string ext) = ModFileSystem.SavesLocation(game, _settings.GamePathOf(game));
 		if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder))
 		{
 			Speak(Loc.T("saves.noFolder", GameDisplayName(game)));
@@ -70,7 +70,7 @@ public partial class Form1
 	{
 		// The set of plugins that would load right now: the active plugins plus the implicit base-game/DLC masters.
 		// A save master outside this set is no longer active, so the save references content it can't load.
-		var activeNow = new HashSet<string>(ModFileSystem.ReadActivePlugins(game), StringComparer.OrdinalIgnoreCase);
+		var activeNow = new HashSet<string>(ModFileSystem.ReadActivePlugins(game, _settings.GamePathOf(game)), StringComparer.OrdinalIgnoreCase);
 		foreach (string bm in ModFileSystem.BaseMasters(game)) activeNow.Add(bm);
 
 		var rows = new List<SaveRow>();

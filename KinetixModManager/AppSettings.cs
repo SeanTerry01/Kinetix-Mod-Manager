@@ -78,6 +78,16 @@ public class AppSettings
 		}
 	}
 
+	/// <summary>
+	/// Where <paramref name="game"/> is installed, or <c>""</c> if it has no folder recorded.
+	///
+	/// Needed wherever a game other than the active one is being worked on, and by anything that has to know
+	/// <em>which copy</em> of a game it is dealing with — a GOG install keeps its settings and load order in a
+	/// different place from the Steam one, so the folder is what settles that.
+	/// </summary>
+	public string GamePathOf(string game) =>
+		GamePaths.TryGetValue(game, out string? path) ? path : "";
+
 	[JsonIgnore]
 	public string CurrentGamePath
 	{

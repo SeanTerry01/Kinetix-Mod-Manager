@@ -275,7 +275,7 @@ public static class ModFileSystem
 							{
 								string gameData = Path.Combine(settings.CurrentGamePath, "Data");
 								DeployModFiles(m.FolderPath, gameData, false, logError);
-								SyncPluginsFile(m.FolderPath, activeGame, false, logError);
+								SyncPluginsFile(m.FolderPath, activeGame, settings.CurrentGamePath, false, logError);
 
 								string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 								string backupsPath = Path.Combine(appData, "AudiVentureGames", "KinetixModManager", "backups", activeGame);
@@ -772,13 +772,10 @@ public static class ModFileSystem
 	/// <summary>
 	/// Scans mod folder for plugins and adds/removes them in the game's plugins.txt.
 	/// </summary>
-	public static void SyncPluginsFile(string modFolderPath, string activeGame, bool isDeploy, Action<string, string> logError)
+	public static void SyncPluginsFile(string modFolderPath, string activeGame, string gameFolder, bool isDeploy, Action<string, string> logError)
 	{
-		if (activeGame != "SkyrimSE" && activeGame != "Fallout4") return;
-
-		string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-		string folderName = activeGame == "SkyrimSE" ? "Skyrim Special Edition" : "Fallout4";
-		string pluginsFilePath = Path.Combine(localAppData, folderName, "plugins.txt");
+		string pluginsFilePath = PluginsTxtPath(activeGame, gameFolder);
+		if (pluginsFilePath.Length == 0) return;
 
 		var plugins = Directory.GetFiles(modFolderPath, "*.*", SearchOption.AllDirectories)
 			.Select(p => Path.GetFileName(p))
@@ -890,12 +887,25 @@ public static class ModFileSystem
 		return files;
 	}
 
-	public static string? ArchiveInvalidationIniPath(string activeGame)
+	public static string? ArchiveInvalidationIniPath(string activeGame, string gameFolder)
 	{
 		if (activeGame != "Fallout4") return null;
+		string folder = UserDataFolderName(activeGame, gameFolder);
+		if (folder.Length == 0) return null;
 		string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-		return Path.Combine(docs, "My Games", "Fallout4", "Fallout4Custom.ini");
+		return Path.Combine(docs, "My Games", folder, "Fallout4Custom.ini");
 	}
+
+	/// <summary>
+	/// The folder the game at <paramref name="gameFolder"/> keeps its INIs, saves and load order in — under
+	/// <c>Documents\My Games\</c> and <c>%LOCALAPPDATA%\</c>. Empty for a game that keeps none of that.
+	///
+	/// Depends on the install, not just the game: a GOG copy of a Bethesda game uses a different folder from the
+	/// Steam copy of the same game, and reading or writing the wrong one means silently managing the other
+	/// install — which on a machine with both is worse than doing nothing.
+	/// </summary>
+	public static string UserDataFolderName(string activeGame, string gameFolder) =>
+		GameProfiles.Find(activeGame)?.UserDataFolderFor(gameFolder) ?? "";
 
 	/// <summary>
 	/// The standard configuration INI files for a Bethesda game, as (display label, full path) pairs in the order
@@ -904,14 +914,9 @@ public static class ModFileSystem
 	/// Any of them may not exist yet (the game generates the first two on first launch; the custom one is optional).
 	/// Empty for non-Bethesda games.
 	/// </summary>
-	public static List<(string Label, string Path)> GameIniFiles(string activeGame)
+	public static List<(string Label, string Path)> GameIniFiles(string activeGame, string gameFolder)
 	{
-		string folder = activeGame switch
-		{
-			"SkyrimSE" => "Skyrim Special Edition",
-			"Fallout4" => "Fallout4",
-			_ => "",
-		};
+		string folder = UserDataFolderName(activeGame, gameFolder);
 		if (folder.Length == 0) return new List<(string, string)>();
 
 		string prefix = activeGame == "SkyrimSE" ? "Skyrim" : "Fallout4";
@@ -929,14 +934,9 @@ public static class ModFileSystem
 	/// file extension for the game (<c>.ess</c> for Skyrim, <c>.fos</c> for Fallout 4). Empty for non-Bethesda
 	/// games. The folder may not exist yet if the player has never saved.
 	/// </summary>
-	public static (string Folder, string Extension) SavesLocation(string activeGame)
+	public static (string Folder, string Extension) SavesLocation(string activeGame, string gameFolder)
 	{
-		string folder = activeGame switch
-		{
-			"SkyrimSE" => "Skyrim Special Edition",
-			"Fallout4" => "Fallout4",
-			_ => "",
-		};
+		string folder = UserDataFolderName(activeGame, gameFolder);
 		if (folder.Length == 0) return ("", "");
 		string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "My Games", folder, "Saves");
 		string ext = activeGame == "SkyrimSE" ? ".ess" : ".fos";
@@ -954,9 +954,9 @@ public static class ModFileSystem
 	/// True when archive invalidation is currently enabled, judged by <c>bInvalidateOlderFiles=1</c> in the
 	/// [Archive] section of the custom INI. Returns false where the toggle doesn't apply or the file/key is absent.
 	/// </summary>
-	public static bool IsArchiveInvalidationEnabled(string activeGame)
+	public static bool IsArchiveInvalidationEnabled(string activeGame, string gameFolder)
 	{
-		string? path = ArchiveInvalidationIniPath(activeGame);
+		string? path = ArchiveInvalidationIniPath(activeGame, gameFolder);
 		if (path == null || !File.Exists(path)) return false;
 		try
 		{
@@ -970,9 +970,9 @@ public static class ModFileSystem
 	/// Turns archive invalidation on or off by adding or removing the managed [Archive] keys in the custom INI,
 	/// creating the file if needed. No-op where the toggle doesn't apply. Errors go to <paramref name="logError"/>.
 	/// </summary>
-	public static void SetArchiveInvalidation(string activeGame, bool enable, Action<string, string> logError)
+	public static void SetArchiveInvalidation(string activeGame, string gameFolder, bool enable, Action<string, string> logError)
 	{
-		string? path = ArchiveInvalidationIniPath(activeGame);
+		string? path = ArchiveInvalidationIniPath(activeGame, gameFolder);
 		if (path == null) return;
 		try
 		{
@@ -1368,10 +1368,10 @@ public static class ModFileSystem
 	}
 
 	/// <summary>Returns the active plugin names (asterisk-prefixed lines) from the game's plugins.txt.</summary>
-	public static List<string> ReadActivePlugins(string activeGame)
+	public static List<string> ReadActivePlugins(string activeGame, string gameFolder)
 	{
 		var result = new List<string>();
-		string path = PluginsTxtPath(activeGame);
+		string path = PluginsTxtPath(activeGame, gameFolder);
 		if (string.IsNullOrEmpty(path) || !File.Exists(path)) return result;
 		try
 		{
@@ -1396,9 +1396,9 @@ public static class ModFileSystem
 	/// list on its own (see <see cref="AppSettings.ProtectPluginOrder"/>). The read-only flag is always cleared
 	/// first so the manager's own write succeeds either way.
 	/// </param>
-	public static void WritePluginsTxt(string activeGame, IEnumerable<string> orderedActivePlugins, Action<string, string> logError, bool protect = false)
+	public static void WritePluginsTxt(string activeGame, string gameFolder, IEnumerable<string> orderedActivePlugins, Action<string, string> logError, bool protect = false)
 	{
-		string path = PluginsTxtPath(activeGame);
+		string path = PluginsTxtPath(activeGame, gameFolder);
 		if (string.IsNullOrEmpty(path)) return;
 		try
 		{
@@ -1417,9 +1417,9 @@ public static class ModFileSystem
 	/// rewriting a read-only file and keeps loading the order it was given. Safe to call when the file does not
 	/// exist yet. Returns true if the attribute was changed.
 	/// </summary>
-	public static bool SetPluginsTxtProtection(string activeGame, bool protect, Action<string, string> logError)
+	public static bool SetPluginsTxtProtection(string activeGame, string gameFolder, bool protect, Action<string, string> logError)
 	{
-		string path = PluginsTxtPath(activeGame);
+		string path = PluginsTxtPath(activeGame, gameFolder);
 		if (string.IsNullOrEmpty(path) || !File.Exists(path)) return false;
 		try
 		{
@@ -1443,16 +1443,16 @@ public static class ModFileSystem
 		File.SetAttributes(path, readOnly ? (attrs | FileAttributes.ReadOnly) : (attrs & ~FileAttributes.ReadOnly));
 	}
 
-	private static string PluginsTxtPath(string activeGame)
+	private static string PluginsTxtPath(string activeGame, string gameFolder)
 	{
-		if (activeGame != "SkyrimSE" && activeGame != "Fallout4") return "";
+		string folderName = UserDataFolderName(activeGame, gameFolder);
+		if (folderName.Length == 0) return "";
 		string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-		string folderName = activeGame == "SkyrimSE" ? "Skyrim Special Edition" : "Fallout4";
 		return Path.Combine(localAppData, folderName, "plugins.txt");
 	}
 
 	/// <summary>The absolute path of the game's active-plugins list (plugins.txt); empty for non-Bethesda games.</summary>
-	public static string ActivePluginsTxtPath(string activeGame) => PluginsTxtPath(activeGame);
+	public static string ActivePluginsTxtPath(string activeGame, string gameFolder) => PluginsTxtPath(activeGame, gameFolder);
 
 	/// <summary>
 	/// Finds the deepest common directory containing game files or plugins.
@@ -1868,7 +1868,7 @@ public static class ModFileSystem
 			// Remove the old version's plugin entries; its deployed asset files are reconciled by the
 			// caller's SyncDeployment pass after extraction, so no per-file asset undeploy is needed here.
 			if (!string.IsNullOrEmpty(currentGamePath))
-				SyncPluginsFile(existing.FolderPath, activeGame, false, logError);
+				SyncPluginsFile(existing.FolderPath, activeGame, currentGamePath, false, logError);
 
 			CreateBackup(existing.FolderPath, targetFolderName, backupsPath);
 			PruneBackups(targetFolderName, backupsPath, maxBackups);

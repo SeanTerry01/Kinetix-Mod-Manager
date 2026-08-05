@@ -1,50 +1,55 @@
 # Kinetix Mod Manager: Future Development Roadmap
 
-This document tracks potential improvements, architectural refinements, and new features to enhance the accessibility and power of the manager. (Now a multi-game suite covering Stardew Valley, Skyrim Special Edition, and Fallout 4.)
+This document tracks potential improvements, architectural refinements, and new features to enhance the accessibility and power of the manager. (Now a multi-game suite covering Stardew Valley, Skyrim Special Edition, Fallout 4, and Moonlight Peaks.)
+
+STATUS, 2026-08-02: everything proposed in sections 1-3 and section 6 has shipped, with five exceptions,
+all of them listed under "What is actually left" at the end of section 6. Items below are struck through as
+they ship, so anything NOT struck through is either genuinely outstanding or waiting on something external.
 
 ---
 
 ## 1. Codebase Health & Refinement
 *   ~~**Refactor Form1.cs**: Move logic into dedicated service classes~~ — **Done.** `SoundEngine.cs`, `NexusService.cs`, and `ModFileSystem.cs` have been extracted. `Form1.cs` is now a UI orchestration layer only.
 *   ~~**API Key Security**: Store the Nexus API key encrypted at rest~~ — **Done.** Windows DPAPI (`ProtectedData.Protect`) is used; the key is never written as plain text.
-*   **Enhanced Error Handling**: Replace silent catch blocks with spoken error messages that explain *why* an action failed (e.g., "Disk Full" or "Access Denied").
-*   **Unit Testing**: Implement basic tests for core logic like version comparison and manifest parsing to prevent regressions.
+*   ~~**Enhanced Error Handling**: Replace silent catch blocks with spoken error messages that explain *why* an action failed~~ — **Done.** `FriendlyError` turns the common IO/network failures into a spoken sentence ("Disk Full", "Access Denied") rather than a silent no-op.
+*   ~~**Unit Testing**: Implement basic tests for core logic like version comparison and manifest parsing~~ — **Done.** 220 tests as of 2026-08-02, covering manifest parsing, version handling, FOMOD conditions/installs, save parsing, INI editing, Bethesda layout, Steam library detection, BepInEx plugin identity, and keybind export parsing. The test project compiles the self-contained source files directly rather than referencing the WinForms app, so a new testable class needs a `<Compile Include>` line in `KinetixModManager.Tests.csproj`.
 
 ---
 
 ## 2. Immediate Fixes & UX Improvements
-*   **API Rate Limit Awareness**: Add a "Credits Remaining" display for non-premium Nexus users so they know if they are approaching their daily/hourly limits.
-*   **Visual Accessibility (Low Vision)**: Implement "High Contrast" and "Large Text" modes that adjust the UI colors and font sizes globally.
-*   **Dependency Tree View**: A more detailed view showing which mods depend on the currently selected mod before allowing a deletion.
+*   ~~**API Rate Limit Awareness**: Add a "Credits Remaining" display for non-premium Nexus users~~ — **Done.** The API-request counter shows remaining daily/hourly Nexus credits.
+*   ~~**Visual Accessibility (Low Vision)**: "High Contrast" and "Large Text" modes~~ — **Done.** Both are in Settings -> Display and apply across the whole window, including the in-window views and prompts.
+*   ~~**Dependency Tree View**: Show which mods depend on the selected mod before allowing a deletion~~ — **Done.** The dependency view plus a reverse-dependency warning on delete.
 
 ---
 
 ## 3. New Feature Ideas
 
-### A. Dependency "One-Click" Resolver
-*   Automatically find and queue all missing required mods for a newly installed mod.
+### A. Dependency "One-Click" Resolver — Done
+*   ~~Automatically find and queue all missing required mods for a newly installed mod.~~ — **Done.** The requirements check finds missing dependencies and installs them in one action.
 
-### B. Mod Conflict Detection
-*   Scan mod folders for overlapping file changes and warn the user of potential conflicts between active mods.
+### B. Mod Conflict Detection — Done
+*   ~~Scan mod folders for overlapping file changes and warn about conflicts between active mods.~~ — **Done.** The file-conflict check reports every contested loose file, feeds the Setup Health Check, and "Choose File Conflict Winners" lets a specific file be awarded to a specific mod regardless of overall priority.
 
-### C. Profile Sharing & Portability
-*   Export/Import profiles as a single package (JSON + Mod List) so users can easily share their setups with friends.
+### C. Profile Sharing & Portability — Done
+*   ~~Export/Import profiles as a single package (JSON + Mod List) so users can share setups.~~ — **Done** via profiles and Collections export/import. One refinement is still open — bundling a Collection as a zip with an embedded readme and pinned file IDs — see section 6.
 
-### D. Integrated Mod Notes
-*   Allow users to attach personal voice or text notes to specific mods (e.g., "Keep disabled until Year 2"). The manager will read the note when the mod is selected.
+### D. Integrated Mod Notes — Done (text notes); voice notes deferred indefinitely
+*   ~~Allow users to attach personal text notes to specific mods, read out when the mod is selected.~~ — **Done** (`AppSettings.ModNotes`), also searchable from the Installed tab and filterable via the "Has a Note" status.
+*   **Voice notes** — deferred indefinitely, not abandoned; may be picked up later. Worth knowing before starting: nothing in the manager records audio today, so this would be its first use of a microphone — device selection, permissions and storage of the recordings are all new ground rather than an addition to something existing. A typed note also keeps properties a recording doesn't (searchable, readable at any speed, survives being copied between machines), so any voice note is probably best stored *alongside* a text note rather than instead of one.
 
-### E. "Broken Mod" Detection
-*   Integrate with community-maintained compatibility lists to warn users about mods known to be broken in the latest game version, even if no update is available on Nexus.
+### E. "Broken Mod" Detection — Done
+*   ~~Warn about mods known to be broken in the latest game version, even with no Nexus update.~~ — **Done** using the community compatibility data: SMAPI's mod-compatibility list for Stardew, LOOT's masterlist for Skyrim/Fallout 4.
 
 ### F. Multi-Game Support — Done
-*   ~~Adapt the core engine beyond Stardew Valley~~ — **Done (v1.1.0–v1.2.0).** The manager now fully supports Stardew Valley, Skyrim Special Edition, and Fallout 4, each with its own wiki, walkthroughs, accessibility-suite installer, and game-driven sound theme. Adapting to further communities (e.g., other Bethesda/SMAPI-style titles) remains a possible future direction.
+*   ~~Adapt the core engine beyond Stardew Valley~~ — **Done (v1.1.0–v1.2.0, extended 2026-07).** The manager fully supports Stardew Valley, Skyrim Special Edition, Fallout 4, and Moonlight Peaks, each with its own wiki, walkthroughs, accessibility-suite installer, and game-driven sound theme. Moonlight Peaks added a third mod layout (BepInEx plugins) alongside the Stardew manifest and Bethesda staged layouts. Per-game constants live in `GameProfiles.cs`, which is where a fifth game starts.
 
 ---
 
-## 4. Discussion & Feedback Points
-*   Prioritize "High Contrast" mode for low-vision users.
-*   Evaluate if users prefer automated conflict detection or manual troubleshooting via the SMAPI log.
-*   Consider the impact of refactoring on current development speed.
+## 4. Discussion & Feedback Points — all resolved
+*   ~~Prioritize "High Contrast" mode for low-vision users.~~ — Done; shipped in Settings -> Display.
+*   ~~Evaluate if users prefer automated conflict detection or manual troubleshooting via the SMAPI log.~~ — Answered by shipping both: automated conflict detection and the health check, alongside the log viewers and the AI log diagnosis.
+*   ~~Consider the impact of refactoring on current development speed.~~ — Settled. The service extraction (`SoundEngine`, `NexusService`, `ModFileSystem`) and the partial-class split of `Form1` made the later feature batches faster, not slower, and are what let the test project compile core logic without the WinForms app.
 
 ---
 
@@ -126,7 +131,14 @@ features nobody else does. Effort is a rough guess. Stars mark the recommended n
 *   ~~**Mod list filter/search** by category, note, or status [low-medium]~~ — **Done.** The Installed tab already
     had text (name/author) + category filters; the text search now also matches note text, and a new Status filter
     (All / Enabled Only / Disabled Only / Has a Note) sits beside the category filter. Filters compose.
-*   **Deeper Stardew support** [medium] — *Mostly already covered; Content Patcher awareness deferred.* The **SMAPI
+*   ~~**Deeper Stardew support** [medium]~~ — **Done 2026-08-03.** Content Patcher config awareness shipped: a CP
+    pack's `ConfigSchema` is read from its `content.json` and folded together with the generated `config.json`, so
+    "Edit Mod Config" offers each setting as the list of values the author allows (Enter), with their description
+    read out, and Delete reverts a setting by deleting it so Content Patcher regenerates it from the schema.
+    Works before a pack has ever been run. Measured against a real 84-pack install: 39 packs declare settings,
+    734 options in total, 647 of them with a fixed set of allowed values. Reader is `ContentPatcherConfig.cs`
+    (lenient about the comments and trailing commas hand-written packs are full of), UI in
+    `Form1.ContentPatcher.cs`, 13 unit tests. Original note follows. The **SMAPI
     install/update helper already exists** (the accessibility-suite installer installs SMAPI, and the update check
     detects + installs SMAPI updates), and any mod's `config.json` is already editable via "Edit Config" (Ctrl+E).
     The remaining piece — **Content Patcher token/config awareness** (surfacing a CP mod's config options/tokens) —
@@ -136,13 +148,52 @@ features nobody else does. Effort is a rough guess. Stars mark the recommended n
     (matched by its own name prefixes, only ones older than an hour so a running install is safe) and reports how
     much was reclaimed. Downloaded archives are left for per-item removal in Reinstall a Downloaded Mod.
 
-### Recommended order
-All of Tier 1 and Tier 2 are done. Remaining work is Tier 3 (first-run setup wizard, auto safety-backup before
-risky ops, "prepare for game update / restore after", mod-list filter/search, deeper Stardew support, free-space
-cleanup) plus the deferred/needs-a-tester items below.
+### Recommended order — nothing left to order
+Tier 1, Tier 2 and Tier 3 are all done (2026-07-07), bar the one Tier 3 item marked deferred above
+(Content Patcher token/config awareness). This heading previously still listed the whole of Tier 3 as
+outstanding, which had been untrue since the day those features shipped.
 
-### Deferred / needs a tester
-*   **Vortex import** — implemented approach exists but needs a Vortex user to validate.
-*   **FOMOD answer replay** in Collections (record/replay pre-chosen wizard options for unattended installs).
-*   **Zip-bundle Collections** with an embedded readme; pin exact file IDs rather than latest main file.
-*   **Downloadable language packs** — revisit once non-English translations exist.
+### What is actually left
+
+Four items, in two groups, plus voice notes (section 3D) deferred indefinitely and the two-copies-of-one-game
+case parked below. Nothing else in this document is outstanding. (Content Patcher config awareness was the
+fifth; it shipped 2026-08-03.)
+
+**Buildable now:**
+*   **FOMOD answer replay** in Collections — record the wizard choices made for a FOMOD mod so a Collection can
+    reinstall it unattended instead of stopping to ask the same questions again.
+*   **Zip-bundle Collections** — export a Collection as a single zip with an embedded readme, pinning exact file
+    IDs rather than "latest main file", so a shared setup reinstalls as the same versions rather than whatever
+    happens to be current.
+
+**Parked by decision (2026-08-04), with the groundwork already understood:**
+*   **Owning two copies of the same game (Steam and GOG at once)** — deliberately not built. A single-copy GOG
+    user is correct as of 2026-08-04, when the GOG per-player data folder was fixed; only someone with BOTH
+    copies installed is affected, and the Settings game-path field is a manual way through. Revisit if a real
+    user hits it. The design was worked out before parking, so picking it up is not a fresh start:
+    - The chooser itself is small: detect every copy, ask which when more than one is found and none chosen
+      yet, remember it per game, and offer a Mods-menu item to switch later.
+    - The substance is that three things kept per GAME are really per INSTALL, and sharing them fails
+      SILENTLY, which is why a chooser alone would make matters worse rather than better:
+      (1) `DeploymentManifest` (`deployment/<game>.json`) records what is deployed into the game folder — shared,
+          it believes mods are deployed when they are in the other copy's Data folder, so mods read as enabled
+          and simply are not there;
+      (2) `AppSettings.LastSeenGameVersion` drives the game-update guardian — two copies are different builds,
+          so every switch would announce a game update that never happened;
+      (3) plugins.txt / INIs / saves — ALREADY per-install as of 2026-08-04, see `GameProfile.UserDataFolderFor`.
+    - What should stay shared either way: the mod staging folder and the installed list, so a mod is installed
+      once and deployed to whichever copy is active.
+    - The alternative considered and not chosen: a separate game entry ("Skyrim Special Edition (GOG)"), which
+      is what MO2 and Vortex both do. It gets the state separation free from the existing per-game machinery,
+      at the cost of an extra entry in the games list and installing mods once per copy.
+
+**Waiting on something outside the code:**
+*   **Vortex import** — the implementation exists but has never been validated; it needs someone with a real
+    Vortex setup. Same shape as the MO2 import, which was validated the same way.
+*   **Downloadable language packs** — needs non-English translations to exist first. The `lang/` machinery and
+    ~577 English keys shipped in 1.3.0; see docs on what is intentionally left in English.
+*   ~~**Content Patcher config awareness** (Stardew)~~ — **Done 2026-08-03**, see Tier 3 above. It was shelved as
+    "niche, needs real CP mods to validate against"; measuring an actual install settled that — 39 of 84 packs
+    turned out to declare settings. The *token* half of the original idea (surfacing a pack's dynamic tokens,
+    e.g. `{{Season}}`) was not built and is not proposed: tokens are how an author writes conditions, not
+    something a player sets.

@@ -569,11 +569,11 @@ public partial class Form1
 		// Archive invalidation (loose-file loading). The INI on disk is the source of truth: the box reflects the
 		// current state and, on Save, only writes when the user changed it. Shown only for games where it applies
 		// (Fallout 4); ArchiveInvalidationIniPath returns null otherwise, which hides the control.
-		bool archiveGame = ModFileSystem.ArchiveInvalidationIniPath(_settings.ActiveGame) != null;
+		bool archiveGame = ModFileSystem.ArchiveInvalidationIniPath(_settings.ActiveGame, _settings.CurrentGamePath) != null;
 		CheckBox cArchiveInvalidation = new CheckBox
 		{
 			Text = Loc.T("settings.archiveInvalidation"),
-			Checked = archiveGame && ModFileSystem.IsArchiveInvalidationEnabled(_settings.ActiveGame),
+			Checked = archiveGame && ModFileSystem.IsArchiveInvalidationEnabled(_settings.ActiveGame, _settings.CurrentGamePath),
 			AutoSize = true,
 			Padding = new Padding(0, 5, 0, 0),
 			AccessibleName = Loc.T("settings.archiveInvalidationName"),
@@ -1020,9 +1020,9 @@ public partial class Form1
 				// source of truth (not an AppSettings flag), so we avoid rewriting it when nothing changed.
 				if (cArchiveInvalidation.Visible)
 				{
-					bool currentInvalidation = ModFileSystem.IsArchiveInvalidationEnabled(_settings.ActiveGame);
+					bool currentInvalidation = ModFileSystem.IsArchiveInvalidationEnabled(_settings.ActiveGame, _settings.CurrentGamePath);
 					if (cArchiveInvalidation.Checked != currentInvalidation)
-						ModFileSystem.SetArchiveInvalidation(_settings.ActiveGame, cArchiveInvalidation.Checked, LogError);
+						ModFileSystem.SetArchiveInvalidation(_settings.ActiveGame, _settings.CurrentGamePath, cArchiveInvalidation.Checked, LogError);
 				}
 
 				// Apply the plugins.txt guard straight away, so turning it off also clears the read-only flag the
@@ -1030,7 +1030,7 @@ public partial class Form1
 				if (cProtectPlugins.Visible)
 				{
 					_settings.ProtectPluginOrder = cProtectPlugins.Checked;
-					ModFileSystem.SetPluginsTxtProtection(_settings.ActiveGame, cProtectPlugins.Checked, LogError);
+					ModFileSystem.SetPluginsTxtProtection(_settings.ActiveGame, _settings.CurrentGamePath, cProtectPlugins.Checked, LogError);
 				}
 
 				_settings.Save();

@@ -72,16 +72,34 @@ public partial class Form1
 					$@"SOFTWARE\GOG.com\Games\{gogProductId}",
 					$@"SOFTWARE\WOW6432Node\GOG.com\Games\{gogProductId}"
 				};
-				foreach (var subkey in gogKeys)
+
+				// Both hives: an offline installer run without administrator rights writes the game's entry
+				// under the current user instead of the machine, and reading only the machine hive missed it.
+				foreach (RegistryKey hive in new[] { Registry.LocalMachine, Registry.CurrentUser })
 				{
-					using var gogKey = Registry.LocalMachine.OpenSubKey(subkey);
-					if (gogKey != null)
+					foreach (var subkey in gogKeys)
 					{
-						string? path = gogKey.GetValue("path")?.ToString() ?? gogKey.GetValue("InstallPath")?.ToString();
-						if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
-							return path;
+						using var gogKey = hive.OpenSubKey(subkey);
+						if (gogKey != null)
+						{
+							string? path = gogKey.GetValue("path")?.ToString() ?? gogKey.GetValue("InstallPath")?.ToString();
+							if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
+								return path;
+						}
 					}
 				}
+			}
+
+			// The registry entry goes missing or stale in ordinary use — a folder moved by hand, a game copied
+			// from another machine — so look for the game as well as asking about it. This is GOG's counterpart
+			// to reading Steam's library records, and without it a GOG user whose entry is gone falls all the
+			// way through to a Steam default path they will never have.
+			if (!string.IsNullOrEmpty(gogProductId))
+			{
+				string? found = GogLibraryLocator.FindGameFolder(
+					GogLibraryLocator.DefaultRoots(GetGogGalaxyPath(), GogLibraryLocator.FixedDriveRoots()),
+					profile.GameExeName);
+				if (!string.IsNullOrEmpty(found)) return found;
 			}
 		}
 		catch { }
@@ -109,6 +127,36 @@ public partial class Form1
 			return SteamLibraryLocator.FindGameFolder(steamPath, steamAppId) ?? "";
 		}
 		catch { }
+		return "";
+	}
+
+	/// <summary>
+	/// Where GOG Galaxy is installed, or <c>""</c> when it isn't (or when the user only ever used the offline
+	/// installers, which is a perfectly normal way to own a GOG game). Its <c>Games</c> folder is where Galaxy
+	/// installs by default.
+	/// </summary>
+	private string GetGogGalaxyPath()
+	{
+		string[] keys =
+		{
+			@"SOFTWARE\WOW6432Node\GOG.com\GalaxyClient\paths",
+			@"SOFTWARE\GOG.com\GalaxyClient\paths"
+		};
+
+		foreach (RegistryKey hive in new[] { Registry.LocalMachine, Registry.CurrentUser })
+		{
+			foreach (string subkey in keys)
+			{
+				try
+				{
+					using var key = hive.OpenSubKey(subkey);
+					string? path = key?.GetValue("client")?.ToString();
+					if (!string.IsNullOrEmpty(path) && Directory.Exists(path)) return path;
+				}
+				catch { }
+			}
+		}
+
 		return "";
 	}
 
@@ -595,7 +643,7 @@ public partial class Form1
 				if (IsBethesdaGame)
 				{
 					SyncBethesdaPlugins();
-					ModFileSystem.SetPluginsTxtProtection(game, _settings.ProtectPluginOrder, LogError);
+					ModFileSystem.SetPluginsTxtProtection(game, _settings.GamePathOf(game), _settings.ProtectPluginOrder, LogError);
 				}
 
 				// Prefer letting Steam start it where that applies. A Steam game started from its own exe

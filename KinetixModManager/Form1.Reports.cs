@@ -142,7 +142,7 @@ public partial class Form1
 			// 1. Missing plugin masters (offline). Checked against the active load order (plugins.txt), which
 			// includes enabled mods' plugins and active Creations, so an enabled Creation counts as present.
 			var activePlugins = new HashSet<string>(
-				ModFileSystem.ReadActivePlugins(_settings.ActiveGame), StringComparer.OrdinalIgnoreCase);
+				ModFileSystem.ReadActivePlugins(_settings.ActiveGame, _settings.CurrentGamePath), StringComparer.OrdinalIgnoreCase);
 			foreach (ModFileSystem.MasterIssue issue in
 				ModFileSystem.FindMissingMasters(_settings.ActiveGame, enabled, activePlugins, _settings.CurrentGamePath))
 				rows.Add(new ReportRow

@@ -33,8 +33,8 @@ public partial class Form1
 	/// <summary>The game files a snapshot captures: the three game INIs and the active plugins.txt.</summary>
 	private List<(string Label, string Path)> SafetySourceFiles()
 	{
-		var files = new List<(string, string)>(ModFileSystem.GameIniFiles(_settings.ActiveGame));
-		string plugins = ModFileSystem.ActivePluginsTxtPath(_settings.ActiveGame);
+		var files = new List<(string, string)>(ModFileSystem.GameIniFiles(_settings.ActiveGame, _settings.CurrentGamePath));
+		string plugins = ModFileSystem.ActivePluginsTxtPath(_settings.ActiveGame, _settings.CurrentGamePath);
 		if (!string.IsNullOrEmpty(plugins)) files.Add(("plugins.txt", plugins));
 		return files;
 	}

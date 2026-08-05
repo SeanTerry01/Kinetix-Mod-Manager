@@ -72,7 +72,7 @@ public partial class Form1
 		{
 			// Offline: this mod's plugins and their non-base masters, marked satisfied when the master is present.
 			var activePlugins = new HashSet<string>(
-				ModFileSystem.ReadActivePlugins(_settings.ActiveGame), StringComparer.OrdinalIgnoreCase);
+				ModFileSystem.ReadActivePlugins(_settings.ActiveGame, _settings.CurrentGamePath), StringComparer.OrdinalIgnoreCase);
 			string dataDir = string.IsNullOrEmpty(_settings.CurrentGamePath) ? "" : Path.Combine(_settings.CurrentGamePath, "Data");
 			foreach (string plugin in ModPluginFiles(mod))
 			{
