@@ -716,6 +716,23 @@ First you pick which file to edit — the main INI, the preferences INI, or the 
 
 Every change is written back immediately, and all your comments and other settings are left exactly as they were.
 
+### Editing a Mod's Settings (Stardew Valley)
+
+Choose **Edit Mod Config** for the selected mod to change its settings from inside the manager. What you get depends on the mod.
+
+**Content Patcher packs** — most Stardew content mods — get a proper **settings list**. Content Patcher mods let their author declare exactly which values each setting accepts, and the manager reads that, so you get a list of the mod's settings, each read as **"setting name: current value"**:
+
+*   **Arrow** through the settings.
+*   **Enter** on one to choose its value from **the list of values the author allows** — no typing and no guessing. The author's own explanation of the setting, if they wrote one, is read out as the chooser opens, along with the current value. Settings that take a number or free text instead ask you to type one.
+*   **Delete** puts a setting back to **the mod author's default**. This is worth knowing about, because the default isn't written in the file you'd otherwise be editing — it lives in the mod's own definition, so putting a setting back by hand means going and looking it up.
+*   Changes are saved as you make them, and anything else in the file is left alone. **Escape** closes the list.
+
+Why this matters: the file a Content Patcher mod leaves you to edit contains only the answers, not the questions. A setting reads `"ObeliskOptions": "vanilla"` with nothing to say that `glass`, `garden`, `Yri` and `Juffuffles` are the alternatives — so changing it normally means reading the mod author's own files, or using an in-game menu. The manager puts the two halves back together.
+
+A mod that has **never been run** still works here: it has no settings file yet, so every setting shows the author's default, and the file is created the moment you change one.
+
+**Every other mod** gets the plain JSON editor as before — the mod's `config.json` in a text box, with **Ctrl + S** to save and a syntax check before it's written.
+
 ### Mods that install to the game's root folder (ENB, ReShade, script extenders)
 
 Most Skyrim and Fallout 4 mods install into the game's **Data** folder, but some — graphics injectors like **ENB** and **ReShade**, or tools that sit next to the game's `.exe` — need their files in the game's **root** folder instead. The manager detects these automatically when you install them: their game-root files (such as `d3d11.dll`, `dxgi.dll`, `enbseries\`, or an archive's `Root\` folder) are deployed to the root, while any `Data` files in the same archive still go to Data. You don't have to do anything special — install them like any other mod, and enable/disable and Purge/Rebuild treat them the same as the rest. (Full script extenders like SKSE and F4SE are still installed directly, as before.)

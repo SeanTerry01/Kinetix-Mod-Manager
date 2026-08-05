@@ -116,6 +116,132 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// Asks for a line of text inside the window, returning what was typed or <c>null</c> if it was cancelled.
+	///
+	/// The in-window equivalent of <c>Interaction.InputBox</c>, which opens a window of its own and so costs the
+	/// spoken window title on the way in and another on the way out. Around a dozen callers still use InputBox
+	/// and could move here; this exists so new code doesn't have to add to that number.
+	///
+	/// Enter accepts, Escape cancels. Cancelling is distinct from clearing the box, which InputBox cannot express
+	/// — it reports an emptied box and a cancelled one identically, so callers there have to treat "" as "leave
+	/// it alone" and can never accept a deliberately empty answer.
+	/// </summary>
+	private string? ShowTextPrompt(string title, string prompt, string initial)
+	{
+		string? answer = null;
+
+		ShowInlineView(title, (container, closeView) =>
+		{
+			var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
+			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+			layout.Controls.Add(new Label
+			{
+				Text = prompt,
+				AutoSize = true,
+				Font = new Font("Segoe UI", 11f),
+				Margin = new Padding(0, 0, 0, 8)
+			}, 0, 0);
+
+			// The prompt is the box's accessible name, so the reader says what is being asked for when focus
+			// lands in it rather than leaving the question to the label alone.
+			var input = new TextBox
+			{
+				Text = initial,
+				Width = 480,
+				Font = new Font("Segoe UI", 11f),
+				AccessibleName = prompt
+			};
+			layout.Controls.Add(input, 0, 1);
+
+			var ok = new Button { Text = Loc.T("prompt.ok"), AutoSize = true, MinimumSize = new Size(110, 36) };
+			var cancel = new Button { Text = Loc.T("prompt.cancel"), AutoSize = true, MinimumSize = new Size(110, 36) };
+			var buttons = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(0, 10, 0, 0) };
+			buttons.Controls.AddRange(new Control[] { ok, cancel });
+			layout.Controls.Add(buttons, 0, 2);
+
+			container.Controls.Add(layout);
+
+			void Accept()
+			{
+				answer = input.Text;
+				closeView();
+			}
+
+			ok.Click += delegate { Accept(); };
+			cancel.Click += delegate { closeView(); };
+			input.KeyDown += delegate (object? s, KeyEventArgs e)
+			{
+				if (e.KeyCode != Keys.Enter) return;
+				e.Handled = true;
+				e.SuppressKeyPress = true;
+				Accept();
+			};
+
+			// Select-all so typing replaces the current value, which is what an editor of an existing setting
+			// almost always wants; End then leaves the caret ready to amend instead.
+			input.SelectAll();
+			return input;
+		});
+
+		return answer;
+	}
+
+	/// <summary>
+	/// Offers a list of values and returns the chosen one, or <c>null</c> if the user backed out.
+	///
+	/// Opens on <paramref name="current"/> where it is one of the choices, so arrowing moves to the neighbouring
+	/// values rather than starting from the top of the list every time. The match ignores case, because a mod
+	/// author's spelling of a value and the spelling saved in a settings file disagree more often than not — one
+	/// mod offers "True, False" while the next offers "true, false" for the same idea.
+	///
+	/// Shared by every "pick a value the author allows" screen: Content Patcher settings, BepInEx settings, and
+	/// the Mod Configuration Menu.
+	/// </summary>
+	private string? ShowChoiceList(string title, string listName, IReadOnlyList<string> values, string current, string hint)
+	{
+		string? chosen = null;
+
+		ShowInlineView(title, (container, closeView) =>
+		{
+			var list = new ListBox
+			{
+				Dock = DockStyle.Fill,
+				Font = new Font("Segoe UI", 12f),
+				AccessibleName = listName,
+				IntegralHeight = false,
+				HorizontalScrollbar = true
+			};
+
+			foreach (string value in values) list.Items.Add(value);
+
+			int index = -1;
+			for (int i = 0; i < values.Count; i++)
+				if (string.Equals(values[i], current, StringComparison.OrdinalIgnoreCase)) { index = i; break; }
+			if (list.Items.Count > 0) list.SelectedIndex = Math.Max(index, 0);
+
+			container.Controls.Add(list);
+			WireAccessibleDialogList(list);
+
+			list.KeyDown += delegate (object? s, KeyEventArgs e)
+			{
+				if (e.KeyCode != Keys.Enter) return;
+				e.Handled = true;
+				e.SuppressKeyPress = true;
+				chosen = list.SelectedItem as string;
+				closeView();
+			};
+
+			return list;
+		},
+		hint: hint);
+
+		return chosen;
+	}
+
+	/// <summary>
 	/// Wires Shift+F1 on every control inside a view, so context help works wherever focus happens to be.
 	///
 	/// A view cannot use the window's own key preview for this — an overlay switches it off while it is up (see

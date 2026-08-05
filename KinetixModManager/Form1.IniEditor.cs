@@ -46,7 +46,7 @@ public partial class Form1
         List<(string Label, string Path)> files;
         if (IsBethesdaGame)
         {
-            files = ModFileSystem.GameIniFiles(_settings.ActiveGame);
+            files = ModFileSystem.GameIniFiles(_settings.ActiveGame, _settings.CurrentGamePath);
         }
         else if (IsBepInExGame)
         {
@@ -125,6 +125,56 @@ public partial class Form1
         });
     }
 
+    /// <summary>
+    /// Changes one setting whose file told us what it accepts, and returns the new value (or <c>null</c> if the
+    /// user backed out).
+    ///
+    /// A yes/no setting and one with a list of accepted values are both offered as a list to pick from, so
+    /// nothing has to be remembered or spelled correctly. A number is typed, but with its permitted range said
+    /// up front and checked before saving — BepInEx quietly falls back to the default when it loads a value it
+    /// can't use, so an unchecked entry would appear to work and then revert with no explanation.
+    /// </summary>
+    private string? EditDeclaredSetting(BepInExSetting setting, string current)
+    {
+        string described = setting.Description.Length > 0 ? setting.Description : "";
+
+        if (setting.HasChoices)
+            return ShowChoiceList(
+                Loc.T("bepcfg.chooseTitle", setting.Key),
+                Loc.T("bepcfg.chooseListName", setting.Key),
+                setting.Choices,
+                current,
+                Loc.T("bepcfg.chooseHint", described, current));
+
+        string prompt = setting.HasRange
+            ? Loc.T("bepcfg.promptRange", setting.Key, described, setting.RangeFrom, setting.RangeTo)
+            : Loc.T("bepcfg.prompt", setting.Key, described);
+
+        while (true)
+        {
+            string? typed = ShowTextPrompt(Loc.T("bepcfg.chooseTitle", setting.Key), prompt, current);
+            if (typed == null) return null;
+
+            if (BepInExConfigSchema.IsValid(setting, typed, out BepInExConfigSchema.Problem problem))
+                return typed;
+
+            // Said, then asked again with what they typed still in the box, so a near-miss is corrected rather
+            // than retyped from scratch.
+            Speak(ProblemText(setting, problem));
+            current = typed;
+        }
+    }
+
+    /// <summary>Why a typed value was refused, in words.</summary>
+    private static string ProblemText(BepInExSetting setting, BepInExConfigSchema.Problem problem) => problem switch
+    {
+        BepInExConfigSchema.Problem.NotAnAllowedValue => Loc.T("bepcfg.invalidChoice", string.Join(", ", setting.AcceptableValues)),
+        BepInExConfigSchema.Problem.NotABoolean       => Loc.T("bepcfg.invalidBoolean"),
+        BepInExConfigSchema.Problem.NotANumber        => Loc.T("bepcfg.invalidNumber"),
+        BepInExConfigSchema.Problem.OutOfRange        => Loc.T("bepcfg.invalidRange", setting.RangeFrom, setting.RangeTo),
+        _                                             => ""
+    };
+
     /// <summary>The accessible editor for a single INI file at <paramref name="path"/> (<paramref name="fileLabel"/> is its name).</summary>
     private void ShowIniEditor(string path, string fileLabel)
     {
@@ -177,14 +227,25 @@ public partial class Form1
             catch (Exception ex) { SpeakError(Loc.T("ini.saveFailed"), ex); return false; }
         }
 
+        // What the file says about its own settings. A BepInEx config records each setting's type, its default
+        // and exactly what it accepts, directly above the value — so those settings can be offered as choices
+        // instead of typed. A Bethesda game INI declares nothing, and this is simply empty for it.
+        List<BepInExSetting> schema = BepInExConfigSchema.Read(path);
+
         void EditSelected()
         {
             if (list.SelectedItem is not IniRow row) return;
             string current = row.Entry.Value;
-            string result = Interaction.InputBox(Loc.T("ini.editPrompt", row.Entry.Key, row.Entry.Section), Loc.T("ini.editTitle"), current);
-            // Interaction.InputBox can't tell Cancel from an emptied box, so an empty result is treated as "leave it"
-            // — a value can't be blanked here (rare for game INIs); Delete removes a setting entirely instead.
-            if (result.Length == 0 || result == current) return;
+
+            BepInExSetting? declared = BepInExConfigSchema.Find(schema, row.Entry.Section, row.Entry.Key);
+            string? result = declared != null
+                ? EditDeclaredSetting(declared, current)
+                : ShowTextPrompt(Loc.T("ini.editTitle"),
+                    Loc.T("ini.editPrompt", row.Entry.Key, row.Entry.Section), current);
+
+            // Null is "cancelled". An empty answer is a real one and is kept, which the old pop-up box could not
+            // express — it reported a cancelled box and an emptied one identically.
+            if (result == null || result == current) return;
 
             doc.SetValue(row.Entry.Section, row.Entry.Key, result);
             if (!SaveDoc()) return;

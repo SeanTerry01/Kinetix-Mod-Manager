@@ -129,6 +129,32 @@ public partial class Form1
 	/// Intro" mod skips to). Most mods only generate their config file the first time the game runs with the
 	/// mod enabled, so this reports gracefully when no config exists yet.
 	/// </summary>
+	/// <summary>
+	/// The BepInEx settings file belonging to <paramref name="mod"/>, or <c>null</c> when it has none.
+	///
+	/// BepInEx names these files after the plugin's id rather than its folder, and writes the plugin's name and
+	/// id into the header of each — so the match is made on the id first (exact, and what BepInEx itself uses)
+	/// and on the displayed name second, for a plugin too old to have written an id.
+	/// </summary>
+	private string? FindBepInExConfigFor(StardewMod mod)
+	{
+		if (!IsBepInExGame) return null;
+
+		foreach ((string label, string path) in ModFileSystem.BepInExConfigFiles(_settings.CurrentGamePath))
+		{
+			BepInExPluginInfo? info = BepInExPlugin.ReadFromConfig(path);
+
+			if (info != null && info.Guid.Length > 0 &&
+				info.Guid.Equals(mod.UniqueId, StringComparison.OrdinalIgnoreCase))
+				return path;
+
+			if (label.Equals(mod.Name, StringComparison.OrdinalIgnoreCase))
+				return path;
+		}
+
+		return null;
+	}
+
 	private void OpenSelectedModConfig()
 	{
 		if (!(listInstalled.SelectedItem is StardewMod mod))
@@ -142,13 +168,60 @@ public partial class Form1
 			return;
 		}
 
+		// A Content Patcher pack declares what each of its settings accepts, so it gets the settings editor
+		// rather than raw JSON: the choices are offered instead of typed. Checked before the config file exists,
+		// because a pack that has never been run has a schema but no config yet — and that is precisely when
+		// being shown the author's defaults and allowed values is most useful.
+		List<CpConfigOption> contentPatcherSettings = ContentPatcherSettingsFor(mod.FolderPath);
+		if (contentPatcherSettings.Count > 0)
+		{
+			ShowContentPatcherConfig(mod.Name, mod.FolderPath, contentPatcherSettings);
+			return;
+		}
+
+		// A Skyrim/Fallout 4 mod with a Mod Configuration Menu declares its settings the same way, so it gets
+		// the same treatment — labels, explanations and choices read from the menu the mod ships, rather than
+		// the settings being reachable only from inside the game.
+		List<McmMenu> mcmMenus = McmConfigSchema.ReadMenus(mod.FolderPath, _settings.CurrentGamePath);
+		if (mcmMenus.Count > 0 && mcmMenus.Any(m => m.Settings.Any()))
+		{
+			McmMenu menu = mcmMenus.First(m => m.Settings.Any());
+			ShowMcmSettings(mod.Name, menu);
+			return;
+		}
+
+		// A BepInEx mod keeps its settings OUTSIDE its own folder — BepInEx writes one file per plugin into
+		// BepInEx\config — so looking for a config beside the mod, as every other game needs, finds nothing and
+		// reports the mod as having no settings when nearly all of them do.
+		string? bepInExConfig = FindBepInExConfigFor(mod);
+		if (bepInExConfig != null)
+		{
+			ShowIniEditor(bepInExConfig, mod.Name);
+			return;
+		}
+
 		string configPath = Path.Combine(mod.FolderPath, "config.json");
 		if (!File.Exists(configPath))
 		{
 			Speak(Loc.T("modactions.noConfigSpeak", mod.Name));
-			SpeakBox(Loc.T("modactions.noConfigBox", mod.Name), Loc.T("modactions.noConfigTitle"));
+			// A Bethesda mod's settings are often only reachable from an in-game menu built in the game's own
+			// scripting, which no outside program can read — worth saying, so "no settings" isn't mistaken for
+			// the manager having failed to look.
+			SpeakBox(
+				IsBethesdaGame
+					? Loc.T("modactions.noConfigBethesdaBox", mod.Name)
+					: Loc.T("modactions.noConfigBox", mod.Name),
+				Loc.T("modactions.noConfigTitle"));
 			return;
 		}
+
+		// An ordinary Stardew mod declares its options in code, so nothing on disk says what a setting accepts.
+		// The value already in the file still says whether it is a yes/no, a number or text, and many mods ship
+		// the labels for their in-game settings menu — enough for a settings list rather than raw JSON. A mod
+		// holding nothing editable that way falls through to the JSON editor below.
+		if (_settings.ActiveGame == GameProfiles.StardewValley &&
+			ShowStardewModSettings(mod.Name, mod.FolderPath))
+			return;
 
 		OpenConfigEditor(mod.Name, configPath, delegate { }, Loc.T("config.labelConfiguration"));
 	}

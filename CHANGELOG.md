@@ -45,6 +45,13 @@ Moonlight Peaks joins the manager as a fully supported game, alongside Stardew V
 
 ## ✨ Also new
 
+### 🌱 Stardew mod settings you can actually choose from
+*   **Edit Mod Config** on a **Content Patcher** mod now opens a **settings list** instead of raw JSON. Each setting is read as "name: current value", and **Enter** offers **the values the mod author allows** — pick one from a list rather than typing a string and hoping. Their explanation of the setting is read out as the chooser opens, where they wrote one.
+*   This closes a real gap rather than tidying one. The file these mods leave you to edit holds only the answers: a setting reads `"ObeliskOptions": "vanilla"`, and that `glass`, `garden`, `Yri` and `Juffuffles` are the alternatives is written somewhere else entirely. Changing a setting meant reading the author's own files or using an in-game menu.
+*   **Delete** puts a setting back to **the author's default** — the one edit that was genuinely hard to make by hand, since the default isn't in the file being edited. The setting is removed rather than overwritten, so it keeps following the author if they change that default in a later version.
+*   Works on a mod that has **never been run**: with no settings file yet, every setting shows the author's default and the file is created as soon as one is changed. Mods that aren't Content Patcher packs open in the JSON editor exactly as before.
+*   Free-text settings are typed **inside the window** rather than in a pop-up box of their own — the same in-window treatment the rest of the manager now gets.
+
 ### 🗄️ "Delete Old Backups" no longer reports 0 every time
 *   The command could only ever say *"Deleted 0 old backups"* — not because pruning was broken, but because there was never anything to prune. Old backups are already trimmed to your per-mod limit **automatically, every time a backup is made**, so by the time you ask, everything is already within the limit.
 *   It now says so plainly, and offers the clean-up you actually came for: keeping only the **newest** backup of each mod, telling you how many that would remove before it does anything. Choosing No changes nothing.

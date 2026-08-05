@@ -1120,73 +1120,27 @@ public partial class Form1
 	private static List<KbSection> ParseBepInExKeybinds(string configPath)
 	{
 		var section = new KbSection();
-		try
+
+		foreach (BepInExSetting setting in BepInExConfigSchema.Read(configPath).Where(s => s.IsKey))
 		{
-			var description = new List<string>();
-			string type = "";
-
-			foreach (string raw in File.ReadAllLines(configPath))
+			section.Entries.Add(new KbEntry
 			{
-				string line = raw.Trim();
-				if (line.Length == 0) continue;
-
-				// A section heading starts a new setting; the file's own header lines land in description and
-				// are cleared here before the first real one.
-				if (line.StartsWith("[") && line.EndsWith("]"))
-				{
-					description.Clear();
-					type = "";
-					continue;
-				}
-
-				if (line.StartsWith("##"))
-				{
-					string text = line.Substring(2).Trim();
-					if (text.Length > 0) description.Add(text);
-					continue;
-				}
-
-				if (line.StartsWith("#"))
-				{
-					Match t = Regex.Match(line, @"^#\s*Setting type:\s*(.+)$", RegexOptions.IgnoreCase);
-					if (t.Success) type = t.Groups[1].Value.Trim();
-					continue;
-				}
-
-				int eq = line.IndexOf('=');
-				if (eq > 0 && IsKeySettingType(type))
-				{
-					string name = line.Substring(0, eq).Trim();
-					string value = line.Substring(eq + 1).Trim();
-					section.Entries.Add(new KbEntry
-					{
-						Key = value.Length > 0 ? value : "None",
-						// The author's first sentence says what the key does; the rest is usually detail about
-						// why, which belongs in the mod documentation viewer rather than a list of controls.
-						Text = FirstSentence(description) ?? HumanizePropertyName(name)
-					});
-				}
-
-				description.Clear();
-				type = "";
-			}
+				Key = setting.Value.Length > 0 ? setting.Value : "None",
+				// The author's first sentence says what the key does; the rest is usually detail about why,
+				// which belongs in the mod documentation viewer rather than in a list of controls.
+				Text = FirstSentence(setting.Description) ?? HumanizePropertyName(setting.Key)
+			});
 		}
-		catch { }
 
 		return section.Entries.Count > 0 ? new List<KbSection> { section } : new List<KbSection>();
 	}
 
-	/// <summary>True for the BepInEx setting types that hold a key: a plain key, or a key plus modifiers.</summary>
-	private static bool IsKeySettingType(string type) =>
-		type.Contains("KeyCode", StringComparison.OrdinalIgnoreCase) ||
-		type.Contains("KeyboardShortcut", StringComparison.OrdinalIgnoreCase) ||
-		type.Equals("Key", StringComparison.OrdinalIgnoreCase);
-
 	/// <summary>The first sentence of a setting's description, or null when it has none.</summary>
-	private static string? FirstSentence(List<string> description)
+	private static string? FirstSentence(string description)
 	{
-		if (description.Count == 0) return null;
-		string text = description[0].Trim();
+		string text = description.Trim();
+		if (text.Length == 0) return null;
+
 		int stop = text.IndexOf(". ", StringComparison.Ordinal);
 		if (stop > 0) text = text.Substring(0, stop);
 		return text.TrimEnd('.').Trim() is { Length: > 0 } trimmed ? trimmed : null;

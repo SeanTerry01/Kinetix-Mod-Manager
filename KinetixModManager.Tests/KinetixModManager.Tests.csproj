@@ -30,6 +30,8 @@
     <Compile Include="..\KinetixModManager\ModHealth.cs" />
     <!-- Self-contained Steam library detection (depends only on the BCL). -->
     <Compile Include="..\KinetixModManager\SteamLibraryLocator.cs" />
+    <!-- Self-contained GOG game detection, for when GOG's registry entry is missing or stale (BCL only). -->
+    <Compile Include="..\KinetixModManager\GogLibraryLocator.cs" />
     <!-- Self-contained root-folder-mod layout classifier (depends only on the BCL). -->
     <Compile Include="..\KinetixModManager\BethesdaLayout.cs" />
     <!-- Self-contained INI parse/edit model behind the accessible INI editor (depends only on the BCL). -->
@@ -52,6 +54,14 @@
     <Compile Include="..\KinetixModManager\ModEnableState.cs" />
     <!-- Self-contained reader for a game's exported keyboard bindings (BCL + Newtonsoft + GameProfiles). -->
     <Compile Include="..\KinetixModManager\GameKeybindExport.cs" />
+    <!-- Self-contained reader for a Content Patcher pack's configurable settings (BCL + Newtonsoft). -->
+    <Compile Include="..\KinetixModManager\ContentPatcherConfig.cs" />
+    <!-- Self-contained reader for what a BepInEx config file says about its own settings (BCL only). -->
+    <Compile Include="..\KinetixModManager\BepInExConfigSchema.cs" />
+    <!-- Self-contained reader for a mod's Mod Configuration Menu (BCL + Newtonsoft + IniDocument). -->
+    <Compile Include="..\KinetixModManager\McmConfigSchema.cs" />
+    <!-- Self-contained reader for an ordinary Stardew mod's config.json + i18n labels (BCL + Newtonsoft). -->
+    <Compile Include="..\KinetixModManager\StardewModConfig.cs" />
   </ItemGroup>
 
 </Project>
