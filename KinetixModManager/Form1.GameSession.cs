@@ -67,15 +67,23 @@ public partial class Form1
 		// The config editor edits the game's own INIs for Skyrim/Fallout 4 and each mod's BepInEx config file for
 		// Moonlight Peaks, so it is named for what it actually opens. Stardew mods keep their settings in JSON,
 		// which this editor doesn't handle, so it is hidden there rather than shown as a dead command.
+		GameProfile? profile = GameProfiles.Find(game);
 		if (FindMenuItem(modsMenu, "menuEditGameIni") is ToolStripItem iniItem)
 		{
 			bool bepInEx = game == "MoonlightPeaks";
-			iniItem.Visible = bethesda || bepInEx;
+			// Any game that names configuration files of its own can be edited here — The Witcher 3's
+			// user.settings and input.settings are INI files in all but their extension.
+			iniItem.Visible = (profile?.ConfigFileNames.Count ?? 0) > 0 || bepInEx;
 			iniItem.Text = bepInEx ? Loc.T("menu.editModConfigs") : Loc.T("menu.editGameIni");
 		}
-		// Skyrim SE / Fallout 4-only items: script extender, savegames, conflict winners, load-order rules, safety
-		// restore, and the prepare/restore-for-update pair.
-		foreach (string name in new[] { "menuUninstallSE", "menuSaveManager", "menuConflictWinners", "menuAddLoadRule",
+		// The save manager follows the saves: every game that keeps a save folder the manager can find, which is
+		// the Bethesda pair and The Witcher 3.
+		if (FindMenuItem(modsMenu, "menuSaveManager") is ToolStripItem saveItem)
+			saveItem.Visible = !string.IsNullOrEmpty(profile?.SavesFolderName);
+		// Skyrim SE / Fallout 4-only items: script extender, conflict winners, load-order rules, safety restore,
+		// and the prepare/restore-for-update pair. All of them are about staged deployment or plugins.txt, which
+		// no other game has.
+		foreach (string name in new[] { "menuUninstallSE", "menuConflictWinners", "menuAddLoadRule",
 			"menuManageLoadRules", "menuRestoreSafety", "menuPrepUpdate", "menuRestoreUpdate" })
 			if (FindMenuItem(modsMenu, name) is ToolStripItem item) item.Visible = bethesda;
 		// The whole load-order/files submenu is Skyrim/Fallout 4 only; hide it for Stardew rather than show a group
@@ -169,6 +177,7 @@ public partial class Form1
 			{
 				"StardewValley"  => Loc.T("menu.openSmapiLog", GetShortcutString("OpenLogFile")),
 				"MoonlightPeaks" => Loc.T("menu.openBepInExLog", GetShortcutString("OpenLogFile")),
+				"Witcher3"       => Loc.T("menu.openWitcherLog", GetShortcutString("OpenLogFile")),
 				_                => Loc.T("menu.openGameLog", GetShortcutString("OpenLogFile"))
 			};
 		}
@@ -178,6 +187,7 @@ public partial class Form1
 			"SkyrimSE" => Loc.T("tab.wikiSkyrim"),
 			"Fallout4" => Loc.T("tab.wikiFallout"),
 			"MoonlightPeaks" => Loc.T("tab.wikiMoonlight"),
+			"Witcher3" => Loc.T("tab.wikiWitcher"),
 			_ => Loc.T("tab.wikiStardew")
 		};
 
@@ -186,6 +196,7 @@ public partial class Form1
 			"SkyrimSE" => Loc.T("tab.walkSkyrim"),
 			"Fallout4" => Loc.T("tab.walkFallout"),
 			"MoonlightPeaks" => Loc.T("tab.walkMoonlight"),
+			"Witcher3" => Loc.T("tab.walkWitcher"),
 			_ => Loc.T("tab.walkStardew")
 		};
 
@@ -194,6 +205,7 @@ public partial class Form1
 			"SkyrimSE" => Loc.T("tab.logsSkyrim"),
 			"Fallout4" => Loc.T("tab.logsFallout"),
 			"MoonlightPeaks" => Loc.T("tab.logsMoonlight"),
+			"Witcher3" => Loc.T("tab.logsWitcher"),
 			_ => Loc.T("tab.gameLog")
 		};
 
@@ -204,6 +216,7 @@ public partial class Form1
 				"SkyrimSE" => Loc.T("ui.searchWikiSkyrim"),
 				"Fallout4" => Loc.T("ui.searchWikiFallout"),
 				"MoonlightPeaks" => Loc.T("ui.searchWikiMoonlight"),
+				"Witcher3" => Loc.T("ui.searchWikiWitcher"),
 				_ => Loc.T("ui.searchWikiStardew")
 			};
 		}

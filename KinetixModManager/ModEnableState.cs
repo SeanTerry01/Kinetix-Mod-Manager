@@ -17,14 +17,23 @@ public static class ModEnableState
 	/// <summary>The folder BepInEx loads plugins from.</summary>
 	public const string BepInExPluginsFolderName = "plugins";
 
+	/// <summary>The prefix used by the games that mark a disabled mod with one, when the game isn't known.</summary>
+	private const string DefaultDisabledPrefix = ".";
+
+	/// <summary>The prefix that marks a disabled mod folder for <paramref name="activeGame"/>.</summary>
+	private static string DisabledPrefix(string activeGame) =>
+		GameProfiles.Find(activeGame)?.DisabledModPrefix ?? DefaultDisabledPrefix;
+
 	/// <summary>
 	/// Where <paramref name="modFolderPath"/> must end up for the mod to be <paramref name="enable"/>d, or the
 	/// path unchanged when it is already in the right place.
 	///
-	/// The two layouts differ because the loaders differ. SMAPI and the manager's own Bethesda deployment both
-	/// skip a folder whose name starts with a dot, so there a mod is switched off by renaming it in place.
-	/// BepInEx's chainloader takes no notice of folder names at all — it walks <c>plugins</c> looking for DLLs —
-	/// so a dot-renamed BepInEx mod would carry on loading. Those mods move out of the scanned folder entirely.
+	/// The layouts differ because the loaders differ. SMAPI and the manager's own Bethesda deployment both skip a
+	/// folder whose name starts with a dot, and The Witcher 3 loads only folders called <c>mod*</c> — so a
+	/// leading <c>~</c> takes one out of the running there. In all of those a mod is switched off by renaming it
+	/// in place; only the prefix changes. BepInEx's chainloader takes no notice of folder names at all — it walks
+	/// <c>plugins</c> looking for DLLs — so a renamed BepInEx mod would carry on loading. Those mods move out of
+	/// the scanned folder entirely.
 	/// </summary>
 	public static string TargetPath(string modFolderPath, bool enable, string activeGame)
 	{
@@ -48,13 +57,16 @@ public static class ModEnableState
 			return Path.Combine(targetParent, folderName);
 		}
 
-		string bare = folderName.StartsWith(".") ? folderName.Substring(1) : folderName;
-		return Path.Combine(parent, enable ? bare : "." + bare);
+		string prefix = DisabledPrefix(activeGame);
+		string bare = folderName.StartsWith(prefix, StringComparison.Ordinal)
+			? folderName.Substring(prefix.Length)
+			: folderName;
+		return Path.Combine(parent, enable ? bare : prefix + bare);
 	}
 
 	/// <summary>
 	/// Whether the mod at <paramref name="modFolderPath"/> is currently enabled, judged the same way the loader
-	/// judges it: by the parent folder for a BepInEx game, and by the leading dot everywhere else.
+	/// judges it: by the parent folder for a BepInEx game, and by the game's disabled-mod prefix everywhere else.
 	/// </summary>
 	public static bool IsEnabled(string modFolderPath, string activeGame)
 	{
@@ -68,6 +80,6 @@ public static class ModEnableState
 			return !string.Equals(parentName, BepInExDisabledFolderName, StringComparison.OrdinalIgnoreCase);
 		}
 
-		return !Path.GetFileName(trimmed).StartsWith(".");
+		return !Path.GetFileName(trimmed).StartsWith(DisabledPrefix(activeGame), StringComparison.Ordinal);
 	}
 }

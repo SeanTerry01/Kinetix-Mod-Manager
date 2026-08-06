@@ -42,17 +42,19 @@ public partial class Form1
 		GameProfile? profile = GameProfiles.Find(game);
 		if (profile == null) return "";
 
-		string steamAppId = profile.SteamAppId;
-		string? gogProductId = profile.GogProductId;
-
+		// A game can be installed under more than one store id — an original release and a later bundle of the
+		// same game each have their own — so every id this game ships under is tried before giving up.
 		try
 		{
-			using var steamKey = Registry.LocalMachine.OpenSubKey($@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App {steamAppId}");
-			if (steamKey != null)
+			foreach (string steamAppId in profile.AllSteamAppIds)
 			{
-				string? path = steamKey.GetValue("InstallLocation")?.ToString();
-				if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
-					return path;
+				using var steamKey = Registry.LocalMachine.OpenSubKey($@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App {steamAppId}");
+				if (steamKey != null)
+				{
+					string? path = steamKey.GetValue("InstallLocation")?.ToString();
+					if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
+						return path;
+				}
 			}
 		}
 		catch { }
@@ -60,13 +62,16 @@ public partial class Form1
 		// The per-game uninstall key above is often missing or stale (reinstalls, manual library
 		// moves, installs that never write InstallLocation). Steam's own libraryfolders.vdf lists
 		// every library on every drive, so parse it to find the game wherever it actually lives.
-		string steamLib = DetectSteamLibraryGameFolder(steamAppId);
-		if (!string.IsNullOrEmpty(steamLib)) return steamLib;
+		foreach (string steamAppId in profile.AllSteamAppIds)
+		{
+			string steamLib = DetectSteamLibraryGameFolder(steamAppId);
+			if (!string.IsNullOrEmpty(steamLib)) return steamLib;
+		}
 
 		// Games that aren't sold on GOG have no product id and skip this entirely.
 		try
 		{
-			if (!string.IsNullOrEmpty(gogProductId))
+			foreach (string gogProductId in profile.AllGogProductIds)
 			{
 				string[] gogKeys = {
 					$@"SOFTWARE\GOG.com\Games\{gogProductId}",
@@ -94,7 +99,7 @@ public partial class Form1
 			// from another machine — so look for the game as well as asking about it. This is GOG's counterpart
 			// to reading Steam's library records, and without it a GOG user whose entry is gone falls all the
 			// way through to a Steam default path they will never have.
-			if (!string.IsNullOrEmpty(gogProductId))
+			if (profile.AllGogProductIds.Any())
 			{
 				string? found = GogLibraryLocator.FindGameFolder(
 					GogLibraryLocator.DefaultRoots(GetGogGalaxyPath(), GogLibraryLocator.FixedDriveRoots()),
@@ -692,21 +697,32 @@ public partial class Form1
 		try
 		{
 			if (!string.IsNullOrEmpty(profile.LoaderExeName)) return false;
+			// Games whose store launch would go through a launcher of the publisher's own start from their
+			// executable instead — see LaunchGameExeDirectly.
+			if (profile.LaunchGameExeDirectly) return false;
 			if (string.IsNullOrEmpty(profile.SteamAppId)) return false;
 			if (string.IsNullOrEmpty(GetSteamInstallPath())) return false;
 
 			// Confirm this really is the Steam copy: Steam's own library records have to point at the same folder
 			// the session is using. Without this a non-Steam copy sitting elsewhere would be abandoned in favour
-			// of whatever Steam happens to have installed.
-			string steamFolder = DetectSteamLibraryGameFolder(profile.SteamAppId);
-			if (string.IsNullOrEmpty(steamFolder)) return false;
-
+			// of whatever Steam happens to have installed. Where a game sells under several app ids, the one that
+			// leads to this folder is the one to start — asking Steam to run an id the user doesn't own does
+			// nothing but open a store page.
 			string a = Path.GetFullPath(gamePath).TrimEnd(Path.DirectorySeparatorChar);
-			string b = Path.GetFullPath(steamFolder).TrimEnd(Path.DirectorySeparatorChar);
-			if (!string.Equals(a, b, StringComparison.OrdinalIgnoreCase)) return false;
 
-			Process.Start(new ProcessStartInfo($"steam://rungameid/{profile.SteamAppId}") { UseShellExecute = true });
-			return true;
+			foreach (string appId in profile.AllSteamAppIds)
+			{
+				string steamFolder = DetectSteamLibraryGameFolder(appId);
+				if (string.IsNullOrEmpty(steamFolder)) continue;
+
+				string b = Path.GetFullPath(steamFolder).TrimEnd(Path.DirectorySeparatorChar);
+				if (!string.Equals(a, b, StringComparison.OrdinalIgnoreCase)) continue;
+
+				Process.Start(new ProcessStartInfo($"steam://rungameid/{appId}") { UseShellExecute = true });
+				return true;
+			}
+
+			return false;
 		}
 		catch (Exception ex)
 		{

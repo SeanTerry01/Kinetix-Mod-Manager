@@ -62,6 +62,10 @@
     <Compile Include="..\KinetixModManager\McmConfigSchema.cs" />
     <!-- Self-contained reader for an ordinary Stardew mod's config.json + i18n labels (BCL + Newtonsoft). -->
     <Compile Include="..\KinetixModManager\StardewModConfig.cs" />
+    <!-- Self-contained reader for The Witcher 3's own input.settings keybindings (BCL + IniDocument). -->
+    <Compile Include="..\KinetixModManager\Witcher3InputSettings.cs" />
+    <!-- Self-contained reader/writer for The Witcher 3's own mods.settings (BCL + IniDocument). -->
+    <Compile Include="..\KinetixModManager\Witcher3ModSettings.cs" />
   </ItemGroup>
 
 </Project>

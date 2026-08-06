@@ -735,6 +735,7 @@ public partial class Form1
 			"SkyrimSE" => Loc.T("tab.wikiSkyrim"),
 			"Fallout4" => Loc.T("tab.wikiFallout"),
 			"MoonlightPeaks" => Loc.T("tab.wikiMoonlight"),
+			"Witcher3" => Loc.T("tab.wikiWitcher"),
 			_ => Loc.T("tab.wikiStardew")
 		};
 		tabWiki = new TabPage(initialWikiTitle);
@@ -876,6 +877,7 @@ public partial class Form1
 			"SkyrimSE" => Loc.T("tab.walkSkyrim"),
 			"Fallout4" => Loc.T("tab.walkFallout"),
 			"MoonlightPeaks" => Loc.T("tab.walkMoonlight"),
+			"Witcher3" => Loc.T("tab.walkWitcher"),
 			_ => Loc.T("tab.walkStardew")
 		};
 		tabWalkthroughs = new TabPage(initialWalkthroughTitle);

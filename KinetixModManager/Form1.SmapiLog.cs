@@ -65,13 +65,14 @@ public partial class Form1
 
 	/// <summary>
 	/// True when the active game's mod loader keeps a log the manager can show in the Log tab. Skyrim SE and
-	/// Fallout 4 have their script-extender logs; Moonlight Peaks has BepInEx's <c>LogOutput.log</c>. Stardew
-	/// Valley is deliberately excluded — it has its own richer SMAPI Log tab instead.
+	/// Fallout 4 have their script-extender logs; Moonlight Peaks has BepInEx's <c>LogOutput.log</c>; The Witcher 3
+	/// has whatever its hooked mods write beside the game exe. Stardew Valley is deliberately excluded — it has
+	/// its own richer SMAPI Log tab instead.
 	/// </summary>
 	private static bool GameHasLogTab(string game)
 	{
 		GameProfile? profile = GameProfiles.Find(game);
-		return profile != null && (profile.IsBethesda || profile.IsBepInEx);
+		return profile != null && (profile.IsBethesda || profile.IsBepInEx || profile.IsWitcher3);
 	}
 
 	/// <summary>
@@ -89,6 +90,13 @@ public partial class Form1
 			string root = _settings.CurrentGamePath;
 			return string.IsNullOrEmpty(root) ? "" : Path.Combine(root, "BepInEx");
 		}
+		// The Witcher 3 writes no log of its own, but the mods that hook it do, and they write beside the game's
+		// executable — which is where a player looking for "why did my mod not load" needs to be pointed.
+		if (profile.IsWitcher3)
+		{
+			string root = _settings.CurrentGamePath;
+			return string.IsNullOrEmpty(root) ? "" : Path.Combine(root, "bin", "x64");
+		}
 		return "";
 	}
 
@@ -98,6 +106,8 @@ public partial class Form1
 		"SkyrimSE"       => "skse64.log",
 		"Fallout4"       => "f4se.log",
 		"MoonlightPeaks" => "LogOutput.log",
+		// No engine log exists; the accessibility mod's own log is the one worth opening first.
+		"Witcher3"       => "WitcherAccess.log",
 		_                => ""
 	};
 

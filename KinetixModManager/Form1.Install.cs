@@ -478,6 +478,66 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// Runs a mod's own installer and waits for it to finish, returning whether it completed.
+	///
+	/// Some mods can only be installed by the program their author ships — The Witcher 3's accessibility mod puts
+	/// files in four different places, and no amount of copying folders about reproduces that. So the manager
+	/// does what it can do well: it fetches the download, unpacks it, finds the installer, asks before running
+	/// anything, and waits. When the installer closes, the manager takes over again and re-scans, so the mod
+	/// turns up in the list exactly as any other install does.
+	///
+	/// Always asks first. Running an executable out of a downloaded archive is not something to do on the user's
+	/// behalf without saying so.
+	/// </summary>
+	private async Task<bool> RunModInstallerAsync(string installerPath)
+	{
+		string installerName = Path.GetFileName(installerPath);
+
+		if (SpeakBox(Loc.T("install.runInstallerBox", installerName), Loc.T("install.runInstallerTitle"),
+				MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+		{
+			Speak(Loc.T("install.installerDeclined"));
+			return false;
+		}
+
+		SetStatus(Loc.T("install.installerRunning", installerName));
+
+		try
+		{
+			using var installer = new Process();
+			installer.StartInfo = new ProcessStartInfo(installerPath)
+			{
+				WorkingDirectory = Path.GetDirectoryName(installerPath) ?? "",
+				// Through the shell, so an installer that asks for administrator rights gets its prompt rather
+				// than simply failing to start.
+				UseShellExecute = true
+			};
+
+			if (!installer.Start()) return false;
+			await installer.WaitForExitAsync();
+
+			// A cancelled installer exits non-zero. Treating that as a successful install would leave the manager
+			// announcing a mod the user just decided not to install.
+			if (installer.ExitCode != 0)
+			{
+				_soundEngine.Play("error");
+				Speak(Loc.T("install.installerCancelled"));
+				return false;
+			}
+		}
+		catch (Exception ex)
+		{
+			LogError("Install", "Could not run the mod's installer: " + ex.Message);
+			_soundEngine.Play("error");
+			SpeakBox(Loc.T("install.installerFailedBox", FriendlyError(ex)));
+			return false;
+		}
+
+		Speak(Loc.T("install.installerFinished"));
+		return true;
+	}
+
+	/// <summary>
 	/// Extracts a .zip archive to a temp directory, validates all paths against the mods folder
 	/// to prevent path traversal, then moves the contents into the Mods directory.
 	/// Temp files are cleaned up in a <c>finally</c> block regardless of success or failure.
@@ -496,7 +556,7 @@ public partial class Form1
 			string name = await ModFileSystem.ExtractModAsync(
 				zipPath, _settings.CurrentModsPath, _allInstalledMods,
 				backupsPath, _settings.MaxBackupsPerMod, _settings.ActiveGame, LogError, nexusId, _nexusService, null, _settings.CurrentGamePath,
-				ShowFomodWizardAsync, installProgress, confirmOverwrite);
+				ShowFomodWizardAsync, installProgress, confirmOverwrite, RunModInstallerAsync);
 			installProgress?.Complete();
 			_soundEngine.Play("load_complete");
 

@@ -340,7 +340,16 @@ public partial class Form1 : Form, IMessageFilter
 			{
 				// Not created here: for a BepInEx game this folder appears when BepInEx is installed, and the
 				// manager offers to do that. An empty path would leave the session pointing at nothing.
-				_settings.GameModsPaths[profile.Id] = profile.ModsFolderFor(folder);
+				string modsFolder = profile.ModsFolderFor(folder);
+				_settings.GameModsPaths[profile.Id] = modsFolder;
+
+				// The Witcher 3 is the exception: its mods folder needs no loader — the game reads it itself —
+				// but a copy that has never been modded doesn't have one yet, and the session would otherwise
+				// point at a folder that isn't there.
+				if (profile.IsWitcher3 && !string.IsNullOrEmpty(modsFolder) && !Directory.Exists(modsFolder))
+				{
+					try { Directory.CreateDirectory(modsFolder); } catch { }
+				}
 			}
 
 			_settings.Save();

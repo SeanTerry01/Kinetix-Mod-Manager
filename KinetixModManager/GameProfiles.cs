@@ -22,7 +22,15 @@ public enum ModLayout
 	/// <summary>Moonlight Peaks: each mod is a folder of DLLs under <c>BepInEx\plugins</c>, loaded by the
 	/// BepInEx chainloader. Mods live where they are installed, like Stardew, but a leading dot does NOT
 	/// disable one — the chainloader scans for DLLs recursively and ignores folder names entirely.</summary>
-	BepInExPlugins
+	BepInExPlugins,
+
+	/// <summary>
+	/// The Witcher 3: each mod is a folder under the game's <c>mods</c> folder whose name must begin with
+	/// <c>mod</c> — that prefix is precisely how the engine decides what to load. Mods live where they are
+	/// installed, and one is disabled by prefixing its folder with <c>~</c>, which works for the plainest of
+	/// reasons: <c>~modFoo</c> no longer starts with "mod", so the engine walks straight past it.
+	/// </summary>
+	Witcher3Mods
 }
 
 /// <summary>
@@ -46,8 +54,30 @@ public sealed class GameProfile
 	/// <summary>The game's Steam application id, used for registry and libraryfolders.vdf detection.</summary>
 	public required string SteamAppId { get; init; }
 
+	/// <summary>
+	/// Further Steam app ids the same install can be sold under, tried after <see cref="SteamAppId"/>.
+	///
+	/// A game re-released as a bundle keeps its original app id for people who bought it before — The Witcher 3
+	/// is app 292030 as Wild Hunt and 499450 as the Complete Edition, and both install the same game into the
+	/// same folder. Detection that knows only one of them finds nothing for half the owners.
+	/// </summary>
+	public IReadOnlyList<string> AlternateSteamAppIds { get; init; } = Array.Empty<string>();
+
 	/// <summary>The game's GOG product id, or <c>null</c> when it isn't sold on GOG.</summary>
 	public string? GogProductId { get; init; }
+
+	/// <summary>Further GOG product ids for the same game — its editions, which GOG sells as separate products.</summary>
+	public IReadOnlyList<string> AlternateGogProductIds { get; init; } = Array.Empty<string>();
+
+	/// <summary>Every Steam app id this game may be installed under, the primary one first.</summary>
+	public IEnumerable<string> AllSteamAppIds =>
+		new[] { SteamAppId }.Concat(AlternateSteamAppIds).Where(id => !string.IsNullOrEmpty(id));
+
+	/// <summary>Every GOG product id this game may be installed under, the primary one first.</summary>
+	public IEnumerable<string> AllGogProductIds =>
+		new[] { GogProductId }.Concat(AlternateGogProductIds)
+			.Where(id => !string.IsNullOrEmpty(id))
+			.Select(id => id!);
 
 	/// <summary>The Steam store page, shown when the user doesn't own the game yet.</summary>
 	public required string SteamStoreUrl { get; init; }
@@ -70,6 +100,19 @@ public sealed class GameProfile
 
 	/// <summary>The loader's name as the user knows it ("SMAPI", "SKSE", "BepInEx"), or <c>""</c> if none.</summary>
 	public required string LoaderDisplayName { get; init; }
+
+	/// <summary>
+	/// Whether the manager must start <see cref="GameExeName"/> itself rather than asking the store to launch
+	/// the game.
+	///
+	/// Asking Steam is normally the better way — a Steam game started from its own executable notices and
+	/// restarts itself, which loads the game twice. But some games ship a launcher in front of the executable,
+	/// and Steam starts the launcher. The Witcher 3's is `REDprelauncher.exe`, which is a graphical window a
+	/// screen reader cannot use, and it is also what chooses between the DirectX 11 and DirectX 12 builds — so
+	/// going through it means a player may not be able to get past it, and may not land on the build their mods
+	/// expect. Starting `bin\x64\witcher3.exe` (the DirectX 11 build) skips both problems.
+	/// </summary>
+	public bool LaunchGameExeDirectly { get; init; }
 
 	/// <summary>How this game's mods are laid out on disk.</summary>
 	public required ModLayout Layout { get; init; }
@@ -113,6 +156,41 @@ public sealed class GameProfile
 	public string? GogUserDataFolderName { get; init; }
 
 	/// <summary>
+	/// Whether the per-player folder sits under <c>Documents\My Games\</c>, as Bethesda's games put it, rather
+	/// than directly under <c>Documents\</c>. The Witcher 3 uses <c>Documents\The Witcher 3</c>, with no
+	/// intervening My Games folder, so this is not a detail that can be assumed.
+	/// </summary>
+	public bool UserDataUnderMyGames { get; init; } = true;
+
+	/// <summary>The save folder's name inside the per-player folder (<c>Saves</c>, <c>gamesaves</c>).</summary>
+	public string? SavesFolderName { get; init; }
+
+	/// <summary>The extension the game's save files carry, e.g. <c>.ess</c>, <c>.fos</c>, <c>.sav</c>.</summary>
+	public string? SaveFileExtension { get; init; }
+
+	/// <summary>
+	/// The game's own configuration files inside the per-player folder, in the order players reach for them.
+	/// All are INI-shaped (<c>[Section]</c> plus <c>key=value</c>), which is what lets one editor serve them all
+	/// — The Witcher 3's <c>user.settings</c> and <c>input.settings</c> included, despite the unusual extension.
+	/// Empty for a game whose settings the manager doesn't edit.
+	/// </summary>
+	public IReadOnlyList<string> ConfigFileNames { get; init; } = Array.Empty<string>();
+
+	/// <summary>
+	/// The prefix that marks a mod folder disabled, or <c>null</c> when this game disables mods by moving them
+	/// somewhere else instead. SMAPI and the manager's own Bethesda deployment skip a leading dot; The Witcher 3
+	/// skips anything not starting with "mod", which a leading <c>~</c> arranges.
+	/// </summary>
+	public string? DisabledModPrefix { get; init; }
+
+	/// <summary>
+	/// The prefix a mod's folder name must carry for the game to load it at all, or <c>null</c> where the name
+	/// doesn't matter. The Witcher 3 loads a folder only when it is called <c>mod*</c>, so a mod installed from
+	/// an archive that unpacks to some other name has to be renamed or it simply never loads — silently.
+	/// </summary>
+	public string? RequiredModFolderPrefix { get; init; }
+
+	/// <summary>
 	/// The per-player data folder name for the copy installed at <paramref name="gameFolder"/>, choosing the GOG
 	/// name when that folder holds a GOG install. <c>""</c> for a game that keeps no such folder.
 	/// </summary>
@@ -121,10 +199,25 @@ public sealed class GameProfile
 		if (string.IsNullOrEmpty(UserDataFolderName)) return "";
 
 		if (!string.IsNullOrEmpty(GogUserDataFolderName) &&
-			GogLibraryLocator.IsGogInstall(gameFolder, GogProductId))
+			GogLibraryLocator.IsGogInstallAnyOf(gameFolder, AllGogProductIds))
 			return GogUserDataFolderName;
 
 		return UserDataFolderName;
+	}
+
+	/// <summary>
+	/// The full path of the per-player folder for the copy at <paramref name="gameFolder"/> — the one holding the
+	/// game's settings, its saves and (on the Bethesda games) its load order. <c>""</c> where the game keeps none.
+	/// </summary>
+	public string UserDataDirectoryFor(string gameFolder)
+	{
+		string folder = UserDataFolderFor(gameFolder);
+		if (folder.Length == 0) return "";
+
+		string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+		return UserDataUnderMyGames
+			? Path.Combine(docs, "My Games", folder)
+			: Path.Combine(docs, folder);
 	}
 
 	/// <summary>
@@ -164,6 +257,9 @@ public sealed class GameProfile
 	/// <summary>True when this game deploys staged mods into a Data folder (Skyrim SE / Fallout 4).</summary>
 	public bool IsBethesda => Layout == ModLayout.BethesdaStaged;
 
+	/// <summary>True when this game's mods are folders under its own <c>mods</c> folder (The Witcher 3).</summary>
+	public bool IsWitcher3 => Layout == ModLayout.Witcher3Mods;
+
 	/// <summary>
 	/// The mods folder for an install at <paramref name="gameFolder"/>, or <c>""</c> when this game stages its
 	/// mods outside the game and the path therefore isn't derivable from the game folder.
@@ -185,6 +281,7 @@ public static class GameProfiles
 	public const string SkyrimSE      = "SkyrimSE";
 	public const string Fallout4      = "Fallout4";
 	public const string MoonlightPeaks = "MoonlightPeaks";
+	public const string Witcher3      = "Witcher3";
 
 	/// <summary>Every supported game, in the alphabetical order the game lists and menus show them.</summary>
 	public static readonly IReadOnlyList<GameProfile> All = new[]
@@ -207,6 +304,10 @@ public static class GameProfiles
 			NexusGameId          = "1151",
 			SoundTheme           = "Fallout 4",
 			UserDataFolderName   = "Fallout4",
+			SavesFolderName      = "Saves",
+			SaveFileExtension    = ".fos",
+			ConfigFileNames      = new[] { "Fallout4.ini", "Fallout4Prefs.ini", "Fallout4Custom.ini" },
+			DisabledModPrefix    = ".",
 			// Follows the same pattern as Skyrim's GOG release, which was read out of the GOG executable itself.
 			// Not verified against a GOG copy of Fallout 4 — if one ever proves otherwise, this is the one line
 			// to change, and a wrong value here is caught by the install simply not being detected as GOG.
@@ -255,6 +356,10 @@ public static class GameProfiles
 			NexusGameId          = "1704",
 			SoundTheme           = "Skyrim",
 			UserDataFolderName   = "Skyrim Special Edition",
+			SavesFolderName      = "Saves",
+			SaveFileExtension    = ".ess",
+			ConfigFileNames      = new[] { "Skyrim.ini", "SkyrimPrefs.ini", "SkyrimCustom.ini" },
+			DisabledModPrefix    = ".",
 			// Read out of the GOG build's own executable, not guessed. GOG installs the game into a folder called
 			// "Skyrim Anniversary Edition", which is a third name again — hence matching on neither.
 			GogUserDataFolderName = "Skyrim Special Edition GOG"
@@ -275,7 +380,52 @@ public static class GameProfiles
 			ModsFolderRelativeToGame = "Mods",
 			NexusDomain          = "stardewvalley",
 			NexusGameId          = "1303",
-			SoundTheme           = "Stardew Valley"
+			SoundTheme           = "Stardew Valley",
+			DisabledModPrefix    = "."
+		},
+		new GameProfile
+		{
+			Id                   = Witcher3,
+			DisplayName          = "The Witcher 3: Wild Hunt",
+			// Wild Hunt's original app id. The Complete Edition sells as 499450 and installs the same game into
+			// the same folder, so both have to be looked for.
+			SteamAppId           = "292030",
+			AlternateSteamAppIds = new[] { "499450" },
+			GogProductId         = "1207664643",
+			// "The Witcher 3: Wild Hunt - Complete Edition" — a separate GOG product for the same game. Both ids
+			// were read back from api.gog.com rather than guessed.
+			AlternateGogProductIds = new[] { "1495134320" },
+			SteamStoreUrl        = "https://store.steampowered.com/app/292030/The_Witcher_3_Wild_Hunt/",
+			GogStoreUrl          = "https://www.gog.com/game/the_witcher_3_wild_hunt",
+			DefaultInstallFolder = @"C:\Program Files (x86)\Steam\steamapps\common\The Witcher 3",
+			// The game's exe lives two folders down, not beside the game root — every path built from this one
+			// goes through Path.Combine, which takes the relative path in its stride.
+			GameExeName          = @"bin\x64\witcher3.exe",
+			// Nothing to launch separately: The Witcher 3 loads the contents of its own mods folder, and the
+			// native part of an accessibility mod arrives as an .asi beside the exe, loaded however it starts.
+			LoaderExeName        = "",
+			LoaderDisplayName    = "",
+			// Skip REDprelauncher, which is what Steam would start: it is a graphical window a screen reader
+			// cannot use, and it is also what chooses between the DirectX 11 and DirectX 12 builds. The x64
+			// folder is the DirectX 11 one, which is the build the accessibility mod is developed against
+			// (x64_dx12 holds the other).
+			LaunchGameExeDirectly = true,
+			Layout               = ModLayout.Witcher3Mods,
+			ModsFolderRelativeToGame = "mods",
+			NexusDomain          = "witcher3",
+			NexusGameId          = "952",
+			// No theme has been authored yet; a missing theme folder simply plays the Default sounds, so naming
+			// it now means one can be dropped in later without a code change.
+			SoundTheme           = "The Witcher 3",
+			// Documents\The Witcher 3, with no My Games in between.
+			UserDataFolderName   = "The Witcher 3",
+			UserDataUnderMyGames = false,
+			SavesFolderName      = "gamesaves",
+			SaveFileExtension    = ".sav",
+			// INI-shaped despite the extension: [Section] headers and key=value lines.
+			ConfigFileNames      = new[] { "user.settings", "input.settings" },
+			DisabledModPrefix    = "~",
+			RequiredModFolderPrefix = "mod"
 		}
 	};
 

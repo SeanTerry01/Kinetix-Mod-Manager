@@ -148,6 +148,27 @@ public partial class Form1
 				MoonlightAccessType,
 				MoonlightAccessSource));
 		}
+		else if (game == "Witcher3")
+		{
+			string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder("Witcher3") : _settings.CurrentGamePath;
+
+			// Nothing to install as a loader: the game loads its own mods folder, and the accessibility mod's
+			// native half is an .asi beside the game exe, loaded by the ASI loader its installer places there.
+			loaderInstalled = true;
+
+			// Recognised two ways, because either half can be present on its own if an install went wrong: the
+			// mod folder the engine loads, and the native plugin beside the exe that does the speaking.
+			bool accessInstalled =
+				Directory.Exists(Path.Combine(gameFolder, "mods", "modWitcherAccess")) ||
+				Directory.Exists(Path.Combine(gameFolder, "mods", "~modWitcherAccess")) ||
+				File.Exists(Path.Combine(gameFolder, "bin", "x64", "WitcherAccess.asi"));
+
+			// No source: WitcherAccess is still in testing and is installed by running its author's installer, so
+			// the manager reports on it and says where it stands rather than pretending it can fetch it. Install
+			// it through Mods, Install Mod From File with the release zip — the manager unpacks it, runs the
+			// installer and picks the mod up afterwards.
+			suiteItems.Add(new SuiteItem("WitcherAccess", accessInstalled, "Manual", ""));
+		}
 		else
 		{
 			string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder("Fallout4") : _settings.CurrentGamePath;

@@ -1451,6 +1451,28 @@ public partial class Form1
 				"1 to 8: Quick-equip item bound in Favorites Menu",
 				"F5 and F9: Quick-save / Quick-load game",
 			};
+		// The Witcher 3 normally answers this question properly: it writes every binding into input.settings,
+		// which the controls list reads instead of this. These stock defaults are the stand-in for a copy that
+		// has never been launched, so that file doesn't exist yet.
+		if (activeGame == "Witcher3")
+			return new List<string>
+			{
+				"W A S D: Move Geralt forward, left, backward, right",
+				"Left Shift: Sprint (hold); gallop while riding",
+				"Left Mouse Button: Fast attack",
+				"Right Mouse Button: Strong attack; hold to focus and guard",
+				"E: Interact — talk, loot, open doors, mount Roach",
+				"Q: Cast the selected sign (hold to choose one)",
+				"Tab: Radial menu — signs, bombs, potions and oils",
+				"Space: Dodge; double-tap a direction to roll",
+				"1 and 2: Draw steel sword / silver sword",
+				"R F T Y: Drink the potion in each quick slot",
+				"I J K L: Inventory, Journal, Character, Alchemy",
+				"M: Map, B: Bestiary, G: Glossary",
+				"V: Highlight the tracked objective (Witcher Senses)",
+				"C: Sheathe weapon",
+				"F5 and F8: Quick-save / Quick-load game",
+			};
 		if (activeGame == "Fallout4")
 			return new List<string>
 			{

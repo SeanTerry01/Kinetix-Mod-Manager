@@ -78,6 +78,23 @@ public sealed class GameKeybindExport
 	{
 		if (profile == null) return null;
 
+		// The Witcher 3 needs no export plugin: it writes every binding into input.settings itself, and rewrites
+		// it whenever the player remaps a key. That file is therefore always live — there is no stock snapshot to
+		// fall back to, and none is wanted.
+		if (profile.IsWitcher3)
+		{
+			string inputSettings = Witcher3InputSettings.PathFor(profile, gameFolder);
+			var witcherBindings = Witcher3InputSettings.Read(inputSettings);
+			if (witcherBindings.Count == 0) return null;
+
+			// The game rewrites the file whenever a key is remapped, so its timestamp genuinely is "when these
+			// bindings were last set" — which is what the controls list says above them.
+			DateTime? written = null;
+			try { if (File.Exists(inputSettings)) written = File.GetLastWriteTimeUtc(inputSettings); } catch { }
+
+			return new GameKeybindExport { IsLive = true, Bindings = witcherBindings, GeneratedUtc = written };
+		}
+
 		GameKeybindExport? live = ReadFile(LiveExportPath(profile, gameFolder));
 		if (live != null) return live;
 

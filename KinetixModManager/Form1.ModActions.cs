@@ -326,7 +326,7 @@ public partial class Form1
 		try
 		{
 			stardewMod.FolderPath = ModFileSystem.SetModEnabled(
-				stardewMod.FolderPath, !stardewMod.IsEnabled, _settings.ActiveGame);
+				stardewMod.FolderPath, !stardewMod.IsEnabled, _settings.ActiveGame, LogError);
 			stardewMod.IsEnabled = !stardewMod.IsEnabled;
 
 			if (stardewMod.IsEnabled)
@@ -383,7 +383,19 @@ public partial class Form1
 
 			// ForceDelete (via ModFileSystem) clears read-only attributes first; a plain Directory.Delete throws
 			// "Access to the path '…' is denied" on mods that ship a read-only file such as SkyPatcher's DLL.
+			// A mod that installed itself with a setup program usually leaves an uninstaller, and that knows far
+			// more about what it put where than the manager ever can. Run it in preference to guessing.
+			await RunModUninstallerIfAnyAsync(stardewMod);
+
+			// A Witcher 3 mod's dlc and menu-config parts live in the game folder, not in the mod folder, and the
+			// record of them is inside the folder about to be deleted — so they go first.
+			ModFileSystem.RemoveWitcher3Extras(
+				stardewMod.FolderPath, _settings.ActiveGame, _settings.CurrentGamePath, LogError);
+
 			await Task.Run(() => ModFileSystem.DeleteModFolder(stardewMod.FolderPath));
+			// The Witcher 3 lists its mods in a file of its own, and an entry outliving the folder keeps a deleted
+			// mod in the game's own menu.
+			ModFileSystem.ForgetWitcherMod(stardewMod.FolderPath, _settings.ActiveGame);
 			// RefreshModList below re-scans without the deleted mod and reconciles deployment and
 			// plugins.txt, pruning its files/plugins and restoring any provider it had overridden.
 			_soundEngine.Play("disable");
@@ -396,6 +408,72 @@ public partial class Form1
 			ResetStatus();
 			_soundEngine.Play("error");
 			SpeakBox(Loc.T("modactions.deleteFailedBox", FriendlyError(ex)));
+		}
+	}
+
+	/// <summary>
+	/// Runs the mod's own uninstaller, if it registered one, and waits for it to finish.
+	///
+	/// This is the other half of installing a mod by running its author's program. Such a mod puts files in
+	/// places the manager never saw — beside the game's executable, in the game's config folder — and deleting
+	/// the mod folder leaves every one of them behind, still loaded by the game. The installer's own uninstaller
+	/// holds the list of what it wrote, so it is asked to do the job.
+	///
+	/// Asked first, always, and a "no" simply falls through to removing the mod folder as usual.
+	/// </summary>
+	private async Task RunModUninstallerIfAnyAsync(StardewMod mod)
+	{
+		if (GameProfiles.Find(_settings.ActiveGame)?.IsWitcher3 != true) return;
+
+		var uninstaller = ModFileSystem.FindUninstallerInsideGame(
+			_settings.CurrentGamePath, Path.GetFileName(mod.FolderPath.TrimEnd(Path.DirectorySeparatorChar)));
+		if (uninstaller == null) return;
+
+		if (SpeakBox(Loc.T("modactions.runUninstallerBox", uninstaller.DisplayName),
+				Loc.T("modactions.runUninstallerTitle"),
+				MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+			return;
+
+		SetStatus(Loc.T("modactions.uninstallerRunning", uninstaller.DisplayName));
+
+		try
+		{
+			// Split the registered command into its executable and any arguments it already carries.
+			string command = uninstaller.Command.Trim();
+			string exe = command;
+			string args = "";
+			if (command.StartsWith("\""))
+			{
+				int close = command.IndexOf('"', 1);
+				if (close > 0)
+				{
+					exe = command.Substring(1, close - 1);
+					args = command.Substring(close + 1).Trim();
+				}
+			}
+
+			using var process = new Process();
+			process.StartInfo = new ProcessStartInfo(exe)
+			{
+				// Silent, because the alternative is a series of graphical prompts in another window. The manager
+				// has already asked the only question that matters.
+				Arguments = (args + " /SILENT /NORESTART").Trim(),
+				UseShellExecute = true
+			};
+			process.Start();
+			await process.WaitForExitAsync();
+
+			// An Inno Setup uninstaller relaunches itself from a temporary copy and the process we started exits
+			// at once, so its exit means nothing. The registry entry going away is what actually says "done".
+			for (int waited = 0; waited < 120 && ModFileSystem.UninstallerStillRegistered(uninstaller); waited++)
+				await Task.Delay(500);
+
+			Speak(Loc.T("modactions.uninstallerFinished", uninstaller.DisplayName));
+		}
+		catch (Exception ex)
+		{
+			LogError("Delete", "Could not run the mod's uninstaller: " + ex.Message);
+			SpeakBox(Loc.T("modactions.uninstallerFailedBox", FriendlyError(ex)));
 		}
 	}
 

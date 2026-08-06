@@ -70,6 +70,20 @@ public static class GogLibraryLocator
 		}
 	}
 
+	/// <summary>
+	/// Whether the copy at <paramref name="gameFolder"/> is a GOG one under any of <paramref name="gogProductIds"/>.
+	///
+	/// A game GOG sells in several editions has a product id per edition, and the copy on disk carries exactly one
+	/// of them. Asking about only the first would call the Complete Edition a non-GOG install.
+	/// </summary>
+	public static bool IsGogInstallAnyOf(string gameFolder, IEnumerable<string>? gogProductIds)
+	{
+		if (gogProductIds == null) return false;
+		foreach (string id in gogProductIds)
+			if (IsGogInstall(gameFolder, id)) return true;
+		return false;
+	}
+
 	/// <summary>The root of every fixed drive on this machine, for the default search.</summary>
 	public static List<string> FixedDriveRoots()
 	{

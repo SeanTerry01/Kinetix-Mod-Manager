@@ -62,6 +62,22 @@ public partial class Form1
 				new WalkthroughGuide { Title = "Fallout 4 Wiki Settlements Guide", Url = "https://fallout.fandom.com/wiki/Fallout_4_settlements" },
 				new WalkthroughGuide { Title = "Fallout 4 Wiki Endings Guide", Url = "https://fallout.fandom.com/wiki/Fallout_4_endings" }
 			},
+			// Every title here was checked against the wiki's own API rather than written from memory — several
+			// plausible-looking ones ("The Witcher 3 endings", "…side quests") simply don't exist, and a
+			// walkthrough list that lands the user on "there is currently no text on this page" is worse than a
+			// shorter list.
+			"Witcher3" => new[]
+			{
+				new WalkthroughGuide { Title = "Witcher Wiki The Witcher 3 Getting Started Guide", Url = "https://witcher.fandom.com/wiki/The_Witcher_3:_Wild_Hunt" },
+				new WalkthroughGuide { Title = "Witcher Wiki Main Quests Guide", Url = "https://witcher.fandom.com/wiki/The_Witcher_3_main_quests" },
+				new WalkthroughGuide { Title = "Witcher Wiki Secondary Quests Guide", Url = "https://witcher.fandom.com/wiki/The_Witcher_3_secondary_quests" },
+				new WalkthroughGuide { Title = "Witcher Wiki Witcher Contracts Guide", Url = "https://witcher.fandom.com/wiki/The_Witcher_3_contracts" },
+				new WalkthroughGuide { Title = "Witcher Wiki Bestiary Guide", Url = "https://witcher.fandom.com/wiki/The_Witcher_3_bestiary" },
+				new WalkthroughGuide { Title = "Witcher Wiki Guide to Alchemy", Url = "https://witcher.fandom.com/wiki/The_Witcher_3:_Wild_Hunt_-_Guide_to_Alchemy" },
+				new WalkthroughGuide { Title = "Witcher Wiki Character Development Guide (skills and mutations)", Url = "https://witcher.fandom.com/wiki/Category:The_Witcher_3_character_development" },
+				new WalkthroughGuide { Title = "Witcher Wiki Gwent Guide", Url = "https://witcher.fandom.com/wiki/Gwent" },
+				new WalkthroughGuide { Title = "Witcher Wiki Controls Guide", Url = "https://witcher.fandom.com/wiki/The_Witcher_3_controls" }
+			},
 			"MoonlightPeaks" => new[]
 			{
 				new WalkthroughGuide { Title = "Moonlight Peaks Wiki Getting Started Guide", Url = "https://moonlightpeaks.wiki.gg/wiki/Getting_Started" },
@@ -134,6 +150,7 @@ public partial class Form1
 			"Fallout4" => new ModWikiLink { Title = "Fallout Wiki (main game wiki)", Url = "https://fallout.fandom.com/wiki/Fallout_4", ApiUrl = "https://fallout.fandom.com/api.php", ArticleBase = "https://fallout.fandom.com/wiki/", IsGameWiki = true, CategoryPrefix = "Fallout 4" },
 			// The official wiki.gg wiki is the actively maintained one; the older Fandom wiki is offered below.
 			"MoonlightPeaks" => new ModWikiLink { Title = "Moonlight Peaks Wiki (main game wiki)", Url = "https://moonlightpeaks.wiki.gg/", ApiUrl = "https://moonlightpeaks.wiki.gg/api.php", ArticleBase = "https://moonlightpeaks.wiki.gg/wiki/", IsGameWiki = true },
+			"Witcher3" => new ModWikiLink { Title = "The Witcher Wiki (main game wiki)", Url = "https://witcher.fandom.com/wiki/The_Witcher_3:_Wild_Hunt", ApiUrl = "https://witcher.fandom.com/api.php", ArticleBase = "https://witcher.fandom.com/wiki/", IsGameWiki = true, CategoryPrefix = "The Witcher 3" },
 			_ => new ModWikiLink { Title = "Stardew Valley Wiki (main game wiki)", Url = "https://stardewvalleywiki.com/", ApiUrl = "https://stardewvalleywiki.com/mediawiki/api.php", ArticleBase = "https://stardewvalleywiki.com/", IsGameWiki = true }
 		};
 
@@ -161,6 +178,17 @@ public partial class Form1
 				BrowseOnly("Sim Settlements 2 Wiki", "https://wiki.simsettlements2.com/"),
 				BrowseOnly("Fallout: London Wiki", "https://fallout.wiki/wiki/Mod:Fallout_London"),
 				BrowseOnly("America Rising 2 — Legacy of the Enclave Wiki", "https://fallout.wiki/wiki/Mod:America_Rising_2_-_Legacy_of_the_Enclave")
+			},
+			// The Witcher 3's big mods are overhauls and tweaks rather than new lands, and none of them keeps a
+			// wiki — their documentation lives on their Nexus page. So what is offered here is the modding
+			// documentation itself (how the game's mods are built and combined, which is what a player wanting to
+			// understand a conflict actually needs) and the game's Nexus section. Both are browse-only.
+			"Witcher3" => new[]
+			{
+				BrowseOnly("The Witcher 3 Modding Wiki (Nexus Mods Wiki)", "https://wiki.nexusmods.com/index.php/The_Witcher_3"),
+				BrowseOnly("The Witcher 3 Mods (Nexus Mods)", "https://www.nexusmods.com/games/witcher3/mods"),
+				Fandom("Witcher Wiki — Bestiary", "witcher.fandom.com", "The_Witcher_3_bestiary"),
+				Fandom("Witcher Wiki — Guide to Alchemy", "witcher.fandom.com", "The_Witcher_3:_Wild_Hunt_-_Guide_to_Alchemy")
 			},
 			// Moonlight Peaks is young enough that no content mod has its own wiki yet. What it does have is a
 			// second community wiki on Fandom (searchable in-app) and a guides site that is a normal website

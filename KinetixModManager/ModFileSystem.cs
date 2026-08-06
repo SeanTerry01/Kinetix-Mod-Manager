@@ -138,13 +138,33 @@ public static class ModFileSystem
 		}
 		else
 		{
-			// Skyrim / Fallout 4: scan direct subdirectories of modsPath
+			// Skyrim / Fallout 4 (staged) and The Witcher 3 (in the game's own mods folder): a mod is a direct
+			// subdirectory, switched off by a prefix on its name — a dot for the former, a tilde for the latter.
+			GameProfile? scanProfile = GameProfiles.Find(activeGame);
+			string disabledPrefix = scanProfile?.DisabledModPrefix ?? ".";
+
+			// The Witcher 3 also keeps its own record of which mods are on, and that record is what its in-game
+			// mod menu shows. A mod switched off there is off, however its folder is named.
+			string witcherModsSettings = scanProfile?.IsWitcher3 == true
+				? Witcher3ModSettings.PathFor(scanProfile.UserDataDirectoryFor(
+					Path.GetDirectoryName(modsPath.TrimEnd(Path.DirectorySeparatorChar)) ?? ""))
+				: "";
+			var witcherDisabled = witcherModsSettings.Length > 0
+				? Witcher3ModSettings.Read(witcherModsSettings)
+					.Where(e => !e.Enabled)
+					.Select(e => e.Name)
+					.ToHashSet(StringComparer.OrdinalIgnoreCase)
+				: new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
 			foreach (string dir in Directory.GetDirectories(modsPath))
 			{
 				string folderName = Path.GetFileName(dir);
-				if (folderName.Equals("bin", StringComparison.OrdinalIgnoreCase) || 
+				if (folderName.Equals("bin", StringComparison.OrdinalIgnoreCase) ||
 					folderName.Equals("obj", StringComparison.OrdinalIgnoreCase))
 					continue;
+
+				bool folderEnabled = !folderName.StartsWith(disabledPrefix, StringComparison.Ordinal) &&
+					!witcherDisabled.Contains(Witcher3ModSettings.BareName(folderName));
 
 				string manifestPath = Path.Combine(dir, ".manager_manifest.json");
 				GameMod mod;
@@ -183,13 +203,15 @@ public static class ModFileSystem
 							NexusID     = nexusId,
 							GitHubRepo  = ManifestString(manifest, "GitHubRepo"),
 							FolderPath  = dir,
-							IsEnabled   = !folderName.StartsWith(".")
+							IsEnabled   = folderEnabled
 						};
 					}
 					else
 					{
 						// Create automatic manifest
-						string cleanName = folderName.StartsWith(".") ? folderName.Substring(1) : folderName;
+						string cleanName = folderName.StartsWith(disabledPrefix, StringComparison.Ordinal)
+							? folderName.Substring(disabledPrefix.Length)
+							: folderName;
 						string? extractedNexusId = null;
 						if (activeGame != "StardewValley")
 						{
@@ -210,7 +232,7 @@ public static class ModFileSystem
 							UniqueId    = cleanName,
 							Description = "Installed local mod.",
 							FolderPath  = dir,
-							IsEnabled   = !folderName.StartsWith("."),
+							IsEnabled   = folderEnabled,
 							NexusID     = extractedNexusId
 						};
 						
@@ -492,12 +514,35 @@ public static class ModFileSystem
 	///
 	/// How a mod is switched off depends on the game. Stardew Valley and the Bethesda games use the long-standing
 	/// leading-dot convention (SMAPI skips dot-prefixed folders, and the manager's deployment skips them too).
-	/// BepInEx ignores folder names entirely, so a Moonlight Peaks mod is moved between <c>BepInEx\plugins</c> and
+	/// The Witcher 3 loads only folders named <c>mod*</c>, so a leading tilde does the same job there. BepInEx
+	/// ignores folder names entirely, so a Moonlight Peaks mod is moved between <c>BepInEx\plugins</c> and
 	/// <c>BepInEx\plugins-disabled</c> instead — see <see cref="BepInExDisabledFolderName"/>.
 	/// </summary>
-	public static string SetModEnabled(string modFolderPath, bool enable, string activeGame)
+	public static string SetModEnabled(string modFolderPath, bool enable, string activeGame,
+		Action<string, string>? logError = null)
 	{
 		string target = ModEnableState.TargetPath(modFolderPath, enable, activeGame);
+
+		// Even when the folder needs no renaming, The Witcher 3's own record of the mod may still disagree with
+		// what the user just asked for, so that is brought into line either way.
+		SyncWitcherModSettings(modFolderPath, enable, activeGame);
+
+		// A Witcher 3 mod's working parts may live outside its folder — the accessibility mod's .asi sits beside
+		// the game exe and is loaded by the game itself, so renaming the folder alone would leave it running.
+		// Done before the rename, while the record of those files is still at this path.
+		if (GameProfiles.Find(activeGame)?.IsWitcher3 == true)
+		{
+			string witcherModsFolder = Path.GetDirectoryName(modFolderPath.TrimEnd(Path.DirectorySeparatorChar)) ?? "";
+			string witcherGameFolder = Path.GetDirectoryName(witcherModsFolder) ?? "";
+
+			SetWitcher3ExtrasEnabled(
+				modFolderPath,
+				Path.GetFileName(modFolderPath.TrimEnd(Path.DirectorySeparatorChar)),
+				enable,
+				activeGame,
+				witcherGameFolder,
+				logError ?? ((_, _) => { }));
+		}
 
 		if (string.Equals(target, modFolderPath, StringComparison.OrdinalIgnoreCase)) return modFolderPath;
 
@@ -507,6 +552,41 @@ public static class ModFileSystem
 
 		Directory.Move(modFolderPath, target);
 		return target;
+	}
+
+	/// <summary>
+	/// Mirrors a Witcher 3 mod's on/off state into the game's own <c>mods.settings</c>, so the in-game mod menu
+	/// says the same thing the manager does. A no-op for every other game.
+	/// </summary>
+	private static void SyncWitcherModSettings(string modFolderPath, bool enable, string activeGame)
+	{
+		GameProfile? profile = GameProfiles.Find(activeGame);
+		if (profile?.IsWitcher3 != true || string.IsNullOrEmpty(modFolderPath)) return;
+
+		// <game>\mods\modFoo — so the game folder is two levels up.
+		string modsFolder = Path.GetDirectoryName(modFolderPath.TrimEnd(Path.DirectorySeparatorChar)) ?? "";
+		string gameFolder = Path.GetDirectoryName(modsFolder) ?? "";
+		if (gameFolder.Length == 0) return;
+
+		string settingsPath = Witcher3ModSettings.PathFor(profile.UserDataDirectoryFor(gameFolder));
+		Witcher3ModSettings.SetEnabled(settingsPath, Path.GetFileName(modFolderPath.TrimEnd(Path.DirectorySeparatorChar)), enable);
+	}
+
+	/// <summary>
+	/// Forgets a Witcher 3 mod in the game's own <c>mods.settings</c> once its folder has gone, so an uninstalled
+	/// mod doesn't linger in the in-game menu. A no-op for every other game.
+	/// </summary>
+	public static void ForgetWitcherMod(string modFolderPath, string activeGame)
+	{
+		GameProfile? profile = GameProfiles.Find(activeGame);
+		if (profile?.IsWitcher3 != true || string.IsNullOrEmpty(modFolderPath)) return;
+
+		string modsFolder = Path.GetDirectoryName(modFolderPath.TrimEnd(Path.DirectorySeparatorChar)) ?? "";
+		string gameFolder = Path.GetDirectoryName(modsFolder) ?? "";
+		if (gameFolder.Length == 0) return;
+
+		string settingsPath = Witcher3ModSettings.PathFor(profile.UserDataDirectoryFor(gameFolder));
+		Witcher3ModSettings.Remove(settingsPath, Path.GetFileName(modFolderPath.TrimEnd(Path.DirectorySeparatorChar)));
 	}
 
 	/// <summary>
@@ -916,17 +996,15 @@ public static class ModFileSystem
 	/// </summary>
 	public static List<(string Label, string Path)> GameIniFiles(string activeGame, string gameFolder)
 	{
-		string folder = UserDataFolderName(activeGame, gameFolder);
-		if (folder.Length == 0) return new List<(string, string)>();
+		GameProfile? profile = GameProfiles.Find(activeGame);
+		if (profile == null || profile.ConfigFileNames.Count == 0) return new List<(string, string)>();
 
-		string prefix = activeGame == "SkyrimSE" ? "Skyrim" : "Fallout4";
-		string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "My Games", folder);
-		return new List<(string, string)>
-		{
-			($"{prefix}.ini",       Path.Combine(dir, $"{prefix}.ini")),
-			($"{prefix}Prefs.ini",  Path.Combine(dir, $"{prefix}Prefs.ini")),
-			($"{prefix}Custom.ini", Path.Combine(dir, $"{prefix}Custom.ini")),
-		};
+		string dir = profile.UserDataDirectoryFor(gameFolder);
+		if (dir.Length == 0) return new List<(string, string)>();
+
+		return profile.ConfigFileNames
+			.Select(name => (name, Path.Combine(dir, name)))
+			.ToList();
 	}
 
 	/// <summary>
@@ -936,11 +1014,15 @@ public static class ModFileSystem
 	/// </summary>
 	public static (string Folder, string Extension) SavesLocation(string activeGame, string gameFolder)
 	{
-		string folder = UserDataFolderName(activeGame, gameFolder);
-		if (folder.Length == 0) return ("", "");
-		string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "My Games", folder, "Saves");
-		string ext = activeGame == "SkyrimSE" ? ".ess" : ".fos";
-		return (dir, ext);
+		GameProfile? profile = GameProfiles.Find(activeGame);
+		if (profile == null ||
+			string.IsNullOrEmpty(profile.SavesFolderName) ||
+			string.IsNullOrEmpty(profile.SaveFileExtension)) return ("", "");
+
+		string dir = profile.UserDataDirectoryFor(gameFolder);
+		if (dir.Length == 0) return ("", "");
+
+		return (Path.Combine(dir, profile.SavesFolderName), profile.SaveFileExtension);
 	}
 
 	/// <summary>The [Archive] keys that together tell the engine to load loose mod files ahead of the packed BA2 archives.</summary>
@@ -1579,7 +1661,8 @@ public static class ModFileSystem
 		string? currentGamePath = null,
 		Func<FomodConfig, Task<FomodSelection?>>? fomodSelector = null,
 		IProgress<double>? installProgress = null,
-		Func<string, string, bool>? confirmOverwrite = null)
+		Func<string, string, bool>? confirmOverwrite = null,
+		Func<string, Task<bool>>? runInstaller = null)
 	{
 		// For Skyrim/Fallout 4 the mod's identity is known up front (its Nexus id or folder name), so a
 		// reinstall can be confirmed before we even extract. Stardew's identity lives in manifest.json inside
@@ -1639,6 +1722,31 @@ public static class ModFileSystem
 				return await FinalizeBepInExModAsync(
 					tempDir, Path.GetFileNameWithoutExtension(zipPath), zipPath, modsPath, installedMods,
 					backupsPath, maxBackups, logError, nexusId, nexusService, gitHubRepo);
+			}
+
+			if (GameProfiles.Find(activeGame)?.IsWitcher3 == true)
+			{
+				// A mod that ships as its author's installer is installed by running it — copying its files into
+				// the mods folder would put most of them in the wrong place. The caller asks the user first and
+				// waits for the installer to finish; only then is the mod treated as installed.
+				string? installerExe = FindInstallerExecutable(tempDir);
+				if (installerExe != null && runInstaller != null)
+				{
+					// Watch the game folder across the installer's run, because that is the only way to learn
+					// what it put there — and without knowing, the mod could never be cleanly removed or
+					// switched off again.
+					var before = SnapshotWitcherGameFolder(currentGamePath ?? "");
+
+					if (!await runInstaller(installerExe))
+						throw new OperationCanceledException("The mod's installer did not complete.");
+
+					return RecordInstallerFootprint(
+						before, currentGamePath ?? "", modsPath, zipPath, nexusId, gitHubRepo, activeGame, logError);
+				}
+
+				return await FinalizeWitcher3ModAsync(
+					tempDir, Path.GetFileNameWithoutExtension(zipPath), zipPath, modsPath, installedMods,
+					backupsPath, maxBackups, activeGame, logError, nexusId, nexusService, gitHubRepo, currentGamePath);
 			}
 
 			if (activeGame != "StardewValley")
@@ -1957,6 +2065,642 @@ public static class ModFileSystem
 		File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
 
 		return targetFolderName;
+	}
+
+	/// <summary>The name the manifest records a Witcher 3 mod's out-of-folder files under.</summary>
+	private const string WitcherExtraPathsKey = "ExtraPaths";
+
+	/// <summary>Where a disabled Witcher 3 mod's out-of-folder files are parked, inside the game folder.</summary>
+	public const string WitcherDisabledExtrasFolderName = "_KinetixDisabledMods";
+
+	/// <summary>
+	/// The parts of a Witcher 3 install a mod can write into. Everything else — above all <c>content</c>, which
+	/// is the game's own packed data and tens of gigabytes of it — is left out, so taking the snapshot below
+	/// costs a moment rather than a disk crawl.
+	/// </summary>
+	private static readonly string[] WitcherModdableFolders = { "mods", "dlc", "bin", "plugins" };
+
+	/// <summary>
+	/// Every file in the places a Witcher 3 mod can install to, with the size and time it was last written.
+	///
+	/// This exists because of a kind of mod the manager cannot otherwise account for: one that installs itself by
+	/// running its author's program. The manager never sees those files being copied, so it has no idea what the
+	/// mod consists of — and a mod it cannot describe is one it cannot cleanly remove or switch off. Taking one
+	/// of these before the installer runs and one after, and comparing them, answers the question the only way
+	/// available: by watching what actually changed on disk.
+	/// </summary>
+	public static Dictionary<string, string> SnapshotWitcherGameFolder(string gameFolder)
+	{
+		var snapshot = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		if (string.IsNullOrEmpty(gameFolder) || !Directory.Exists(gameFolder)) return snapshot;
+
+		try
+		{
+			// Loose files at the game's root, where an ASI loader or a shim DLL usually lands.
+			foreach (string file in Directory.GetFiles(gameFolder))
+				Record(snapshot, gameFolder, file);
+
+			foreach (string folderName in WitcherModdableFolders)
+			{
+				string folder = Path.Combine(gameFolder, folderName);
+				if (!Directory.Exists(folder)) continue;
+
+				foreach (string file in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
+					Record(snapshot, gameFolder, file);
+			}
+		}
+		catch
+		{
+			// A partial snapshot is still worth having: it can only make the recorded footprint smaller, never
+			// make it claim files that aren't the mod's.
+		}
+
+		return snapshot;
+
+		static void Record(Dictionary<string, string> into, string root, string file)
+		{
+			try
+			{
+				var info = new FileInfo(file);
+				into[file.Substring(root.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)]
+					= info.Length + "|" + info.LastWriteTimeUtc.Ticks;
+			}
+			catch { }
+		}
+	}
+
+	/// <summary>
+	/// What an installer added or replaced, as paths relative to the game folder: everything in the folder now
+	/// that wasn't there before, or that is no longer the same file.
+	///
+	/// Files the installer <em>changed</em> rather than created are deliberately included, because that is how
+	/// the interesting ones arrive — an accessibility mod replaces the game's own config XML and rewrites the
+	/// file list that indexes it. They are recorded separately from created ones by the caller so that removing
+	/// the mod can delete what it brought and leave alone what it merely edited.
+	/// </summary>
+	public static (List<string> Added, List<string> Changed) DiffWitcherGameFolder(
+		Dictionary<string, string> before, string gameFolder)
+	{
+		var added = new List<string>();
+		var changed = new List<string>();
+
+		foreach (var entry in SnapshotWitcherGameFolder(gameFolder))
+		{
+			if (!before.TryGetValue(entry.Key, out string? was)) added.Add(entry.Key);
+			else if (!string.Equals(was, entry.Value, StringComparison.Ordinal)) changed.Add(entry.Key);
+		}
+
+		added.Sort(StringComparer.OrdinalIgnoreCase);
+		changed.Sort(StringComparer.OrdinalIgnoreCase);
+		return (added, changed);
+	}
+
+	/// <summary>
+	/// The installer executable inside an extracted archive, or <c>null</c> when it holds none.
+	///
+	/// Some mods are not a folder to be copied but a program to be run — The Witcher 3's accessibility mod is
+	/// one, because what it installs goes to four different places at once: a mod folder, an .asi and its
+	/// screen-reader DLLs beside the game exe, an XML in the game's config matrix (plus a line in the file list
+	/// that indexes it), and an entry in the player's own settings. No file-copying manager reproduces that
+	/// correctly, so the right thing is to let the author's installer do its job.
+	/// </summary>
+	public static string? FindInstallerExecutable(string extractedRoot)
+	{
+		try
+		{
+			string[] exes = Directory.GetFiles(extractedRoot, "*.exe", SearchOption.AllDirectories);
+			if (exes.Length == 0) return null;
+
+			// Named like an installer wins outright; otherwise a single exe in the archive is taken to be one.
+			string? named = exes.FirstOrDefault(e =>
+				Path.GetFileName(e).Contains("install", StringComparison.OrdinalIgnoreCase) ||
+				Path.GetFileName(e).Contains("setup", StringComparison.OrdinalIgnoreCase));
+
+			return named ?? (exes.Length == 1 ? exes[0] : null);
+		}
+		catch
+		{
+			return null;
+		}
+	}
+
+	/// <summary>
+	/// Installs an extracted Witcher 3 mod and returns the name it is listed under.
+	///
+	/// A Witcher 3 mod is a folder under the game's own <c>mods</c> folder whose name begins with <c>mod</c> —
+	/// that prefix is not a convention but the rule the engine loads by, so a mod whose archive unpacks to some
+	/// other name is renamed rather than left never to load. The larger mods also bring parts that belong
+	/// elsewhere in the game: a <c>dlc</c> folder, and menu XMLs under <c>bin</c>. Those are copied where they
+	/// belong and their paths recorded, so uninstalling the mod can take them with it instead of leaving them
+	/// behind for the player to find later.
+	/// </summary>
+	private static async Task<string> FinalizeWitcher3ModAsync(
+		string tempDir, string archiveName, string zipPath, string modsPath, List<GameMod> installedMods,
+		string backupsPath, int maxBackups, string activeGame, Action<string, string> logError,
+		string? nexusId, NexusService? nexusService, string? gitHubRepo, string? currentGamePath)
+	{
+		List<string> modFolders = FindWitcher3ModFolders(tempDir);
+
+		// Nothing named mod* anywhere: an archive that is the mod's insides (a bare content folder) rather than
+		// the mod folder itself. Wrap it in a folder the engine will actually load.
+		string wrapped = "";
+		if (modFolders.Count == 0)
+		{
+			string source = ResolveBethesdaModSource(tempDir);
+			if (!Directory.Exists(Path.Combine(source, "content")))
+				throw new ModArchiveContentException(
+					$"'{Path.GetFileName(zipPath)}' doesn't look like a Witcher 3 mod: it has no folder named mod… " +
+					"and no content folder to make one from.");
+
+			wrapped = source;
+			modFolders.Add(source);
+		}
+
+		string primaryFolderName = "";
+		var extraPaths = new List<string>();
+
+		foreach (string source in modFolders)
+		{
+			string folderName = source == wrapped
+				? WitcherModFolderName(archiveName)
+				: Path.GetFileName(source);
+
+			string dest = Path.Combine(modsPath, folderName);
+
+			// Replacing an existing copy: keep a backup first, exactly as the other games' installs do.
+			GameMod? existing = FindExistingInstall(installedMods, nexusId, folderName);
+			if (existing != null && Directory.Exists(existing.FolderPath))
+			{
+				CreateBackup(existing.FolderPath, folderName, backupsPath);
+				PruneBackups(folderName, backupsPath, maxBackups);
+				ForceDeleteDirectory(existing.FolderPath);
+			}
+
+			// A disabled copy sits under the tilde name and would otherwise survive the reinstall, leaving the
+			// mod installed twice under two names.
+			string disabledTwin = Path.Combine(modsPath, "~" + folderName);
+			if (Directory.Exists(disabledTwin)) ForceDeleteDirectory(disabledTwin);
+			if (Directory.Exists(dest)) ForceDeleteDirectory(dest);
+
+			CopyDirectoryRecursively(source, dest);
+
+			if (primaryFolderName.Length == 0) primaryFolderName = folderName;
+		}
+
+		// The parts that live in the game folder rather than the mods folder.
+		if (!string.IsNullOrEmpty(currentGamePath) && Directory.Exists(currentGamePath))
+		{
+			foreach (string extraName in new[] { "dlc", "bin" })
+			{
+				foreach (string source in FindTopLevelFolders(tempDir, extraName))
+				{
+					string dest = Path.Combine(currentGamePath, extraName);
+					foreach (string file in Directory.GetFiles(source, "*.*", SearchOption.AllDirectories))
+					{
+						string relative = file.Substring(source.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+						string targetFile = Path.Combine(dest, relative);
+						Directory.CreateDirectory(Path.GetDirectoryName(targetFile)!);
+						RobustCopy(file, targetFile);
+						extraPaths.Add(Path.Combine(extraName, relative));
+					}
+				}
+			}
+		}
+
+		string destModFolder = Path.Combine(modsPath, primaryFolderName);
+
+		// The mod's own documentation, so the F3 viewer and the controls list have something to read.
+		CaptureModDocs(tempDir, destModFolder);
+
+		string mName = primaryFolderName;
+		string mVersion = ExtractVersionFromFileName(zipPath, nexusId) ?? "1.0.0";
+		string mAuthor = "Unknown";
+		string mDesc = "Installed local mod.";
+
+		if (!string.IsNullOrEmpty(nexusId) && nexusService != null)
+		{
+			try
+			{
+				var details = await nexusService.GetModDetailsAsync(nexusId);
+				if (details != null)
+				{
+					mName = details["name"]?.ToString() ?? mName;
+					mVersion = details["version"]?.ToString() ?? mVersion;
+					mAuthor = details["author"]?.ToString() ?? mAuthor;
+					mDesc = details["summary"]?.ToString() ?? mDesc;
+				}
+			}
+			catch { }
+		}
+
+		var manifest = new JObject
+		{
+			["Name"] = mName,
+			["Version"] = mVersion,
+			["Author"] = mAuthor,
+			["UniqueID"] = primaryFolderName,
+			["Description"] = mDesc,
+			["NexusID"] = nexusId,
+			["GitHubRepo"] = gitHubRepo,
+			[WitcherExtraPathsKey] = new JArray(extraPaths.Distinct(StringComparer.OrdinalIgnoreCase))
+		};
+		File.WriteAllText(Path.Combine(destModFolder, ".manager_manifest.json"), manifest.ToString(Formatting.Indented));
+
+		// Tell the game's own mod list the new mod is on, so its in-game menu agrees with the manager's.
+		SyncWitcherModSettings(destModFolder, true, activeGame);
+
+		return primaryFolderName;
+	}
+
+	/// <summary>
+	/// Works out what an installer just installed and writes it down, returning the mod's folder name.
+	///
+	/// The mod folder the installer created is the one the manager lists the mod under, so it is taken from what
+	/// actually appeared rather than guessed from the archive's name. Everything else the installer left behind —
+	/// the native plugin beside the game exe, its sounds, the config XML it replaced — is recorded as the mod's
+	/// footprint, which is what makes uninstalling and disabling it possible later.
+	/// </summary>
+	private static string RecordInstallerFootprint(
+		Dictionary<string, string> before, string gameFolder, string modsPath, string zipPath,
+		string? nexusId, string? gitHubRepo, string activeGame, Action<string, string> logError)
+	{
+		string archiveName = Path.GetFileNameWithoutExtension(zipPath);
+		if (string.IsNullOrEmpty(gameFolder)) return WitcherModFolderName(archiveName);
+
+		var (added, changed) = DiffWitcherGameFolder(before, gameFolder);
+
+		// The mod folder is whichever mods\mod* folder the installer created files in.
+		string modFolderName = added.Concat(changed)
+			.Select(WitcherModFolderNameFromRelativePath)
+			.FirstOrDefault(name => name.Length > 0)
+			?? "";
+
+		if (modFolderName.Length == 0) modFolderName = WitcherModFolderName(archiveName);
+
+		string destModFolder = Path.Combine(modsPath, modFolderName);
+		try
+		{
+			Directory.CreateDirectory(destModFolder);
+
+			// The mod's own folder is not part of the footprint: deleting the mod deletes that folder anyway,
+			// and listing its files here would only have them deleted twice.
+			string ownPrefix = Path.Combine("mods", modFolderName) + Path.DirectorySeparatorChar;
+			bool IsOwn(string rel) => rel.StartsWith(ownPrefix, StringComparison.OrdinalIgnoreCase);
+
+			var footprint = added.Where(rel => !IsOwn(rel)).ToList();
+			var edited = changed.Where(rel => !IsOwn(rel)).ToList();
+
+			var manifest = new JObject
+			{
+				["Name"] = modFolderName,
+				["Version"] = ExtractVersionFromFileName(zipPath, nexusId) ?? "1.0.0",
+				["Author"] = "Unknown",
+				["UniqueID"] = modFolderName,
+				["Description"] = "Installed by the mod's own installer.",
+				["NexusID"] = nexusId,
+				["GitHubRepo"] = gitHubRepo,
+				["InstalledByInstaller"] = true,
+				[WitcherExtraPathsKey] = new JArray(footprint),
+				// Files the installer replaced rather than created — the game's own, edited in place. Removing
+				// the mod must not delete these; they are recorded so the manager can say what was touched.
+				["EditedPaths"] = new JArray(edited)
+			};
+
+			File.WriteAllText(
+				Path.Combine(destModFolder, ".manager_manifest.json"),
+				manifest.ToString(Formatting.Indented));
+		}
+		catch (Exception ex)
+		{
+			logError(destModFolder, "Could not record what the installer installed: " + ex.Message);
+		}
+
+		SyncWitcherModSettings(destModFolder, true, activeGame);
+		return modFolderName;
+	}
+
+	/// <summary>The mod folder name in a path like <c>mods\modFoo\content\…</c>, or <c>""</c> when it isn't one.</summary>
+	private static string WitcherModFolderNameFromRelativePath(string relativePath)
+	{
+		string[] parts = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+		if (parts.Length < 2) return "";
+		if (!parts[0].Equals("mods", StringComparison.OrdinalIgnoreCase)) return "";
+		return parts[1].StartsWith("mod", StringComparison.OrdinalIgnoreCase) ? parts[1] : "";
+	}
+
+	/// <summary>
+	/// Every folder in the extracted archive that is a Witcher 3 mod folder — one named <c>mod*</c> that isn't
+	/// itself inside another. An archive holding several is normal: mods routinely ship an optional patch or a
+	/// compatibility variant as a second mod folder beside the first.
+	/// </summary>
+	private static List<string> FindWitcher3ModFolders(string root)
+	{
+		var found = new List<string>();
+		try
+		{
+			foreach (string dir in Directory.GetDirectories(root, "*", SearchOption.AllDirectories))
+			{
+				string name = Path.GetFileName(dir);
+				if (!name.StartsWith("mod", StringComparison.OrdinalIgnoreCase)) continue;
+
+				// Skip one nested inside a mod folder already collected — those are the mod's own contents.
+				if (found.Any(f => dir.StartsWith(f + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)))
+					continue;
+
+				found.Add(dir);
+			}
+		}
+		catch { }
+		return found;
+	}
+
+	/// <summary>Folders called <paramref name="name"/> anywhere in the extracted archive that aren't nested inside
+	/// a mod folder (a mod's own <c>bin</c> belongs to the mod, not to the game).</summary>
+	private static List<string> FindTopLevelFolders(string root, string name)
+	{
+		var result = new List<string>();
+		try
+		{
+			foreach (string dir in Directory.GetDirectories(root, "*", SearchOption.AllDirectories))
+			{
+				if (!Path.GetFileName(dir).Equals(name, StringComparison.OrdinalIgnoreCase)) continue;
+
+				string parent = Path.GetFileName(Path.GetDirectoryName(dir) ?? "");
+				if (parent.StartsWith("mod", StringComparison.OrdinalIgnoreCase)) continue;
+
+				result.Add(dir);
+			}
+		}
+		catch { }
+		return result;
+	}
+
+	/// <summary>
+	/// A folder name The Witcher 3 will load, made from an archive's name: stripped of the download suffixes
+	/// Nexus adds, and given the <c>mod</c> prefix the engine insists on if it hasn't got one.
+	/// </summary>
+	private static string WitcherModFolderName(string archiveName)
+	{
+		string cleaned = SanitiseFolderName(
+			System.Text.RegularExpressions.Regex.Replace(archiveName, @"-\d{3,9}-.*$", "").Trim());
+
+		if (cleaned.Length == 0) cleaned = "Mod";
+		cleaned = cleaned.Replace(" ", "");
+
+		return cleaned.StartsWith("mod", StringComparison.OrdinalIgnoreCase) ? cleaned : "mod" + cleaned;
+	}
+
+	/// <summary>
+	/// Deletes the files a Witcher 3 mod put outside its own folder — the <c>dlc</c> and <c>bin</c> parts recorded
+	/// when it was installed. Called before the mod folder itself goes, since that is where the record lives.
+	/// </summary>
+	public static void RemoveWitcher3Extras(string modFolderPath, string activeGame, string gameFolder, Action<string, string> logError)
+	{
+		if (GameProfiles.Find(activeGame)?.IsWitcher3 != true) return;
+		if (string.IsNullOrEmpty(gameFolder) || string.IsNullOrEmpty(modFolderPath)) return;
+
+		try
+		{
+			// A mod that is currently disabled has these files parked outside the game; delete that copy too, or
+			// uninstalling would leave them behind where the user can't see them.
+			string parked = Path.Combine(
+				gameFolder, WitcherDisabledExtrasFolderName,
+				Witcher3ModSettings.BareName(Path.GetFileName(modFolderPath.TrimEnd(Path.DirectorySeparatorChar))));
+			if (Directory.Exists(parked)) ForceDeleteDirectory(parked);
+		}
+		catch (Exception ex)
+		{
+			logError(modFolderPath, "Could not remove the mod's parked files: " + ex.Message);
+		}
+
+		string manifestPath = Path.Combine(modFolderPath, ".manager_manifest.json");
+		if (!File.Exists(manifestPath)) return;
+
+		try
+		{
+			JObject manifest = JObject.Parse(File.ReadAllText(manifestPath));
+			if (manifest[WitcherExtraPathsKey] is not JArray extras) return;
+
+			foreach (JToken entry in extras)
+			{
+				string? relative = entry?.ToString();
+				if (string.IsNullOrEmpty(relative)) continue;
+
+				string full = Path.GetFullPath(Path.Combine(gameFolder, relative));
+
+				// Never step outside the game folder, whatever the manifest says.
+				if (!full.StartsWith(Path.GetFullPath(gameFolder), StringComparison.OrdinalIgnoreCase)) continue;
+				if (!File.Exists(full)) continue;
+
+				File.SetAttributes(full, FileAttributes.Normal);
+				File.Delete(full);
+
+				// Take the folder too once the mod's last file has left it, but never a folder of the game's own.
+				string? dir = Path.GetDirectoryName(full);
+				if (dir != null && Directory.Exists(dir) &&
+					!Directory.EnumerateFileSystemEntries(dir).Any() &&
+					!IsWitcherGameOwnedFolder(dir, gameFolder))
+					Directory.Delete(dir);
+			}
+		}
+		catch (Exception ex)
+		{
+			logError(modFolderPath, "Could not remove the mod's files outside its folder: " + ex.Message);
+		}
+	}
+
+	/// <summary>
+	/// Moves a Witcher 3 mod's out-of-folder files out of the game (when disabling) or back into it (when
+	/// enabling), and reports how many moved.
+	///
+	/// Renaming the mod folder is enough for a mod that is only a mod folder. It is not enough for one whose
+	/// working parts live elsewhere: the accessibility mod's <c>.asi</c> sits beside the game's executable and is
+	/// loaded by the game itself, so a "disabled" mod whose <c>.asi</c> is still there goes on running — which is
+	/// the same trap BepInEx mods posed, where a renamed folder kept loading. Those files are parked in a folder
+	/// inside the game install and put back, byte for byte, on enabling.
+	/// </summary>
+	public static int SetWitcher3ExtrasEnabled(
+		string modFolderPath, string modFolderName, bool enable, string activeGame, string gameFolder,
+		Action<string, string> logError)
+	{
+		if (GameProfiles.Find(activeGame)?.IsWitcher3 != true) return 0;
+		if (string.IsNullOrEmpty(gameFolder) || string.IsNullOrEmpty(modFolderPath)) return 0;
+
+		List<string> extras = ReadWitcherExtraPaths(modFolderPath);
+		if (extras.Count == 0) return 0;
+
+		string parked = Path.Combine(gameFolder, WitcherDisabledExtrasFolderName, Witcher3ModSettings.BareName(modFolderName));
+		int moved = 0;
+
+		foreach (string relative in extras)
+		{
+			try
+			{
+				string inGame = Path.GetFullPath(Path.Combine(gameFolder, relative));
+				string outOfGame = Path.GetFullPath(Path.Combine(parked, relative));
+
+				// Never step outside the game folder, whatever the manifest says.
+				if (!inGame.StartsWith(Path.GetFullPath(gameFolder), StringComparison.OrdinalIgnoreCase)) continue;
+
+				string from = enable ? outOfGame : inGame;
+				string to = enable ? inGame : outOfGame;
+
+				if (!File.Exists(from)) continue;
+				if (File.Exists(to)) File.Delete(to);
+
+				Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+				File.Move(from, to);
+				moved++;
+			}
+			catch (Exception ex)
+			{
+				logError(relative, $"Could not {(enable ? "restore" : "park")} a file belonging to the mod: " + ex.Message);
+			}
+		}
+
+		// Leave nothing behind once the last file has gone back.
+		if (enable)
+		{
+			try
+			{
+				if (Directory.Exists(parked) && !Directory.EnumerateFiles(parked, "*", SearchOption.AllDirectories).Any())
+					Directory.Delete(parked, recursive: true);
+			}
+			catch { }
+		}
+
+		return moved;
+	}
+
+	/// <summary>An uninstaller Windows has registered for a mod that installed itself into the game folder.</summary>
+	public sealed record ModUninstaller(string DisplayName, string Command, string RegistryKeyPath);
+
+	/// <summary>
+	/// The uninstaller registered by a mod that installed itself into <paramref name="gameFolder"/>, or
+	/// <c>null</c> when there is none.
+	///
+	/// A mod that ships as a setup program usually leaves an uninstaller behind, and that uninstaller is a far
+	/// better answer than anything the manager can work out for itself: it holds the installer's own record of
+	/// every file it wrote, including the ones in places the manager would never think to look. The Witcher 3's
+	/// accessibility mod is built with Inno Setup and does exactly this, leaving <c>unins000.exe</c> in the game
+	/// folder.
+	///
+	/// Candidates are recognised by where they point — an uninstaller living inside the game folder was put there
+	/// by something that installed into the game — and preferred by name when one matches the mod.
+	/// </summary>
+	public static ModUninstaller? FindUninstallerInsideGame(string gameFolder, string modFolderName)
+	{
+		if (string.IsNullOrEmpty(gameFolder)) return null;
+
+		var candidates = new List<ModUninstaller>();
+		string root;
+		try { root = Path.GetFullPath(gameFolder).TrimEnd(Path.DirectorySeparatorChar); }
+		catch { return null; }
+
+		(Microsoft.Win32.RegistryKey Hive, string Path)[] places =
+		{
+			(Microsoft.Win32.Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+			(Microsoft.Win32.Registry.LocalMachine, @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"),
+			(Microsoft.Win32.Registry.CurrentUser,  @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+		};
+
+		foreach (var place in places)
+		{
+			try
+			{
+				using var uninstallKey = place.Hive.OpenSubKey(place.Path);
+				if (uninstallKey == null) continue;
+
+				foreach (string subKeyName in uninstallKey.GetSubKeyNames())
+				{
+					try
+					{
+						using var entry = uninstallKey.OpenSubKey(subKeyName);
+						string? command = entry?.GetValue("UninstallString")?.ToString();
+						if (string.IsNullOrEmpty(command)) continue;
+
+						// Only ever an uninstaller that lives inside this game's folder. Anything else belongs to
+						// a program that has nothing to do with the mod being removed.
+						if (command.IndexOf(root, StringComparison.OrdinalIgnoreCase) < 0) continue;
+
+						candidates.Add(new ModUninstaller(
+							entry?.GetValue("DisplayName")?.ToString() ?? subKeyName,
+							command,
+							place.Path + "\\" + subKeyName));
+					}
+					catch { }
+				}
+			}
+			catch { }
+		}
+
+		if (candidates.Count == 0) return null;
+
+		// Prefer one whose name looks like this mod's — "modWitcherAccess" against "WitcherAccess v0.2".
+		string bare = Witcher3ModSettings.BareName(modFolderName);
+		if (bare.StartsWith("mod", StringComparison.OrdinalIgnoreCase)) bare = bare.Substring(3);
+
+		return candidates.FirstOrDefault(c =>
+				bare.Length > 0 && c.DisplayName.Contains(bare, StringComparison.OrdinalIgnoreCase))
+			?? candidates[0];
+	}
+
+	/// <summary>
+	/// Whether <paramref name="uninstaller"/>'s registry entry is still there.
+	///
+	/// Needed because of how a silent Inno Setup uninstall behaves: the executable copies itself to a temporary
+	/// folder, starts that copy and exits immediately, so waiting on the process the manager started proves
+	/// nothing. The entry disappearing is the real signal that the uninstall has finished.
+	/// </summary>
+	public static bool UninstallerStillRegistered(ModUninstaller uninstaller)
+	{
+		foreach (Microsoft.Win32.RegistryKey hive in
+			new[] { Microsoft.Win32.Registry.LocalMachine, Microsoft.Win32.Registry.CurrentUser })
+		{
+			try
+			{
+				using var key = hive.OpenSubKey(uninstaller.RegistryKeyPath);
+				if (key?.GetValue("UninstallString") != null) return true;
+			}
+			catch { }
+		}
+		return false;
+	}
+
+	/// <summary>The out-of-folder files recorded for a mod, or an empty list when it has none.</summary>
+	private static List<string> ReadWitcherExtraPaths(string modFolderPath)
+	{
+		var paths = new List<string>();
+		try
+		{
+			string manifestPath = Path.Combine(modFolderPath, ".manager_manifest.json");
+			if (!File.Exists(manifestPath)) return paths;
+
+			if (JObject.Parse(File.ReadAllText(manifestPath))[WitcherExtraPathsKey] is not JArray extras) return paths;
+
+			foreach (JToken entry in extras)
+			{
+				string? relative = entry?.ToString();
+				if (!string.IsNullOrEmpty(relative)) paths.Add(relative);
+			}
+		}
+		catch { }
+		return paths;
+	}
+
+	/// <summary>
+	/// True for the game's own folders, which must survive a mod's removal however empty they look. The two
+	/// executable folders are named because they are where an ASI-style mod puts most of its files, and an
+	/// over-eager tidy-up there would take the game's executable folder with it.
+	/// </summary>
+	private static bool IsWitcherGameOwnedFolder(string folder, string gameFolder)
+	{
+		string full = Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar);
+		foreach (string own in new[] { "dlc", "bin", "mods", @"bin\x64", @"bin\x64_dx12", @"bin\config" })
+			if (full.Equals(Path.GetFullPath(Path.Combine(gameFolder, own)).TrimEnd(Path.DirectorySeparatorChar),
+					StringComparison.OrdinalIgnoreCase))
+				return true;
+		return false;
 	}
 
 	/// <summary>

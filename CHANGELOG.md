@@ -1,6 +1,33 @@
 # Unreleased
 
-Moonlight Peaks joins the manager as a fully supported game, alongside Stardew Valley, Skyrim Special Edition and Fallout 4.
+Moonlight Peaks and The Witcher 3 join the manager as fully supported games, alongside Stardew Valley, Skyrim Special Edition and Fallout 4.
+
+---
+
+## ✨ New: The Witcher 3: Wild Hunt support
+
+### 🐺 A fifth game
+*   **The Witcher 3: Wild Hunt** now appears in the game list, the **Games** menu, the Settings paths picker and the store links. It is found automatically wherever it is installed, on any drive — and under **either** of the two Steam app ids it sells under (Wild Hunt and the Complete Edition) and **either** GOG edition, so it is found whichever version you own.
+*   It gets what the other games get: the installed mod list, install and uninstall, enable and disable, backups, profiles, collections, mod notes, the Nexus **Find New Mods** search, update checks, endorsements and the API-request counter — all against The Witcher 3's own Nexus listing.
+*   A **Witcher Wiki** tab (searchable, with categories), a **Witcher 3 Walkthroughs** tab of quest, bestiary, alchemy, character-development and Gwent guides, and the Nexus modding wiki in the **Mod Wikis** dropdown.
+*   **Edit Game Configuration** opens `user.settings` and `input.settings`; the **Save Manager** handles the saves in `Documents\The Witcher 3\gamesaves`; the **log tab** shows what mods write beside the game exe.
+*   **F5 starts the game itself, not its launcher.** The Witcher 3 normally opens through `REDprelauncher.exe` — a graphical window a screen reader cannot use, and the thing that decides between the DirectX 11 and DirectX 12 builds. The manager now starts `bin\x64\witcher3.exe` directly, the **DirectX 11** build the accessibility mod is developed against, from wherever your copy is installed.
+
+### 📁 Mods that load, rather than mods that sit there
+*   The Witcher 3 loads a folder in `mods` **only if it is named `mod` something**, and says nothing at all when it isn't — the game starts perfectly and the mod simply never runs. Installing from an archive that unpacks to another name now **renames it so it loads**.
+*   **Disabling a mod prefixes its folder with `~`**, which is what takes it out of the running for that same reason. Enabling takes it back off.
+*   The game keeps its own list of mods in `mods.settings`, and that list is what its **in-game mod menu** shows. The manager now keeps it in step, so the two never disagree — and deleting a mod removes its entry rather than leaving a ghost in the menu.
+*   Mods that also install a **`dlc` folder or menu XMLs under `bin`** have those parts put where they belong **and remembered**, so uninstalling takes them with it instead of leaving them behind.
+
+### 💿 Mods that install themselves
+*   Some mods — the accessibility mod among them — ship as their author's **installer program**, because what they install goes to four places at once that no file copy would get right. The manager now **downloads and unpacks the archive, finds the installer, asks before running anything, and waits** while you go through it. When the installer closes, the manager picks up again and adds the mod to your list exactly as it would any other install.
+*   **And it now knows what the installer did.** The manager takes a record of the game folder before the installer runs and again afterwards, and keeps the difference as the mod's footprint — the plugin beside the game exe, its sounds folder, the config XML it replaced. Without that, a mod installed this way could never be cleanly removed or switched off, because the manager never saw those files arrive.
+*   **Deleting such a mod runs its own uninstaller**, when it registered one, rather than guessing: the uninstaller holds the installer's own list of every file it wrote. You are asked first, and declining still removes the mod folder as before.
+*   **Disabling one now actually disables it.** Renaming the mod folder does nothing to a plugin sitting beside the game's executable — the game loads it regardless, exactly as BepInEx once kept loading renamed Moonlight Peaks mods. Those files are now moved out of the game into a holding folder and moved back, unchanged, when you enable the mod again.
+
+### ⌨️ Controls read from your own game
+*   The Witcher 3 writes every key binding into `input.settings` and rewrites it whenever you remap one, so the controls list (**Ctrl+H**) shows **your real, current keys** — no plugin needed, and no "these are the defaults" caveat.
+*   A key that does several things in different places lists all of them, because all of them are true. Movement reads as **Move Forward / Backward / Left / Right** rather than as the raw controller axis the file actually stores. Controller bindings are left out of a keyboard list.
 
 ---
 
