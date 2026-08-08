@@ -166,26 +166,24 @@ fifth; it shipped 2026-08-03.)
     IDs rather than "latest main file", so a shared setup reinstalls as the same versions rather than whatever
     happens to be current.
 
-**Parked by decision (2026-08-04), with the groundwork already understood:**
-*   **Owning two copies of the same game (Steam and GOG at once)** — deliberately not built. A single-copy GOG
-    user is correct as of 2026-08-04, when the GOG per-player data folder was fixed; only someone with BOTH
-    copies installed is affected, and the Settings game-path field is a manual way through. Revisit if a real
-    user hits it. The design was worked out before parking, so picking it up is not a fresh start:
-    - The chooser itself is small: detect every copy, ask which when more than one is found and none chosen
-      yet, remember it per game, and offer a Mods-menu item to switch later.
-    - The substance is that three things kept per GAME are really per INSTALL, and sharing them fails
-      SILENTLY, which is why a chooser alone would make matters worse rather than better:
-      (1) `DeploymentManifest` (`deployment/<game>.json`) records what is deployed into the game folder — shared,
-          it believes mods are deployed when they are in the other copy's Data folder, so mods read as enabled
-          and simply are not there;
-      (2) `AppSettings.LastSeenGameVersion` drives the game-update guardian — two copies are different builds,
-          so every switch would announce a game update that never happened;
-      (3) plugins.txt / INIs / saves — ALREADY per-install as of 2026-08-04, see `GameProfile.UserDataFolderFor`.
-    - What should stay shared either way: the mod staging folder and the installed list, so a mod is installed
-      once and deployed to whichever copy is active.
-    - The alternative considered and not chosen: a separate game entry ("Skyrim Special Edition (GOG)"), which
-      is what MO2 and Vortex both do. It gets the state separation free from the existing per-game machinery,
-      at the cost of an extra entry in the games list and installing mods once per copy.
+**Shipped 2026-08-07, having been parked on 2026-08-04:**
+*   **Owning two copies of the same game (Steam and GOG at once)** — built after the GOG tester asked for it,
+    which is precisely the "revisit if a real user hits it" condition this was parked under. Worth recording how
+    it was resolved, because the parked design guessed wrong about the shape:
+    - The parked plan was a chooser plus surgery on the three things kept per GAME that are really per INSTALL.
+      What actually shipped is one change with the same effect: **the key itself identifies the copy.** An
+      install key is the bare game id for a game's first copy and `<gameId>@<platform>` for a second, so every
+      per-game dictionary and every `%AppData%` folder became per-copy at once, with no migration — an existing
+      settings file is already correct, because a single-copy owner's key is still the bare game id.
+    - The alternative "considered and not chosen" — a separate games-list entry per copy, as MO2 and Vortex do —
+      is what shipped, because that is what the user asked for and it is what a screen-reader user can actually
+      navigate. The parked note's objection was "installing mods once per copy"; that turns out to be the point,
+      not the cost, since a copy having its own mods is the thing that was broken.
+    - The real risk was not the state separation but the ~190 places comparing a game string to a bare id
+      (`game == "SkyrimSE"`), which a `@Gog` key fails silently. `GameProfiles.IsGame` replaces them and
+      `InstallKeyGuardTests` fails the build if one comes back. Add to that list, do not work around it.
+    - Deliberately still per GAME rather than per install: the LOOT masterlist cache (`masterlists/<game>`), which
+      is published data about the game and identical for both copies.
 
 **Waiting on something outside the code:**
 *   **Cyberpunk 2077 as a sixth game** (added 2026-08-06) — wanted, and blocked only on having the game and its

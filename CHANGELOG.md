@@ -4,6 +4,35 @@ Moonlight Peaks and The Witcher 3 join the manager as fully supported games, alo
 
 ---
 
+## ✨ New: Two copies of the same game, and the right file for the one you're on
+
+### 🎮 Own a game twice? Both copies now show up
+*   If you own the **same game on both Steam and GOG**, both copies now appear in the **Games** menu, each named by its store — "Skyrim Special Edition (Steam)" and "Skyrim Special Edition (GOG)". The store is only shown when there are actually two copies to tell apart, so nothing looks any different if you own one.
+*   **Each copy keeps its own everything**: its own mod list, load order, plugin order, mod priorities, conflict overrides, profiles, backups, downloads, save backups and search history. Switching between them switches all of it, and the title bar and every report say which copy you are in.
+*   Before this, the two copies shared all of that, and shared it **silently** — mods showed as deployed when their files were actually in the other copy's `Data` folder. Nothing warned you, because as far as the manager was concerned there was only ever one Skyrim.
+*   Copies are told apart by **what is in the folder, not where it is**: every GOG install leaves a marker file behind, which is the evidence used. This matters because GOG installs "Skyrim Special Edition" into a folder called "Skyrim Anniversary Edition", and because a Steam copy sitting in a folder named "GOG Games" must not be mistaken for a GOG one.
+*   When a second copy turns up, the manager **says so once**, names it and says where it is, and leaves the choice of which to use to you.
+*   Nothing changes for anyone who owns one copy of each game: existing settings, mods and history are carried over untouched, with no re-detection and nothing to redo.
+
+### 📁 Mods can live in the game folder now
+*   Skyrim SE and Fallout 4 stage their mods in the manager's own folder. You can now **keep them inside the game folder instead**, in a `KinetixMods` folder — which is what Stardew Valley, Moonlight Peaks and The Witcher 3 already do. Settings → Paths, per copy.
+*   Two reasons to want it: the mods travel with the game, and because they end up on the same drive as it, the manager can **link** files into the game instead of copying them, which stops a large setup taking up twice the space.
+*   One reason to think about it first, which the manager now says plainly before moving anything: **uninstalling the game through Steam or GOG deletes the game folder, and the mods inside it go too.** Verifying the game's files can remove them as well.
+*   Existing setups are left exactly where they are — nothing moves unless you ask. Copies the manager meets for the first time start out in the game folder.
+*   Nothing is deleted during a move: the mods are copied across first and only removed from the old place once they have all arrived.
+
+### 🔌 The right SKSE, and the Engine Fixes part everyone misses
+*   **SKSE now matches your game.** It ships a different build for each game version — and the Steam and GOG copies of Skyrim are different versions, `1.6.1170` against `1.6.1179`. The manager reads the build straight off your game's own program file and fetches the matching one. Previously it took whichever file the author had marked as the main download, which is the **Steam** build — so if you play the GOG copy you were given an SKSE that installs perfectly and then silently never loads. The same applies to F4SE and Fallout 4's version.
+*   **SSE Engine Fixes needs two downloads from the same page**, and the second one — the preloader — is a loose file that goes next to the game's program file rather than in the mods folder. Miss it and the mod cannot load. The manager now handles both halves for **every** account, not just Nexus Premium ones.
+*   **If you are not a Nexus Premium member**, the manager can no longer download for you — but it can now still work out exactly which file you need, open the page showing **only that file**, say what it is called and where it goes, and install it properly when it comes back. Previously it opened the whole Files tab and left you to find the right one among more than a hundred entries.
+*   **Check My Setup now reports a half-installed mod**, so a missing preloader is caught however the mod arrived — installed by hand, from a Collection, or through the Mod Organizer 2 import — with a key to fetch the missing part there and then.
+
+### 🐛 Fixed
+*   The **script extender log** (SKSE/F4SE) opened the Steam copy's log even when you were working on the GOG copy, for the same reason the load order used to: the folder name was assumed rather than looked up.
+*   SKSE used to be fetched by **reading silverlock.org's front page** and taking the first link that looked right, falling back to a version hard-coded into the manager when that failed. It had no way of knowing which game version you were on. That is gone; Nexus carries the same builds and says which version each one is for.
+
+---
+
 ## ✨ New: The Witcher 3: Wild Hunt support
 
 ### 🐺 A fifth game

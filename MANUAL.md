@@ -85,7 +85,7 @@ Open the Settings Dashboard at any time with **Ctrl + P**. Everything you can co
 
 ### What's on each tab
 
-*   **Paths & Account** — Choose which game you're configuring, set its mods and game folders (with **Browse** buttons), and enter your **Nexus API Key**.
+*   **Paths & Account** — Choose which game you're configuring, set its mods and game folders (with **Browse** buttons), and enter your **Nexus API Key**. If you own the same game twice, each copy is listed separately here so you can set each one's folders — see "Owning the Same Game Twice" below. For Skyrim and Fallout 4 there is also a **"Store this copy's mods inside the game folder"** checkbox, described in that same section.
 *   **Startup** — Show or hide the splash screen, choose whether to check for mod and manager updates at launch, and turn the spoken **welcome** and **goodbye** messages on or off.
 *   **Audio** — All sound options (see below).
 *   **Display** — Low-vision visual options: a **high-contrast colour scheme** (white-on-black, yellow-on-black, or black-on-yellow) and a **text size** (Normal, Large, or Extra Large). Both apply across the whole program and take effect as soon as you save — no restart needed. They change only what's drawn on screen and never affect screen-reader speech, so leaving them at their defaults keeps the normal appearance.
@@ -100,6 +100,49 @@ Open the Settings Dashboard at any time with **Ctrl + P**. Everything you can co
 *   **Set theme manually / Current Audio Theme** — By default the sound theme follows the game you're managing; check **Set theme manually** to choose a specific theme from the dropdown instead.
 *   **Random Logo at Startup / Select Specific Logo** — These appear only when **Show Splash Screen** (on the Startup tab) is enabled, and let you pick which startup logo sound plays.
 *   **Download and install feedback** — Choose how long downloads and installs report progress: **Tones**, **Speech**, **Both**, or **Off**. This is independent of the **Enable UI Sounds** switch above, so you can keep progress feedback even with the other sounds turned off (or vice versa).
+
+---
+
+## Owning the Same Game Twice
+
+Some people own a game on **both Steam and GOG** — bought it once, then picked it up again in a sale, or kept a DRM-free copy alongside the Steam one. The manager treats those as two separate games, because that is what they are.
+
+### Both copies in the Games menu
+
+When two copies of a game are found, the **Games** menu lists each one with its store in the name: *"Skyrim Special Edition (Steam)"* and *"Skyrim Special Edition (GOG)"*. The store is named **only** when there are two copies to tell apart, so if you own one copy of a game its entry reads exactly as it always has.
+
+The title bar names the copy you are in too, so you always know which one you are working on without having to check.
+
+The first time a second copy turns up, the manager tells you it found one and where it is. It does not choose for you — both are in the menu, and you switch between them the same way you switch games.
+
+### Each copy keeps its own mods
+
+Switching between copies switches **everything** that belongs to that copy: its installed mods, load order, plugin order, mod priorities, conflict overrides, profiles, backups, downloads, save backups and search history.
+
+This is the part worth knowing: **installing a mod for one copy does not install it for the other.** They are separate setups. If you want the same mods in both, install them in both.
+
+Your saves, INI files and load order were already kept separate by the two copies themselves — Skyrim's GOG release stores those under a different folder name than the Steam release does — and the manager follows that.
+
+### Which copy is which
+
+The manager works out a copy's store from **what is in its folder**, not from where the folder is. Every GOG install leaves a small marker file behind, and that is what gets checked. This matters more than it sounds: GOG installs "Skyrim Special Edition" into a folder called *"Skyrim Anniversary Edition"*, and a Steam copy could easily be sitting in a folder called "GOG Games" without being a GOG copy at all.
+
+### Where a copy's mods are stored
+
+Skyrim SE and Fallout 4 normally stage their mods in the manager's own folder, away from the game. On the **Paths & Account** tab of Settings there is a checkbox — **"Store this copy's mods inside the game folder"** — that puts them in a `KinetixMods` folder inside the game instead, which is what Stardew Valley, Moonlight Peaks and The Witcher 3 already do.
+
+Two reasons you might want that:
+
+*   The mods travel with the game — useful when you have two copies and want each to be self-contained.
+*   Because they end up on the same drive as the game, the manager can **link** files into the game rather than copying them, so a large setup does not take up twice the space.
+
+One reason to think about it first, which the manager says before it moves anything:
+
+*   **Uninstalling the game through Steam or GOG deletes the game folder, and your mods go with it.** Using the store's "verify game files" option can remove them too. In the manager's own folder they survive both.
+
+Ticking or unticking the box moves the mods straight away, after asking. Nothing is deleted during the move: the mods are copied to the new place first and only removed from the old one once they have all arrived, so if anything goes wrong they are still where they were.
+
+If you already have mods staged in the manager's folder, they stay there until you choose otherwise — an update never moves them for you.
 
 ---
 
@@ -511,6 +554,18 @@ There are two ways to get the missing mods:
 
 You can mix the two approaches freely, and you can re-open the installer at any time to check what's still missing.
 
+### Getting the right file, and getting all of it
+
+Some mod pages hold more than one download, and picking the wrong one — or missing one entirely — leaves you with a mod that installs perfectly and then does nothing. The manager now sorts both cases out for you.
+
+**The right build of SKSE and F4SE.** These ship a separate file for each version of the game, and installing one built for a different version means it silently never loads. This bites hardest if you own Skyrim on **both** Steam and GOG, because the two are different versions — the GOG release is a slightly higher build number than the Steam one, and each has its own SKSE file on the same Nexus page. The manager reads the version straight off your game's own program file and fetches the file that matches **the copy you are in**, so the GOG copy gets the GOG build without you having to know any of this.
+
+**SSE Engine Fixes needs two downloads.** Its main plugin installs like a normal mod, but it also needs a second file from the same page — the **preloader** — which goes loose in the game folder next to the game's program file rather than into the mods folder. Without it the main plugin cannot load. It is easy to miss, because nothing tells you it exists unless you read all the way down the Files tab. The manager fetches both halves and puts each where it belongs.
+
+**If you are not a Nexus Premium member**, the manager cannot download for you — that restriction is Nexus's, not the manager's. What it does instead is remove the guesswork: it works out exactly which file you need, opens the page showing **only that file**, tells you what the file is called and where it goes, and then installs it properly when it comes back. Use the **Mod Manager Download** button and the file returns to the manager on its own. When a mod comes in two parts you are walked through them one at a time.
+
+**If a mod is already half-installed**, **Check My Setup** (Ctrl + Shift + K) reports it — for example *"SSE Engine Fixes is installed but incomplete: Part 2 — the preloader is missing"* — with **Enter** on that line to fetch the missing part. This works no matter how the mod arrived: installed by hand, brought in by a Collection, or carried over by the Mod Organizer 2 import.
+
 **Uninstalling the script extender (Skyrim & Fallout 4):** SKSE and F4SE install into the game folder itself rather than as normal mods, so they don't show up in your mod list. To remove one cleanly, open the **Mods** menu → **Game and Maintenance** and choose **"Uninstall Script Extender (SKSE/F4SE)"**. The manager removes the files it installed (asking you to confirm first). Remember that anything relying on the script extender — including the Mod Configuration Menu — stops working until you reinstall it, so only do this if you mean to.
 
 ---
@@ -687,7 +742,7 @@ The reports in the **Mods menu → Health and Reports** submenu help you spot pr
 
 ### Check My Setup (Setup Health Check) (Ctrl + Shift + K)
 
-If you'd rather run everything at once than open each report separately, choose **Check My Setup** (or press **Ctrl + Shift + K**). It runs all the individual checks in one pass — **missing requirements** (missing masters, script extender, and Nexus requirements), the **plugin limit**, **known-broken or incompatible mods**, and **file conflicts** — and gives you a **single spoken summary** broken down by category, for example *"Setup health check found 3 problems: 1 missing requirement, 2 broken or incompatible mods."* If everything's fine it says *"No problems found. Your setup looks healthy."*
+If you'd rather run everything at once than open each report separately, choose **Check My Setup** (or press **Ctrl + Shift + K**). It runs all the individual checks in one pass — **missing requirements** (missing masters, script extender, and Nexus requirements), the **plugin limit**, **incomplete mods** (a mod that needs two downloads and only got one, such as SSE Engine Fixes without its preloader — press **Enter** on that line to fetch the missing part), **known-broken or incompatible mods**, and **file conflicts** — and gives you a **single spoken summary** broken down by category, for example *"Setup health check found 3 problems: 1 missing requirement, 2 broken or incompatible mods."* If everything's fine it says *"No problems found. Your setup looks healthy."*
 
 The findings then appear as one combined list, most serious first. Each row keeps the same actions it has in its own report: press **Enter** to search for or open a missing mod, **Delete** to hide a requirement warning that doesn't apply to you, or **F9** to ask the AI about that finding (if AI is set up). This is the quickest way to check a setup is sound — for example after installing several mods, or before launching.
 
