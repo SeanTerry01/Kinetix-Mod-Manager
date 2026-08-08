@@ -733,6 +733,62 @@ public class NexusService
 	}
 
 	/// <summary>
+	/// Every file on a mod's Files tab.
+	///
+	/// Open to <b>every</b> account, premium or not — it is only <c>download_link.json</c> that is premium-gated.
+	/// That distinction is what lets the manager work out precisely which file a free user needs and send them
+	/// straight to it, instead of opening the Files tab and leaving them to pick the right build by hand.
+	///
+	/// Returns an empty list rather than throwing: not knowing the file list is a reason to fall back to opening
+	/// the mod page, not a reason to fail an install the user asked for.
+	/// </summary>
+	public async Task<List<NexusFileInfo>> GetModFilesAsync(string modId)
+	{
+		try
+		{
+			using var req = BuildRequest(HttpMethod.Get,
+				$"https://api.nexusmods.com/v1/games/{CurrentGameDomain}/mods/{modId}/files.json");
+			using var resp = await HttpClient.SendAsync(req);
+			if (!resp.IsSuccessStatusCode) return new List<NexusFileInfo>();
+
+			return ModPartRules.ParseFilesJson(await resp.Content.ReadAsStringAsync());
+		}
+		catch
+		{
+			return new List<NexusFileInfo>();
+		}
+	}
+
+	/// <summary>
+	/// Downloads one named file from a mod page — the file the caller has already decided on, rather than
+	/// whichever one <see cref="SelectUpdateFile"/> would guess at.
+	///
+	/// Premium only, because <c>download_link.json</c> is: a free account gets a 403 here and must go through
+	/// the website so Nexus can mint the key an <c>nxm://</c> link carries. Callers check
+	/// <see cref="IsPremium"/> first and send everyone else to <see cref="ModPartRules.FilePageUrl"/>.
+	/// </summary>
+	public async Task<string> DownloadFileByIdAsync(
+		string modId, string fileId, string fileName, string downloadsPath, IProgress<double>? progress = null)
+	{
+		using var req = BuildRequest(HttpMethod.Get,
+			$"https://api.nexusmods.com/v1/games/{CurrentGameDomain}/mods/{modId}/files/{fileId}/download_link.json");
+		using var linkResp = await HttpClient.SendAsync(req);
+		if (!linkResp.IsSuccessStatusCode)
+			throw new Exception("Nexus denied the download link. This mod might require manual interaction on the website.");
+
+		string uri = JArray.Parse(await linkResp.Content.ReadAsStringAsync())[0]["URI"]?.ToString() ?? "";
+		if (string.IsNullOrEmpty(uri)) throw new Exception("Nexus returned no download address for that file.");
+
+		string safeName = string.IsNullOrEmpty(fileName) ? $"{modId}_{fileId}.zip" : fileName;
+		foreach (char c in Path.GetInvalidFileNameChars()) safeName = safeName.Replace(c, '_');
+
+		Directory.CreateDirectory(downloadsPath);
+		string destination = Path.Combine(downloadsPath, safeName);
+		await DownloadFileWithProgressAsync(uri, destination, progress);
+		return destination;
+	}
+
+	/// <summary>
 	/// Fetches details for a specific mod from the Nexus Mods API.
 	/// </summary>
 	public async Task<JObject?> GetModDetailsAsync(string nexusId)

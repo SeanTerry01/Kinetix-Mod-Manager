@@ -35,6 +35,7 @@ public partial class Form1
 
 		(List<ReportRow> reqRows, _) = await GatherRequirementFindings();
 		ReportRow? limitRow = GatherPluginLimitFinding();
+		List<ReportRow> partRows = GatherMissingPartFindings();
 		BrokenModFindings broken = await GatherBrokenModFindings();
 		List<ReportRow> conflictRows = GatherFileConflictFindings();
 
@@ -46,6 +47,9 @@ public partial class Form1
 		var rows = new List<ReportRow>();
 		foreach (ReportRow r in reqRows) { r.Text = Loc.T("health.rowReq", r.Text); rows.Add(r); }
 		if (limitRow != null) { limitRow.Text = Loc.T("health.rowLimit", limitRow.Text); rows.Add(limitRow); }
+		// With the missing requirements, because a half-installed mod is the same kind of problem: the mod is
+		// there, it looks installed, and it cannot load. Engine Fixes without its preloader is the usual one.
+		foreach (ReportRow r in partRows) { r.Text = Loc.T("health.rowParts", r.Text); rows.Add(r); }
 		foreach (ReportRow r in broken.Rows) { r.Text = Loc.T("health.rowBroken", r.Text); rows.Add(r); }
 		foreach (ReportRow r in conflictRows) { r.Text = Loc.T("health.rowConflict", r.Text); rows.Add(r); }
 
@@ -67,6 +71,8 @@ public partial class Form1
 			parts.Add(Loc.T(reqRows.Count == 1 ? "health.sumReqOne" : "health.sumReqMany", reqRows.Count));
 		if (limitRow != null)
 			parts.Add(Loc.T("health.sumLimit"));
+		if (partRows.Count > 0)
+			parts.Add(Loc.T(partRows.Count == 1 ? "health.sumPartsOne" : "health.sumPartsMany", partRows.Count));
 		if (broken.Rows.Count > 0)
 			parts.Add(Loc.T(broken.Rows.Count == 1 ? "health.sumBrokenOne" : "health.sumBrokenMany", broken.Rows.Count));
 		if (conflictRows.Count > 0)

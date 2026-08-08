@@ -125,7 +125,7 @@ public partial class Form1
 			// SSE Engine Fixes ships as two files on the same Nexus page: the main SKSE plugin
 			// (installs like a normal mod) and a "Preloader" whose d3dx9_42.dll must sit in the
 			// game root. Treat them as one entry that is only "installed" when BOTH are present;
-			// the installer auto-handles both parts (see InstallEngineFixesAsync).
+			// ModPartRules describes both parts and InstallKnownModPartsAsync fetches whichever is missing.
 			suiteItems.Add(new SuiteItem("SSE Engine Fixes",
 				(HasModNameContains("SSE Engine Fixes") || HasModNameContains("EngineFixes"))
 					&& File.Exists(Path.Combine(gameFolder, "d3dx9_42.dll")),
@@ -306,11 +306,15 @@ public partial class Form1
 						continue;
 					}
 
-					// SSE Engine Fixes is a two-part install (main mod + root-folder preloader);
-					// handle both parts together so the user never has to place the DLL manually.
-					if (GameProfiles.IsGame(game, GameProfiles.SkyrimSE) && item.Source == "17230")
+					// A mod page the manager knows the shape of — a script extender with one file per game build,
+					// or a mod that ships in two parts — is handled by ModPartRules, which picks the exact file
+					// for THIS copy of the game. That is what gets a GOG copy the GOG build of SKSE instead of
+					// the Steam one, and what stops SSE Engine Fixes arriving without its preloader.
+					KnownMod? known = ModPartRules.Find(game, item.Source)
+						?? (item.Type == "Loader" ? ScriptExtenderKnownMod(game) : null);
+					if (known != null)
 					{
-						await InstallEngineFixesAsync();
+						await InstallKnownModPartsAsync(known);
 						continue;
 					}
 
@@ -320,18 +324,7 @@ public partial class Form1
 					string? downloadUrl = null;
 					string zipName = $"{item.Name.Replace(" ", "")}_Install" + (item.Type == "Loader" ? ".7z" : ".zip");
 
-					if (item.Type == "Loader")
-					{
-						if (GameProfiles.IsGame(game, GameProfiles.SkyrimSE))
-						{
-							downloadUrl = await GetSkse64DownloadUrl();
-						}
-						else if (GameProfiles.IsGame(game, GameProfiles.Fallout4))
-						{
-							downloadUrl = await GetF4seDownloadUrl();
-						}
-					}
-					else if (item.Type == "GitHub")
+					if (item.Type == "GitHub")
 					{
 						downloadUrl = await GetGitHubLatestReleaseZipUrl(item.Source);
 					}
@@ -450,65 +443,6 @@ public partial class Form1
 		ApplyScreenReaderPauses(container);
 		return lstStatus;
 		});
-	}
-
-	/// <summary>
-	/// Installs both halves of SSE Engine Fixes (Nexus mod 17230): the main SKSE plugin into the
-	/// mods folder, and the "Preloader" <c>d3dx9_42.dll</c> into the game root. Premium users get a
-	/// fully automatic install; everyone else is sent to the files page with correct instructions
-	/// for both files. Only the missing half is fetched.
-	/// </summary>
-	private async Task InstallEngineFixesAsync()
-	{
-		string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder("SkyrimSE") : _settings.CurrentGamePath;
-		bool mainInstalled = HasModNameContains("SSE Engine Fixes") || HasModNameContains("EngineFixes");
-		bool preloaderInstalled = File.Exists(Path.Combine(gameFolder, "d3dx9_42.dll"));
-
-		if (_nexusService.IsPremium)
-		{
-			if (!mainInstalled)
-			{
-				try
-				{
-					SetStatus(Loc.T("suite.engineFixesDownloading"));
-					Speak(Loc.T("suite.engineFixesDownloading"));
-					var mainMod = new GameMod { NexusID = "17230", Name = "SSE Engine Fixes Part 1" };
-					string mainZip = await _nexusService.DownloadModUpdateAsync(mainMod, downloadsPath);
-					await InstallFromZip(mainZip, "17230");
-				}
-				catch (Exception ex)
-				{
-					LogError("SSE Engine Fixes", $"Main file download failed: {ex.Message}");
-					Speak(Loc.T("suite.engineFixesMainFailed"));
-				}
-			}
-
-			if (!preloaderInstalled)
-			{
-				try
-				{
-					SetStatus(Loc.T("suite.engineFixesPreloaderInstalling"));
-					Speak(Loc.T("suite.engineFixesPreloaderInstalling"));
-					var preMod = new GameMod { NexusID = "17230", Name = "SSE Engine Fixes Part 2" };
-					string preZip = await _nexusService.DownloadModUpdateAsync(preMod, downloadsPath);
-					await ModFileSystem.InstallEnginePreloaderAsync(preZip, gameFolder, LogError, _nexusService);
-				}
-				catch (Exception ex)
-				{
-					LogError("SSE Engine Fixes", $"Preloader download failed: {ex.Message}");
-					Speak(Loc.T("suite.engineFixesPreloaderFailed"));
-				}
-			}
-			return;
-		}
-
-		// Non-premium accounts cannot download through the Nexus API, so guide the manual install
-		// for whichever parts are still missing.
-		Speak(Loc.T("suite.engineFixesManualSpeak"));
-		Process.Start(new ProcessStartInfo("https://www.nexusmods.com/skyrimspecialedition/mods/17230?tab=files") { UseShellExecute = true });
-		SpeakBox(
-			Loc.T("suite.engineFixesManualBox"),
-			Loc.T("suite.manualDownloadTitle"));
 	}
 
 	/// <summary>

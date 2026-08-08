@@ -92,48 +92,15 @@ public partial class Form1
 		return null;
 	}
 
-	private async Task<string?> GetSkse64DownloadUrl()
-	{
-		try
-		{
-			using var req = new HttpRequestMessage(HttpMethod.Get, "https://skse.silverlock.org/");
-			req.Headers.UserAgent.ParseAdd($"KinetixModManager/{NexusService.AppVersion}");
-			using var resp = await NexusService.HttpClient.SendAsync(req);
-			if (!resp.IsSuccessStatusCode) return null;
-
-			string html = await resp.Content.ReadAsStringAsync();
-			int idx = html.IndexOf("skse64_", StringComparison.OrdinalIgnoreCase);
-			if (idx != -1)
-			{
-				int start = html.LastIndexOf("href=\"", idx, StringComparison.OrdinalIgnoreCase);
-				if (start != -1)
-				{
-					start += 6;
-					int end = html.IndexOf("\"", start, StringComparison.OrdinalIgnoreCase);
-					if (end != -1)
-					{
-						string relUrl = html.Substring(start, end - start);
-						if (!relUrl.StartsWith("http"))
-						{
-							return "https://skse.silverlock.org/" + relUrl.TrimStart('/');
-						}
-						return relUrl;
-					}
-				}
-			}
-		}
-		catch { }
-		return "https://skse.silverlock.org/beta/skse64_2_02_06.7z"; // Fallback
-	}
-
-	/// <summary>
-	/// Resolves where to get F4SE from. Unlike SKSE, silverlock.org no longer hosts the current-generation
-	/// F4SE build directly — its only direct downloads are the old-gen (game 1.10.163) and VR archives, so
-	/// scraping it would hand back an F4SE that does not match an up-to-date Fallout 4 and refuses to run.
-	/// The current build (matching the latest Steam runtime) is published on Nexus, so we always route there:
-	/// the caller's Nexus path downloads the latest main file (premium) or opens the page for the user to pick
-	/// the build that matches their game version, then installs it into the game root via InstallScriptExtenderAsync.
-	/// </summary>
-	private Task<string?> GetF4seDownloadUrl() =>
-		Task.FromResult<string?>("https://www.nexusmods.com/fallout4/mods/42147?tab=files");
+	// SKSE and F4SE used to be resolved here, and no longer are — see ModPartRules and InstallKnownModPartsAsync.
+	//
+	// SKSE came from scraping silverlock.org's front page for the first "skse64_" link, with a hardcoded
+	// skse64_2_02_06.7z if that failed. Two things were wrong with it and both were silent. The page lists a
+	// build per game version, so "the first link" was never known to be the right one; and it has no notion of
+	// which game the user is running, so a GOG copy got a Steam build that installs cleanly and then never
+	// loads. F4SE had already given up on the same approach and returned a fixed Nexus files-tab URL.
+	//
+	// Nexus carries the same builds silverlock does, and its files.json — readable by every account, premium or
+	// not — states the game version each file is for. Asking it, and matching against the build read off the
+	// user's own exe, replaces both.
 }

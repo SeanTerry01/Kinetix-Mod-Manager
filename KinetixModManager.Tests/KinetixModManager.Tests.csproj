@@ -66,6 +66,16 @@
     <Compile Include="..\KinetixModManager\Witcher3InputSettings.cs" />
     <!-- Self-contained reader/writer for The Witcher 3's own mods.settings (BCL + IniDocument). -->
     <Compile Include="..\KinetixModManager\Witcher3ModSettings.cs" />
+    <!-- Self-contained "which file on this mod page do we actually need?" rules (BCL + Newtonsoft + GameProfiles). -->
+    <Compile Include="..\KinetixModManager\ModPartRules.cs" />
+  </ItemGroup>
+
+  <!-- Real files.json bodies, recorded from the Nexus API rather than written by hand. The picking rules exist
+       to cope with what these pages actually contain - a build named only in a file's description, a preloader
+       that stopped saying "Part 2" in its name, a dozen archived files that cannot be downloaded - and none of
+       that would be reproduced by a fixture invented to match the code. -->
+  <ItemGroup>
+    <None Include="fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
