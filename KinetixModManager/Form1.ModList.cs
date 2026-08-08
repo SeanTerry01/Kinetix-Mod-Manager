@@ -63,16 +63,31 @@ public partial class Form1
 			}
 			return;
 		}
-		// Acquire the single-batch update-check guard before any list mutation, so a blocked
-		// caller returns without clearing listUpdates out from under the in-flight check. See
-		// _updateCheckRunning. The guard is held across the async checks and released either by
-		// their completion (CheckForUpdates) or by the finally below when none get launched.
+		// Acquire the single-batch update-check guard. See _updateCheckRunning: it is held across the async
+		// checks and released either by their completion (CheckForUpdates) or by the finally below when none
+		// get launched.
+		//
+		// Losing the race only cancels the UPDATE CHECK, never the rescan. That distinction matters more than
+		// it looks: this used to `return` outright, so a game switch that happened while a check was running
+		// silently kept the previous game's mods on screen — the title said Moonlight Peaks while the list held
+		// 147 Stardew mods. Rescanning the folder has nothing to do with checking Nexus for versions, and the
+		// caller asked for both.
+		bool doUpdateChecks = checkUpdates;
 		if (checkUpdates && Interlocked.CompareExchange(ref _updateCheckRunning, 1, 0) != 0)
 		{
 			Speak(Loc.T("modlist.updateInProgress"));
-			return;
+			doUpdateChecks = false;
 		}
+
+		// Claim this pass. Two refreshes can overlap — a slow one started before a game switch and the switch's
+		// own — and the older one would otherwise finish last and overwrite the list with the previous game's
+		// mods. Only the newest pass is allowed to publish its results.
+		int generation = Interlocked.Increment(ref _refreshGeneration);
+		string refreshingGame = _settings.ActiveGame;
+		bool Superseded() => Volatile.Read(ref _refreshGeneration) != generation || _settings.ActiveGame != refreshingGame;
+
 		bool launchedChecks = false;
+		Interlocked.Increment(ref _refreshInFlight);
 		try
 		{
 		// Nexus's API is stateless, so once the key is validated for this session there's nothing to reconnect —
@@ -97,12 +112,12 @@ public partial class Form1
 		Invoke(delegate
 		{
 			listInstalled.BeginUpdate();
-			if (checkUpdates)
+			if (doUpdateChecks)
 			{
 				listUpdates.BeginUpdate();
 			}
 			listInstalled.Items.Clear();
-			if (checkUpdates)
+			if (doUpdateChecks)
 			{
 				listUpdates.Items.Clear();
 			}
@@ -113,7 +128,7 @@ public partial class Form1
 			Invoke(delegate
 			{
 				listInstalled.EndUpdate();
-				if (checkUpdates)
+				if (doUpdateChecks)
 				{
 					listUpdates.EndUpdate();
 				}
@@ -132,7 +147,23 @@ public partial class Form1
 			catch {}
 		}
 		JObject nexusIdMap = (File.Exists(idMapPath) ? JObject.Parse(File.ReadAllText(idMapPath)) : new JObject()) ?? new JObject();
-		_allInstalledMods = ModFileSystem.ScanMods(_settings.CurrentModsPath, nexusIdMap, _settings, _settings.ActiveGame, LogError);
+		List<StardewMod> scanned = ModFileSystem.ScanMods(_settings.CurrentModsPath, nexusIdMap, _settings, refreshingGame, LogError);
+
+		// The scan reads the disk and can take a while on a large mod folder. If the user switched games while it
+		// ran, these are the wrong game's mods and the newer pass is already on its way — publishing them would
+		// put the game they just left back on screen. Balance the BeginUpdate above before standing down, or the
+		// list stays suspended and the newer pass's items never paint.
+		if (Superseded())
+		{
+			Invoke(delegate
+			{
+				listInstalled.EndUpdate();
+				if (doUpdateChecks) listUpdates.EndUpdate();
+			});
+			return;
+		}
+
+		_allInstalledMods = scanned;
 		ModFileSystem.ResolveDependencies(_allInstalledMods, IsNewerVersion);
 		// Reconcile Skyrim/Fallout 4 asset deployment to the current enabled set and priority order, and
 		// refresh the conflict scan. Cheap when nothing changed (only files whose winner changed relink),
@@ -238,12 +269,12 @@ public partial class Form1
 			}
 			listUpdates.EndUpdate();
 
-			if (checkUpdates)
+			if (doUpdateChecks)
 			{
 				listUpdates.BeginUpdate();
 			}
 		});
-		if (!checkUpdates)
+		if (!doUpdateChecks)
 		{
 			return;
 		}
@@ -290,12 +321,44 @@ public partial class Form1
 		}
 		finally
 		{
+			Interlocked.Decrement(ref _refreshInFlight);
 			// Release the guard unless the async checks took ownership of it; once launched they
 			// release it on completion (see CheckForUpdates). This also frees it on any early
 			// return or exception above, so a failed scan can't block all future update checks.
-			if (checkUpdates && !launchedChecks)
+			if (doUpdateChecks && !launchedChecks)
 				Interlocked.Exchange(ref _updateCheckRunning, 0);
 		}
+	}
+
+	/// <summary>
+	/// Runs the user's Refresh Everything / Refresh Installed Mods command and says what is happening.
+	///
+	/// The repeat check is the point. A held key auto-repeats, and these commands arrive twice for one press
+	/// often enough that it is the normal case, not the edge case — which produced two identical "Refreshing
+	/// everything" announcements with an "update check already in progress" wedged between them. Saying plainly
+	/// that a refresh is already running is both shorter and true.
+	/// </summary>
+	private async void RequestManualRefresh(bool everything)
+	{
+		if (Volatile.Read(ref _refreshInFlight) > 0)
+		{
+			Speak(Loc.T("modlist.refreshAlreadyRunning"));
+			return;
+		}
+
+		if (everything)
+		{
+			// Announced up front: the update check that follows has plenty to say for itself when it finishes.
+			Speak(Loc.T("modlist.refreshingAll"));
+			RefreshAllData(checkUpdates: true);
+			return;
+		}
+
+		// A rescan on its own has no completion announcement of its own, so it gets one here — and it is said
+		// when the scan has actually finished rather than when it started, which is what "Refreshed" claims.
+		Speak(Loc.T("modlist.refreshingInstalled"));
+		await RefreshModList(checkUpdates: false);
+		Speak(Loc.T("modlist.refreshedInstalled"));
 	}
 
 	/// <summary>

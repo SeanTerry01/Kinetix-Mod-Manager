@@ -2395,23 +2395,16 @@ public static class ModFileSystem
 	/// </summary>
 	private static List<string> FindWitcher3ModFolders(string root)
 	{
-		var found = new List<string>();
 		try
 		{
-			foreach (string dir in Directory.GetDirectories(root, "*", SearchOption.AllDirectories))
-			{
-				string name = Path.GetFileName(dir);
-				if (!name.StartsWith("mod", StringComparison.OrdinalIgnoreCase)) continue;
-
-				// Skip one nested inside a mod folder already collected — those are the mod's own contents.
-				if (found.Any(f => dir.StartsWith(f + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)))
-					continue;
-
-				found.Add(dir);
-			}
+			// The rules live in Witcher3Layout so they can be tested against real archive layouts — in
+			// particular the "mods" wrapper, which begins with "mod" and so used to be taken for a mod itself.
+			return Witcher3Layout.SelectModFolders(Directory.GetDirectories(root, "*", SearchOption.AllDirectories));
 		}
-		catch { }
-		return found;
+		catch
+		{
+			return new List<string>();
+		}
 	}
 
 	/// <summary>Folders called <paramref name="name"/> anywhere in the extracted archive that aren't nested inside

@@ -68,6 +68,8 @@
     <Compile Include="..\KinetixModManager\Witcher3ModSettings.cs" />
     <!-- Self-contained "which file on this mod page do we actually need?" rules (BCL + Newtonsoft + GameProfiles). -->
     <Compile Include="..\KinetixModManager\ModPartRules.cs" />
+    <!-- Self-contained "which folders in this archive are Witcher 3 mods?" rules (depends only on the BCL). -->
+    <Compile Include="..\KinetixModManager\Witcher3Layout.cs" />
   </ItemGroup>
 
   <!-- Real files.json bodies, recorded from the Nexus API rather than written by hand. The picking rules exist

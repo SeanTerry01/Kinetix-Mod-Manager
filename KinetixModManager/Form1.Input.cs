@@ -289,14 +289,12 @@ public partial class Form1
 		if (IsShortcut(e, "RefreshAll"))
 		{
 			e.SuppressKeyPress = true;
-			RefreshAllData(checkUpdates: true);
-			Speak(Loc.T("modlist.refreshingAll"));
+			RequestManualRefresh(everything: true);
 		}
 		if (IsShortcut(e, "RefreshInstalled"))
 		{
 			e.SuppressKeyPress = true;
-			_ = RefreshModList(checkUpdates: false);
-			Speak(Loc.T("modlist.refreshedInstalled"));
+			RequestManualRefresh(everything: false);
 		}
 		if (IsShortcut(e, "CycleFocus"))
 		{

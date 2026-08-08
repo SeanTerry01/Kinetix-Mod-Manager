@@ -161,6 +161,16 @@ public partial class Form1 : Form, IMessageFilter
 	// itself when no checks end up being launched).
 	private int _updateCheckRunning;
 
+	// Counts mod-list refreshes so an older, slower one cannot publish its results over a newer one. A refresh
+	// is asynchronous and reads the active game's folder at the start, so switching games mid-refresh left two
+	// passes in flight — and whichever finished last won, which was routinely the one for the game the user had
+	// just left. Each pass takes a number on entry and checks it still holds the newest before touching the list.
+	private int _refreshGeneration;
+
+	// How many mod-list refreshes are running. Used only to answer "is one already going?" when the user's
+	// Refresh command arrives twice for one press, which a held key makes routine.
+	private int _refreshInFlight;
+
 	private int _currentDiscoveryPage = 1;
 
 	/// <summary>
