@@ -1281,7 +1281,6 @@
   "mo2.done": "Imported {0} mods from Mod Organizer 2: {1} enabled, {2} disabled. {3} active plugins. {4} skipped as already present, {5} not found.",
   "mo2.error": "Import failed: {0}",
 
-  "ui.mainTabs": "Main tabs",
   "ui.searchInstalled": "Search Installed Mods",
   "ui.installedList": "Installed Mods List",
   "ui.updatesList": "Available Updates List",

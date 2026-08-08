@@ -261,11 +261,7 @@ public partial class Form1
 		mainTabs = new TabControl
 		{
 			Dock = DockStyle.Fill,
-			// Named explicitly, because an unnamed container does not stay silent — the screen reader goes
-			// looking for a name and reads whatever it finds nearby, which here meant hearing "Search" in front
-			// of every tab as you arrowed along the strip. Same trap as the unnamed panels behind the in-window
-			// views. Kept to two words: this is read before the tab's own name every time.
-			AccessibleName = Loc.T("ui.mainTabs")
+			AccessibleName = SilentAccessibleName
 		};
 		tabInstalled = new TabPage(Loc.T("tab.installed"));
 		TableLayoutPanel tableLayoutPanel2 = new TableLayoutPanel

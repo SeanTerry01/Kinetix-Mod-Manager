@@ -28,6 +28,25 @@ namespace KinetixModManager;
 /// <summary>Shortcut resolution, status/speech output, list events, discovery, and loading helpers for Form1.</summary>
 public partial class Form1
 {
+	/// <summary>
+	/// An accessible name that gives a screen reader nothing to say — for a container whose own name is noise.
+	///
+	/// A tab strip is the case that matters. The screen reader announces the strip and then the tab, every time
+	/// the selection moves, so anything the strip is called is repeated on every single tab change. What you
+	/// want to hear is the tab.
+	///
+	/// Getting to silence took three tries, and the two obvious ones both fail:
+	///   * No name at all — the reader will not accept that a control has no name, so it goes looking and reads
+	///     whatever text it finds nearby. On the main window that produced "Search" (from the search box on the
+	///     Installed tab) in front of every tab name.
+	///   * An empty string — treated the same as no name, so the same guesswork happens.
+	/// A single space is a name, so nothing is inferred, and there is nothing in it to pronounce.
+	///
+	/// Only for containers that are announced <em>alongside</em> their contents. A control the user lands on in
+	/// its own right — a list, a text box, a button — must always have a real name.
+	/// </summary>
+	private const string SilentAccessibleName = " ";
+
 	/// <summary>Returns a human-readable key label for <paramref name="action"/> (e.g. "Ctrl+R").</summary>
 	private string GetShortcutString(string action)
 	{
