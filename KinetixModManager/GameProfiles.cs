@@ -433,8 +433,8 @@ public static class GameProfiles
 			ModsFolderRelativeToGame = "mods",
 			NexusDomain          = "witcher3",
 			NexusGameId          = "952",
-			// No theme has been authored yet; a missing theme folder simply plays the Default sounds, so naming
-			// it now means one can be dropped in later without a code change.
+			// Authored from the game's own audio, under sounds\The Witcher 3\. Any sound a theme does not
+			// provide falls back to the Default one, so a theme need never be complete to be worth shipping.
 			SoundTheme           = "The Witcher 3",
 			// Documents\The Witcher 3, with no My Games in between.
 			UserDataFolderName   = "The Witcher 3",
