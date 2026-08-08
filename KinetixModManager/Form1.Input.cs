@@ -486,25 +486,20 @@ public partial class Form1
 			if (stardewMod3.IsGroup)
 			{
 				string groupName = stardewMod3.GroupName;
-				// The screen reader re-reads the group line on selection (it states "Expanded"/"Collapsed"),
-				// and List_SelectedIndexChanged announces the position, so suppress the rebuild's own speech
-				// to avoid repeating the whole group line. See _suppressRebuildSpeak.
+				// The screen reader re-reads the group line on selection (it states "Expanded"/"Collapsed") and
+				// List_SelectedIndexChanged adds the position, which is all that should be heard here.
 				if (flag)
 				{
 					if (!_expandedGroups.Contains(groupName))
 					{
 						_expandedGroups.Add(groupName);
-						_suppressRebuildSpeak = true;
 						RebuildInstalledListBox();
-						_suppressRebuildSpeak = false;
 					}
 				}
 				else if (flag2 && _expandedGroups.Contains(groupName))
 				{
 					_expandedGroups.Remove(groupName);
-					_suppressRebuildSpeak = true;
 					RebuildInstalledListBox();
-					_suppressRebuildSpeak = false;
 				}
 			}
 			else if (stardewMod3.IsSubMod && flag2)
@@ -519,9 +514,7 @@ public partial class Form1
 					// null-then-reselect, which briefly selected index 0 and made the screen reader announce
 					// the first mod before landing on the collapsed group. The screen reader reads the group
 					// line (stating "Collapsed") on selection, so suppress the rebuild's own speech.
-					_suppressRebuildSpeak = true;
 					RebuildInstalledListBox("GROUP:" + text3);
-					_suppressRebuildSpeak = false;
 				}
 				e.Handled = true;
 				e.SuppressKeyPress = true;

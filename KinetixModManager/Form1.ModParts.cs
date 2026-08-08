@@ -182,7 +182,14 @@ public partial class Form1
 			catch { }
 		}
 
-		return !string.IsNullOrEmpty(part.DetectModName) && HasModNameContains(part.DetectModName);
+		if (string.IsNullOrEmpty(part.DetectModName)) return false;
+
+		return _allInstalledMods.Any(m =>
+			(m.Name.Contains(part.DetectModName, StringComparison.OrdinalIgnoreCase) ||
+			 m.UniqueId.Contains(part.DetectModName, StringComparison.OrdinalIgnoreCase)) &&
+			(string.IsNullOrEmpty(part.DetectModNameExcluding) ||
+			 !(m.Name.Contains(part.DetectModNameExcluding, StringComparison.OrdinalIgnoreCase) ||
+			   m.UniqueId.Contains(part.DetectModNameExcluding, StringComparison.OrdinalIgnoreCase))));
 	}
 
 	/// <summary>The active copy's game folder, detected if it hasn't been recorded yet.</summary>

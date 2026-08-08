@@ -74,6 +74,16 @@ public sealed class ModPart
 	public string? DetectModName { get; init; }
 
 	/// <summary>
+	/// Text that disqualifies a mod from satisfying <see cref="DetectModName"/>.
+	///
+	/// Needed because the parts of one mod are named after that mod, so a loose name match finds its siblings.
+	/// "Engine Fixes" matches the mod called "Engine Fixes - SKSE64 Preloader" — which is Part 2 — so Part 1
+	/// counted as installed on a machine that had only the preloader, and the check reported nothing while the
+	/// plugin the preloader exists to load was absent entirely.
+	/// </summary>
+	public string? DetectModNameExcluding { get; init; }
+
+	/// <summary>
 	/// Prefer the file built for the exact game build this copy is running.
 	///
 	/// This is what tells the Steam and GOG builds of a script extender apart, and it is a better question than
@@ -191,7 +201,12 @@ public static class ModPartRules
 				{
 					Name          = "Part 1 — the SKSE plugin",
 					Destination   = PartDestination.ModsFolder,
-					DetectModName = "Engine Fixes",
+					// The plugin the whole mod exists to run. Checked by the file it deploys as well as by name,
+					// because the name is the weaker signal: every part of this mod is called "Engine Fixes"
+					// something.
+					DetectFile             = @"Data\SKSE\Plugins\EngineFixes.dll",
+					DetectModName          = "Engine Fixes",
+					DetectModNameExcluding = "Preloader",
 					Category      = "MAIN",
 					// The page also offers an All-In-One that bundles both halves. It is a perfectly good way to
 					// install the mod by hand, but it is an OPTIONAL file, it lags the two MAIN files by a

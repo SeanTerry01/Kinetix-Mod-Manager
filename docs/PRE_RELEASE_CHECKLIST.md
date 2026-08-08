@@ -38,10 +38,18 @@ Unproven against a live install. This is the feature the GOG tester asked for.
     copy is Steam, so it should land the Steam build, not the GOG one.
 *   Expect for **SSE Engine Fixes**: **two** downloads, not one — the main plugin into the mods folder, and the
     preloader (`d3dx9_42.dll`) loose in the game folder.
-*   Then delete `d3dx9_42.dll` from the game folder and run **Check My Setup** (Ctrl+Shift+K). Expect a row
-    saying Engine Fixes is installed but incomplete, and Enter on that row should fetch just the missing part.
 *   Something is wrong if: only one Engine Fixes file arrives, the same file arrives twice, or SKSE reports a
     version mismatch when you press F5.
+
+**Do not test the incomplete-mod check by deleting `d3dx9_42.dll` from the game folder.** It will not work, and
+nothing is broken when it doesn't: the preloader is installed as a staged root-folder mod, so the next mod-list
+refresh deploys it straight back. That is the deployment engine doing its job.
+
+You do not need to arrange the test anyway — as of 2026-08-08 this install already fails it for real. **Check My
+Setup reports "SSE Engine Fixes is installed but incomplete: Part 1 — the SKSE plugin is missing."** That is
+accurate: the preloader is installed and the plugin it exists to load is not, so Engine Fixes has never done
+anything here. Its own log says so — `failed to search skse plugin directory`, then `loader finished`. Pressing
+Enter on that row should fetch the main plugin and put it in the mods folder.
 
 ### 1.3 FMC Audio Remaster (The Witcher 3)
 

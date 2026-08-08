@@ -236,7 +236,6 @@ public partial class Form1 : Form, IMessageFilter
 	// item itself. The screen reader already reads the group line (which states "Expanded"/"Collapsed")
 	// when the selection changes, and List_SelectedIndexChanged announces the position, so the rebuild's
 	// own announcement would just repeat the whole group line.
-	private bool _suppressRebuildSpeak;
 
 	private bool _isSettingsOpen;
 

@@ -468,14 +468,16 @@ public partial class Form1
 		{
 			listInstalled.SelectedIndex = 0;
 		}
-		// Position only. Rebuilding empties the list and re-selects the row, which the screen reader reads by
-		// itself — exactly as it does when you arrow onto a row, where the manager likewise adds only "X of Y".
-		// Speaking the row's text here as well is what made enabling, disabling or deleting a mod read the whole
-		// entry twice.
-		if (listInstalled.Focused && listInstalled.SelectedItem != null && !_suppressRebuildSpeak)
-		{
-			Speak(Loc.T("common.position", listInstalled.SelectedIndex + 1, listInstalled.Items.Count));
-		}
+		// The position is NOT announced here.
+		//
+		// Re-selecting the row above raises SelectedIndexChanged, and List_SelectedIndexChanged announces the
+		// position from there — after a short delay, so the screen reader gets to read the row first, and
+		// through SpeakListPosition, which drops a repeat of the same row within a moment.
+		//
+		// Saying it here as well meant hearing "1 of 12. 1 of 12." and then the mod, because this one skipped
+		// both: it spoke immediately, ahead of the reader, and it bypassed the de-duplication that would have
+		// swallowed the second. Closing Settings showed it plainly, since that both restores focus to the list
+		// and rebuilds it.
 		listInstalled.EndUpdate();
 	}
 
