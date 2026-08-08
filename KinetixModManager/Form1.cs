@@ -171,6 +171,53 @@ public partial class Form1 : Form, IMessageFilter
 	// Refresh command arrives twice for one press, which a held key makes routine.
 	private int _refreshInFlight;
 
+	/// <summary>True while the goodbye message and disconnect cue are playing, so a second Alt+F4 is ignored.</summary>
+	private bool _shuttingDown;
+
+	/// <summary>True once the shutdown sequence has finished and the window may actually close.</summary>
+	private bool _readyToClose;
+
+	/// <summary>
+	/// Says goodbye, plays the disconnect cue, and only then lets the window close — each step waiting for the
+	/// one before it to finish, so nothing is spoken over and nothing is cut off.
+	///
+	/// Every wait here yields rather than blocks. A blocking wait on the UI thread stops the message loop, and
+	/// both halves of this need it running: speech synthesis to produce audio at all, and the sound engine to
+	/// report back when the cue has finished.
+	/// </summary>
+	private async Task RunShutdownSequenceAsync()
+	{
+		try
+		{
+			_pipeCts.Cancel();
+
+			// Spoken first and waited for, because Tolk is unloaded at the end of this method and unloading it
+			// mid-sentence cuts the message off.
+			if (Tolk.IsLoaded() && _settings.SpeakShutdownMessage)
+			{
+				Speak(Loc.T("app.shuttingDown"), interrupt: true);
+				await WaitForSpeechAsync(minMs: 1800, maxMs: 6000);
+			}
+
+			// Only when a session is still open: closing one (Ctrl+Shift+C) already plays this, so exiting
+			// afterwards would sound the disconnect for a session that was torn down some time ago.
+			if (_settings.ActiveGame != "None")
+			{
+				await _soundEngine.PlayAsync("disconnect");
+			}
+		}
+		catch (Exception ex)
+		{
+			// Nothing here is worth trapping the user in a window they asked to close.
+			LogError("Shutdown", "Shutdown sequence failed: " + ex.Message);
+		}
+		finally
+		{
+			try { if (Tolk.IsLoaded()) Tolk.Unload(); } catch { }
+			_readyToClose = true;
+		}
+	}
+
 	private int _currentDiscoveryPage = 1;
 
 	/// <summary>
@@ -537,29 +584,38 @@ public partial class Form1 : Form, IMessageFilter
 		}
 		RegisterNxmProtocol();
 		_ = StartNamedPipeServer(_pipeCts.Token);
-		base.FormClosing += delegate
+		base.FormClosing += async (object? _, FormClosingEventArgs e) =>
 		{
-			form._pipeCts.Cancel();
-			// Announce shutdown and wait for the screen reader to finish speaking it before Tolk is unloaded
-			// (unloading would cut the message off). The brief pause is fine during exit — the disconnect cue
-			// below already pauses.
-			if (Tolk.IsLoaded() && form._settings!.SpeakShutdownMessage)
+			// The sequence has already run; this is the close it asked for.
+			if (form._readyToClose) return;
+
+			// Windows is logging off or the process is being ended from outside. There is no time to be granted
+			// — the OS closes us whatever we say — so do the essential teardown and get out of the way rather
+			// than talking into a window that is about to vanish.
+			if (e.CloseReason == CloseReason.WindowsShutDown || e.CloseReason == CloseReason.TaskManagerClosing)
 			{
-				form.Speak(Loc.T("app.shuttingDown"), interrupt: true);
-				WaitForSpeechToFinish();
+				form._readyToClose = true;
+				form._pipeCts.Cancel();
+				if (Tolk.IsLoaded()) Tolk.Unload();
+				return;
 			}
-			// Only disconnect on exit if a game session is still open. Closing a session
-			// (Ctrl+Shift+C) already disconnects, so exiting with no game loaded must not
-			// replay a disconnect for a session that was already torn down.
-			if (form._settings!.ActiveGame != "None")
-			{
-				form._soundEngine.Play("disconnect");
-				Thread.Sleep(800); // let the disconnect cue finish before the process exits
-			}
-			if (Tolk.IsLoaded())
-			{
-				Tolk.Unload();
-			}
+
+			// Already saying goodbye: swallow the repeat rather than cutting the message off half-spoken.
+			if (form._shuttingDown) { e.Cancel = true; return; }
+
+			// Keep the window — and with it the message loop — alive while we speak and play the cue.
+			//
+			// This is the whole fix. The announcement used to be made from inside this handler and then waited
+			// on with Thread.Sleep, which blocks the UI thread; speech synthesis needs that thread to keep
+			// pumping, so the message did not actually start until the sleep was over and the window was
+			// already going. Cancelling the close and running the sequence with the pump alive means it is
+			// spoken when the user asks to exit, which is when it is useful.
+			//
+			// Cancel must be set before the first await, or the close completes while we are still suspended.
+			e.Cancel = true;
+			form._shuttingDown = true;
+			await form.RunShutdownSequenceAsync();
+			form.Close();
 		};
 		base.Shown += async delegate
 		{

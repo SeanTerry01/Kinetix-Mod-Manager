@@ -599,31 +599,17 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Blocks briefly so a just-spoken announcement can finish before the caller tears down Tolk (used on exit).
-	/// Tolk only reports <see cref="Tolk.IsSpeaking"/> reliably for its own SAPI voice; most screen readers
-	/// return false even while talking, so we always wait a fixed minimum sized to a short sentence, then stop
-	/// early once speech is known to be done (or at the hard cap). Runs on the closing thread; the pause is
-	/// acceptable there.
-	/// </summary>
-	private static void WaitForSpeechToFinish(int minMs = 1800, int maxMs = 3000)
-	{
-		const int step = 50;
-		int elapsed = 0;
-		while (elapsed < maxMs)
-		{
-			Thread.Sleep(step);
-			elapsed += step;
-			bool speaking;
-			try { speaking = Tolk.IsSpeaking(); } catch { speaking = false; }
-			if (!speaking && elapsed >= minMs) break;
-		}
-	}
-
-	/// <summary>
-	/// Async sibling of <see cref="WaitForSpeechToFinish"/> for use on the UI thread without blocking it — waits
-	/// for a just-spoken announcement to finish before continuing (e.g. before the startup loading speaks). The
-	/// minimum is longer here because the startup welcome/hint is a full sentence; as with the sync version, only
-	/// SAPI reports <see cref="Tolk.IsSpeaking"/>, so screen readers simply wait the minimum.
+	/// Waits for a just-spoken announcement to finish before continuing — before the startup loading speaks over
+	/// the welcome, or before exit tears Tolk down mid-sentence.
+	///
+	/// Always yields, never blocks. There was a <c>Thread.Sleep</c> version of this for use while closing, on the
+	/// reasoning that a pause during exit costs nothing; it cost the message itself. Speech synthesis needs the
+	/// UI thread's message loop to be running, so blocking that thread to wait for speech means the speech does
+	/// not start until the wait is over.
+	///
+	/// Tolk only reports <see cref="Tolk.IsSpeaking"/> reliably for its own SAPI voice — most screen readers
+	/// return false even while talking — so a fixed minimum sized to the sentence is waited out regardless, then
+	/// it stops early once speech is known to be done, or at the hard cap.
 	/// </summary>
 	private static async Task WaitForSpeechAsync(int minMs = 2500, int maxMs = 12000)
 	{

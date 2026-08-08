@@ -53,12 +53,22 @@ public class SoundEngine
 	/// <param name="themeOverride">
 	/// Optional theme name to use instead of <see cref="AppSettings.CurrentTheme"/>.
 	/// </param>
-	public void Play(string name, string? themeOverride = null)
+	public void Play(string name, string? themeOverride = null) => _ = PlayAsync(name, themeOverride);
+
+	/// <summary>
+	/// The same playback, as a task that completes when the sound has actually finished.
+	///
+	/// Nearly every caller wants fire-and-forget, but shutdown does not: the goodbye cue has to finish before
+	/// the process ends, and the alternative is guessing at a sleep long enough to cover it — which is either
+	/// too short and clips the sound, or too long and leaves the user waiting on a silent window.
+	/// Completes immediately when sounds are switched off or the file is missing.
+	/// </summary>
+	public Task PlayAsync(string name, string? themeOverride = null)
 	{
 		if (!_settings.EnableUiSounds)
-			return;
+			return Task.CompletedTask;
 
-		Task.Run(() =>
+		return Task.Run(() =>
 		{
 			try
 			{
