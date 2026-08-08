@@ -362,6 +362,26 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// What puts two installed mods in the same group in the list.
+	///
+	/// Normally the top folder they share, which is how one download that unpacks several mods stays one row.
+	/// The Witcher 3 has no such structure — every mod is a sibling folder under <c>mods</c> — so a framework
+	/// shipping as ten <c>mod_&lt;family&gt;_*</c> folders filled ten rows. Those group by their family instead,
+	/// which is the author's own naming rather than a guess about what belongs with what.
+	/// </summary>
+	private string InstalledGroupKey(StardewMod mod)
+	{
+		string relativePath = Path.GetRelativePath(_settings.CurrentModsPath, mod.FolderPath);
+		int sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
+		string topFolder = sep != -1 ? relativePath.Substring(0, sep) : relativePath;
+
+		if (GameProfiles.Find(_settings.ActiveGame)?.IsWitcher3 == true)
+			return Witcher3Layout.FamilyKey(topFolder) ?? topFolder;
+
+		return topFolder;
+	}
+
+	/// <summary>
 	/// Re-renders <c>listInstalled</c> from <c>_allInstalledMods</c>, applying the current search
 	/// query and category filter, and grouping mods by their top-level sub-folder.
 	/// </summary>
@@ -389,12 +409,7 @@ public partial class Form1
 		StardewMod? stardewMod = listInstalled.SelectedItem as StardewMod;
 		string? restoreId = preferUniqueId ?? stardewMod?.UniqueId;
 		listInstalled.Items.Clear();
-		foreach (IGrouping<string, StardewMod> item2 in from g in _allInstalledMods.Where((StardewMod m) => !m.IsGroup).GroupBy(delegate(StardewMod m)
-			{
-				string relativePath = Path.GetRelativePath(_settings.CurrentModsPath, m.FolderPath);
-				int num2 = relativePath.IndexOf(Path.DirectorySeparatorChar);
-				return (num2 != -1) ? relativePath.Substring(0, num2) : relativePath;
-			})
+		foreach (IGrouping<string, StardewMod> item2 in from g in _allInstalledMods.Where((StardewMod m) => !m.IsGroup).GroupBy(InstalledGroupKey)
 			orderby g.Key
 			select g)
 		{
@@ -422,7 +437,9 @@ public partial class Form1
 				IsExpanded = flag2,
 				UniqueId = "GROUP:" + item2.Key,
 				SubMods = list,
-				FolderPath = Path.Combine(_settings.ModsPath, item2.Key)
+				// The active game's mods folder, not the legacy Stardew one this used — and for a group keyed by
+				// a Witcher family there is no folder of that name at all, so the parent is the honest answer.
+				FolderPath = _settings.CurrentModsPath
 			};
 			listInstalled.Items.Add(item);
 			if (!flag2)

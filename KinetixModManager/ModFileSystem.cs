@@ -45,6 +45,31 @@ public static class ModFileSystem
 
 	private static string? ManifestString(JObject manifest, string name) => ModManifest.String(manifest, name);
 
+	/// <summary>The description the manager writes for a mod it found on disk with no metadata of its own.</summary>
+	private const string LocalModDescription = "Installed local mod.";
+
+	/// <summary>
+	/// True for a manifest the manager wrote itself for a mod that came with no metadata — as opposed to one
+	/// carrying an author's real details.
+	///
+	/// All three fields together, because any one alone is ordinary: plenty of real mods are at 1.0.0, and a
+	/// real mod can have "Unknown" typed in its author field. Only the exact trio the old auto-generator wrote
+	/// identifies its own output.
+	/// </summary>
+	private static bool IsPlaceholderManifest(JObject manifest) =>
+		ManifestString(manifest, "Description") == LocalModDescription &&
+		ManifestString(manifest, "Author")      == "Unknown" &&
+		ManifestString(manifest, "Version")     == "1.0.0";
+
+	/// <summary>
+	/// How a mod found on disk with no metadata is named in the list. For The Witcher 3 that is the folder name
+	/// made readable, since the folder name is genuinely all there is; every other game keeps what it had.
+	/// </summary>
+	private static string LocalModDisplayName(string folderName, string activeGame) =>
+		GameProfiles.Find(activeGame)?.IsWitcher3 == true
+			? Witcher3Layout.DisplayNameFromFolder(folderName)
+			: folderName;
+
 	/// <summary>
 	/// Scans the mods directory for installed mods depending on the active game.
 	/// </summary>
@@ -193,11 +218,19 @@ public static class ModFileSystem
 							}
 						}
 
+						// An auto-generated manifest for a mod that came with no metadata used to record a made-up
+						// "1.0.0" and an author of "Unknown". Those were written to disk, so they outlive the
+						// code that invented them — recognise them and go back to not knowing, which is both
+						// true and what stops a mod page at 1.0 looking older than what is installed.
+						bool placeholder = IsPlaceholderManifest(manifest);
+
 						mod = new GameMod
 						{
-							Name        = ManifestString(manifest, "Name")        ?? folderName,
-							Version     = ManifestString(manifest, "Version")     ?? "1.0.0",
-							Author      = ManifestString(manifest, "Author")      ?? "Unknown",
+							Name        = placeholder
+								? LocalModDisplayName(folderName, activeGame)
+								: ManifestString(manifest, "Name") ?? folderName,
+							Version     = placeholder ? "" : ManifestString(manifest, "Version") ?? "",
+							Author      = placeholder ? "" : ManifestString(manifest, "Author")  ?? "",
 							UniqueId    = uid,
 							Description = ManifestString(manifest, "Description") ?? "",
 							NexusID     = nexusId,
@@ -222,13 +255,16 @@ public static class ModFileSystem
 							}
 						}
 
-						string guessedVersion = ExtractVersionFromFileName(folderName, extractedNexusId) ?? "1.0.0";
+						// No version in the folder name means there is no version to state. Leaving it empty is
+						// the honest answer and reads as "version unknown"; inventing 1.0.0 made every such mod
+						// look older than any real release, with nothing afterwards to tell the two apart.
+						string guessedVersion = ExtractVersionFromFileName(folderName, extractedNexusId) ?? "";
 
 						mod = new GameMod
 						{
-							Name        = cleanName,
+							Name        = LocalModDisplayName(cleanName, activeGame),
 							Version     = guessedVersion,
-							Author      = "Unknown",
+							Author      = "",
 							UniqueId    = cleanName,
 							Description = "Installed local mod.",
 							FolderPath  = dir,

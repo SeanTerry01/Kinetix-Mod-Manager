@@ -142,6 +142,11 @@ public class GameMod
 			return $"{Name} (ID: {NexusID}). {popularity}{Description}";
 		}
 		string noteSuffix = string.IsNullOrEmpty(Note) ? "" : $" Note: {Note}.";
-		return $"{value2}{Name} by {Author}, version {Version}. Category: {Category}. {value3}{value4}{noteSuffix}";
+		// Some mods genuinely carry no author or version — a Witcher 3 mod folder holds neither, because the
+		// engine never needed them. Saying so is better than the placeholders that used to stand in: "1.0.0" is
+		// a number the user could act on, and it is one nobody wrote down.
+		string by  = string.IsNullOrWhiteSpace(Author)  ? "" : $" by {Author}";
+		string ver = string.IsNullOrWhiteSpace(Version) ? "version unknown" : $"version {Version}";
+		return $"{value2}{Name}{by}, {ver}. Category: {Category}. {value3}{value4}{noteSuffix}";
 	}
 }
