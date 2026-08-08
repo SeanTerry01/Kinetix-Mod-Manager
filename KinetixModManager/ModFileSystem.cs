@@ -398,7 +398,13 @@ public static class ModFileSystem
 		// A mod shipped as a bare DLL gets a folder of its own first, so everything below is folder-based.
 		AdoptLooseBepInExPlugins(pluginsPath, logError);
 
-		Dictionary<string, string> logged = BepInExPlugin.ParseLoadedPluginsFromLog(BepInExLogPath(pluginsPath));
+		string logPath = BepInExLogPath(pluginsPath);
+		Dictionary<string, string> logged = BepInExPlugin.ParseLoadedPluginsFromLog(logPath);
+		// When the log was written, so a log predating a mod's files is not believed about them. The log only
+		// changes when the game runs, and mods are usually updated between sessions rather than during one.
+		DateTime? logWrittenUtc = null;
+		try { if (File.Exists(logPath)) logWrittenUtc = File.GetLastWriteTimeUtc(logPath); } catch { }
+
 		string disabledPath = BepInExDisabledFolder(pluginsPath);
 
 		foreach ((string root, bool enabled) in new[] { (pluginsPath, true), (disabledPath, false) })
@@ -412,7 +418,7 @@ public static class ModFileSystem
 
 				try
 				{
-					BepInExPluginInfo info = BepInExPlugin.Identify(dir, logged);
+					BepInExPluginInfo info = BepInExPlugin.Identify(dir, logged, logWrittenUtc);
 
 					JObject manifest = File.Exists(manifestPath)
 						? JObject.Parse(File.ReadAllText(manifestPath))

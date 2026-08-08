@@ -233,29 +233,57 @@ public static class BepInExPlugin
 	/// several plugins). The one whose name best matches the folder wins, since that is the mod the user
 	/// installed and named; the rest are its companions rather than separate mods.
 	/// </summary>
-	public static BepInExPluginInfo Identify(string modFolder, IReadOnlyDictionary<string, string>? loggedPlugins = null)
+	/// <param name="logWrittenUtc">
+	/// When the BepInEx log was last written, if known. The log records what the chainloader saw the last time
+	/// the game <em>ran</em>, so one older than the files it describes is out of date and is not consulted.
+	/// </param>
+	public static BepInExPluginInfo Identify(
+		string modFolder,
+		IReadOnlyDictionary<string, string>? loggedPlugins = null,
+		DateTime? logWrittenUtc = null)
 	{
 		string folderName = Path.GetFileName(modFolder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
 
 		var candidates = new List<BepInExPluginInfo>();
+		DateTime newestDll = DateTime.MinValue;
 		try
 		{
 			foreach (string dll in Directory.EnumerateFiles(modFolder, "*.dll", SearchOption.AllDirectories))
 			{
+				try
+				{
+					DateTime written = File.GetLastWriteTimeUtc(dll);
+					if (written > newestDll) newestDll = written;
+				}
+				catch { }
+
 				BepInExPluginInfo? info = ReadFromAssembly(dll);
 				if (info != null) candidates.Add(info);
 			}
 		}
 		catch { }
 
+		// The log describes a past run; the DLLs describe what is installed now. Once a mod has been updated the
+		// log is talking about files that no longer exist, so it must not be allowed to answer for them.
+		//
+		// This is not hypothetical: on a real install, three mods updated to 1.1 went on being listed as 1.0.0
+		// because the last BepInEx log predated the update by six days — and the update check, which compares
+		// what was downloaded rather than what the log says, quite correctly reported them up to date. The two
+		// disagreed and the user was left with a mod that said it needed no update and showed the old number.
+		bool logIsCurrent = loggedPlugins != null &&
+			(logWrittenUtc == null || newestDll == DateTime.MinValue || logWrittenUtc >= newestDll);
+
 		BepInExPluginInfo? best = PickBest(candidates, folderName);
 
 		if (best != null)
 		{
-			// The attribute's version is authoritative, but a plugin that ships a placeholder there while
-			// reporting a real one to the chainloader is common enough to be worth preferring the log.
-			if (loggedPlugins != null &&
-				loggedPlugins.TryGetValue(best.Name, out string? loggedVersion) &&
+			// The plugin's own declaration is the answer whenever it makes one. The log is consulted only for a
+			// plugin that declares a placeholder in its attribute while reporting a real version to the
+			// chainloader, which does happen — but it is the exception, not the rule it used to be treated as.
+			if (!IsPlaceholderVersion(best.Version)) return best;
+
+			if (logIsCurrent &&
+				loggedPlugins!.TryGetValue(best.Name, out string? loggedVersion) &&
 				!string.IsNullOrEmpty(loggedVersion))
 			{
 				return new BepInExPluginInfo { Guid = best.Guid, Name = best.Name, Version = loggedVersion };
@@ -265,9 +293,9 @@ public static class BepInExPlugin
 
 		// No readable attribute anywhere in the folder: fall back to a logged plugin whose name looks like this
 		// folder, and finally to the folder name itself with no version claim.
-		if (loggedPlugins != null)
+		if (logIsCurrent)
 		{
-			foreach (var kv in loggedPlugins)
+			foreach (var kv in loggedPlugins!)
 			{
 				if (NamesMatch(kv.Key, folderName))
 					return new BepInExPluginInfo { Guid = "", Name = kv.Key, Version = kv.Value };
@@ -276,6 +304,15 @@ public static class BepInExPlugin
 
 		return new BepInExPluginInfo { Guid = "", Name = folderName, Version = "" };
 	}
+
+	/// <summary>
+	/// True for a version that says nothing — an unset attribute, or the all-zero default a plugin gets when its
+	/// author never filled one in. <c>1.0.0</c> is deliberately NOT one of these: it is what a great many mods
+	/// genuinely are, and treating it as missing would hand their identity back to a stale log.
+	/// </summary>
+	private static bool IsPlaceholderVersion(string? version) =>
+		string.IsNullOrWhiteSpace(version) ||
+		version is "0" or "0.0" or "0.0.0" or "0.0.0.0";
 
 	/// <summary>
 	/// Chooses the plugin that the mod folder is named for. An exact-ish name match wins; failing that the

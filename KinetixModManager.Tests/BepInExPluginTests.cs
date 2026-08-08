@@ -161,6 +161,62 @@ public class BepInExPluginTests
     }
 
     [Fact]
+    public void Identify_IgnoresALogWrittenBeforeTheModsFiles()
+    {
+        // The log says what the chainloader saw the last time the game RAN. Update a mod and it is describing
+        // files that no longer exist — which is how three mods updated to 1.1 went on being listed as 1.0.0,
+        // the last log predating the update by six days.
+        string folder = NewTempFolder("Moonlight Time Control");
+        string dll = Path.Combine(folder, "TimeControl.dll");
+        File.WriteAllText(dll, "not a real assembly");
+        File.SetLastWriteTimeUtc(dll, new DateTime(2026, 8, 8, 11, 15, 0, DateTimeKind.Utc));
+
+        var logged = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Moonlight Time Control"] = "1.0.0"
+        };
+
+        BepInExPluginInfo info = BepInExPlugin.Identify(
+            folder, logged, logWrittenUtc: new DateTime(2026, 8, 2, 17, 41, 0, DateTimeKind.Utc));
+
+        // Better to admit to not knowing than to state a version the user has already replaced.
+        Assert.Equal("", info.Version);
+    }
+
+    [Fact]
+    public void Identify_StillUsesALogWrittenAfterTheModsFiles()
+    {
+        // The ordinary case: the game has been run since the mod was installed, so the log is describing
+        // exactly these files and is the only place a version can be read from.
+        string folder = NewTempFolder("SaveAnywhere");
+        string dll = Path.Combine(folder, "Save Anywhere.dll");
+        File.WriteAllText(dll, "not a real assembly");
+        File.SetLastWriteTimeUtc(dll, new DateTime(2026, 7, 13, 21, 35, 0, DateTimeKind.Utc));
+
+        var logged = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Save Anywhere"] = "2.0.1"
+        };
+
+        BepInExPluginInfo info = BepInExPlugin.Identify(
+            folder, logged, logWrittenUtc: new DateTime(2026, 7, 29, 19, 41, 0, DateTimeKind.Utc));
+
+        Assert.Equal("2.0.1", info.Version);
+    }
+
+    [Fact]
+    public void Identify_TrustsTheLogWhenItsAgeIsUnknown()
+    {
+        // Callers that don't say when the log was written get the old behaviour rather than losing the version.
+        string folder = NewTempFolder("SaveAnywhere");
+        File.WriteAllText(Path.Combine(folder, "Save Anywhere.dll"), "not a real assembly");
+
+        var logged = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["Save Anywhere"] = "2.0.1" };
+
+        Assert.Equal("2.0.1", BepInExPlugin.Identify(folder, logged).Version);
+    }
+
+    [Fact]
     public void ReadFromAssembly_ReturnsNullForAFileThatIsNotAManagedAssembly()
     {
         string fake = WriteTemp("NotAnAssembly.dll", "MZ but not really");
