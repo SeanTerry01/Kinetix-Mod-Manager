@@ -33,7 +33,7 @@ public partial class Form1
 		if (listWalkthroughs == null) return;
 		listWalkthroughs.Items.Clear();
 		
-		var guides = _settings.ActiveGame switch
+		var guides = GameProfiles.BaseId(_settings.ActiveGame) switch
 		{
 			"StardewValley" => new[]
 			{
@@ -144,7 +144,7 @@ public partial class Form1
 	{
 		if (cmbModWikis == null) return;
 
-		ModWikiLink gameWiki = _settings.ActiveGame switch
+		ModWikiLink gameWiki = GameProfiles.BaseId(_settings.ActiveGame) switch
 		{
 			"SkyrimSE" => new ModWikiLink { Title = "UESP Skyrim Wiki (main game wiki)", Url = "https://en.uesp.net/wiki/Skyrim:Skyrim", ApiUrl = "https://en.uesp.net/w/api.php", ArticleBase = "https://en.uesp.net/wiki/", IsGameWiki = true, CategoryPrefix = "Skyrim" },
 			"Fallout4" => new ModWikiLink { Title = "Fallout Wiki (main game wiki)", Url = "https://fallout.fandom.com/wiki/Fallout_4", ApiUrl = "https://fallout.fandom.com/api.php", ArticleBase = "https://fallout.fandom.com/wiki/", IsGameWiki = true, CategoryPrefix = "Fallout 4" },
@@ -154,7 +154,7 @@ public partial class Form1
 			_ => new ModWikiLink { Title = "Stardew Valley Wiki (main game wiki)", Url = "https://stardewvalleywiki.com/", ApiUrl = "https://stardewvalleywiki.com/mediawiki/api.php", ArticleBase = "https://stardewvalleywiki.com/", IsGameWiki = true }
 		};
 
-		ModWikiLink[] modWikis = _settings.ActiveGame switch
+		ModWikiLink[] modWikis = GameProfiles.BaseId(_settings.ActiveGame) switch
 		{
 			// Wikis for big Skyrim content mods (new lands, quests, areas). The Elder Scrolls Mods Wiki and
 			// UESP host several of these, so the per-mod entries land on that mod's page while Search/Categories
@@ -460,7 +460,7 @@ public partial class Form1
 	/// </summary>
 	private string CurrentWikiApiUrl => _activeWiki != null
 		? _activeWiki.ApiUrl
-		: _settings.ActiveGame switch
+		: GameProfiles.BaseId(_settings.ActiveGame) switch
 		{
 			"SkyrimSE" => "https://en.uesp.net/w/api.php",
 			"Fallout4" => "https://fallout.fandom.com/api.php",
@@ -471,7 +471,7 @@ public partial class Form1
 	/// <summary>Article URL prefix for the active wiki; results are opened as <c>base + Title</c>.</summary>
 	private string CurrentWikiBaseUrl => _activeWiki != null
 		? _activeWiki.ArticleBase
-		: _settings.ActiveGame switch
+		: GameProfiles.BaseId(_settings.ActiveGame) switch
 		{
 			"SkyrimSE" => "https://en.uesp.net/wiki/",
 			"Fallout4" => "https://fallout.fandom.com/wiki/",
@@ -488,7 +488,7 @@ public partial class Form1
 		cmbWikiCategories.Items.Clear();
 		cmbWikiCategories.Items.Add("Select Category");
 
-		string[] categories = _settings.ActiveGame switch
+		string[] categories = GameProfiles.BaseId(_settings.ActiveGame) switch
 		{
 			"SkyrimSE" => new string[] { "Quests", "Items", "Skills", "NPCs", "Magic", "Factions", "Locations" },
 			"Fallout4" => new string[] { "Quests", "Weapons", "Perks", "Characters", "Factions", "Locations", "Items" },
@@ -619,12 +619,12 @@ public partial class Form1
 			// The curated game-wiki categories use friendly names that must be mapped to the wiki's real category
 			// titles. Categories fetched live from a mod wiki are already exact titles, so skip the mapping there.
 			string mappedCategory = category;
-			if (ActiveWikiIsGameWiki && _settings.ActiveGame == "SkyrimSE")
+			if (ActiveWikiIsGameWiki && GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.SkyrimSE))
 			{
 				if (category == "Quests" || category == "Items" || category == "Skills" || category == "NPCs" || category == "Magic" || category == "Factions" || category == "Locations")
 					mappedCategory = "Skyrim-" + category;
 			}
-			else if (ActiveWikiIsGameWiki && _settings.ActiveGame == "Fallout4")
+			else if (ActiveWikiIsGameWiki && GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.Fallout4))
 			{
 				if (category == "Quests" || category == "Weapons" || category == "Perks" || category == "Characters" || category == "Factions" || category == "Locations" || category == "Items")
 					mappedCategory = "Fallout 4 " + category.ToLower();

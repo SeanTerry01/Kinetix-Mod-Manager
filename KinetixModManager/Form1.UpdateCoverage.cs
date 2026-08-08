@@ -124,7 +124,7 @@ public partial class Form1
 			// and a field that don't exist, and gives them nothing to act on.
 			string reason = info.Reason == UncheckedReason.BlankUpdateKey
 				? Loc.T("coverage.reasonBlankKey")
-				: _settings.ActiveGame == "StardewValley"
+				: GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley)
 					? Loc.T("coverage.reasonNoKey")
 					: Loc.T("coverage.reasonNoNexusId");
 			rows.Add(new ReportRow
@@ -232,7 +232,7 @@ public partial class Form1
 	/// </summary>
 	private async Task<HashSet<string>?> FetchSmapiKnownIdsAsync()
 	{
-		if (_settings.ActiveGame != "StardewValley") return null;
+		if (!GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley)) return null;
 
 		var candidates = _allInstalledMods.Where(m => !m.IsGroup && !string.IsNullOrEmpty(m.UniqueId)).ToList();
 		if (candidates.Count == 0) return null;

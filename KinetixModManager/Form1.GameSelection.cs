@@ -37,24 +37,63 @@ public partial class Form1
 		return GameProfiles.Find(game)?.DefaultInstallFolder ?? "";
 	}
 
+	/// <summary>
+	/// The first copy of <paramref name="game"/> detection finds, or <c>""</c>. Kept as the answer to "where is
+	/// this game?" for the many callers that only need one folder; <see cref="DetectInstalledGameCopies"/> is what
+	/// to ask when it matters that there may be two.
+	/// </summary>
 	private string DetectInstalledGameFolder(string game)
 	{
+		var copies = DetectInstalledGameCopies(game);
+		return copies.Count > 0 ? copies[0].Folder : "";
+	}
+
+	/// <summary>
+	/// Every installed copy of <paramref name="game"/> this machine has, each tagged with the store it came from,
+	/// in the order the probes are trusted: Steam's uninstall key, Steam's own library records, GOG's registry
+	/// entry in both hives, then a content search of the usual GOG roots.
+	///
+	/// Gathering all of them rather than returning at the first hit is what lets someone own the game twice. The
+	/// probes overlap — the same folder is often found two or three ways — so results are de-duplicated by path.
+	///
+	/// The store is settled by <em>contents</em>, not by which probe found it or where it sits: every GOG install
+	/// leaves a <c>goggame-&lt;product id&gt;.info</c> behind, and that file is the evidence. It matters because
+	/// GOG installs "Skyrim Special Edition" into a folder called "Skyrim Anniversary Edition", and because a
+	/// Steam copy sitting inside a folder named "GOG Games" would otherwise be misread.
+	/// </summary>
+	private List<(string Folder, GamePlatform Platform)> DetectInstalledGameCopies(string game)
+	{
+		var found = new List<(string Folder, GamePlatform Platform)>();
 		GameProfile? profile = GameProfiles.Find(game);
-		if (profile == null) return "";
+		if (profile == null) return found;
+
+		var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+		void Consider(string? path, GamePlatform probeSaid)
+		{
+			if (string.IsNullOrEmpty(path) || !Directory.Exists(path)) return;
+
+			string full;
+			try { full = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar); }
+			catch { return; }
+			if (!seen.Add(full)) return;
+
+			// Contents beat provenance: a folder holding GOG's marker file is a GOG copy however it was found.
+			GamePlatform platform = GogLibraryLocator.IsGogInstallAnyOf(full, profile.AllGogProductIds)
+				? GamePlatform.Gog
+				: probeSaid;
+
+			found.Add((full, platform));
+		}
 
 		// A game can be installed under more than one store id — an original release and a later bundle of the
-		// same game each have their own — so every id this game ships under is tried before giving up.
+		// same game each have their own — so every id this game ships under is tried.
 		try
 		{
 			foreach (string steamAppId in profile.AllSteamAppIds)
 			{
 				using var steamKey = Registry.LocalMachine.OpenSubKey($@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App {steamAppId}");
-				if (steamKey != null)
-				{
-					string? path = steamKey.GetValue("InstallLocation")?.ToString();
-					if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
-						return path;
-				}
+				Consider(steamKey?.GetValue("InstallLocation")?.ToString(), GamePlatform.Steam);
 			}
 		}
 		catch { }
@@ -63,10 +102,7 @@ public partial class Form1
 		// moves, installs that never write InstallLocation). Steam's own libraryfolders.vdf lists
 		// every library on every drive, so parse it to find the game wherever it actually lives.
 		foreach (string steamAppId in profile.AllSteamAppIds)
-		{
-			string steamLib = DetectSteamLibraryGameFolder(steamAppId);
-			if (!string.IsNullOrEmpty(steamLib)) return steamLib;
-		}
+			Consider(DetectSteamLibraryGameFolder(steamAppId), GamePlatform.Steam);
 
 		// Games that aren't sold on GOG have no product id and skip this entirely.
 		try
@@ -85,12 +121,8 @@ public partial class Form1
 					foreach (var subkey in gogKeys)
 					{
 						using var gogKey = hive.OpenSubKey(subkey);
-						if (gogKey != null)
-						{
-							string? path = gogKey.GetValue("path")?.ToString() ?? gogKey.GetValue("InstallPath")?.ToString();
-							if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
-								return path;
-						}
+						Consider(gogKey?.GetValue("path")?.ToString() ?? gogKey?.GetValue("InstallPath")?.ToString(),
+							GamePlatform.Gog);
 					}
 				}
 			}
@@ -101,20 +133,105 @@ public partial class Form1
 			// way through to a Steam default path they will never have.
 			if (profile.AllGogProductIds.Any())
 			{
-				string? found = GogLibraryLocator.FindGameFolder(
+				Consider(GogLibraryLocator.FindGameFolder(
 					GogLibraryLocator.DefaultRoots(GetGogGalaxyPath(), GogLibraryLocator.FixedDriveRoots()),
-					profile.GameExeName);
-				if (!string.IsNullOrEmpty(found)) return found;
+					profile.GameExeName), GamePlatform.Gog);
 			}
 		}
 		catch { }
 
-		string fallback = profile.DefaultInstallFolder;
+		// The well-known Steam path, tried only when nothing else turned the game up — it is a guess, not a
+		// record, so it must never displace a copy something actually reported.
+		if (found.Count == 0) Consider(profile.DefaultInstallFolder, GamePlatform.Unknown);
 
-		if (Directory.Exists(fallback))
-			return fallback;
+		return found;
+	}
 
-		return "";
+	/// <summary>
+	/// Where a copy the manager is meeting for the first time should keep its mods.
+	///
+	/// Inside the game folder, for the games that stage: it makes a copy self-contained, which is the whole point
+	/// once a second copy of the same game can exist, and it puts the staging folder on the same volume as the
+	/// game so deployment can always hard-link instead of falling back to copying every file twice.
+	///
+	/// The exception is a leftover staging folder with mods already in it under <c>%AppData%</c>. That is an
+	/// existing setup whose game folder simply wasn't recorded, and nobody's mods are moved as a side effect of
+	/// an update — the Settings checkbox is how that choice gets made, out loud.
+	/// </summary>
+	private bool DefaultModsInGameFolder(GameProfile profile)
+	{
+		if (!profile.IsBethesda || string.IsNullOrEmpty(profile.StagingFolderName)) return false;
+
+		try
+		{
+			string legacy = Path.Combine(dataBasePath, profile.StagingFolderName);
+			if (Directory.Exists(legacy) && Directory.EnumerateFileSystemEntries(legacy).Any()) return false;
+		}
+		catch { /* unreadable is not a reason to move anyone's mods; fall through to the safe answer */ }
+
+		return true;
+	}
+
+	/// <summary>
+	/// Brings <see cref="AppSettings.GameInstalls"/> up to date with what is on disk: records any copy detection
+	/// finds that isn't known yet, and fills in the store for copies carried over from an older settings file.
+	/// Returns the keys of copies that are genuinely new, so the caller can tell the user about them.
+	///
+	/// Existing entries are never repointed or removed. A folder that has gone missing may be a drive that isn't
+	/// plugged in, and throwing away that copy's key would orphan its mod list, its load order and its history.
+	/// </summary>
+	private List<string> RefreshDetectedGameInstalls()
+	{
+		var newlyFound = new List<string>();
+
+		foreach (GameProfile profile in GameProfiles.All)
+		{
+			var copies = DetectInstalledGameCopies(profile.Id);
+			if (copies.Count == 0) continue;
+
+			foreach ((string folder, GamePlatform platform) in copies)
+			{
+				GameInstall? known = _settings.GameInstalls.FirstOrDefault(i =>
+					i.GameId == profile.Id &&
+					string.Equals(i.Folder.TrimEnd(Path.DirectorySeparatorChar), folder, StringComparison.OrdinalIgnoreCase));
+
+				if (known != null)
+				{
+					// A copy migrated from an older settings file has no store recorded; detection knows it now.
+					if (known.Platform == GamePlatform.Unknown && platform != GamePlatform.Unknown)
+						known.Platform = platform;
+					continue;
+				}
+
+				// The first copy of a game keeps the bare game id, so everything already filed under that key —
+				// mods, deployment, backups, history — stays attached to it.
+				bool isPrimary = !_settings.GameInstalls.Any(i => i.GameId == profile.Id);
+				string key = GameProfiles.InstallKeyFor(profile.Id, platform, isPrimary);
+
+				// Two copies from the same store (or two of unknown provenance) would collide on one key; number
+				// the later ones rather than let the second silently take over the first's mods.
+				string unique = key;
+				for (int n = 2; _settings.GameInstalls.Any(i => i.Key == unique); n++)
+					unique = key + n;
+
+				_settings.GameInstalls.Add(new GameInstall
+				{
+					Key      = unique,
+					GameId   = profile.Id,
+					Platform = platform,
+					Folder   = folder,
+					ModsInGameFolder = DefaultModsInGameFolder(profile)
+				});
+
+				if (!_settings.GamePaths.ContainsKey(unique) || string.IsNullOrEmpty(_settings.GamePaths[unique]))
+					_settings.GamePaths[unique] = folder;
+
+				newlyFound.Add(unique);
+			}
+		}
+
+		if (newlyFound.Count > 0 || _settings.GameInstalls.Count > 0) _settings.Save();
+		return newlyFound;
 	}
 
 	/// <summary>
@@ -197,9 +314,10 @@ public partial class Form1
 		if (FolderContainsGameExe(game, gamePath))
 			return true;
 
-		if (game == "StardewValley")
+		if (GameProfiles.IsGame(game, GameProfiles.StardewValley))
 		{
-			string stardewMods = _settings.GameModsPaths.TryGetValue("StardewValley", out string? sp) ? sp : "";
+			// This copy's own mods path, not the bare game id's — a second Stardew copy has a key of its own.
+			string stardewMods = _settings.GameModsPaths.TryGetValue(game, out string? sp) ? sp : "";
 			if (!string.IsNullOrEmpty(stardewMods) && Directory.Exists(stardewMods))
 			{
 				string parent = Path.GetDirectoryName(stardewMods) ?? "";
@@ -207,6 +325,11 @@ public partial class Form1
 					return true;
 			}
 		}
+
+		// A recorded copy is judged by ITS folder and nothing else. Falling back to "is this game installed
+		// anywhere?" would report a copy on an unplugged drive as present because the other copy is — and the
+		// session would then load pointing at a folder that isn't there.
+		if (_settings.InstallFor(game) != null) return false;
 
 		string detected = DetectInstalledGameFolder(game);
 		if (!string.IsNullOrEmpty(detected) && Directory.Exists(detected))
@@ -356,6 +479,22 @@ public partial class Form1
 		}
 
 		_settings.GamePaths[game] = chosen;
+
+		// Keep the recorded copy pointing at the same folder as the session, or the two disagree about where
+		// this copy's mods, saves and per-player data live. A copy located by hand tells us nothing about which
+		// store it came from, so ask the folder itself.
+		GameInstall? located = _settings.InstallFor(game);
+		if (located == null)
+		{
+			GameProfile profile = GameProfiles.Require(game);
+			located = new GameInstall { Key = game, GameId = profile.Id, ModsInGameFolder = DefaultModsInGameFolder(profile) };
+			_settings.GameInstalls.Add(located);
+		}
+		located.Folder = chosen;
+		located.Platform = GogLibraryLocator.IsGogInstallAnyOf(chosen, GameProfiles.Require(game).AllGogProductIds)
+			? GamePlatform.Gog
+			: located.Platform;
+
 		_settings.Save();
 		Speak(Loc.T("session.locatedSpeak", targetName));
 		return true;
@@ -395,9 +534,27 @@ public partial class Form1
 		// GameProfiles.All is already in alphabetical display order.
 		foreach (GameProfile profile in GameProfiles.All)
 		{
-			if (!installed[profile.Id] && _settings.ActiveGame != profile.Id) continue;
-			string gameId = profile.Id;
-			_menuGames.DropDownItems.Add(profile.DisplayName, null, delegate { SwitchActiveGame(gameId); });
+			var copies = _settings.InstallsOf(profile.Id);
+
+			if (copies.Count == 0)
+			{
+				// No copy recorded — the game is listed under its own name, and choosing it leads to detection or
+				// to the "locate the folder" flow, exactly as it always did.
+				if (!installed[profile.Id] && !GameProfiles.IsGame(_settings.ActiveGame, profile.Id)) continue;
+				string gameId = profile.Id;
+				_menuGames.DropDownItems.Add(profile.DisplayName, null, delegate { SwitchActiveGame(gameId); });
+				continue;
+			}
+
+			// One entry per copy. The platform is named only when there are two to tell apart — with a single
+			// copy this reads "Skyrim Special Edition", exactly as before, which is what almost everyone sees.
+			bool label = copies.Count > 1;
+			foreach (GameInstall copy in copies)
+			{
+				if (!installed[profile.Id] && _settings.ActiveGame != copy.Key) continue;
+				string key = copy.Key;
+				_menuGames.DropDownItems.Add(copy.DisplayName(label), null, delegate { SwitchActiveGame(key); });
+			}
 		}
 
 		// Close session option is in the File menu
@@ -606,7 +763,7 @@ public partial class Form1
 
 			if (!File.Exists(exePath))
 			{
-				if (game == "StardewValley")
+				if (GameProfiles.IsGame(game, GameProfiles.StardewValley))
 				{
 					string parent = Path.GetDirectoryName(_settings.CurrentModsPath) ?? "";
 					exePath = Path.Combine(parent, "StardewModdingAPI.exe");
@@ -629,7 +786,7 @@ public partial class Form1
 				var seVer = ModFileSystem.CheckScriptExtenderVersion(game, gamePath);
 				if (seVer.HasValue && !seVer.Value.Match)
 				{
-					string seName = game == "SkyrimSE" ? "SKSE" : "F4SE";
+					string seName = GameProfiles.IsGame(game, GameProfiles.SkyrimSE) ? "SKSE" : "F4SE";
 					Speak(Loc.T("launch.seMismatchSpeak", seName));
 					var choice = SpeakBox(
 						Loc.T("launch.seMismatchBox", seName, seVer.Value.ExtenderVersion, seVer.Value.GameVersion),

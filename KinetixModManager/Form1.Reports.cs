@@ -44,7 +44,7 @@ public partial class Form1
 	{
 		List<ReportRow> rows = GatherFileConflictFindings();
 
-		if (_settings.ActiveGame == "StardewValley")
+		if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley))
 			ShowReportDialog(Loc.T("reports.conflictTitle"), Loc.T("reports.dupHeader"),
 				Loc.T("reports.dupNone"), rows, null);
 		else if (!IsBethesdaGame)
@@ -65,7 +65,7 @@ public partial class Form1
 	{
 		var rows = new List<ReportRow>();
 
-		if (_settings.ActiveGame == "StardewValley")
+		if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley))
 		{
 			foreach (var (uid, names) in ModHealth.FindDuplicateUniqueIds(_allInstalledMods))
 				rows.Add(new ReportRow { Text = Loc.T("reports.dupId", uid, string.Join(", ", names)) });
@@ -123,7 +123,7 @@ public partial class Form1
 		var enabled = _allInstalledMods.Where(m => !m.IsGroup && m.IsEnabled).ToList();
 		var rows = new List<ReportRow>();
 
-		if (_settings.ActiveGame == "StardewValley")
+		if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley))
 		{
 			foreach (GameMod mod in enabled)
 				foreach (ModDependency dep in mod.Dependencies.Where(d => d.IsRequired))
@@ -153,10 +153,10 @@ public partial class Form1
 				});
 
 			// 2. Script extender (SKSE/F4SE) not installed at all.
-			string seId = _settings.ActiveGame == "SkyrimSE" ? "30379" : "42147"; // SKSE64 / F4SE Nexus ids
+			string seId = GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.SkyrimSE) ? "30379" : "42147"; // SKSE64 / F4SE Nexus ids
 			bool seInstalled = ModFileSystem.IsScriptExtenderInstalled(_settings.ActiveGame, _settings.CurrentGamePath);
 			if (!seInstalled)
-				rows.Add(new ReportRow { Text = Loc.T("reports.seMissing", _settings.ActiveGame == "SkyrimSE" ? "SKSE" : "F4SE"), IgnoreKey = "se" });
+				rows.Add(new ReportRow { Text = Loc.T("reports.seMissing", GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.SkyrimSE) ? "SKSE" : "F4SE"), IgnoreKey = "se" });
 
 			// 3. Nexus "Requirements" tab for each installed Nexus-linked mod (online, best-effort).
 			var installedIds = new HashSet<string>(

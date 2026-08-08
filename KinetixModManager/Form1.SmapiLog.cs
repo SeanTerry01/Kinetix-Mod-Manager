@@ -35,7 +35,7 @@ public partial class Form1
 	/// </summary>
 	private void OpenGameLog()
 	{
-		if (_settings.ActiveGame == "StardewValley") { OpenRawSmapiLog(); return; }
+		if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley)) { OpenRawSmapiLog(); return; }
 		if (!GameHasLogTab(_settings.ActiveGame)) { SpeakBox(Loc.T("log.notFound")); return; }
 
 		string folder = GameLogFolder();
@@ -51,16 +51,20 @@ public partial class Form1
 	/// <summary>
 	/// The folder where the script extender (and most F4SE/SKSE plugins) write their logs for the active
 	/// Bethesda game: <c>Documents\My Games\&lt;game&gt;\F4SE</c> or <c>\SKSE</c>. Empty outside Skyrim/FO4.
+	///
+	/// The per-player folder is asked for by COPY, not by game. A GOG install writes to "Skyrim Special Edition
+	/// GOG", so a hardcoded Steam folder name here would have shown the wrong copy's log — silently, and most
+	/// confusingly of all on the machine where both are installed and both logs exist.
 	/// </summary>
 	private string BethesdaLogFolder()
 	{
-		string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-		return _settings.ActiveGame switch
-		{
-			"Fallout4" => Path.Combine(docs, "My Games", "Fallout4", "F4SE"),
-			"SkyrimSE" => Path.Combine(docs, "My Games", "Skyrim Special Edition", "SKSE"),
-			_          => ""
-		};
+		if (!IsBethesdaGame) return "";
+
+		GameProfile profile = GameProfiles.Require(_settings.ActiveGame);
+		string userData = profile.UserDataDirectoryFor(_settings.CurrentGamePath);
+		if (string.IsNullOrEmpty(userData)) return "";
+
+		return Path.Combine(userData, GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.Fallout4) ? "F4SE" : "SKSE");
 	}
 
 	/// <summary>
@@ -101,7 +105,7 @@ public partial class Form1
 	}
 
 	/// <summary>The loader's own log file name for the active game — the one the Log tab opens by default.</summary>
-	private string PrimaryGameLogName() => _settings.ActiveGame switch
+	private string PrimaryGameLogName() => GameProfiles.BaseId(_settings.ActiveGame) switch
 	{
 		"SkyrimSE"       => "skse64.log",
 		"Fallout4"       => "f4se.log",

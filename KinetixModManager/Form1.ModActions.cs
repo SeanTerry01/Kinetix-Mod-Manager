@@ -105,7 +105,7 @@ public partial class Form1
 			return;
 		}
 
-		string manifestName = _settings.ActiveGame == "StardewValley" ? "manifest.json" : ".manager_manifest.json";
+		string manifestName = GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley) ? "manifest.json" : ".manager_manifest.json";
 		string manifestPath = Path.Combine(mod.FolderPath, manifestName);
 		if (!File.Exists(manifestPath))
 		{

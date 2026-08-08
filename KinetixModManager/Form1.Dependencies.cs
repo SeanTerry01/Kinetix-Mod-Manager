@@ -53,7 +53,7 @@ public partial class Form1
 		rows.Add(new ReportRow { Text = Loc.T("deps.requiresHeader") });
 		int requiresBefore = rows.Count;
 
-		if (_settings.ActiveGame == "StardewValley")
+		if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley))
 		{
 			foreach (ModDependency dep in mod.Dependencies)
 			{
@@ -138,7 +138,7 @@ public partial class Form1
 		var result = new List<string>();
 		var others = _allInstalledMods.Where(m => !m.IsGroup && !ReferenceEquals(m, target)).ToList();
 
-		if (_settings.ActiveGame == "StardewValley")
+		if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley))
 		{
 			if (string.IsNullOrEmpty(target.UniqueId)) return result;
 			foreach (StardewMod m in others)
@@ -186,7 +186,7 @@ public partial class Form1
 			return;
 		}
 
-		if (_settings.ActiveGame == "StardewValley")
+		if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley))
 		{
 			var missing = mod.Dependencies.Where(d => d.IsRequired && !d.IsPresent).Select(d => d.UniqueId).Distinct().ToList();
 			if (missing.Count == 0) { Speak(Loc.T("deps.resolveNoneMissing")); return; }
@@ -210,7 +210,7 @@ public partial class Form1
 		var installedIds = new HashSet<string>(
 			_allInstalledMods.Where(m => !m.IsGroup && !string.IsNullOrEmpty(m.NexusID)).Select(m => m.NexusID!),
 			StringComparer.OrdinalIgnoreCase);
-		string seId = _settings.ActiveGame == "SkyrimSE" ? "30379" : "42147";
+		string seId = GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.SkyrimSE) ? "30379" : "42147";
 
 		var toGet = new List<NexusService.ModRequirementInfo>(); // has a Nexus id, not installed, downloadable
 		var manualOnly = new List<NexusService.ModRequirementInfo>(); // off-Nexus / no id — user must fetch themselves

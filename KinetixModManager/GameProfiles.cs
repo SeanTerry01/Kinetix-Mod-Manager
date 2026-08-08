@@ -271,11 +271,30 @@ public sealed class GameProfile
 	}
 }
 
+/// <summary>
+/// The store a particular copy of a game was bought from. Two copies of one game are told apart by this, and it
+/// is also what decides which build of a script extender fits — SKSE ships a different file for the GOG release
+/// than for the Steam one.
+/// </summary>
+public enum GamePlatform
+{
+	/// <summary>The copy's store could not be established — a hand-placed install, or one located by the user.</summary>
+	Unknown,
+	Steam,
+	Gog
+}
+
 /// <summary>The games the manager supports, and lookups over them.</summary>
 public static class GameProfiles
 {
 	/// <summary>The id used when no game session is loaded.</summary>
 	public const string NoGame = "None";
+
+	/// <summary>
+	/// Separates a game id from its platform in an install key. Chosen because no game id contains it, so an
+	/// install key can always be split back into its parts without ambiguity.
+	/// </summary>
+	public const char InstallKeySeparator = '@';
 
 	public const string StardewValley = "StardewValley";
 	public const string SkyrimSE      = "SkyrimSE";
@@ -435,12 +454,97 @@ public static class GameProfiles
 	/// <summary>Every supported game's display name, in display order — the game lists and menus.</summary>
 	public static IReadOnlyList<string> AllDisplayNames { get; } = All.Select(g => g.DisplayName).ToList();
 
+	// -------------------------------------------------------------------------
+	// Install keys
+	// -------------------------------------------------------------------------
+	// Someone can own the same game twice — the Steam copy and the GOG one, installed side by side. Everything
+	// the manager remembers about a game is keyed by a string: the settings dictionaries, and the folders under
+	// %AppData% holding the deployment manifest, downloads, backups, safety snapshots, save backups and search
+	// history. So the way to make all of that per-COPY rather than per-GAME is to make that one string identify
+	// the copy.
+	//
+	// An install key is the bare game id for a game's first copy ("SkyrimSE") and "<gameId>@<platform>" for any
+	// further one ("SkyrimSE@Gog"). Keeping the first copy's key bare is what makes this cost nothing: every
+	// existing settings file and every folder already on disk stays valid, and a user who owns one copy of each
+	// game — which is nearly everyone — sees no change at all.
+
+	/// <summary>
+	/// The game id inside an install key — <c>"SkyrimSE@Gog"</c> gives <c>"SkyrimSE"</c>, and a key that is
+	/// already a bare game id is returned unchanged. Use this wherever the question is "which game is this?"
+	/// rather than "which copy is this?": the Nexus domain, the LOOT masterlist, the mod layout.
+	/// </summary>
+	public static string BaseId(string? installKey)
+	{
+		if (string.IsNullOrEmpty(installKey)) return "";
+		int at = installKey.IndexOf(InstallKeySeparator);
+		return at < 0 ? installKey : installKey.Substring(0, at);
+	}
+
+	/// <summary>
+	/// True when <paramref name="installKey"/> identifies a copy of <paramref name="gameId"/>, whichever store it
+	/// came from.
+	///
+	/// This exists to be used INSTEAD of <c>game == "SkyrimSE"</c>. A bare comparison against a game id stopped
+	/// being right the moment a second copy could exist: "SkyrimSE@Gog" does not equal "SkyrimSE", so the
+	/// comparison quietly answers no and the caller takes the branch meant for some other game entirely. A test
+	/// in the test project scans the sources and fails on any such comparison that comes back.
+	/// </summary>
+	public static bool IsGame(string? installKey, string gameId) =>
+		string.Equals(BaseId(installKey), gameId, StringComparison.Ordinal);
+
+	/// <summary>True when <paramref name="installKey"/> is a copy of any of <paramref name="gameIds"/>.</summary>
+	public static bool IsAnyGame(string? installKey, params string[] gameIds)
+	{
+		string id = BaseId(installKey);
+		foreach (string candidate in gameIds)
+			if (string.Equals(id, candidate, StringComparison.Ordinal)) return true;
+		return false;
+	}
+
+	/// <summary>
+	/// The install key for a copy of <paramref name="gameId"/> from <paramref name="platform"/>.
+	///
+	/// <paramref name="isPrimary"/> is what decides whether the key is suffixed at all: a game's first copy keeps
+	/// the bare id no matter which store it came from, so a GOG-only owner's key is "SkyrimSE" and their existing
+	/// settings keep working. Only a second copy needs telling apart.
+	/// </summary>
+	public static string InstallKeyFor(string gameId, GamePlatform platform, bool isPrimary) =>
+		isPrimary || platform == GamePlatform.Unknown ? gameId : gameId + InstallKeySeparator + platform;
+
+	/// <summary>
+	/// The platform named in an install key, or <see cref="GamePlatform.Unknown"/> for a bare game id — which
+	/// says nothing about where that copy came from, only that it is the game's first copy. The copy's recorded
+	/// <c>GameInstall.Platform</c> is the answer to "which store"; this is only for reading the key back.
+	/// </summary>
+	public static GamePlatform PlatformOf(string? installKey)
+	{
+		if (string.IsNullOrEmpty(installKey)) return GamePlatform.Unknown;
+		int at = installKey.IndexOf(InstallKeySeparator);
+		if (at < 0 || at == installKey.Length - 1) return GamePlatform.Unknown;
+		return Enum.TryParse(installKey.Substring(at + 1), ignoreCase: true, out GamePlatform p)
+			? p
+			: GamePlatform.Unknown;
+	}
+
+	/// <summary>How a platform is named to the user, e.g. in "Skyrim Special Edition (GOG)".</summary>
+	public static string PlatformDisplayName(GamePlatform platform) => platform switch
+	{
+		GamePlatform.Steam => "Steam",
+		GamePlatform.Gog   => "GOG",
+		_                  => ""
+	};
+
 	/// <summary>
 	/// The profile for <paramref name="gameId"/>, or <c>null</c> for an unknown id and for "None" (no session).
+	/// Accepts an install key as well as a bare game id, so the great many callers that only want the game's own
+	/// data — its executable, its Nexus domain, its mod layout — need not care which copy is loaded.
 	/// Callers that have already established a game is loaded should use <see cref="Require"/> instead.
 	/// </summary>
-	public static GameProfile? Find(string? gameId) =>
-		string.IsNullOrEmpty(gameId) ? null : All.FirstOrDefault(g => g.Id == gameId);
+	public static GameProfile? Find(string? gameId)
+	{
+		string id = BaseId(gameId);
+		return id.Length == 0 ? null : All.FirstOrDefault(g => g.Id == id);
+	}
 
 	/// <summary>
 	/// The profile for <paramref name="gameId"/>. Throws for an unknown id, deliberately: silently falling back

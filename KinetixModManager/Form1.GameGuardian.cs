@@ -49,7 +49,7 @@ public partial class Form1
 		// The exe changed under us — almost always a Steam update. Alert the user before they try to launch.
 		_soundEngine.Play("error");
 		string productName = GameDisplayName(game);
-		string seName = game == "SkyrimSE" ? "SKSE" : "F4SE";
+		string seName = GameProfiles.IsGame(game, GameProfiles.SkyrimSE) ? "SKSE" : "F4SE";
 
 		if (ModFileSystem.IsScriptExtenderInstalled(game, gamePath))
 		{
@@ -57,7 +57,7 @@ public partial class Form1
 			if (SpeakBox(Loc.T("guardian.updatedSe", productName, previousVersion, current, seName),
 					Loc.T("guardian.title"), MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
 			{
-				string seId = game == "SkyrimSE" ? "30379" : "42147"; // SKSE64 / F4SE Nexus ids
+				string seId = GameProfiles.IsGame(game, GameProfiles.SkyrimSE) ? "30379" : "42147"; // SKSE64 / F4SE Nexus ids
 				string url = $"https://www.nexusmods.com/{_nexusService.CurrentGameDomain}/mods/{seId}";
 				try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
 			}

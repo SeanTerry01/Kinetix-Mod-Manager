@@ -18,7 +18,7 @@ public partial class Form1
 {
 	/// <summary>True while a Skyrim SE or Fallout 4 session is loaded (the games that use load order).</summary>
 	private bool IsBethesdaGame =>
-		_settings.ActiveGame == "SkyrimSE" || _settings.ActiveGame == "Fallout4";
+		GameProfiles.IsAnyGame(_settings.ActiveGame, GameProfiles.SkyrimSE, GameProfiles.Fallout4);
 
 	/// <summary>File conflicts detected by the most recent <see cref="SyncBethesdaDeployment"/> pass.</summary>
 	private List<FileConflict> _lastConflicts = new List<FileConflict>();

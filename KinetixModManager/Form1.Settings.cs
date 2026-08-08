@@ -80,9 +80,26 @@ public partial class Form1
 			Font = new Font("Segoe UI", 10f),
 			AccessibleName = Loc.T("settings.configurePaths")
 		};
-		cmbSettingsGame.Items.AddRange(GameProfiles.AllDisplayNames.ToArray());
-		cmbSettingsGame.SelectedItem = GameProfiles.Find(_settings.ActiveGame)?.DisplayName
-			?? GameProfiles.Require(GameProfiles.StardewValley).DisplayName;
+		// One entry per COPY, not per game, so someone who owns Skyrim twice can set each copy's folders. A game
+		// with no copy recorded still gets an entry under its own name — typing the folder in by hand is how a
+		// user whose install detection missed (under Wine, say) gets started, and that must keep working.
+		var pathTargets = new List<(string Label, string Key)>();
+		foreach (GameProfile profile in GameProfiles.All)
+		{
+			var copies = _settings.InstallsOf(profile.Id);
+			if (copies.Count == 0)
+			{
+				pathTargets.Add((profile.DisplayName, profile.Id));
+				continue;
+			}
+			bool label = copies.Count > 1;
+			foreach (GameInstall copy in copies) pathTargets.Add((copy.DisplayName(label), copy.Key));
+		}
+
+		cmbSettingsGame.Items.AddRange(pathTargets.Select(t => t.Label).ToArray());
+		int activeTarget = pathTargets.FindIndex(t => t.Key == _settings.ActiveGame);
+		if (activeTarget < 0) activeTarget = pathTargets.FindIndex(t => GameProfiles.IsGame(t.Key, GameProfiles.StardewValley));
+		cmbSettingsGame.SelectedIndex = Math.Max(0, activeTarget);
 		tabPaths.Controls.Add(cmbSettingsGame, 0, pr++);
 
 		tabPaths.Controls.Add(new Label
@@ -156,23 +173,66 @@ public partial class Form1
 		panelGame.Controls.AddRange(tGamePath, btnBrowseGame);
 		tabPaths.Controls.Add(panelGame, 0, pr++);
 
+		// Where this copy's mods are staged. Only the games that stage mods outside themselves have a choice to
+		// make here — every other game's loader reads a fixed folder inside the install, so there is nothing to
+		// decide. Acting on it immediately (rather than on Save) is deliberate: it moves files, so it needs its
+		// own confirmation and its own spoken result, which a Save button covering a dozen settings cannot give.
+		CheckBox cModsInGame = new CheckBox
+		{
+			Text = Loc.T("settings.modsInGameFolder"),
+			AutoSize = true,
+			AccessibleName = Loc.T("settings.modsInGameFolder"),
+			AccessibleDescription = Loc.T("settings.modsInGameFolderDesc")
+		};
+		tabPaths.Controls.Add(cModsInGame, 0, pr++);
+
 		var tempModsPaths = new Dictionary<string, string>(_settings.GameModsPaths);
 		var tempGamePaths = new Dictionary<string, string>(_settings.GamePaths);
-		string currentEditingGame = _settings.ActiveGame;
+		string currentEditingGame = pathTargets[cmbSettingsGame.SelectedIndex].Key;
 
-		tPath.Text = _settings.CurrentModsPath;
-		tGamePath.Text = _settings.CurrentGamePath;
+		tPath.Text = tempModsPaths.TryGetValue(currentEditingGame, out string? initialMods) ? initialMods : "";
+		tGamePath.Text = tempGamePaths.TryGetValue(currentEditingGame, out string? initialGame) ? initialGame : "";
+
+		// Set while the checkbox is being brought in line with the selected copy, so re-selecting a copy doesn't
+		// read as the user asking to move that copy's mods.
+		bool syncingModsInGame = false;
 
 		// Stardew Valley is the one game whose mods path implies its game folder (the Mods folder sits inside the
 		// install), so it alone hides the separate game-folder field.
 		Action updateVisibility = () =>
 		{
-			bool isStardew = GameProfiles.IdForDisplayName(cmbSettingsGame.SelectedItem as string)
-				== GameProfiles.StardewValley;
+			bool isStardew = GameProfiles.IsGame(currentEditingGame, GameProfiles.StardewValley);
 			lblGamePath.Visible = !isStardew;
 			panelGame.Visible = !isStardew;
+
+			GameInstall? copy = _settings.InstallFor(currentEditingGame);
+			GameProfile? profile = GameProfiles.Find(currentEditingGame);
+			bool stages = profile != null && !string.IsNullOrEmpty(profile.StagingFolderName);
+
+			syncingModsInGame = true;
+			cModsInGame.Visible = stages;
+			cModsInGame.Enabled = stages && copy != null;
+			cModsInGame.Checked = copy?.ModsInGameFolder ?? false;
+			syncingModsInGame = false;
 		};
 		updateVisibility();
+
+		cModsInGame.CheckedChanged += delegate
+		{
+			if (syncingModsInGame) return;
+			// The move needs the copy's game folder, and the field may hold an edit that hasn't been saved yet.
+			tempGamePaths[currentEditingGame] = tGamePath.Text.Trim();
+			if (!TryMoveModsFolder(currentEditingGame, cModsInGame.Checked, tempGamePaths[currentEditingGame]))
+			{
+				// Declined or failed — put the box back where it was without re-triggering this handler.
+				syncingModsInGame = true;
+				cModsInGame.Checked = !cModsInGame.Checked;
+				syncingModsInGame = false;
+				return;
+			}
+			tempModsPaths[currentEditingGame] = _settings.GameModsPaths[currentEditingGame];
+			tPath.Text = tempModsPaths[currentEditingGame];
+		};
 
 		cmbSettingsGame.SelectedIndexChanged += delegate
 		{
@@ -180,15 +240,16 @@ public partial class Form1
 			tempModsPaths[lastGameKey] = tPath.Text.Trim();
 			tempGamePaths[lastGameKey] = tGamePath.Text.Trim();
 
-			string newGameKey = GameProfiles.IdForDisplayName(cmbSettingsGame.SelectedItem as string)
-				?? GameProfiles.StardewValley;
+			int index = cmbSettingsGame.SelectedIndex;
+			if (index < 0 || index >= pathTargets.Count) return;
+			string newGameKey = pathTargets[index].Key;
 
 			currentEditingGame = newGameKey;
 			tPath.Text = tempModsPaths.TryGetValue(newGameKey, out string? p) ? p : "";
 			tGamePath.Text = tempGamePaths.TryGetValue(newGameKey, out string? gp) ? gp : "";
-			
+
 			updateVisibility();
-			Speak(Loc.T("settings.editingPaths", cmbSettingsGame.SelectedItem));
+			Speak(Loc.T("settings.editingPaths", pathTargets[index].Label));
 		};
 
 		tabPaths.Controls.Add(new Label
@@ -587,7 +648,7 @@ public partial class Form1
 
 		// Guard against the game rewriting its own plugins.txt (Skyrim SE / Fallout 4 deactivate Creations and
 		// reorder plugins when a new game is started). Only meaningful for those two games, so hidden elsewhere.
-		bool pluginGuardGame = _settings.ActiveGame == "SkyrimSE" || _settings.ActiveGame == "Fallout4";
+		bool pluginGuardGame = GameProfiles.IsAnyGame(_settings.ActiveGame, GameProfiles.SkyrimSE, GameProfiles.Fallout4);
 		CheckBox cProtectPlugins = new CheckBox
 		{
 			Text = Loc.T("settings.protectPluginOrder"),
@@ -937,7 +998,10 @@ public partial class Form1
 
 			if (_settings.ActiveGame != "None")
 			{
-				string activeMods = tempModsPaths[_settings.ActiveGame];
+				// TryGetValue, not the indexer: the active copy's key is not guaranteed to be in these maps —
+				// a second copy detected this session may not have been given a path yet, and throwing here
+				// would take the whole Settings dialog down rather than saving what the user typed.
+				tempModsPaths.TryGetValue(_settings.ActiveGame, out string? activeMods);
 				if (!string.IsNullOrEmpty(activeMods) && !Directory.Exists(activeMods))
 				{
 					Speak(Loc.T("settings.errModsInvalidSpeak"));
@@ -945,8 +1009,8 @@ public partial class Form1
 					return;
 				}
 
-				string activeGamePath = tempGamePaths[_settings.ActiveGame];
-				if (_settings.ActiveGame != "StardewValley" && !string.IsNullOrEmpty(activeGamePath) && !Directory.Exists(activeGamePath))
+				tempGamePaths.TryGetValue(_settings.ActiveGame, out string? activeGamePath);
+				if (!GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley) && !string.IsNullOrEmpty(activeGamePath) && !Directory.Exists(activeGamePath))
 				{
 					Speak(Loc.T("settings.errGameInvalidSpeak"));
 					SpeakBox(Loc.T("settings.errGameInvalidBox"));
@@ -964,10 +1028,16 @@ public partial class Form1
 			{
 				_settings.GameModsPaths = tempModsPaths;
 				_settings.GamePaths = tempGamePaths;
-				if (tempModsPaths.TryGetValue("StardewValley", out string? sdPath))
+				if (tempModsPaths.TryGetValue(GameProfiles.StardewValley, out string? sdPath))
 				{
 					_settings.ModsPath = sdPath;
 				}
+
+				// A game folder typed in here is the answer for that copy too, or the session and the recorded
+				// copy would disagree about where its saves, INIs and per-player data live.
+				foreach (GameInstall copy in _settings.GameInstalls)
+					if (tempGamePaths.TryGetValue(copy.Key, out string? typed) && !string.IsNullOrEmpty(typed))
+						copy.Folder = typed;
 
 				_settings.ApiKey = text2;
 				_settings.ShowSplashScreen = cSplash.Checked;

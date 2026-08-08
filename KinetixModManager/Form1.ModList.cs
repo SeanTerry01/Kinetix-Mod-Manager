@@ -261,7 +261,7 @@ public partial class Form1
 		// Stardew Valley additionally runs one smapi.io batch check (counted as a unit), which catches
 		// mods whose manifest update key is missing or broken — the manifest-only Nexus grouping below
 		// can't see those. Skyrim/Fallout 4 use only the Nexus group checks.
-		bool runSmapi = _settings.ActiveGame == "StardewValley";
+		bool runSmapi = GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley);
 		int unitCount = list.Count + (runSmapi ? 1 : 0);
 		if (unitCount == 0)
 		{
@@ -490,7 +490,7 @@ public partial class Form1
 	/// <summary>The file the manager records a mod's metadata in — the author's own manifest for Stardew Valley,
 	/// the manager's sidecar for every other game.</summary>
 	private string ManifestPathFor(StardewMod mod) => Path.Combine(mod.FolderPath,
-		_settings.ActiveGame == "StardewValley" ? "manifest.json" : ".manager_manifest.json");
+		GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley) ? "manifest.json" : ".manager_manifest.json");
 
 	/// <summary>
 	/// Fills in what only Nexus knows about a mod that has just been linked to a mod page — its author, a real
@@ -565,7 +565,7 @@ public partial class Form1
 				try
 				{
 					string manifestPath = Path.Combine(stardewMod3.FolderPath, ".manager_manifest.json");
-					if (_settings.ActiveGame == "StardewValley")
+					if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley))
 					{
 						manifestPath = Path.Combine(stardewMod3.FolderPath, "manifest.json");
 					}
@@ -583,7 +583,7 @@ public partial class Form1
 						stardewMod3.GitHubRepo = val;
 						stardewMod3.NexusID = null;
 
-						if (_settings.ActiveGame == "StardewValley")
+						if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley))
 						{
 							manifest["UpdateKeys"] = new JArray($"GitHub:{val}");
 						}
@@ -598,7 +598,7 @@ public partial class Form1
 						stardewMod3.NexusID = val;
 						stardewMod3.GitHubRepo = null;
 
-						if (_settings.ActiveGame == "StardewValley")
+						if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley))
 						{
 							manifest["UpdateKeys"] = new JArray($"Nexus:{val}");
 						}

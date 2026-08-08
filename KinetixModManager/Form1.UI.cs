@@ -730,7 +730,7 @@ public partial class Form1
 		tableLayoutGameLog.Controls.Add(listGameLog, 0, 1);
 		tabGameLog.Controls.Add(tableLayoutGameLog);
 
-		string initialWikiTitle = _settings.ActiveGame switch
+		string initialWikiTitle = GameProfiles.BaseId(_settings.ActiveGame) switch
 		{
 			"SkyrimSE" => Loc.T("tab.wikiSkyrim"),
 			"Fallout4" => Loc.T("tab.wikiFallout"),
@@ -753,7 +753,7 @@ public partial class Form1
 			FlowDirection = FlowDirection.LeftToRight,
 			Padding = new Padding(5)
 		};
-		string searchLabel = _settings.ActiveGame switch
+		string searchLabel = GameProfiles.BaseId(_settings.ActiveGame) switch
 		{
 			"SkyrimSE" => Loc.T("ui.searchWikiSkyrim"),
 			"Fallout4" => Loc.T("ui.searchWikiFallout"),
@@ -872,7 +872,7 @@ public partial class Form1
 		_ = RefreshCategoriesForActiveWikiAsync();
 
 		// Walkthroughs Tab Setup
-		string initialWalkthroughTitle = _settings.ActiveGame switch
+		string initialWalkthroughTitle = GameProfiles.BaseId(_settings.ActiveGame) switch
 		{
 			"SkyrimSE" => Loc.T("tab.walkSkyrim"),
 			"Fallout4" => Loc.T("tab.walkFallout"),
@@ -923,7 +923,7 @@ public partial class Form1
 		mainTabs.TabPages.Add(tabWiki);
 		mainTabs.TabPages.Add(tabWalkthroughs);
 		mainTabs.TabPages.Add(tabProfiles);
-		if (_settings.ActiveGame == "StardewValley")
+		if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley))
 		{
 			mainTabs.TabPages.Add(tabSmapiLog);
 		}

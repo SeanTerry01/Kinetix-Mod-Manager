@@ -566,7 +566,7 @@ public partial class Form1
 			// their update key in the author's own manifest.json, which the manager must not rewrite — and one
 			// archive routinely installs several mods where only one (or none) declares a key. Recording the id
 			// against each installed mod's UniqueID is what makes them all updatable afterwards.
-			if (!string.IsNullOrEmpty(nexusId) && _settings.ActiveGame == "StardewValley")
+			if (!string.IsNullOrEmpty(nexusId) && GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley))
 			{
 				LinkModsInstalledFrom(name, nexusId!, zipPath);
 			}

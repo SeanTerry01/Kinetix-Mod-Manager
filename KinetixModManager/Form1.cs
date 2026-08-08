@@ -314,46 +314,114 @@ public partial class Form1 : Form, IMessageFilter
 			}
 		}
 
-		// Every other supported game. Stardew is handled above because its mods path is also mirrored into the
-		// legacy ModsPath field; the rest fall into one of two patterns the profile already describes — mods
-		// staged in a manager-owned folder outside the game (Skyrim SE, Fallout 4), or mods that live inside the
-		// install (Moonlight Peaks' BepInEx\plugins).
-		foreach (GameProfile profile in GameProfiles.All)
-		{
-			if (profile.Id == GameProfiles.StardewValley) continue;
+		// Register every copy of every game that is actually on disk before working out where their mods go —
+		// including a second copy of a game already known about, which is the case this whole pass exists for.
+		// Only additional copies are worth mentioning: on a first run everything is new, and reading the whole
+		// library back at someone is noise. Announced from the Shown handler, after the welcome.
+		_newlyDetectedCopies = RefreshDetectedGameInstalls()
+			.Where(key => GameProfiles.BaseId(key) != key)
+			.ToList();
 
-			string current = _settings.GameModsPaths.TryGetValue(profile.Id, out string? existing) ? existing : "";
+		// Every copy of every other game. Stardew is handled above because its mods path is also mirrored into
+		// the legacy ModsPath field; the rest fall into the patterns ResolveModsFolder describes.
+		foreach (GameInstall install in _settings.GameInstalls)
+		{
+			// Only Stardew's FIRST copy is handled above (it is the one mirrored into the legacy ModsPath field);
+			// a second Stardew copy is an ordinary install like any other and resolves here.
+			if (install.Key == GameProfiles.StardewValley) continue;
+
+			string current = _settings.GameModsPaths.TryGetValue(install.Key, out string? existing) ? existing : "";
 			if (!string.IsNullOrEmpty(current) && Directory.Exists(current)) continue;
 
-			string folder = DetectGameFolder(profile.Id);
-			if (!Directory.Exists(folder)) continue;
+			if (!Directory.Exists(install.Folder)) continue;
 
-			_settings.GamePaths[profile.Id] = folder;
+			_settings.GamePaths[install.Key] = install.Folder;
 
-			if (!string.IsNullOrEmpty(profile.StagingFolderName))
+			GameProfile profile = GameProfiles.Require(install.GameId);
+			string modsFolder = ResolveModsFolder(install);
+			_settings.GameModsPaths[install.Key] = modsFolder;
+
+			if (string.IsNullOrEmpty(modsFolder)) continue;
+
+			// A staging folder is the manager's own, so it is created here. So is The Witcher 3's mods folder:
+			// the game reads it itself with no loader involved, but a copy that has never been modded doesn't
+			// have one yet, and the session would otherwise point at a folder that isn't there. A BepInEx
+			// plugins folder is NOT created — it appears when BepInEx is installed, which the manager offers.
+			bool createNow = profile.IsBethesda || profile.IsWitcher3;
+			if (createNow && !Directory.Exists(modsFolder))
 			{
-				string staged = Path.Combine(dataBasePath, profile.StagingFolderName);
-				if (!Directory.Exists(staged)) Directory.CreateDirectory(staged);
-				_settings.GameModsPaths[profile.Id] = staged;
+				try { Directory.CreateDirectory(modsFolder); } catch { }
 			}
-			else
-			{
-				// Not created here: for a BepInEx game this folder appears when BepInEx is installed, and the
-				// manager offers to do that. An empty path would leave the session pointing at nothing.
-				string modsFolder = profile.ModsFolderFor(folder);
-				_settings.GameModsPaths[profile.Id] = modsFolder;
-
-				// The Witcher 3 is the exception: its mods folder needs no loader — the game reads it itself —
-				// but a copy that has never been modded doesn't have one yet, and the session would otherwise
-				// point at a folder that isn't there.
-				if (profile.IsWitcher3 && !string.IsNullOrEmpty(modsFolder) && !Directory.Exists(modsFolder))
-				{
-					try { Directory.CreateDirectory(modsFolder); } catch { }
-				}
-			}
-
-			_settings.Save();
 		}
+
+		_settings.Save();
+	}
+
+	/// <summary>
+	/// Copies of a game found during startup that the manager had not seen before and that are not the game's
+	/// first copy — i.e. someone owns that game twice. Announced once, after the welcome message.
+	/// </summary>
+	private List<string> _newlyDetectedCopies = new List<string>();
+
+	/// <summary>
+	/// Tells the user about a second copy of a game that has just turned up, and where it is. Nothing is chosen
+	/// for them: both copies are in the Games menu now, each with its own mods, and which one they want is a
+	/// question only they can answer.
+	/// </summary>
+	private void AnnounceNewlyDetectedCopies()
+	{
+		if (_newlyDetectedCopies.Count == 0) return;
+
+		var lines = new List<string>();
+		foreach (string key in _newlyDetectedCopies)
+		{
+			GameInstall? copy = _settings.InstallFor(key);
+			if (copy == null) continue;
+			lines.Add(Loc.T("copies.foundLine", copy.DisplayName(withPlatform: true), copy.Folder));
+		}
+		_newlyDetectedCopies.Clear();
+		if (lines.Count == 0) return;
+
+		string message = Loc.T("copies.foundBox", string.Join("\n", lines));
+		Speak(Loc.T("copies.foundSpeak", lines.Count));
+		SpeakBox(message, Loc.T("copies.foundTitle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+	}
+
+	/// <summary>The folder a copy's mods are staged in when they live inside the game rather than under %AppData%.</summary>
+	private const string InGameModsFolderName = "KinetixMods";
+
+	/// <summary>
+	/// Where <paramref name="install"/>'s mods live. The single answer to that question, so the setup pass, the
+	/// Settings checkbox and the move that follows it cannot disagree about it.
+	///
+	/// Three shapes: a game that stages its mods outside itself keeps them either in the game folder or under
+	/// <c>%AppData%</c>, the copy's own choice; every other game keeps them wherever its loader looks, which is
+	/// inside the install and not a choice at all.
+	/// </summary>
+	private string ResolveModsFolder(GameInstall install)
+	{
+		GameProfile profile = GameProfiles.Require(install.GameId);
+
+		if (string.IsNullOrEmpty(profile.StagingFolderName))
+			return profile.ModsFolderFor(install.Folder);
+
+		if (install.ModsInGameFolder && !string.IsNullOrEmpty(install.Folder))
+			return Path.Combine(install.Folder, InGameModsFolderName);
+
+		return Path.Combine(dataBasePath, StagingFolderNameFor(install, profile));
+	}
+
+	/// <summary>
+	/// The <c>%AppData%</c> staging folder's name for a copy. The game's first copy keeps the plain name it has
+	/// always had — that folder is full of someone's mods — and a further copy is suffixed so two copies of one
+	/// game never stage into the same folder and quietly merge their mod lists.
+	/// </summary>
+	private static string StagingFolderNameFor(GameInstall install, GameProfile profile)
+	{
+		string name = profile.StagingFolderName ?? "";
+		return install.Key == install.GameId || name.Length == 0
+			? name
+			: name + "_" + install.Key.Substring(install.GameId.Length + 1);
 	}
 
 	/// <summary>
@@ -501,6 +569,10 @@ public partial class Form1 : Form, IMessageFilter
 
 			if (form._settings.CheckForManagerUpdatesAtStartup)
 				await form.CheckForAppUpdates(manual: false);
+
+			// Before the first-run wizard and before any session loads: if they own a game twice, that changes
+			// what the Games menu says and which mods they are about to see.
+			form.AnnounceNewlyDetectedCopies();
 
 			bool stardewInstalled = form.IsGameInstalled("StardewValley");
 			bool skyrimInstalled = form.IsGameInstalled("SkyrimSE");

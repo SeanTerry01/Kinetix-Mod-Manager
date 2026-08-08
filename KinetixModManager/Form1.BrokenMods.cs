@@ -70,7 +70,7 @@ public partial class Form1
 		var result = new BrokenModFindings();
 		string domain = _nexusService.CurrentGameDomain;
 
-		if (_settings.ActiveGame == "StardewValley")
+		if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley))
 		{
 			var mods = _allInstalledMods.Where(m => !m.IsGroup && !string.IsNullOrEmpty(m.UniqueId)).ToList();
 			if (mods.Count == 0) return result;

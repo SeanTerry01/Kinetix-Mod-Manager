@@ -57,7 +57,7 @@ public partial class Form1
 	{
 		if (MainMenuStrip?.Items["menuMods"] is not ToolStripMenuItem modsMenu) return;
 		string game = _settings.ActiveGame;
-		bool bethesda = game == "SkyrimSE" || game == "Fallout4";
+		bool bethesda = GameProfiles.IsAnyGame(game, GameProfiles.SkyrimSE, GameProfiles.Fallout4);
 		string gameName = game == "None" ? "" : GameDisplayName();
 
 		if (FindMenuItem(modsMenu, "menuLaunch") is ToolStripItem launchItem)
@@ -70,7 +70,7 @@ public partial class Form1
 		GameProfile? profile = GameProfiles.Find(game);
 		if (FindMenuItem(modsMenu, "menuEditGameIni") is ToolStripItem iniItem)
 		{
-			bool bepInEx = game == "MoonlightPeaks";
+			bool bepInEx = GameProfiles.IsGame(game, GameProfiles.MoonlightPeaks);
 			// Any game that names configuration files of its own can be edited here — The Witcher 3's
 			// user.settings and input.settings are INI files in all but their extension.
 			iniItem.Visible = (profile?.ConfigFileNames.Count ?? 0) > 0 || bepInEx;
@@ -173,7 +173,7 @@ public partial class Form1
 		if (MainMenuStrip?.Items["menuView"] is ToolStripMenuItem viewMenu &&
 			viewMenu.DropDownItems["menuOpenLog"] is ToolStripItem logItem)
 		{
-			logItem.Text = game switch
+			logItem.Text = GameProfiles.BaseId(game) switch
 			{
 				"StardewValley"  => Loc.T("menu.openSmapiLog", GetShortcutString("OpenLogFile")),
 				"MoonlightPeaks" => Loc.T("menu.openBepInExLog", GetShortcutString("OpenLogFile")),
@@ -182,7 +182,7 @@ public partial class Form1
 			};
 		}
 
-		tabWiki.Text = game switch
+		tabWiki.Text = GameProfiles.BaseId(game) switch
 		{
 			"SkyrimSE" => Loc.T("tab.wikiSkyrim"),
 			"Fallout4" => Loc.T("tab.wikiFallout"),
@@ -191,7 +191,7 @@ public partial class Form1
 			_ => Loc.T("tab.wikiStardew")
 		};
 
-		tabWalkthroughs.Text = game switch
+		tabWalkthroughs.Text = GameProfiles.BaseId(game) switch
 		{
 			"SkyrimSE" => Loc.T("tab.walkSkyrim"),
 			"Fallout4" => Loc.T("tab.walkFallout"),
@@ -200,7 +200,7 @@ public partial class Form1
 			_ => Loc.T("tab.walkStardew")
 		};
 
-		tabGameLog.Text = game switch
+		tabGameLog.Text = GameProfiles.BaseId(game) switch
 		{
 			"SkyrimSE" => Loc.T("tab.logsSkyrim"),
 			"Fallout4" => Loc.T("tab.logsFallout"),
@@ -211,7 +211,7 @@ public partial class Form1
 
 		if (txtWikiSearch != null)
 		{
-			txtWikiSearch.AccessibleName = game switch
+			txtWikiSearch.AccessibleName = GameProfiles.BaseId(game) switch
 			{
 				"SkyrimSE" => Loc.T("ui.searchWikiSkyrim"),
 				"Fallout4" => Loc.T("ui.searchWikiFallout"),
@@ -221,7 +221,7 @@ public partial class Form1
 			};
 		}
 
-		if (game == "StardewValley")
+		if (GameProfiles.IsGame(game, GameProfiles.StardewValley))
 		{
 			if (!mainTabs.TabPages.Contains(tabSmapiLog))
 				mainTabs.TabPages.Add(tabSmapiLog);
@@ -234,7 +234,7 @@ public partial class Form1
 
 		// The Mod Priority, Plugin Order, and Creations tabs apply only to Skyrim SE / Fallout 4, and sit
 		// right after the Installed tab (indexes 1, 2, 3) so the load order is next to the mod list.
-		if (game == "SkyrimSE" || game == "Fallout4")
+		if (GameProfiles.IsAnyGame(game, GameProfiles.SkyrimSE, GameProfiles.Fallout4))
 		{
 			if (!mainTabs.TabPages.Contains(tabModPriority))
 				mainTabs.TabPages.Insert(1, tabModPriority);

@@ -602,7 +602,7 @@ public partial class Form1
 			if (!IsNewerVersion(updated.Version, installedVersion)) return;   // already at or beyond the new version
 
 			string manifestPath = Path.Combine(updated.FolderPath,
-				_settings.ActiveGame == "StardewValley" ? "manifest.json" : ".manager_manifest.json");
+				GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley) ? "manifest.json" : ".manager_manifest.json");
 			if (!File.Exists(manifestPath)) return;
 
 			JObject manifest = JObject.Parse(File.ReadAllText(manifestPath));
@@ -686,7 +686,7 @@ public partial class Form1
 	/// </summary>
 	private async Task<int> MatchStardewIdsViaSmapiAsync(List<StardewMod> targetMods)
 	{
-		if (_settings.ActiveGame != "StardewValley" || targetMods.Count == 0) return 0;
+		if (!GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley) || targetMods.Count == 0) return 0;
 
 		var (smapiVer, gameVer) = DetectStardewVersions();
 		var entries = targetMods
@@ -832,7 +832,7 @@ public partial class Form1
 						if (File.Exists(manifestPath))
 						{
 							JObject manifest = JObject.Parse(File.ReadAllText(manifestPath));
-							if (_settings.ActiveGame == "StardewValley")
+							if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley))
 							{
 								manifest["UpdateKeys"] = new JArray($"Nexus:{bestMatch.NexusID}");
 							}

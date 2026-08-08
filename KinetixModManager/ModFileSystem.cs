@@ -58,7 +58,7 @@ public static class ModFileSystem
 		var mods = new List<GameMod>();
 		if (!Directory.Exists(modsPath)) return mods;
 
-		if (activeGame == "StardewValley")
+		if (GameProfiles.IsGame(activeGame, GameProfiles.StardewValley))
 		{
 			foreach (string manifestPath in Directory.GetFiles(modsPath, "manifest.json", SearchOption.AllDirectories))
 			{
@@ -178,7 +178,7 @@ public static class ModFileSystem
 						string? nexusId = ManifestString(manifest, "NexusID");
 
 						// Auto-extract NexusID from folderName if not present
-						if (string.IsNullOrEmpty(nexusId) && activeGame != "StardewValley")
+						if (string.IsNullOrEmpty(nexusId) && !GameProfiles.IsGame(activeGame, GameProfiles.StardewValley))
 						{
 							var match = System.Text.RegularExpressions.Regex.Match(folderName, @"-(\d{3,9})-");
 							if (match.Success)
@@ -213,7 +213,7 @@ public static class ModFileSystem
 							? folderName.Substring(disabledPrefix.Length)
 							: folderName;
 						string? extractedNexusId = null;
-						if (activeGame != "StardewValley")
+						if (!GameProfiles.IsGame(activeGame, GameProfiles.StardewValley))
 						{
 							var match = System.Text.RegularExpressions.Regex.Match(folderName, @"-(\d{3,9})-");
 							if (match.Success)
@@ -641,7 +641,7 @@ public static class ModFileSystem
 		string activeGame, IEnumerable<GameMod> mods, ISet<string> activePlugins, string? gameRoot)
 	{
 		var result = new List<MasterIssue>();
-		if (activeGame != "SkyrimSE" && activeGame != "Fallout4") return result;
+		if (!GameProfiles.IsAnyGame(activeGame, GameProfiles.SkyrimSE, GameProfiles.Fallout4)) return result;
 
 		string dataDir = string.IsNullOrEmpty(gameRoot) ? "" : Path.Combine(gameRoot, "Data");
 
@@ -969,7 +969,7 @@ public static class ModFileSystem
 
 	public static string? ArchiveInvalidationIniPath(string activeGame, string gameFolder)
 	{
-		if (activeGame != "Fallout4") return null;
+		if (!GameProfiles.IsGame(activeGame, GameProfiles.Fallout4)) return null;
 		string folder = UserDataFolderName(activeGame, gameFolder);
 		if (folder.Length == 0) return null;
 		string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
@@ -1354,7 +1354,7 @@ public static class ModFileSystem
 	};
 
 	/// <summary>True when <paramref name="fileName"/> is an implicit base-game/DLC master for the game.</summary>
-	public static bool IsBaseMaster(string activeGame, string fileName) => activeGame switch
+	public static bool IsBaseMaster(string activeGame, string fileName) => GameProfiles.BaseId(activeGame) switch
 	{
 		"SkyrimSE" => SkyrimBaseMasters.Contains(fileName),
 		"Fallout4" => Fallout4BaseMasters.Contains(fileName),
@@ -1365,7 +1365,7 @@ public static class ModFileSystem
 	/// The implicit base-game/DLC master file names for the game. These never appear in the Plugin Order list but
 	/// still occupy regular plugin slots, so the plugin-limit check counts the ones actually present on disk.
 	/// </summary>
-	public static IReadOnlyCollection<string> BaseMasters(string activeGame) => activeGame switch
+	public static IReadOnlyCollection<string> BaseMasters(string activeGame) => GameProfiles.BaseId(activeGame) switch
 	{
 		"SkyrimSE" => SkyrimBaseMasters,
 		"Fallout4" => Fallout4BaseMasters,
@@ -1667,7 +1667,7 @@ public static class ModFileSystem
 		// For Skyrim/Fallout 4 the mod's identity is known up front (its Nexus id or folder name), so a
 		// reinstall can be confirmed before we even extract. Stardew's identity lives in manifest.json inside
 		// the archive, so that prompt happens after extraction (below). A declined prompt cancels the install.
-		if (confirmOverwrite != null && activeGame != "StardewValley")
+		if (confirmOverwrite != null && !GameProfiles.IsGame(activeGame, GameProfiles.StardewValley))
 		{
 			GameMod? existing = FindExistingInstall(installedMods, nexusId, Path.GetFileNameWithoutExtension(zipPath));
 			if (existing != null && Directory.Exists(existing.FolderPath) && !confirmOverwrite(existing.Name, existing.Version))
@@ -1749,7 +1749,7 @@ public static class ModFileSystem
 					backupsPath, maxBackups, activeGame, logError, nexusId, nexusService, gitHubRepo, currentGamePath);
 			}
 
-			if (activeGame != "StardewValley")
+			if (!GameProfiles.IsGame(activeGame, GameProfiles.StardewValley))
 			{
 				// Script extender (SKSE/F4SE)? Its loader exe and DLLs belong in the GAME ROOT, with its scripts
 				// merging into Data. Detect it by the loader and install to the game folder directly — exactly like
@@ -1767,7 +1767,7 @@ public static class ModFileSystem
 							.Select(f => f.Substring(seRoot.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
 							.ToList();
 						SaveScriptExtenderManifest(activeGame, currentGamePath, relPaths);
-						return activeGame == "SkyrimSE" ? "Skyrim Script Extender (SKSE64)" : "Fallout 4 Script Extender (F4SE)";
+						return GameProfiles.IsGame(activeGame, GameProfiles.SkyrimSE) ? "Skyrim Script Extender (SKSE64)" : "Fallout 4 Script Extender (F4SE)";
 					}
 				}
 
@@ -3308,7 +3308,7 @@ public static class ModFileSystem
 				await Task.Run(() => ExtractZipWithProgress(archivePath, tempDir, installProgress));
 			}
 
-			string loaderExePattern = activeGame == "SkyrimSE" ? "skse64_loader.exe" : "f4se_loader.exe";
+			string loaderExePattern = GameProfiles.IsGame(activeGame, GameProfiles.SkyrimSE) ? "skse64_loader.exe" : "f4se_loader.exe";
 			string[] matches = Directory.GetFiles(tempDir, loaderExePattern, SearchOption.AllDirectories);
 			if (matches.Length == 0)
 			{
@@ -3343,7 +3343,7 @@ public static class ModFileSystem
 		Path.Combine(AppSettings.AppDataFolder, "script_extender", activeGame + ".json");
 
 	/// <summary>The script extender's loader exe name for a game, or "" for games without one (Stardew).</summary>
-	private static string ScriptExtenderLoaderName(string activeGame) => activeGame switch
+	private static string ScriptExtenderLoaderName(string activeGame) => GameProfiles.BaseId(activeGame) switch
 	{
 		"SkyrimSE" => "skse64_loader.exe",
 		"Fallout4" => "f4se_loader.exe",
@@ -3370,7 +3370,7 @@ public static class ModFileSystem
 		if (string.IsNullOrEmpty(loader) || string.IsNullOrEmpty(gamePath)) return null;
 		if (!File.Exists(Path.Combine(gamePath, loader))) return null;
 
-		string gameExe = activeGame == "SkyrimSE" ? "SkyrimSE.exe" : "Fallout4.exe";
+		string gameExe = GameProfiles.IsGame(activeGame, GameProfiles.SkyrimSE) ? "SkyrimSE.exe" : "Fallout4.exe";
 		string gameExePath = Path.Combine(gamePath, gameExe);
 		if (!File.Exists(gameExePath)) return null;
 
@@ -3380,7 +3380,7 @@ public static class ModFileSystem
 		if (vi.FileMajorPart == 0 && vi.FileMinorPart == 0 && vi.FileBuildPart == 0) return null; // exe version unreadable
 
 		// The versioned script-extender DLL is named for the runtime it targets, e.g. skse64_1_6_1170.dll.
-		string prefix = activeGame == "SkyrimSE" ? "skse64_" : "f4se_";
+		string prefix = GameProfiles.IsGame(activeGame, GameProfiles.SkyrimSE) ? "skse64_" : "f4se_";
 		string? extVer = null;
 		try
 		{
@@ -3451,7 +3451,7 @@ public static class ModFileSystem
 		}
 
 		// Fallback: no manifest — remove only the unambiguous root files (loader + versioned DLLs).
-		string prefix = activeGame == "SkyrimSE" ? "skse64_" : "f4se_";
+		string prefix = GameProfiles.IsGame(activeGame, GameProfiles.SkyrimSE) ? "skse64_" : "f4se_";
 		try
 		{
 			foreach (string file in Directory.EnumerateFiles(gamePath, prefix + "*.dll", SearchOption.TopDirectoryOnly))

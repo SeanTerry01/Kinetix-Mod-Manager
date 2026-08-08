@@ -56,28 +56,45 @@ public partial class Form1
 	{
 		string game = _settings.ActiveGame;
 
+		// The store is named only when the user owns this game twice — then "which copy am I in?" is a real
+		// question the title bar and every report header should answer, and the mods on screen depend on it.
+		// With one copy this is empty and everything reads exactly as it did before copies existed.
+		string platform = "";
+		if (_settings.HasMultipleCopies(game))
+			platform = GameProfiles.PlatformDisplayName(
+				_settings.InstallFor(game)?.Platform ?? GameProfiles.PlatformOf(game));
+
 		// Only Skyrim SE and Fallout 4 get a version suffix — they are the games whose exact build decides which
 		// mod files are compatible. Every other game is simply its own name; an unknown game or no session at all
 		// is the empty string, which the two title-bar callers already handle by showing the bare app title.
-		if (game != "SkyrimSE" && game != "Fallout4")
-			return GameProfiles.DisplayNameFor(game);
+		if (!GameProfiles.IsAnyGame(game, GameProfiles.SkyrimSE, GameProfiles.Fallout4))
+		{
+			string plain = GameProfiles.DisplayNameFor(game);
+			return plain.Length > 0 && platform.Length > 0 ? $"{plain} ({platform})" : plain;
+		}
 
 		string baseName = GameProfiles.Require(game).DisplayName;
 		(int major, int minor, int build)? ver = ReadGameRuntimeVersion(game, _settings.CurrentGamePath);
-		if (ver == null)
-			return baseName; // exe unreadable -> plain product name
 
 		// Product name (matching Steam) + the exact build. The version is what determines mod-file compatibility
 		// (e.g. Skyrim 1.6+ uses Nexus "AE" files); we deliberately don't translate it into an edition word, which
-		// would imply DLC ownership we can't detect. See the summary on GameDisplayName.
-		return $"{baseName} ({ver.Value.major}.{ver.Value.minor}.{ver.Value.build})";
+		// would imply DLC ownership we can't detect. See the summary on GameDisplayName. An unreadable exe leaves
+		// the plain product name. The two copies are different builds, so store and build belong together:
+		// "Skyrim Special Edition (GOG 1.6.1179)".
+		string detail = ver == null
+			? platform
+			: platform.Length > 0
+				? $"{platform} {ver.Value.major}.{ver.Value.minor}.{ver.Value.build}"
+				: $"{ver.Value.major}.{ver.Value.minor}.{ver.Value.build}";
+
+		return detail.Length > 0 ? $"{baseName} ({detail})" : baseName;
 	}
 
 	/// <summary>Reads the major.minor.build of a Bethesda game's exe; null if missing or unreadable.</summary>
 	private static (int major, int minor, int build)? ReadGameRuntimeVersion(string game, string gamePath)
 	{
 		if (string.IsNullOrEmpty(gamePath)) return null;
-		string exe = game == "SkyrimSE" ? "SkyrimSE.exe" : "Fallout4.exe";
+		string exe = GameProfiles.IsGame(game, GameProfiles.SkyrimSE) ? "SkyrimSE.exe" : "Fallout4.exe";
 		string path = Path.Combine(gamePath, exe);
 		if (!File.Exists(path)) return null;
 		try

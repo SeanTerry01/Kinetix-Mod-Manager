@@ -118,4 +118,67 @@ public class GameProfilesTests
             Assert.Equal(string.IsNullOrEmpty(profile.GogProductId), string.IsNullOrEmpty(profile.GogStoreUrl));
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Install keys — telling two copies of one game apart
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public void ABareGameIdIsItsOwnInstallKey()
+    {
+        // The whole reason a game's first copy keeps the bare id: every settings file and every folder already
+        // on disk stays valid, so a one-copy owner is untouched by any of this.
+        Assert.Equal(GameProfiles.SkyrimSE, GameProfiles.BaseId(GameProfiles.SkyrimSE));
+        Assert.Equal(GamePlatform.Unknown, GameProfiles.PlatformOf(GameProfiles.SkyrimSE));
+        Assert.Equal(GameProfiles.SkyrimSE, GameProfiles.InstallKeyFor(GameProfiles.SkyrimSE, GamePlatform.Gog, isPrimary: true));
+    }
+
+    [Fact]
+    public void ASecondCopyCarriesItsPlatformAndStillResolvesToItsGame()
+    {
+        string gog = GameProfiles.InstallKeyFor(GameProfiles.SkyrimSE, GamePlatform.Gog, isPrimary: false);
+
+        Assert.Equal("SkyrimSE@Gog", gog);
+        Assert.Equal(GameProfiles.SkyrimSE, GameProfiles.BaseId(gog));
+        Assert.Equal(GamePlatform.Gog, GameProfiles.PlatformOf(gog));
+
+        // The profile lookups are what the ~227 call sites go through, so a second copy must find the same
+        // executable, Nexus domain and mod layout as the first.
+        Assert.Same(GameProfiles.Require(GameProfiles.SkyrimSE), GameProfiles.Require(gog));
+        Assert.Equal("Skyrim Special Edition", GameProfiles.DisplayNameFor(gog));
+        Assert.Equal("Skyrim", AppSettingsThemeFor(gog));
+    }
+
+    [Fact]
+    public void IsGameAnswersForEitherCopyAndNeverForAnotherGame()
+    {
+        foreach (string key in new[] { GameProfiles.SkyrimSE, "SkyrimSE@Gog", "SkyrimSE@Steam" })
+        {
+            Assert.True(GameProfiles.IsGame(key, GameProfiles.SkyrimSE));
+            Assert.False(GameProfiles.IsGame(key, GameProfiles.Fallout4));
+            Assert.True(GameProfiles.IsAnyGame(key, GameProfiles.SkyrimSE, GameProfiles.Fallout4));
+            Assert.False(GameProfiles.IsAnyGame(key, GameProfiles.StardewValley, GameProfiles.Witcher3));
+        }
+    }
+
+    [Fact]
+    public void NoGameAndUnknownIdsStayUnresolvable()
+    {
+        // "None" must not accidentally become a game, and an id that means nothing must still throw rather than
+        // fall through to some other game's data — the failure this whole registry exists to force into the open.
+        Assert.Null(GameProfiles.Find(GameProfiles.NoGame));
+        Assert.Null(GameProfiles.Find("None@Gog"));
+        Assert.Null(GameProfiles.Find(""));
+        Assert.Null(GameProfiles.Find(null));
+        Assert.Throws<ArgumentException>(() => GameProfiles.Require("Skyrim"));
+        Assert.Throws<ArgumentException>(() => GameProfiles.Require("SkyrimSE2@Gog"));
+
+        // A suffix that isn't a platform is not a licence to guess at one.
+        Assert.Equal(GamePlatform.Unknown, GameProfiles.PlatformOf("SkyrimSE@Epic"));
+        Assert.Equal(GamePlatform.Unknown, GameProfiles.PlatformOf("SkyrimSE@"));
+    }
+
+    /// <summary>The sound theme lookup, which normalises through <c>BaseId</c> like the profile lookups do.</summary>
+    private static string AppSettingsThemeFor(string installKey) =>
+        GameProfiles.Find(installKey)?.SoundTheme ?? "Default";
 }

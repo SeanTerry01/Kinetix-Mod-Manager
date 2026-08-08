@@ -316,7 +316,7 @@ public partial class Form1
 			text = Loc.T("help.wiki");
 			break;
 		case AppTab.Walkthroughs:
-			string activeGameWalkthroughTitle = _settings.ActiveGame switch
+			string activeGameWalkthroughTitle = GameProfiles.BaseId(_settings.ActiveGame) switch
 			{
 				"SkyrimSE" => "Skyrim",
 				_ => GameProfiles.DisplayNameFor(_settings.ActiveGame)

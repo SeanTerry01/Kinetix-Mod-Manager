@@ -1437,7 +1437,7 @@ public partial class Form1
 	/// </summary>
 	private static List<string> BaseGameControlLines(string activeGame)
 	{
-		if (activeGame == "SkyrimSE")
+		if (GameProfiles.IsGame(activeGame, GameProfiles.SkyrimSE))
 			return new List<string>
 			{
 				"W A S D: Move character forward, left, backward, right",
@@ -1454,7 +1454,7 @@ public partial class Form1
 		// The Witcher 3 normally answers this question properly: it writes every binding into input.settings,
 		// which the controls list reads instead of this. These stock defaults are the stand-in for a copy that
 		// has never been launched, so that file doesn't exist yet.
-		if (activeGame == "Witcher3")
+		if (GameProfiles.IsGame(activeGame, GameProfiles.Witcher3))
 			return new List<string>
 			{
 				"W A S D: Move Geralt forward, left, backward, right",
@@ -1473,7 +1473,7 @@ public partial class Form1
 				"C: Sheathe weapon",
 				"F5 and F8: Quick-save / Quick-load game",
 			};
-		if (activeGame == "Fallout4")
+		if (GameProfiles.IsGame(activeGame, GameProfiles.Fallout4))
 			return new List<string>
 			{
 				"W A S D: Move character forward, left, backward, right",
@@ -1493,7 +1493,7 @@ public partial class Form1
 				"O: Toggle Radio",
 				"F5 and F9: Quick-save / Quick-load game",
 			};
-		if (activeGame == "StardewValley")
+		if (GameProfiles.IsGame(activeGame, GameProfiles.StardewValley))
 			return new List<string>
 			{
 				"W A S D: Move character up, left, down, right",

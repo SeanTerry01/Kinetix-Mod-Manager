@@ -57,7 +57,7 @@ public class LootMasterlist
 	/// </summary>
 	public static async Task<LootMasterlist?> LoadAsync(string game, Action<string, string> logError)
 	{
-		string? repo = game switch
+		string? repo = GameProfiles.BaseId(game) switch
 		{
 			"SkyrimSE" => "skyrimse",
 			"Fallout4" => "fallout4",
@@ -65,7 +65,10 @@ public class LootMasterlist
 		};
 		if (repo == null) return null;
 
-		string cacheDir = Path.Combine(AppSettings.AppDataFolder, "masterlists", game);
+		// Keyed by the GAME, not the copy: the masterlist is LOOT's published data about a game's plugins, which
+		// is the same whether the copy came from Steam or GOG. Two copies share one cache rather than downloading
+		// and ageing the same file twice.
+		string cacheDir = Path.Combine(AppSettings.AppDataFolder, "masterlists", GameProfiles.BaseId(game));
 		string mlPath = Path.Combine(cacheDir, "masterlist.yaml");
 		string prePath = Path.Combine(cacheDir, "prelude.yaml");
 

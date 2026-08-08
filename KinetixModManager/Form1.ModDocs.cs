@@ -37,7 +37,7 @@ public partial class Form1
 	private List<ModDocSource> DocSourcesForActiveGame()
 	{
 		const string sdaBase = "https://raw.githubusercontent.com/stardew-access/stardew-access/development/docs/";
-		return _settings.ActiveGame switch
+		return GameProfiles.BaseId(_settings.ActiveGame) switch
 		{
 			"SkyrimSE" => new List<ModDocSource>
 			{

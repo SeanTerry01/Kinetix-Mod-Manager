@@ -98,7 +98,7 @@ public partial class Form1
 		bool allModsInstalled = true;
 		var suiteItems = new List<SuiteItem>();
 
-		if (game == "StardewValley")
+		if (GameProfiles.IsGame(game, GameProfiles.StardewValley))
 		{
 			string gameFolder = ResolveStardewFolder();
 			string smapiPath = Path.Combine(gameFolder, "StardewModdingAPI.exe");
@@ -109,7 +109,7 @@ public partial class Form1
 			suiteItems.Add(new SuiteItem("Kokoro Library", HasModUniqueId("Kokoro"), "GitHubStatic", "https://github.com/Shockah/Stardew-Valley-Mods/releases/download/release%2Fkokoro%2F3.0.0/Kokoro.3.0.0.zip"));
 			suiteItems.Add(new SuiteItem("Project Fluent", HasModUniqueId("ProjectFluent"), "GitHubStatic", "https://github.com/Shockah/Stardew-Valley-Mods/releases/download/release%2Fproject-fluent%2F2.0.0/ProjectFluent.2.0.0.zip"));
 		}
-		else if (game == "SkyrimSE")
+		else if (GameProfiles.IsGame(game, GameProfiles.SkyrimSE))
 		{
 			string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder("SkyrimSE") : _settings.CurrentGamePath;
 			loaderInstalled = File.Exists(Path.Combine(gameFolder, "skse64_loader.exe"));
@@ -134,7 +134,7 @@ public partial class Form1
 			suiteItems.Add(new SuiteItem("Stay At The System Page - AE", HasModNameContains("Stay At The System Page") || HasModNameContains("StayAtTheSystemPage"), "Nexus", "67883"));
 			suiteItems.Add(new SuiteItem("Skyrim Access", HasModNameContains("Skyrim Access") || HasModNameContains("SkyrimAccess") || HasModNameContains("SkyrimTTS"), "Nexus", "181131"));
 		}
-		else if (game == "MoonlightPeaks")
+		else if (GameProfiles.IsGame(game, GameProfiles.MoonlightPeaks))
 		{
 			string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder("MoonlightPeaks") : _settings.CurrentGamePath;
 			loaderInstalled = IsBepInExInstalled(gameFolder);
@@ -148,7 +148,7 @@ public partial class Form1
 				MoonlightAccessType,
 				MoonlightAccessSource));
 		}
-		else if (game == "Witcher3")
+		else if (GameProfiles.IsGame(game, GameProfiles.Witcher3))
 		{
 			string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder("Witcher3") : _settings.CurrentGamePath;
 
@@ -225,7 +225,7 @@ public partial class Form1
 				case "Loader":
 					// The Skyrim/Fallout script extenders are on Nexus now; open their Nexus Files page rather
 					// than the legacy Silverlock site. Stardew's loader (SMAPI) keeps its own site URL.
-					return game switch
+					return GameProfiles.BaseId(game) switch
 					{
 						"SkyrimSE" => "https://www.nexusmods.com/skyrimspecialedition/mods/30379?tab=files",
 						"Fallout4" => "https://www.nexusmods.com/fallout4/mods/42147?tab=files",
@@ -275,13 +275,13 @@ public partial class Form1
 				// SMAPI is the Stardew mod loader; install it first (and automatically) so the
 				// accessibility mods below have something to load them. Other games' loaders are
 				// handled inside the loop via the script-extender installer.
-				if (!loaderInstalled && game == "StardewValley")
+				if (!loaderInstalled && GameProfiles.IsGame(game, GameProfiles.StardewValley))
 				{
 					loaderInstalled = await InstallSmapiAsync(ResolveStardewFolder());
 				}
 				// BepInEx is Moonlight Peaks' loader and installs the same way: first, and on its own, so the
 				// accessibility mod below has something to load it.
-				else if (!loaderInstalled && game == "MoonlightPeaks")
+				else if (!loaderInstalled && GameProfiles.IsGame(game, GameProfiles.MoonlightPeaks))
 				{
 					loaderInstalled = await InstallBepInExAsync(
 						string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder("MoonlightPeaks") : _settings.CurrentGamePath);
@@ -290,7 +290,7 @@ public partial class Form1
 				foreach (var item in suiteItems)
 				{
 					if (item.IsInstalled) continue;
-					if (item.Type == "Loader" && (game == "StardewValley" || game == "MoonlightPeaks")) continue;
+					if (item.Type == "Loader" && (GameProfiles.IsAnyGame(game, GameProfiles.StardewValley, GameProfiles.MoonlightPeaks))) continue;
 
 					// An entry with no source is one the manager knows about but cannot fetch yet (see the
 					// Moonlight Access note at the top of this file). Say so and carry on with the rest rather
@@ -308,7 +308,7 @@ public partial class Form1
 
 					// SSE Engine Fixes is a two-part install (main mod + root-folder preloader);
 					// handle both parts together so the user never has to place the DLL manually.
-					if (game == "SkyrimSE" && item.Source == "17230")
+					if (GameProfiles.IsGame(game, GameProfiles.SkyrimSE) && item.Source == "17230")
 					{
 						await InstallEngineFixesAsync();
 						continue;
@@ -322,11 +322,11 @@ public partial class Form1
 
 					if (item.Type == "Loader")
 					{
-						if (game == "SkyrimSE")
+						if (GameProfiles.IsGame(game, GameProfiles.SkyrimSE))
 						{
 							downloadUrl = await GetSkse64DownloadUrl();
 						}
-						else if (game == "Fallout4")
+						else if (GameProfiles.IsGame(game, GameProfiles.Fallout4))
 						{
 							downloadUrl = await GetF4seDownloadUrl();
 						}
@@ -520,14 +520,14 @@ public partial class Form1
 	private void UninstallScriptExtenderCommand()
 	{
 		string game = _settings.ActiveGame;
-		if (game != "SkyrimSE" && game != "Fallout4")
+		if (!GameProfiles.IsAnyGame(game, GameProfiles.SkyrimSE, GameProfiles.Fallout4))
 		{
 			Speak(Loc.T("se.uninstallWrongGame"));
 			return;
 		}
 
 		string gamePath = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder(game) : _settings.CurrentGamePath;
-		string seName = game == "SkyrimSE" ? "SKSE" : "F4SE";
+		string seName = GameProfiles.IsGame(game, GameProfiles.SkyrimSE) ? "SKSE" : "F4SE";
 
 		if (!ModFileSystem.IsScriptExtenderInstalled(game, gamePath))
 		{
