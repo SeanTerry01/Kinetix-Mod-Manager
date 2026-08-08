@@ -191,6 +191,15 @@ public partial class Form1 : Form, IMessageFilter
 		{
 			_pipeCts.Cancel();
 
+			// Out of sight before anything is said.
+			//
+			// Cancelling the close to keep the message loop alive leaves a window that the user has just asked
+			// to close still sitting there with focus in it — and the screen reader, seeing focus return to a
+			// window that did not go away, reads out whatever is focused. So the goodbye was followed by a mod
+			// name or a tab name over the top of the disconnect cue. Hiding gives it nothing to read, and a
+			// hidden form still pumps messages, which is all the sequence below needs.
+			Hide();
+
 			// Spoken first and waited for, because Tolk is unloaded at the end of this method and unloading it
 			// mid-sentence cuts the message off.
 			if (Tolk.IsLoaded() && _settings.SpeakShutdownMessage)

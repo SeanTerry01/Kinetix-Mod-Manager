@@ -123,7 +123,10 @@ public partial class Form1
 			}
 			else
 			{
-				await InstallFromZip(archive, known.NexusModId);
+				// Every part of this mod shares one Nexus id, so the id must not be what decides which installed
+				// mod is being replaced — it would pick a sibling. Installing the Engine Fixes plugin deleted the
+				// preloader exactly that way, leaving a game that would not start.
+				await InstallFromZip(archive, known.NexusModId, partOfMultiPartMod: known.Parts.Count > 1);
 			}
 
 			ResetStatus();

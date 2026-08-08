@@ -542,7 +542,13 @@ public partial class Form1
 	/// to prevent path traversal, then moves the contents into the Mods directory.
 	/// Temp files are cleaned up in a <c>finally</c> block regardless of success or failure.
 	/// </summary>
-	private async Task InstallFromZip(string zipPath, string? nexusId = null, bool silent = false, bool confirmReinstall = false)
+	/// <param name="partOfMultiPartMod">
+	/// True when this archive is one of several separate downloads from the same Nexus page. Its siblings carry
+	/// the same Nexus id, so that id must not be used to decide which installed mod is being replaced — it would
+	/// name a sibling and delete it. See <c>FindExistingInstall</c>.
+	/// </param>
+	private async Task InstallFromZip(string zipPath, string? nexusId = null, bool silent = false,
+		bool confirmReinstall = false, bool partOfMultiPartMod = false)
 	{
 		// Install progress runs even in a silent batch (Update All), following the user's tones/speech/both/off
 		// setting via ProgressAnnouncer. The silent flag suppresses only the per-mod spoken chatter and the
@@ -556,7 +562,8 @@ public partial class Form1
 			string name = await ModFileSystem.ExtractModAsync(
 				zipPath, _settings.CurrentModsPath, _allInstalledMods,
 				backupsPath, _settings.MaxBackupsPerMod, _settings.ActiveGame, LogError, nexusId, _nexusService, null, _settings.CurrentGamePath,
-				ShowFomodWizardAsync, installProgress, confirmOverwrite, RunModInstallerAsync);
+				ShowFomodWizardAsync, installProgress, confirmOverwrite, RunModInstallerAsync,
+				matchExistingByNexusId: !partOfMultiPartMod);
 			installProgress?.Complete();
 			_soundEngine.Play("load_complete");
 

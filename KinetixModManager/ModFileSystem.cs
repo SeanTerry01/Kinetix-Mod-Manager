@@ -1704,14 +1704,15 @@ public static class ModFileSystem
 		Func<FomodConfig, Task<FomodSelection?>>? fomodSelector = null,
 		IProgress<double>? installProgress = null,
 		Func<string, string, bool>? confirmOverwrite = null,
-		Func<string, Task<bool>>? runInstaller = null)
+		Func<string, Task<bool>>? runInstaller = null,
+		bool matchExistingByNexusId = true)
 	{
 		// For Skyrim/Fallout 4 the mod's identity is known up front (its Nexus id or folder name), so a
 		// reinstall can be confirmed before we even extract. Stardew's identity lives in manifest.json inside
 		// the archive, so that prompt happens after extraction (below). A declined prompt cancels the install.
 		if (confirmOverwrite != null && !GameProfiles.IsGame(activeGame, GameProfiles.StardewValley))
 		{
-			GameMod? existing = FindExistingInstall(installedMods, nexusId, Path.GetFileNameWithoutExtension(zipPath));
+			GameMod? existing = FindExistingInstall(installedMods, nexusId, Path.GetFileNameWithoutExtension(zipPath), matchExistingByNexusId);
 			if (existing != null && Directory.Exists(existing.FolderPath) && !confirmOverwrite(existing.Name, existing.Version))
 				throw new OperationCanceledException("User declined to overwrite an existing mod.");
 		}
@@ -1834,13 +1835,13 @@ public static class ModFileSystem
 					return await FinalizeBethesdaModAsync(
 						stagingDir, Path.GetFileNameWithoutExtension(zipPath), zipPath, modsPath, installedMods,
 						backupsPath, maxBackups, activeGame, logError, nexusId, nexusService, gitHubRepo, currentGamePath, fomodInfo,
-						docsSourceRoot: tempDir);
+						docsSourceRoot: tempDir, matchExistingByNexusId: matchExistingByNexusId);
 				}
 
 				return await FinalizeBethesdaModAsync(
 					ResolveBethesdaModSource(tempDir), Path.GetFileNameWithoutExtension(zipPath), zipPath, modsPath, installedMods,
 					backupsPath, maxBackups, activeGame, logError, nexusId, nexusService, gitHubRepo, currentGamePath, null,
-					docsSourceRoot: tempDir);
+					docsSourceRoot: tempDir, matchExistingByNexusId: matchExistingByNexusId);
 			}
 
 			// Stardew Valley Manifest logic
@@ -1985,7 +1986,18 @@ public static class ModFileSystem
 	/// from the file name when not supplied, e.g. "SkyUI-12604-5-2"), then by folder/UniqueID name. Used both to
 	/// prompt before overwriting and to back up/remove the old copy. Returns null when nothing matches.
 	/// </summary>
-	private static GameMod? FindExistingInstall(List<GameMod> installedMods, string? nexusId, string targetFolderName)
+	/// <param name="matchByNexusId">
+	/// Whether an installed mod carrying the same Nexus id counts as the one being replaced. True for an ordinary
+	/// mod, where the id is its identity and the folder name changes with every version.
+	///
+	/// It must be FALSE for a mod that ships as several separate downloads from one page, because then the id
+	/// identifies the page rather than the install. SSE Engine Fixes is the case that proved it: its plugin and
+	/// its preloader are both mod 17230, so installing the plugin found the preloader as "the existing copy",
+	/// backed it up and deleted it — leaving a game that refuses to start, since the plugin it had just
+	/// installed cannot load without the preloader it had just removed.
+	/// </param>
+	private static GameMod? FindExistingInstall(
+		List<GameMod> installedMods, string? nexusId, string targetFolderName, bool matchByNexusId = true)
 	{
 		if (string.IsNullOrEmpty(nexusId))
 		{
@@ -1994,7 +2006,7 @@ public static class ModFileSystem
 		}
 
 		GameMod? existing = null;
-		if (!string.IsNullOrEmpty(nexusId))
+		if (matchByNexusId && !string.IsNullOrEmpty(nexusId))
 			existing = installedMods.FirstOrDefault(x => x.NexusID == nexusId);
 		existing ??= installedMods.FirstOrDefault(x =>
 			x.Name.Equals(targetFolderName, StringComparison.OrdinalIgnoreCase) ||
@@ -2006,12 +2018,12 @@ public static class ModFileSystem
 		string sourceFolder, string targetFolderName, string zipPath, string modsPath, List<GameMod> installedMods,
 		string backupsPath, int maxBackups, string activeGame, Action<string, string> logError,
 		string? nexusId, NexusService? nexusService, string? gitHubRepo, string? currentGamePath, FomodInfo? fomodInfo,
-		string? docsSourceRoot = null)
+		string? docsSourceRoot = null, bool matchExistingByNexusId = true)
 	{
 		string destModFolder = Path.Combine(modsPath, targetFolderName);
 
 		// Backup and remove old version (the reinstall prompt, if any, already happened in ExtractModAsync).
-		GameMod? existing = FindExistingInstall(installedMods, nexusId, targetFolderName);
+		GameMod? existing = FindExistingInstall(installedMods, nexusId, targetFolderName, matchExistingByNexusId);
 
 		if (existing != null && Directory.Exists(existing.FolderPath))
 		{

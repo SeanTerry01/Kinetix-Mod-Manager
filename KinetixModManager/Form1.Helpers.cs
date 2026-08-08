@@ -175,6 +175,7 @@ public partial class Form1
 	/// </summary>
 	private void SpeakListPosition(ListBox list, string text)
 	{
+		if (_shuttingDown) return;
 		long now = Environment.TickCount64;
 		if (ReferenceEquals(_lastPosList, list) && _lastPosIndex == list.SelectedIndex && now - _lastPosTicks < 700)
 			return;
@@ -198,7 +199,7 @@ public partial class Form1
 	/// </summary>
 	private async void AnnounceListEmpty(ListBox list)
 	{
-		if (_isLoading) return;
+		if (_isLoading || _shuttingDown) return;
 		await Task.Delay(120);
 		if (list.IsDisposed || !list.Focused || list.Items.Count != 0 || _isLoading) return;
 
@@ -229,6 +230,10 @@ public partial class Form1
 	/// </summary>
 	private void AnnounceFocusRestored()
 	{
+		// Nothing ambient once the user has asked to leave. Announcements like this are queued and can land in
+		// the middle of the goodbye — a menu closing, for instance, posts one for after the current message.
+		if (_shuttingDown) return;
+
 		Control? focused = Control.FromHandle(GetFocus());
 		if (focused is ListBox list)
 		{
