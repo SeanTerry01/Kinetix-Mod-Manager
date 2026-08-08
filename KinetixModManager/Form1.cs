@@ -191,22 +191,26 @@ public partial class Form1 : Form, IMessageFilter
 		{
 			_pipeCts.Cancel();
 
-			// Out of sight before anything is said.
+			// Say goodbye while the window is still up, and wait for it.
 			//
-			// Cancelling the close to keep the message loop alive leaves a window that the user has just asked
-			// to close still sitting there with focus in it — and the screen reader, seeing focus return to a
-			// window that did not go away, reads out whatever is focused. So the goodbye was followed by a mod
-			// name or a tab name over the top of the disconnect cue. Hiding gives it nothing to read, and a
-			// hidden form still pumps messages, which is all the sequence below needs.
-			Hide();
-
-			// Spoken first and waited for, because Tolk is unloaded at the end of this method and unloading it
-			// mid-sentence cuts the message off.
+			// The window must NOT be hidden first. Hiding it moves focus to whatever is behind, and the screen
+			// reader announces that new window — cutting off the message it was already speaking, so the goodbye
+			// was never heard at all. Tolk is also unloaded at the end of this method, and unloading it
+			// mid-sentence would cut the message off just as surely; hence waiting here rather than later.
 			if (Tolk.IsLoaded() && _settings.SpeakShutdownMessage)
 			{
 				Speak(Loc.T("app.shuttingDown"), interrupt: true);
 				await WaitForSpeechAsync(minMs: 1800, maxMs: 6000);
 			}
+
+			// Now out of sight, with the message safely delivered.
+			//
+			// Cancelling the close to keep the message loop alive leaves a window the user has just asked to
+			// close still sitting there with focus in it, and a screen reader reads what is focused when a
+			// window it expected to go away does not — which is how a mod name or a tab name ended up over the
+			// top of the disconnect cue. Hidden, there is nothing to read; a hidden form still pumps messages,
+			// which is all the cue below needs.
+			Hide();
 
 			// Only when a session is still open: closing one (Ctrl+Shift+C) already plays this, so exiting
 			// afterwards would sound the disconnect for a session that was torn down some time ago.
