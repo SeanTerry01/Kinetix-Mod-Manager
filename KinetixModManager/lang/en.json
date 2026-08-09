@@ -832,6 +832,11 @@
   "health.rowConflict": "File conflict — {0}",
   "health.rowLimit": "Plugin limit — {0}",
   "health.sumLimit": "plugin limit warning",
+  "health.rowRuntime": "Windows runtime — {0}",
+  "health.sumRuntime": "a Visual C++ runtime problem",
+  "health.runtimeFile": "{0} is {1}",
+  "health.runtimeMismatch": "Your Visual C++ runtime files do not match each other: {0}, but the rest of the set is {1}. Mixed files like this stop mods that are program files from loading, including the accessibility mods, usually with no error and no speech at all. Repairing the Microsoft Visual C++ Redistributable fixes it. Press Enter to open Microsoft's download page.",
+  "health.runtimeMissing": "The Microsoft Visual C++ Redistributable does not appear to be installed. Mods that are program files, including the accessibility mods, cannot load without it. Press Enter to open Microsoft's download page.",
 
   "pluginlimit.notApplicable": "Plugin slots apply to Skyrim and Fallout 4. Stardew mods have no plugin limit.",
   "pluginlimit.summary": "Plugin slots: {0} of {1} regular plugins used, {2} remaining. {3} of {4} light plugins used.",

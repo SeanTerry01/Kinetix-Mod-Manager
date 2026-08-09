@@ -109,6 +109,13 @@ after it.
 *   **Fallout 4's GOG per-player folder is still a guess.** `Fallout4 GOG`, inferred from Skyrim's pattern. It
     was never read out of a real GOG Fallout 4 executable, because there wasn't one to read. A wrong value shows
     up as the install simply not being recognised as GOG.
+*   **The Visual C++ runtime finding has never been seen on screen.** The rule is proven by unit tests built
+    from the exact version set read out of this machine's System32 while it was broken (14.28 core files under
+    14.51 satellites), and the healthy path is exercised every time Check My Setup runs here. But the machine
+    was repaired before the check existed, so the wording, the row order and the Enter-to-Microsoft action have
+    only ever been read in the healthy case, where they stay silent. Faking a mismatch means overwriting a file
+    in System32, which is not worth doing to a working machine. A wrong sentence here misleads at the exact
+    moment the user is already lost, so it is worth re-reading the two strings in `en.json` before release.
 *   **The Witcher 3 family grouping can under-group.** Folders are grouped by a shared `mod_family_*` name,
     which is the author's own statement that they belong together. A framework that ships its pieces under
     unrelated names will still fill several rows. This was chosen over guessing which helper belongs to which

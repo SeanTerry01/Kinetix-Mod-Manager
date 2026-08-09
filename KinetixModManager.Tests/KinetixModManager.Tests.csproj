@@ -70,6 +70,9 @@
     <Compile Include="..\KinetixModManager\ModPartRules.cs" />
     <!-- Self-contained "which folders in this archive are Witcher 3 mods?" rules (depends only on the BCL). -->
     <Compile Include="..\KinetixModManager\Witcher3Layout.cs" />
+    <!-- Self-contained Visual C++ runtime consistency check, plus the Wine detection it defers to (BCL only). -->
+    <Compile Include="..\KinetixModManager\VcRuntimeCheck.cs" />
+    <Compile Include="..\KinetixModManager\PlatformInfo.cs" />
   </ItemGroup>
 
   <!-- Real files.json bodies, recorded from the Nexus API rather than written by hand. The picking rules exist

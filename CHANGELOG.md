@@ -19,6 +19,16 @@ Moonlight Peaks and The Witcher 3 join the manager as fully supported games, alo
 
 ---
 
+## ✨ New: Check My Setup now checks Windows itself
+
+*   **Check My Setup (Ctrl + Shift + K) now looks at the Microsoft Visual C++ Redistributable**, the piece of Windows that every mod written as a program file depends on — which is all of the accessibility mods, in all five games. It reports the fault first, ahead of everything else, because unlike a missing requirement or a file conflict this one affects **every game at once**.
+*   The fault it finds is a runtime whose files **no longer match each other**. A game or an installer replaces part of the set with an older copy, and afterwards the pieces come from different versions and refuse to load together. Windows' own list of installed programs still reports the newer version, so there is nothing to notice.
+*   This was worth building because of **how it fails, not how often**. There is no crash and no error message — the game starts, and the accessibility mod simply never speaks. That is indistinguishable from a mod you've set up wrong, and there is nothing to read to tell the difference. It cost the author an evening across two games before the cause turned up; the check now states it in a sentence.
+*   The finding **names the files that are out of step and the version the rest of the set is on**, and **Enter** opens Microsoft's download page. It deliberately links the page rather than a direct download, because the direct link is pinned to one version — and offering someone an older build than they already have gets refused as a downgrade instead of repairing anything, which is its own dead end.
+*   Nothing is reported when the runtime is healthy, and the check is **skipped entirely under Wine on Linux**, where these files belong to the compatibility layer and their version numbers don't mean the same thing.
+
+---
+
 ## ✨ New: Two copies of the same game, and the right file for the one you're on
 
 ### 🎮 Own a game twice? Both copies now show up

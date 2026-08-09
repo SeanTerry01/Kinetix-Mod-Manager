@@ -14,6 +14,11 @@ namespace KinetixModManager;
 /// so each row keeps its own Enter action (search for / open a missing mod), Delete-to-ignore for requirement
 /// warnings, and F9 "ask the AI about this" — making the dashboard a superset of the individual reports rather
 /// than a replacement for them.
+///
+/// One check lives only here and has no standalone report of its own: the Visual C++ runtime check, which is
+/// about the machine rather than the active game. It has no report because there is nothing to browse — it
+/// either finds one fault or says nothing — and it belongs in the pass a user runs when something is wrong but
+/// they cannot tell what.
 /// </summary>
 public partial class Form1
 {
@@ -33,6 +38,7 @@ public partial class Form1
 
 		SetStatus(Loc.T("health.checking"), speak: true);
 
+		ReportRow? runtimeRow = GatherRuntimeFinding();
 		(List<ReportRow> reqRows, _) = await GatherRequirementFindings();
 		ReportRow? limitRow = GatherPluginLimitFinding();
 		List<ReportRow> partRows = GatherMissingPartFindings();
@@ -45,6 +51,9 @@ public partial class Form1
 		// freshly gathered, so prefixing their Text in place is safe. Order is severity-first: missing requirements
 		// and a breached plugin limit both stop the game loading, so they lead.
 		var rows = new List<ReportRow>();
+		// First of all, because it outranks everything below it: a broken C runtime stops native mods loading in
+		// every game at once, and no amount of fixing requirements or conflicts will help until it is repaired.
+		if (runtimeRow != null) rows.Add(runtimeRow);
 		foreach (ReportRow r in reqRows) { r.Text = Loc.T("health.rowReq", r.Text); rows.Add(r); }
 		if (limitRow != null) { limitRow.Text = Loc.T("health.rowLimit", limitRow.Text); rows.Add(limitRow); }
 		// With the missing requirements, because a half-installed mod is the same kind of problem: the mod is
@@ -67,6 +76,8 @@ public partial class Form1
 		// Per-category breakdown for the spoken summary, listing only the categories that actually found something,
 		// in the same severity-first order as the rows.
 		var parts = new List<string>();
+		if (runtimeRow != null)
+			parts.Add(Loc.T("health.sumRuntime"));
 		if (reqRows.Count > 0)
 			parts.Add(Loc.T(reqRows.Count == 1 ? "health.sumReqOne" : "health.sumReqMany", reqRows.Count));
 		if (limitRow != null)
@@ -89,5 +100,33 @@ public partial class Form1
 
 		ShowReportDialog(Loc.T("health.title"), header, Loc.T("health.none"), rows, hint,
 			IgnoreRequirementRow, listName: Loc.T("health.listName"));
+	}
+
+	/// <summary>
+	/// A Health Check finding for a broken Visual C++ runtime, or null when it is healthy or cannot be judged.
+	///
+	/// Unlike every other check here this one is not about the active game — it is about the machine, and a
+	/// problem it finds affects all of them. It earns its place in a mod manager's health check because the mods
+	/// most likely to be silenced by it are the accessibility mods, and their failure mode is silence: the game
+	/// launches, says nothing, and leaves no error for a screen reader to find. Pointing at the runtime is the
+	/// difference between a five-minute repair and a lost evening.
+	/// </summary>
+	private ReportRow? GatherRuntimeFinding()
+	{
+		VcRuntimeVerdict? verdict = VcRuntimeCheck.Inspect();
+		if (verdict == null || verdict.IsConsistent) return null;
+
+		string text = verdict.CoreMissing
+			? Loc.T("health.runtimeMissing")
+			: Loc.T("health.runtimeMismatch",
+				string.Join(", ", verdict.Stale.Select(f => Loc.T("health.runtimeFile",
+					f.Name, VcRuntimeCheck.Format(f.Version!)))),
+				VcRuntimeCheck.Format(verdict.Expected!));
+
+		return new ReportRow
+		{
+			Text = Loc.T("health.rowRuntime", text),
+			OpenUrl = VcRuntimeCheck.DownloadUrl
+		};
 	}
 }

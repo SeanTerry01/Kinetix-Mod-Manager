@@ -210,7 +210,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Ctrl + Y**: **View Dependencies** - Opens the dependency view for the selected mod: what it *requires* (and whether each is installed) and what is *required by* it (other installed mods that depend on it). See "Dependency View and Resolver" below.
 *   **Ctrl + Q**: **Resolve Missing Requirements** - Finds every missing required mod for the selected mod and, on Skyrim/Fallout 4, offers to download and install them automatically. See "Dependency View and Resolver" below.
 *   **Ctrl + Shift + B**: **Check for Broken Mods** - Cross-references your installed mods against the community compatibility list and reports any known to be broken, abandoned, obsolete, or incompatible. See "Checking Your Mods" below.
-*   **Ctrl + Shift + K**: **Check My Setup** - Runs the requirements, plugin-limit, broken-mod, and file-conflict checks together and gives one spoken summary. See "Check My Setup (Setup Health Check)" below.
+*   **Ctrl + Shift + K**: **Check My Setup** - Runs the Windows runtime, requirements, plugin-limit, broken-mod, and file-conflict checks together and gives one spoken summary. See "Check My Setup (Setup Health Check)" below.
 *   **Ctrl + Shift + T**: **Check Tracked Mods for Updates** - Lists the mods you track on Nexus that need attention. See "Tracked Mods" below.
 *   **Ctrl + Shift + W**: **Reinstall a Downloaded Mod** - Reinstall from your downloads folder without re-searching. See "Reinstalling a Downloaded Mod" below.
 *   **Ctrl + Shift + U**: **Plugin Slot Usage** (Skyrim & Fallout 4) - Speaks how many plugin slots you're using. See "Plugin Limit Awareness" below.
@@ -745,9 +745,19 @@ The reports in the **Mods menu → Health and Reports** submenu help you spot pr
 
 ### Check My Setup (Setup Health Check) (Ctrl + Shift + K)
 
-If you'd rather run everything at once than open each report separately, choose **Check My Setup** (or press **Ctrl + Shift + K**). It runs all the individual checks in one pass — **missing requirements** (missing masters, script extender, and Nexus requirements), the **plugin limit**, **incomplete mods** (a mod that needs two downloads and only got one, such as SSE Engine Fixes without its preloader — press **Enter** on that line to fetch the missing part), **known-broken or incompatible mods**, and **file conflicts** — and gives you a **single spoken summary** broken down by category, for example *"Setup health check found 3 problems: 1 missing requirement, 2 broken or incompatible mods."* If everything's fine it says *"No problems found. Your setup looks healthy."*
+If you'd rather run everything at once than open each report separately, choose **Check My Setup** (or press **Ctrl + Shift + K**). It runs all the individual checks in one pass — the **Windows runtime** (see below), **missing requirements** (missing masters, script extender, and Nexus requirements), the **plugin limit**, **incomplete mods** (a mod that needs two downloads and only got one, such as SSE Engine Fixes without its preloader — press **Enter** on that line to fetch the missing part), **known-broken or incompatible mods**, and **file conflicts** — and gives you a **single spoken summary** broken down by category, for example *"Setup health check found 3 problems: 1 missing requirement, 2 broken or incompatible mods."* If everything's fine it says *"No problems found. Your setup looks healthy."*
 
 The findings then appear as one combined list, most serious first. Each row keeps the same actions it has in its own report: press **Enter** to search for or open a missing mod, **Delete** to hide a requirement warning that doesn't apply to you, or **F9** to ask the AI about that finding (if AI is set up). This is the quickest way to check a setup is sound — for example after installing several mods, or before launching.
+
+#### The Windows runtime check
+
+One of the checks isn't about your mods at all — it's about Windows, and it comes first in the list because a problem there affects **every game at once**.
+
+Many mods are program files rather than data, including all of the accessibility mods. They all rely on a shared piece of Windows called the **Microsoft Visual C++ Redistributable**. Occasionally a game or an installer replaces part of it with an older copy, leaving a set of files that no longer match each other — and mods that depend on it then stop loading.
+
+This is worth calling out because of how it goes wrong: **there is usually no error.** The game starts normally and the mod simply never speaks. Windows' own list of installed programs still reports the newer version, so nothing looks amiss. It's an easy fault to spend an evening chasing in the wrong place.
+
+If your files don't match, Check My Setup says so, names the ones that are out of step, and offers **Enter** to open Microsoft's download page. Install the latest version from there (choose **Repair** if it offers to, and take the newest one — an older installer will refuse as a downgrade), then restart the game. If your runtime is fine, or the manager is running under Wine on Linux where the check doesn't apply, nothing is reported.
 
 ### File Conflict Report (Ctrl + Shift + F)
 This shows where your mods collide.
