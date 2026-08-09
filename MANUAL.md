@@ -1036,4 +1036,20 @@ Troubleshooting large logs is easier with the Search feature in the **SMAPI Log*
 Over time the manager can leave temporary files behind — the folder it extracts app updates into, and staging folders from installs that were interrupted by a crash. Choose **View → Free Up Space (Clear Temporary Files)** to clean them up; it tells you how much was reclaimed, for example *"Freed 84.2 MB of temporary files."* It only removes the manager's own leftover scratch (never your downloaded mod archives — remove those individually from **Reinstall a Downloaded Mod**), and never touches anything from an install that's still in progress.
 
 ---
+
+## Supporting Development
+
+Kinetix Mod Manager is free, and built and maintained in the author's spare time. If you'd like to help keep it going, choose **Help → Support Development (Donate)**.
+
+The view opens with a short message from the author, and the message itself lists both addresses in full so you can read them with your screen reader rather than take them on trust. **Tab** from the message to reach three buttons:
+
+*   **Donate with PayPal** — opens `paypal.me/chipper15` in your browser.
+*   **Donate with Cash App** — opens the Cash App payment page for `$SeanTerry01` in your browser.
+*   **Copy Cash Tag** — copies `$SeanTerry01` to the clipboard, which is the easier route if you're going to pay from the Cash App on your phone rather than in a browser. It confirms out loud when the copy has been made.
+
+**Escape** closes the view, and nothing here ever prompts you, nags you, or interrupts anything else in the manager — it's a menu item you visit only if you want to.
+
+If a browser can't be opened (which can happen on Linux under Wine), the manager copies the link to the clipboard instead and tells you so, rather than failing silently.
+
+---
 *Happy Modding!*

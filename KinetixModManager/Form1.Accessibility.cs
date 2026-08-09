@@ -367,9 +367,11 @@ public partial class Form1
 			ScrollBars = ScrollBars.Vertical,
 			Font = new Font("Segoe UI", 12f),
 			Text = about,
-			// No AccessibleName: the window title already says "About Kinetix Mod Manager", so naming the text box
-			// the same would make the screen reader repeat it before reading the text. With no name it reads the
-			// field's role and then its content (which starts with "Kinetix Mod Manager").
+			// Named deliberately, and not after the heading. Leaving it unnamed does not make the reader silent —
+			// it makes the reader go looking, and what it finds is the main window's search box behind the view,
+			// so this box announced itself as "Search". A name of its own stops the search; naming it for what it
+			// contains keeps it from repeating the heading. See SilentAccessibleName in Form1.Helpers.
+			AccessibleName = Loc.T("about.bodyName"),
 			TabStop = true
 		};
 		tbAbout.GotFocus += delegate { tbAbout.Select(0, 0); };

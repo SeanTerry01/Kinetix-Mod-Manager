@@ -240,6 +240,10 @@ public partial class Form1
 		{
 			ShowShortcutManager();
 		});
+		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.donate"), null, delegate
+		{
+			ShowDonate();
+		});
 		toolStripMenuItem4.DropDownItems.Add(Loc.T("about.title"), null, delegate
 		{
 			ShowAbout();
