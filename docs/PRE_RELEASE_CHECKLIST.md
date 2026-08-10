@@ -116,6 +116,8 @@ after it.
     only ever been read in the healthy case, where they stay silent. Faking a mismatch means overwriting a file
     in System32, which is not worth doing to a working machine. A wrong sentence here misleads at the exact
     moment the user is already lost, so it is worth re-reading the two strings in `en.json` before release.
+    The natural test is another computer with a mixed runtime, which has not been available yet — if one turns
+    up before release, opening Check My Setup on it settles this in seconds.
 *   **The Witcher 3 family grouping can under-group.** Folders are grouped by a shared `mod_family_*` name,
     which is the author's own statement that they belong together. A framework that ships its pieces under
     unrelated names will still fill several rows. This was chosen over guessing which helper belongs to which
@@ -165,6 +167,7 @@ From `reference-build-publish-release`. The publish output was verified complete
 *   The bundled Moonlight Peaks keybind reader (`data\plugins\MoonlightKeybindExport.dll`) is built in a
     **separate repository**. It is present and current as of 2026-08-02. If it ever changes it has to be rebuilt
     and copied across by hand — nothing in this build does it for you.
-*   This release is large: 51 commits, two new games, and a change to how every per-game setting is keyed.
+*   This release is large: **58 commits as of 2026-08-09**, two new games, and a change to how every per-game
+    setting is keyed.
     Existing settings files upgrade in place with nothing to redo, but it is worth keeping a copy of
     `%AppData%\AudiVentureGames\KinetixModManager\settings.json` before the first run of the new build.
