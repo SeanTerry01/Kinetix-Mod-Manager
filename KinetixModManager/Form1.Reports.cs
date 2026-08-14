@@ -405,20 +405,32 @@ public partial class Form1
 				}
 			};
 
-			// The header may already end in a period (the broken-mods and verify headers do); strip it before adding
-			// the ". " separator so screen readers don't speak a stray ".." pause. Likewise say "1 item", not
-			// "1 items", for a single finding.
-			string spokenHeader = header.EndsWith(".") ? header[..^1] : header;
-			string opening = spokenHeader + ". " + (hasRows
-				? Loc.T(rows.Count == 1 ? "reports.itemCountOne" : "reports.itemCount", rows.Count)
-					+ (actionHint != null ? ". " + actionHint : "")
-				: emptyMessage);
-			if (hasRows && _aiService.IsConfigured) opening += ". " + Loc.T("ai.reportHint");
-			// A finding-level advisory (e.g. the loose-files explanation): spoken as context in the opening so the
-			// list rows themselves can stay short and scannable, rather than each carrying a paragraph.
-			if (hasRows && !string.IsNullOrEmpty(openingNote)) opening += ". " + openingNote;
-			Speak(opening);
 			return list;
-			});
+			},
+			// Through the hint, so it follows the title rather than arriving ahead of it. A report's header
+			// describes its findings rather than repeating its title, so unlike the other views it is kept whole.
+			hint: ReportOpening(header, emptyMessage, rows, actionHint, openingNote));
 		}
+
+	/// <summary>
+	/// What a report says on the way in, after its title: what it looked for, how much it found, and what the keys
+	/// do — or, when it found nothing, why that is good news.
+	/// </summary>
+	private string ReportOpening(string header, string emptyMessage, List<ReportRow> rows, string? actionHint, string? openingNote)
+	{
+		bool hasRows = rows.Count > 0;
+		// The header may already end in a period (the broken-mods and verify headers do); strip it before adding
+		// the ". " separator so screen readers don't speak a stray ".." pause. Likewise say "1 item", not
+		// "1 items", for a single finding.
+		string spokenHeader = header.EndsWith(".") ? header[..^1] : header;
+		string opening = spokenHeader + ". " + (hasRows
+			? Loc.T(rows.Count == 1 ? "reports.itemCountOne" : "reports.itemCount", rows.Count)
+				+ (actionHint != null ? ". " + actionHint : "")
+			: emptyMessage);
+		if (hasRows && _aiService.IsConfigured) opening += ". " + Loc.T("ai.reportHint");
+		// A finding-level advisory (e.g. the loose-files explanation): spoken as context in the opening so the
+		// list rows themselves can stay short and scannable, rather than each carrying a paragraph.
+		if (hasRows && !string.IsNullOrEmpty(openingNote)) opening += ". " + openingNote;
+		return opening;
+	}
 	}

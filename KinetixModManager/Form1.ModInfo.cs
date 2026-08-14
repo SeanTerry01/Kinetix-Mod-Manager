@@ -189,10 +189,11 @@ public partial class Form1
 
 		box.SelectionStart = 0;
 		box.SelectionLength = 0;
-		if (Regex.IsMatch(text, @"https?://", RegexOptions.IgnoreCase))
-			Speak(Loc.T("modinfo.linkHint"), interrupt: false);
-		SpeakLong(text, interrupt: false);
 		return box;
-		});
+		},
+		// Through the hint, so the title says which text this is before the text itself starts. Spoken during
+		// build it landed ahead of the title, so a long passage was read out and only then named. The hint is
+		// spoken with SpeakLong, so a passage this size is chunked and read whole rather than clipped.
+		hint: (Regex.IsMatch(text, @"https?://", RegexOptions.IgnoreCase) ? Loc.T("modinfo.linkHint") + " " : "") + text);
 	}
 }

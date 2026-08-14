@@ -287,9 +287,11 @@ public partial class Form1
 
 		container.Controls.Add(layout);
 
-		Speak(summary + " " + Loc.T("collection.preflightOpen"));
 		return list;
-		});
+		},
+		// Through the hint, so it follows the title rather than arriving ahead of it. The summary describes what
+		// is about to be installed rather than repeating the title, so it is kept whole. See Form1.InlineView.
+		hint: summary + " " + Loc.T("collection.preflightOpen"));
 
 		return install;
 	}

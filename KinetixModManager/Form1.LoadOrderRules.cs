@@ -76,10 +76,11 @@ public partial class Form1
 				}
 			};
 
-			Speak(Loc.T("rules.addHeader", subject.Name) + " " + Loc.T("rules.addHint", subject.Name) + " "
-				+ Loc.T(others.Count == 1 ? "rules.pickCountOne" : "rules.pickCount", others.Count));
 			return list;
-		});
+		},
+		// The heading here instructs rather than repeats the title, so it is kept whole — only its order changes.
+		hint: Loc.T("rules.addHeader", subject.Name) + " " + Loc.T("rules.addHint", subject.Name) + " "
+			+ Loc.T(others.Count == 1 ? "rules.pickCountOne" : "rules.pickCount", others.Count));
 	}
 
 	/// <summary>Adds a "plugin loads after 'after'" rule for the active game; returns false if it already exists.</summary>
@@ -141,10 +142,11 @@ public partial class Form1
 				Speak(Loc.T("rules.removed", list.Items.Count));
 			};
 
-			Speak(Loc.T("rules.manageHeader", GameDisplayName()) + " "
-				+ Loc.T(rules.Count == 1 ? "rules.countOne" : "rules.count", rules.Count) + " " + Loc.T("rules.manageHint"));
 			return list;
-		});
+		},
+		// Through the hint, and without the old heading clause ("Load order rules for <game>."), which was the
+		// title's own words again. See Form1.InlineView: anything spoken during build lands ahead of the title.
+		hint: Loc.T(rules.Count == 1 ? "rules.countOne" : "rules.count", rules.Count) + " " + Loc.T("rules.manageHint"));
 	}
 
 	/// <summary>One row in the rules list.</summary>

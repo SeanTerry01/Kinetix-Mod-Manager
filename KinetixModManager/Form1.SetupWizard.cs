@@ -78,10 +78,6 @@ public partial class Form1
 				Loc.T((step == 1 ? HasApiKey : HasGameFolder) ? "wizard.done" : "wizard.todo")));
 		};
 
-		bool allDone = HasGameChosen && HasApiKey && HasGameFolder;
-		string opening = Loc.T("wizard.header") + " "
-			+ (allDone ? Loc.T("wizard.allDone") : Loc.T("wizard.openingHint"));
-		Speak(opening);
 		return list;
 		},
 		onClosed: () =>
@@ -89,6 +85,10 @@ public partial class Form1
 			if (!sendToGameList || HasGameChosen || _lstGames == null) return;
 			_lstGames.Focus();
 			Speak(Loc.T("wizard.goPickGame"));
-		});
+		},
+		// Through the hint, so it follows the title rather than arriving ahead of it. The welcome does not repeat
+		// the title's words, so it is kept whole. See Form1.InlineView.
+		hint: Loc.T("wizard.header") + " "
+			+ (HasGameChosen && HasApiKey && HasGameFolder ? Loc.T("wizard.allDone") : Loc.T("wizard.openingHint")));
 	}
 }

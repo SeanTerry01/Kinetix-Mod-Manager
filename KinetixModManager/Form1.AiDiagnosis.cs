@@ -239,9 +239,10 @@ public partial class Form1
 
 		transcript.SelectionStart = 0;
 		transcript.SelectionLength = 0;
-		string firstAnswer = turns.LastOrDefault(t => !t.IsUser)?.Text ?? "";
-		SpeakLong(firstAnswer, interrupt: false);
 		return transcript;
-		});
+		},
+		// Through the hint, so the title names the conversation before the answer is read. Spoken during build it
+		// landed ahead of the title. SpeakLong is used for the hint, so a long answer still reads whole.
+		hint: turns.LastOrDefault(t => !t.IsUser)?.Text ?? "");
 	}
 }

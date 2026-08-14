@@ -30,6 +30,16 @@ Moonlight Peaks and The Witcher 3 join the manager as fully supported games, alo
 
 ---
 
+## 🐛 Fixed: every screen now opens the same way
+
+*   **A screen says its name, then what is in it, then the row you landed on** — in that order, everywhere. Sixteen screens used to say their opening *before* their own title, because anything spoken while a screen is being built is said ahead of the title the manager adds afterwards. So the instructions arrived first and the name of the screen second, which is backwards, and on several screens the name was then said a third time by the list inside it.
+*   The worst of these repeated themselves outright: **Restore a Safety Backup** opened with "Safety backups for Skyrim", **Load Order Rules** with "Load order rules for Skyrim", and the same for **Tracked Mods**, **Reinstall a Downloaded Mod**, **Manage Save Games** and **Choose File Conflict Winners**. Each now opens with its title once, then the count and the keys.
+*   The game's name went with those repeated openings. It is still written on the screen, and the window title has said which game you are in all along — but if you would rather hear it, say so and it comes back.
+*   **A long opening is no longer cut short.** Screens whose opening *is* their content — a mod's description, an answer from the AI assistant — are now read in chunks like every other long passage, instead of as one utterance a screen reader can silently truncate.
+*   **The FOMOD installer names itself before its first question.** Every later step already announced itself as you pressed Next or Back; only the first arrived ahead of the wizard's own title.
+
+---
+
 ## 🐛 Fixed: changing a setting tells you what it changed to
 
 *   **"MenuClosedAnnouncements set to false" is spoken again** the moment you press Enter on a value. It was being said and then silenced before it could be heard, so the only way to learn what a setting had become was to arrow off the row and back onto it.

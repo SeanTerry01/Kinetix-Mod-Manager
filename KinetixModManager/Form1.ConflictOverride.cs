@@ -87,12 +87,12 @@ public partial class Form1
 				}
 			};
 
-			string opening = Loc.T("conflictfix.header", GameDisplayName()) + " "
-				+ Loc.T(_lastConflicts.Count == 1 ? "conflictfix.countOne" : "conflictfix.count", _lastConflicts.Count)
-				+ " " + Loc.T("conflictfix.actionHint");
-			Speak(opening);
 			return list;
-		});
+		},
+		// Through the hint, and without the old heading clause ("File conflicts for <game>."), which repeated the
+		// title. See Form1.InlineView: a Speak during build lands ahead of the title.
+		hint: Loc.T(_lastConflicts.Count == 1 ? "conflictfix.countOne" : "conflictfix.count", _lastConflicts.Count)
+			+ " " + Loc.T("conflictfix.actionHint"));
 	}
 
 	/// <summary>The providers of a contested path in priority order (highest first); index 0 is the natural winner.</summary>

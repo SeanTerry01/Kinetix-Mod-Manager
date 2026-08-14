@@ -104,7 +104,11 @@ public partial class Form1
 				afterShown: () =>
 				{
 					Speak(title);
-					if (!string.IsNullOrEmpty(hint)) Speak(hint);
+					// SpeakLong, not Speak: a hint is usually a sentence, but a view whose opening IS its content
+					// (a mod's description, an AI answer) passes a passage, and a screen reader silently truncates a
+					// single very long utterance. Chunked and queued it reads whole, and a short hint is one chunk,
+					// so nothing changes for the ordinary case.
+					if (!string.IsNullOrEmpty(hint)) SpeakLong(hint, interrupt: false);
 				});
 		}
 		finally

@@ -104,12 +104,12 @@ public partial class Form1
 				}
 			};
 
-			string opening = Loc.T("downloads.header", GameDisplayName()) + " "
-				+ Loc.T(items.Count == 1 ? "downloads.countOne" : "downloads.count", items.Count)
-				+ " " + Loc.T("downloads.actionHint");
-			Speak(opening);
 			return list;
-		});
+		},
+		// Through the hint, and without the old heading clause ("Downloaded mods for <game>."), which said the
+		// title's own words again. See Form1.InlineView: a Speak during build lands ahead of the title.
+		hint: Loc.T(items.Count == 1 ? "downloads.countOne" : "downloads.count", items.Count)
+			+ " " + Loc.T("downloads.actionHint"));
 	}
 
 	/// <summary>Sends a downloaded archive to the Recycle Bin after confirmation and drops it from the list.</summary>

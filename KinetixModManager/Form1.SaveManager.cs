@@ -138,14 +138,23 @@ public partial class Form1
 				}
 			};
 
-			int problems = rows.Count(r => r.MissingPlugins.Count > 0);
-			string opening = Loc.T("saves.header", GameDisplayName(game)) + " "
-				+ Loc.T(rows.Count == 1 ? "saves.countOne" : "saves.count", rows.Count);
-			if (problems > 0) opening += " " + Loc.T("saves.countProblems", problems);
-			opening += " " + Loc.T("saves.actionHint");
-			Speak(opening);
 			return list;
-		});
+		},
+		// Through the hint, and without the old heading clause ("Save games for <game>."), which repeated the
+		// title. See Form1.InlineView: a Speak during build lands ahead of the title.
+		hint: SaveManagerHint(rows));
+	}
+
+	/// <summary>
+	/// What the save manager says on the way in, after its title: how many saves there are, how many have a
+	/// problem worth knowing about before loading one, and what the keys do.
+	/// </summary>
+	private static string SaveManagerHint(List<SaveRow> rows)
+	{
+		int problems = rows.Count(r => r.MissingPlugins.Count > 0);
+		string hint = Loc.T(rows.Count == 1 ? "saves.countOne" : "saves.count", rows.Count);
+		if (problems > 0) hint += " " + Loc.T("saves.countProblems", problems);
+		return hint + " " + Loc.T("saves.actionHint");
 	}
 
 	/// <summary>The full spoken details for a save when the user presses Enter on its row.</summary>

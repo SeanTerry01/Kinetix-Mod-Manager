@@ -154,10 +154,11 @@ public partial class Form1
 				}
 			};
 
-			Speak(Loc.T("safety.header", GameDisplayName()) + " "
-				+ Loc.T(items.Count == 1 ? "safety.countOne" : "safety.count", items.Count) + " " + Loc.T("safety.actionHint"));
 			return list;
-		});
+		},
+		// Through the hint so it follows the title instead of arriving ahead of it, and without the old heading
+		// clause ("Safety backups for <game>."), which said the title's own words a second time.
+		hint: Loc.T(items.Count == 1 ? "safety.countOne" : "safety.count", items.Count) + " " + Loc.T("safety.actionHint"));
 	}
 
 	private List<SafetyBackupItem> LoadSafetyBackups()

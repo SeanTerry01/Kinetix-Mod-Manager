@@ -443,10 +443,11 @@ public partial class Form1
 		layout.Controls.Add(buttons, 0, 1);
 		container.Controls.Add(layout);
 
-		Speak(Loc.T("session.notInstalledSpeak", gameName));
 		ApplyScreenReaderPauses(container);
 		return btnLocate;
-		});
+		},
+		// Through the hint, so it follows the title rather than arriving ahead of it. See Form1.InlineView.
+		hint: Loc.T("session.notInstalledSpeak", gameName));
 
 		return choice;
 	}
@@ -643,11 +644,12 @@ public partial class Form1
 		layout.Controls.Add(btnSelect, 0, 2);
 		container.Controls.Add(layout);
 
-		Speak(Loc.T("store.selectGameSpeak"));
 		ApplyScreenReaderPauses(container);
 		return lstGames;
 		},
-		onClosed: () => { if (!string.IsNullOrEmpty(chosenGame)) ShowStoreSelectionDialog(chosenGame); });
+		onClosed: () => { if (!string.IsNullOrEmpty(chosenGame)) ShowStoreSelectionDialog(chosenGame); },
+		// Through the hint, so it follows the title rather than arriving ahead of it. See Form1.InlineView.
+		hint: Loc.T("store.selectGameSpeak"));
 	}
 
 	private void ShowStoreSelectionDialog(string gameName)
@@ -731,10 +733,11 @@ public partial class Form1
 		layout.Controls.Add(btnOpen, 0, 2);
 		container.Controls.Add(layout);
 
-		Speak(Loc.T("store.whereBuy", gameName));
 		ApplyScreenReaderPauses(container);
 		return lstStores;
-		});
+		},
+		// Through the hint, so it follows the title rather than arriving ahead of it. See Form1.InlineView.
+		hint: Loc.T("store.whereBuy", gameName));
 	}
 
 	/// <summary>Locates and launches the active game's executable or mod loader.</summary>

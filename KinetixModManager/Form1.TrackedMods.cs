@@ -152,12 +152,11 @@ public partial class Form1
 				catch { }
 			};
 
-			int notInstalled = rows.Count(r => !r.Installed);
-			int updates = rows.Count - notInstalled;
-			string opening = Loc.T("tracked.header", GameDisplayName()) + " "
-				+ Loc.T("tracked.summary", rows.Count, notInstalled, updates) + " " + Loc.T("tracked.actionHint");
-			Speak(opening);
 			return list;
-		});
+		},
+		// Through the hint, and without the old heading clause ("Tracked mods … for <game>."), which repeated the
+		// title. The summary that follows already says how many need attention and why.
+		hint: Loc.T("tracked.summary", rows.Count, rows.Count(r => !r.Installed), rows.Count(r => r.Installed))
+			+ " " + Loc.T("tracked.actionHint"));
 	}
 }

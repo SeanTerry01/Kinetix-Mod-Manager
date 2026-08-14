@@ -112,6 +112,8 @@ public partial class Form1
 		FomodSelection? outcome = null;
 		var history = new Stack<int>();
 		int current = first;
+		// See Render: the first step is drawn during build, so its announcement goes through the hint instead.
+		bool firstRender = true;
 
 		// Shown inside the main window rather than as one of its own — see Form1.InlineView. `outcome` stays null
 		// unless the user reaches the end and confirms, so leaving any other way — Escape, Cancel — installs
@@ -299,7 +301,12 @@ public partial class Form1
 
 			content.ResumeLayout();
 
-			Speak(Loc.T("fomod.stepAnnounce", step.Name, VisiblePosition(current), VisibleCount()));
+			// Every step but the first announces itself here, because the user pressed Next or Back to reach it.
+			// The first is drawn while the view is still being built, and anything spoken then lands ahead of the
+			// view's own title — so it is passed as the hint instead and spoken in its proper place. See
+			// Form1.InlineView.
+			if (firstRender) firstRender = false;
+			else Speak(Loc.T("fomod.stepAnnounce", step.Name, VisiblePosition(current), VisibleCount()));
 			FocusFirstOption(content, btnNext);
 		}
 
@@ -357,7 +364,9 @@ public partial class Form1
 		// something else over the top of it.
 		Render();
 		return FirstFocusableOption(content) ?? (Control)btnNext;
-		});
+		},
+		// The first step's announcement, said after the title rather than before it — Render skips speaking it.
+		hint: Loc.T("fomod.stepAnnounce", config.InstallSteps[first].Name, VisiblePosition(first), VisibleCount()));
 
 		if (outcome == null)
 		{
