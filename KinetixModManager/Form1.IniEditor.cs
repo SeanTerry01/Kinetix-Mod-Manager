@@ -73,7 +73,9 @@ public partial class Form1
         ShowInlineView(Loc.T("ini.chooseTitle"), (container, closeView) =>
         {
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 1, Padding = new Padding(10) };
-        var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("ini.chooseListName"), IntegralHeight = false, HorizontalScrollbar = true };
+        // Silent for the same reason as the editor's list below: the title and hint have just named this view, and
+        // the list is the whole of it.
+        var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = SilentAccessibleName, IntegralHeight = false, HorizontalScrollbar = true };
         foreach (var (label, path) in files)
             list.Items.Add(new IniFileChoice(label, path, File.Exists(path)));
         if (list.Items.Count > 0) list.SelectedIndex = 0;
@@ -120,9 +122,10 @@ public partial class Form1
             else if (e.KeyCode == Keys.Enter) { e.Handled = e.SuppressKeyPress = true; OpenSelected(); }
         };
         // Escape is handled by the view itself (see Form1.InlineView).
-        Speak(Loc.T("ini.chooseOpening", files.Count));
         return list;
-        });
+        },
+        // As the hint, so it follows the title instead of arriving ahead of it — see the editor below.
+        hint: Loc.T("ini.chooseHint", files.Count));
     }
 
     /// <summary>
@@ -193,7 +196,11 @@ public partial class Form1
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("ini.listName", fileLabel), IntegralHeight = false, HorizontalScrollbar = true };
+        // Deliberately silent, as in the other three settings editors: this list IS the view, and the view has
+        // just said "Editing <file>" as its title and "N settings, press Enter…" as its hint. A name here — "<file>
+        // settings" — is the same sentence a third time before the user has heard a single setting. See
+        // SilentAccessibleName and Form1.StardewConfig.
+        var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = SilentAccessibleName, IntegralHeight = false, HorizontalScrollbar = true };
 
         void Reload(int selectIndex)
         {
@@ -299,8 +306,12 @@ public partial class Form1
         };
         // Escape is handled by the view itself (see Form1.InlineView).
 
-        Speak(Loc.T("ini.opening", fileLabel, list.Items.Count));
         return list;
-        });
+        },
+        // The opening words go through ShowInlineView's hint, not a Speak in here. Anything spoken while the view
+        // is being built lands BEFORE the title, so this used to say the whole sentence, then hear the title say
+        // "Editing <file>" over again, then the list name say "<file> settings" a third time. As the hint it
+        // follows the title and completes it, which is how the other three settings editors read.
+        hint: Loc.T("ini.hint", doc.Entries().Count()));
     }
 }

@@ -205,9 +205,15 @@ public partial class Form1
 			FillTerms();
 			building = false;
 			ApplyScreenReaderPauses(container);
-			Speak(Loc.T("history.opened", lstTerms.Items.Count));
 			return cmbScope;
-		});
+		},
+		// Through the hint rather than a Speak in here, which would land ahead of the title: the view said
+		// "Search history…", then the title said "Search History", then the list called itself "Search history"
+		// — the same two words three times before a single search was read out. The count is worked out from the
+		// entries rather than the list, because the list does not exist until build runs; it is the same number,
+		// since the view opens on "All searches".
+		hint: Loc.T("history.hint",
+			entries.Select(e => e.Term).Distinct(StringComparer.OrdinalIgnoreCase).Count()));
 
 		// Re-run the chosen search after the view closes.
 		if (!string.IsNullOrEmpty(chosenTerm))

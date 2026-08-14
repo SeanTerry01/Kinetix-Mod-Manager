@@ -1553,7 +1553,11 @@ public partial class Form1
 			ScrollBars = ScrollBars.Both,
 			Font = new Font("Consolas", 11f),
 			Text = originalJson,
-			AccessibleName = Loc.T("config.jsonEditorName", modName)
+			// Names what the control is, not what the view is called. It used to be "JSON Editor for <mod>", which
+			// made the mod's name the third thing said in a row on the way in. A focusable control still needs a
+			// real name — see the About/Donate text boxes, which borrowed "Search" from behind the view when left
+			// without one — so this is a name, just not an echo of the heading.
+			AccessibleName = Loc.T("config.jsonEditorName")
 		};
 
 		TableLayoutPanel buttonLayout = new TableLayoutPanel
@@ -1660,8 +1664,11 @@ public partial class Form1
 		WireEditorKeys(btnSave);
 		WireEditorKeys(btnCancel);
 
-		Speak(Loc.T("config.editing", fileLabel.ToLower(), modName));
 		return tbJson;
-		});
+		},
+		// Through the hint, not a Speak in here: anything spoken while the view is being built lands BEFORE the
+		// title, so this said "Editing configuration for <mod>", then heard the title say the same thing again,
+		// then the editor's own name say it a third time. The title names the view; this adds only the keys.
+		hint: Loc.T("config.hint"));
 	}
 }
