@@ -177,13 +177,21 @@ public partial class Form1
 			return;
 		}
 
-		string configPath = Path.Combine(mod.FolderPath, "config.json");
+		// A BepInEx game does not keep a mod's settings beside the mod, and does not write JSON: BepInEx puts one
+		// .cfg per plugin into BepInEx\config. Looking for config.json in the mod's folder therefore found nothing
+		// on Moonlight Peaks and reported every mod as having no config file, when nearly all of them have one.
+		// The same search Ctrl+E uses answers this, so the two agree about which file a mod's settings live in.
+		string? bepInExConfig = FindBepInExConfigFor(mod);
+		string configPath = bepInExConfig ?? Path.Combine(mod.FolderPath, "config.json");
 		if (!File.Exists(configPath))
 		{
 			// Most mods write their config only after the game has run once with the mod enabled, so "not there
 			// yet" is the usual reason rather than anything being wrong.
 			Speak(Loc.T("modactions.noConfigFileSpeak", mod.Name));
-			SpeakBox(Loc.T("modactions.noConfigFileBox", mod.Name, GetShortcutString("OpenConfig")),
+			SpeakBox(
+				IsBepInExGame
+					? Loc.T("modactions.noConfigFileBepInExBox", mod.Name, GetShortcutString("OpenConfig"))
+					: Loc.T("modactions.noConfigFileBox", mod.Name, GetShortcutString("OpenConfig")),
 				Loc.T("modactions.noConfigTitle"));
 			return;
 		}
@@ -193,7 +201,9 @@ public partial class Form1
 			// The file may have changed a version or a name the list shows, so re-read it — the same reason the
 			// manifest editor refreshes.
 			_ = RefreshModList(checkUpdates: false);
-		}, Loc.T("config.labelConfiguration")));
+		}, Loc.T("config.labelConfiguration"),
+		// A BepInEx .cfg is not JSON, and checking it as JSON would refuse to save a perfectly good file.
+		validateJson: bepInExConfig == null));
 	}
 
 	private void OpenSelectedModConfig()

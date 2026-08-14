@@ -453,6 +453,7 @@
   "config.labelConfiguration": "Configuration",
   "config.editorTitle": "Edit {0} - {1}",
   "config.jsonEditorName": "JSON editor",
+  "config.textEditorName": "File contents",
   "config.saveBtn": "Save (Ctrl+S)",
   "config.cancelBtn": "Cancel (Escape)",
 
@@ -644,6 +645,7 @@
   "modactions.noConfigTitle": "Config Not Found",
   "modactions.noConfigFileSpeak": "{0} has no config file yet.",
   "modactions.noConfigFileBox": "{0} has no config.json to edit.\n\nMost mods only write one the first time the game runs with the mod enabled. If the mod has settings the manager can read another way, {1} offers them as a list.",
+  "modactions.noConfigFileBepInExBox": "{0} has no settings file to edit yet.\n\nThis game's mods keep their settings in a .cfg file in BepInEx\\config, not beside the mod, and BepInEx only writes one the first time the game runs with the mod enabled. Once it exists, {1} offers the same settings as a list of choices.",
   "modactions.noModsInCategory": "No mods in this category.",
   "modactions.batchBox": "Batch Action for category '{0}':\n\nYES: Enable all {1} mods.\nNO: Disable all {1} mods.\nCANCEL: Do nothing.",
   "modactions.batchTitle": "Batch Category Management",

@@ -734,6 +734,16 @@ public partial class Form1
 	/// </summary>
 	private void Speak(string text, bool interrupt)
 	{
+		// Saying something deliberately ends any window in which the reader is being silenced.
+		//
+		// SpeakListPosition swallows the reader across ~300ms when the program has moved focus, and Tolk.Silence()
+		// cannot tell the reader's voice from ours — so anything the app said during that window was cut off with
+		// it. Changing a setting showed this plainly: choosing a value closed the chooser, which armed the swallow,
+		// and "MenuClosedAnnouncements set to false" was then silenced before it could be heard, leaving the user
+		// to arrow off the row and back to learn what the value had become. Claiming the generation here abandons
+		// the swallow instead, and lets what we actually meant to say through.
+		_speakListGeneration++;
+
 		// If the screen reader was unloaded externally (e.g., NVDA restarted),
 		// attempt a silent reload before speaking so users don't lose announcements.
 		if (!Tolk.IsLoaded())

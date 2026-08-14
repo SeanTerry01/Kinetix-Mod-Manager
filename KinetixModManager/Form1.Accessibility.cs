@@ -1513,7 +1513,13 @@ public partial class Form1
 	/// <paramref name="fileLabel"/> names the file in the window title and spoken prompts (for example
 	/// "Configuration" or "Manifest") and defaults to "Configuration" for existing callers.
 	/// </summary>
-	private void OpenConfigEditor(string modName, string configPath, Action onSaveSuccess, string fileLabel = "Configuration")
+	/// <param name="validateJson">
+	/// Whether the text must parse as JSON before it can be saved. True for a mod's config.json or its manifest,
+	/// where a syntax error stops the mod loading. False for a file that is simply not JSON — a BepInEx .cfg, which
+	/// is what a Moonlight Peaks mod's settings live in — where the check would refuse to save a perfectly good file.
+	/// </param>
+	private void OpenConfigEditor(string modName, string configPath, Action onSaveSuccess, string fileLabel = "Configuration",
+		bool validateJson = true)
 	{
 		if (!File.Exists(configPath))
 		{
@@ -1557,7 +1563,7 @@ public partial class Form1
 			// made the mod's name the third thing said in a row on the way in. A focusable control still needs a
 			// real name — see the About/Donate text boxes, which borrowed "Search" from behind the view when left
 			// without one — so this is a name, just not an echo of the heading.
-			AccessibleName = Loc.T("config.jsonEditorName")
+			AccessibleName = Loc.T(validateJson ? "config.jsonEditorName" : "config.textEditorName")
 		};
 
 		TableLayoutPanel buttonLayout = new TableLayoutPanel
@@ -1595,16 +1601,19 @@ public partial class Form1
 		Action saveAction = delegate
 		{
 			string editedText = tbJson.Text;
-			try
+			if (validateJson)
 			{
-				// Validate JSON formatting
-				JsonConvert.DeserializeObject<JToken>(editedText);
-			}
-			catch (Exception ex)
-			{
-				Speak(Loc.T("config.invalidJsonSpeak", ex.Message));
-				SpeakBox(Loc.T("config.invalidJsonBox", ex.Message), Loc.T("config.jsonValidationTitle"), MessageBoxButtons.OK, MessageBoxIcon.Error);
-				return;
+				try
+				{
+					// Validate JSON formatting
+					JsonConvert.DeserializeObject<JToken>(editedText);
+				}
+				catch (Exception ex)
+				{
+					Speak(Loc.T("config.invalidJsonSpeak", ex.Message));
+					SpeakBox(Loc.T("config.invalidJsonBox", ex.Message), Loc.T("config.jsonValidationTitle"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+					return;
+				}
 			}
 
 			try

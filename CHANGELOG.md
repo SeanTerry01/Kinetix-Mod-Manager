@@ -9,6 +9,7 @@ Moonlight Peaks and The Witcher 3 join the manager as fully supported games, alo
 *   **Ctrl + Shift + M opens the selected mod's `config.json` directly in the editor**, the same way Ctrl + M opens its manifest. It is also on the Mods menu, under Selected Mod, as **Edit Selected Mod's Config File Directly**.
 *   This closes a gap the settings list created. Offering a mod's settings as a list of choices is the better way to change them, and Ctrl + E still does exactly that — but a list can only offer what the mod's author described. A setting they never documented, or a value outside the ones they listed, was left with no way in at all once the list took over.
 *   The two now read as a pair: **Ctrl + E** for the settings, **Ctrl + Shift + M** for the file behind them, alongside **Ctrl + M** for the manifest. A mod with no `config.json` yet says so, and points at Ctrl + E — most mods only write one the first time the game runs with the mod enabled.
+*   **On Moonlight Peaks it opens the right file.** That game's mods are BepInEx plugins, which keep their settings in a `.cfg` in `BepInEx\config` rather than a `config.json` beside the mod — so looking next to the mod found nothing and reported every mod as having no config file, when nearly all of them have one. It now looks where Ctrl + E looks, so the two always agree about which file a mod's settings live in, and the file is saved as it is rather than being checked as JSON it was never meant to be.
 
 ---
 
@@ -26,6 +27,14 @@ Moonlight Peaks and The Witcher 3 join the manager as fully supported games, alo
 *   **And the list still says what it is.** Silencing the wrong announcement silenced the right half of it as well, so coming back from a screen went straight to the mod without ever saying "Installed Mods List" — leaving nothing to say which of the manager's lists you had landed in. The name is now spoken by the manager itself, in the order a screen reader would have used it: the list, then the mod, then where that mod sits. Moving *within* a list does not repeat it, because you have not left.
 *   **Coming back to a list that never lost focus is announced too.** Closing a screen sometimes leaves focus where it already was, and focusing a control that already has focus tells a screen reader nothing — so on those occasions the list came back in complete silence.
 *   **Narrowing the list with the search box keeps your place too**, where the mod you were on is still among the results.
+
+---
+
+## 🐛 Fixed: changing a setting tells you what it changed to
+
+*   **"MenuClosedAnnouncements set to false" is spoken again** the moment you press Enter on a value. It was being said and then silenced before it could be heard, so the only way to learn what a setting had become was to arrow off the row and back onto it.
+*   The manager silences the screen reader for a moment when it moves focus itself, to stop the reader announcing a row you were never on. Silence cannot tell the reader's voice from the manager's, so anything the manager said in that moment went with it — and choosing a value closes a screen, which is exactly when that silence was armed. Saying something deliberately now ends the silence rather than falling into it.
+*   This applies to every settings editor: Content Patcher packs, Mod Configuration Menus, Stardew configs and BepInEx `.cfg` files alike.
 
 ---
 
