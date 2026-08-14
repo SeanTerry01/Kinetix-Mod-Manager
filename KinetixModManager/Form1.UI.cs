@@ -110,6 +110,7 @@ public partial class Form1
 		var grpSelected = new ToolStripMenuItem(Loc.T("menu.groupSelectedMod")) { Name = "menuGroupSelectedMod" };
 		grpSelected.DropDownItems.Add(Loc.T("menu.editNote", GetShortcutString("EditNote")), null, delegate { SetModNote(); });
 		grpSelected.DropDownItems.Add(Loc.T("menu.editConfig", GetShortcutString("OpenConfig")), null, delegate { OpenSelectedModConfig(); });
+		grpSelected.DropDownItems.Add(Loc.T("menu.editConfigFile", GetShortcutString("OpenConfigFile")), null, delegate { OpenSelectedModConfigFile(); });
 		grpSelected.DropDownItems.Add(Loc.T("menu.editManifest", GetShortcutString("OpenManifest")), null, delegate { OpenSelectedModManifest(); });
 		grpSelected.DropDownItems.Add(Loc.T("menu.viewDependencies", GetShortcutString("ShowDependencies")), null, delegate { ShowDependencies(); });
 		grpSelected.DropDownItems.Add(Loc.T("menu.resolveDependencies", GetShortcutString("QuickFix")), null, delegate { QuickFixDependencies(); });
@@ -199,13 +200,7 @@ public partial class Form1
 		}).Name = "menuOpenLog";
 		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.openErrorLog", GetShortcutString("OpenErrorLog")), null, delegate
 		{
-			if (File.Exists(errorLogPath))
-			{
-				Process.Start(new ProcessStartInfo("notepad.exe", errorLogPath)
-				{
-					UseShellExecute = true
-				});
-			}
+			OpenErrorLog();
 		});
 		ToolStripMenuItem toolStripMenuItem4 = new ToolStripMenuItem(Loc.T("menu.help"));
 		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.setupWizard"), null, delegate

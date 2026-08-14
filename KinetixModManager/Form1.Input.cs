@@ -137,6 +137,11 @@ public partial class Form1
 			e.SuppressKeyPress = true;
 			OpenSelectedModManifest();
 		}
+		if (IsShortcut(e, "OpenConfigFile"))
+		{
+			e.SuppressKeyPress = true;
+			OpenSelectedModConfigFile();
+		}
 		if (IsShortcut(e, "OpenDownloads"))
 		{
 			e.SuppressKeyPress = true;
@@ -306,12 +311,10 @@ public partial class Form1
 			e.SuppressKeyPress = true;
 			_ = AutoSortPluginsAsync();
 		}
-		if (IsShortcut(e, "OpenErrorLog") && File.Exists("mod_manager_log.txt"))
+		if (IsShortcut(e, "OpenErrorLog"))
 		{
-			Process.Start(new ProcessStartInfo("notepad.exe", "mod_manager_log.txt")
-			{
-				UseShellExecute = true
-			});
+			e.SuppressKeyPress = true;
+			OpenErrorLog();
 		}
 	}
 

@@ -629,6 +629,47 @@ public partial class Form1
 		};
 		tabMods.Controls.Add(cSearchHistory, 0, mr++);
 
+		// What to do when a browser download turns out to be for a game other than the loaded one. The file is
+		// downloaded whichever way this is set — an nxm link's key expires within minutes, so only the install can
+		// be deferred — and this decides whether the manager also leaves the session the user is in.
+		FlowLayoutPanel flowCrossGame = new FlowLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			FlowDirection = FlowDirection.LeftToRight,
+			Padding = new Padding(0, 5, 0, 0),
+			AutoSize = true
+		};
+		flowCrossGame.Controls.Add(new Label
+		{
+			Text = Loc.T("settings.crossGameDownloads"),
+			AutoSize = true,
+			Padding = new Padding(0, 5, 0, 0)
+		});
+		ComboBox cmbCrossGame = new ComboBox
+		{
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			Width = 260,
+			AccessibleName = Loc.T("settings.crossGameDownloadsName"),
+			AccessibleDescription = Loc.T("settings.crossGameDownloadsDesc")
+		};
+		cmbCrossGame.Items.AddRange(new object[]
+		{
+			new SettingChoice<CrossGameDownloadAction>(CrossGameDownloadAction.Ask,              Loc.T("settings.crossGameAsk")),
+			new SettingChoice<CrossGameDownloadAction>(CrossGameDownloadAction.SwitchAndInstall, Loc.T("settings.crossGameSwitch")),
+			new SettingChoice<CrossGameDownloadAction>(CrossGameDownloadAction.SaveForLater,     Loc.T("settings.crossGameSave"))
+		});
+		for (int i = 0; i < cmbCrossGame.Items.Count; i++)
+		{
+			if (cmbCrossGame.Items[i] is SettingChoice<CrossGameDownloadAction> cg && cg.Value == _settings.CrossGameDownloads)
+			{
+				cmbCrossGame.SelectedIndex = i;
+				break;
+			}
+		}
+		if (cmbCrossGame.SelectedIndex < 0) cmbCrossGame.SelectedIndex = 0;
+		flowCrossGame.Controls.Add(cmbCrossGame);
+		tabMods.Controls.Add(flowCrossGame, 0, mr++);
+
 		// Archive invalidation (loose-file loading). The INI on disk is the source of truth: the box reflects the
 		// current state and, on Save, only writes when the user changed it. Shown only for games where it applies
 		// (Fallout 4); ArchiveInvalidationIniPath returns null otherwise, which hides the control.
@@ -1056,6 +1097,10 @@ public partial class Form1
 				if (cmbProgress.SelectedItem is ProgressFeedbackChoice pfc)
 				{
 					_settings.ProgressFeedback = pfc.Value;
+				}
+				if (cmbCrossGame.SelectedItem is SettingChoice<CrossGameDownloadAction> cgc)
+				{
+					_settings.CrossGameDownloads = cgc.Value;
 				}
 				if (cmbPageSize.SelectedItem is int pageSize)
 				{

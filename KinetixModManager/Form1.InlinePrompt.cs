@@ -220,7 +220,52 @@ public partial class Form1
 					host.CancelButton = cancelBefore;
 
 					if (focusBefore != null && !focusBefore.IsDisposed && focusBefore.CanFocus)
+					{
+						// Going back to a list is a focus change the user did not make, and a screen reader
+						// announces nothing for those — it sees focus as never having left. Without this, closing
+						// a view read out "twelve of a hundred and forty-seven" and never said which mod that
+						// was; the only way to hear it was to arrow off the row and back. The flag is consumed by
+						// whichever of the list's handlers speaks first, and only ever by a list.
+						ListBox? returningTo = focusBefore as ListBox;
+						if (returningTo != null)
+						{
+							// The list must already be on the right mod before anything looks at it. A view that
+							// rebuilt the list on its way out leaves the selection somewhere else entirely, and
+							// putting it back after the overlay closed — which is where the callers used to do it —
+							// is one step too late: focus has already returned by then, so both the screen reader
+							// and our own announcement describe the mod the list happened to be sitting on, and the
+							// correction that follows arrives as a second announcement cutting off the first.
+							if (ReferenceEquals(returningTo, listInstalled))
+							{
+								ReselectMod(_restoreInstalledSelectionTo, announce: false);
+								_restoreInstalledSelectionTo = null;
+							}
+
+							// Before focus lands, not after: the reader reads whichever row the list calls current
+							// the moment focus arrives, so correcting it afterwards would be too late to stop the
+							// wrong mod being announced.
+							AlignListCaretToSelection(returningTo);
+							_announceRowNameOnNextChange = true;
+							// Focus is arriving, not just moving inside a list already under it, so the announcement
+							// opens with the list's name — "Installed Mods List" — as it would have done had the user
+							// tabbed in. The reader's own attempt at that gets swallowed along with the wrong row it
+							// insists on reading first, so ours has to carry the name or the list stops saying what
+							// it is on the way back from a view.
+							_announceListNameOnNextChange = true;
+						}
 						focusBefore.Focus();
+						// And again once focus is really there, in case taking focus is itself what disturbed it.
+						// Sending the same row twice raises no events and costs nothing.
+						if (returningTo != null) AlignListCaretToSelection(returningTo);
+
+						// Focus does not always come back from anywhere: removing the overlay can leave it on the
+						// list already, and focusing a control that already has focus raises no GotFocus, so the
+						// announcement set up above would never be spent and the list would come back in silence.
+						// The flag still being set is exactly the evidence that nothing announced the arrival, so
+						// announce it here instead. If GotFocus did fire it consumed the flag and this does nothing.
+						if (returningTo != null && _announceListNameOnNextChange)
+							List_Enter(returningTo, EventArgs.Empty);
+					}
 				}
 			}
 			catch { }

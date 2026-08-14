@@ -46,7 +46,11 @@ public partial class Form1
 			{
 				Dock = DockStyle.Fill,
 				Font = new Font("Segoe UI", 12f),
-				AccessibleName = Loc.T("sdvconfig.listName", modName),
+				// Deliberately silent, and the one place a list is. The rule is that a control the user lands on
+				// keeps a real name — but this list IS the view, and the view has just said "<mod> Settings" as its
+				// title and "N settings, press Enter…" as its hint. A name here is the same sentence a third time,
+				// which is precisely the repetition the silent name exists to stop. See SilentAccessibleName.
+				AccessibleName = SilentAccessibleName,
 				IntegralHeight = false,
 				HorizontalScrollbar = true
 			};

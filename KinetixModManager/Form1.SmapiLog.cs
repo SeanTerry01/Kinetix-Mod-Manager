@@ -330,8 +330,9 @@ public partial class Form1
 		{
 			list.Items.Add($"{LinkLabel(url)}: {url}");
 		}
-		// Announce position on focus the same way the main lists do.
-		list.GotFocus += List_Enter;
+		// Announce position on focus AND on every arrow move, the same way the main lists do. GotFocus alone left
+		// the list saying "1 of 3" on the way in and nothing at all while the user arrowed through the links.
+		WireAccessibleDialogList(list);
 		if (list.Items.Count > 0)
 		{
 			list.SelectedIndex = 0;

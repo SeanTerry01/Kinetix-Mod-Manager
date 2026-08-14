@@ -613,6 +613,7 @@ public partial class Form1
 		};
 		// Listed alphabetically.
 		foreach (string name in GameProfiles.AllDisplayNames) lstGames.Items.Add(name);
+		WireAccessibleDialogList(lstGames);
 		layout.Controls.Add(lstGames, 0, 1);
 
 		Button btnSelect = new Button
@@ -684,6 +685,7 @@ public partial class Form1
 		lstStores.Items.Add("Steam");
 		if (storeProfile == null || !string.IsNullOrEmpty(storeProfile.GogStoreUrl))
 			lstStores.Items.Add("GOG (DRM-Free)");
+		WireAccessibleDialogList(lstStores);
 		layout.Controls.Add(lstStores, 0, 1);
 
 		Button btnOpen = new Button

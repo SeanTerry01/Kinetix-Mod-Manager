@@ -345,13 +345,10 @@ public partial class Form1
 			if (found >= 0) defaultIdx = found;
 		}
 		lb.SelectedIndex = defaultIdx;
-		lb.SelectedIndexChanged += async delegate
-		{
-			if (lb.SelectedItem == null) return;
-			await Task.Delay(100);
-			if (!lb.Focused) return;
-			Speak(Loc.T("common.position", lb.SelectedIndex + 1, lb.Items.Count));
-		};
+		// Wired after the default selection is seeded, so opening the view does not announce a move nobody made.
+		// The shared helper replaces a hand-rolled SelectedIndexChanged that did the same thing but left the list
+		// silent when focus arrived on it, and let Left/Right move the selection like Up/Down.
+		WireAccessibleDialogList(lb);
 		void Confirm()
 		{
 			if (lb.SelectedItem is not Mo2ProfileEntry picked) return;

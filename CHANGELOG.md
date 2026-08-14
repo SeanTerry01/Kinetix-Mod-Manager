@@ -1,6 +1,67 @@
-# Unreleased
+# Version 1.5.0
 
 Moonlight Peaks and The Witcher 3 join the manager as fully supported games, alongside Stardew Valley, Skyrim Special Edition and Fallout 4.
+
+---
+
+## ✨ New: reach a mod's config file itself, as well as its settings
+
+*   **Ctrl + Shift + M opens the selected mod's `config.json` directly in the editor**, the same way Ctrl + M opens its manifest. It is also on the Mods menu, under Selected Mod, as **Edit Selected Mod's Config File Directly**.
+*   This closes a gap the settings list created. Offering a mod's settings as a list of choices is the better way to change them, and Ctrl + E still does exactly that — but a list can only offer what the mod's author described. A setting they never documented, or a value outside the ones they listed, was left with no way in at all once the list took over.
+*   The two now read as a pair: **Ctrl + E** for the settings, **Ctrl + Shift + M** for the file behind them, alongside **Ctrl + M** for the manifest. A mod with no `config.json` yet says so, and points at Ctrl + E — most mods only write one the first time the game runs with the mod enabled.
+
+---
+
+## 🐛 Fixed: you stay on the mod you were working on
+
+*   **Refreshing the mod list no longer moves you to a different mod.** Anything that re-scanned your mods — saving a config or manifest, installing, enabling, disabling — rebuilt the list and left you on whichever mod happened to end up first, rather than the one you were on. Halfway down a long list, that means finding your place again every time.
+*   The list already knew how to put the selection back; it read which mod to return to *from the list itself*, and by then the list had been emptied, so there was nothing left to read. The mod you were on is now remembered before the rescan starts and restored when it finishes.
+*   **Editing a mod's settings or manifest returns you to that mod**, whether you saved with Ctrl + S or left with Escape, and whichever editor the mod turned out to need — the raw JSON editor, a Content Patcher pack's settings, a Mod Configuration Menu, or a BepInEx config file.
+*   This applies to every game, not only Stardew Valley. A mod that is no longer there when the list comes back — you just deleted it, or you switched games — still lands you at the top, which is the only sensible answer.
+*   **You are told which mod you landed on, not just its number.** The manager only ever announced the position — "twelve of a hundred and forty-seven" — and left the mod's name to the screen reader, which reads out the row you arrow onto. But a reader only announces a row *you* moved to. When the program moves the selection, or hands focus back to the list as a screen closes, the reader treats it as focus never having left and says nothing — so all that was heard was a position belonging to no mod in particular, and the only way to learn which mod it was was to arrow off the row and back onto it.
+*   **Closing any in-window screen now says which mod you have come back to**, and so does any move the manager makes on your behalf. A move you make yourself with the arrow keys is unchanged, so nothing is ever said twice.
+*   **And it no longer reads out a mod you were never on first.** A list keeps two positions — what is selected, and where its focus rectangle sits — and a keypress moves both while setting the selection from code moves only one. The stale focus rectangle is what a screen reader reads when focus arrives, announcing that row and adding "not selected" before the real one was ever mentioned. The two are now put back together before focus returns.
+*   **The list is put back on your mod before you arrive, not after.** This was the whole of it. Closing a settings or manifest screen handed focus back to the list first and corrected the selection second — so everything that speaks on arrival spoke about whichever mod the list happened to be sitting on, and the correction that followed arrived as a *second* announcement, cutting off the first mid-sentence. What you heard was a mod you were never on, then your mod. The correction now happens inside the close, before focus moves, so there is one arrival and one thing said about it.
+*   **An announcement that has been overtaken is now dropped rather than spoken and interrupted.** When two of them were in flight for the same arrival, the older one still said its piece until the newer one talked over it. The older one now simply stops: the last word belongs to whichever knew where you actually were.
+*   **And the list still says what it is.** Silencing the wrong announcement silenced the right half of it as well, so coming back from a screen went straight to the mod without ever saying "Installed Mods List" — leaving nothing to say which of the manager's lists you had landed in. The name is now spoken by the manager itself, in the order a screen reader would have used it: the list, then the mod, then where that mod sits. Moving *within* a list does not repeat it, because you have not left.
+*   **Coming back to a list that never lost focus is announced too.** Closing a screen sometimes leaves focus where it already was, and focusing a control that already has focus tells a screen reader nothing — so on those occasions the list came back in complete silence.
+*   **Narrowing the list with the search box keeps your place too**, where the mod you were on is still among the results.
+
+---
+
+## 🐛 Fixed: lists that told you nothing about where you were
+
+*   **Six lists never announced your position.** Arrowing through them read out each row and nothing else — no "four of eleven" — so there was no way to tell a long list from a short one, or to know you had reached the end without walking off it. This affected the **game picker** the manager opens with, the **theme manager**, the **search history**, the **store page chooser**, the **collection review** before an install, and the **link picker** in a SMAPI log line.
+*   **The MO2 profile list and the log link picker were each half-wired**, in opposite directions: one announced the position while arrowing but said nothing when you tabbed into it, the other said "one of three" on the way in and then went quiet.
+*   In all of these, **Left and Right now do nothing**, as they do everywhere else in the manager. A single-column list treats them exactly like Up and Down, which reads as the selection jumping about for no reason you pressed.
+*   The collection review list also **named itself with its whole summary sentence** — "42 mods, 30 will download automatically…" — which a screen reader repeats every time focus lands on it. It now has a short name, and the summary is spoken once, when the review opens.
+*   A test now checks every list in the manager for both halves of this wiring, so a new screen cannot ship half-announced.
+
+---
+
+## 🐛 Fixed: mods are called by their names, not by their download's file name
+
+*   **The manager now says a mod's name, and only its name.** Downloading, installing, "installed", and the new cross-game download question all used to read out whatever the download happened to be called — which is not the mod's name, and sometimes is not a name at all.
+*   Nexus hands out a file called `Skyrim Access-181131-1-2-3-1723456789.7z`: the mod's name, then its mod id, then its version with the dots turned into dashes, then the moment it was uploaded. All of that was being read aloud. **Only the name is now spoken**, and a number the author put in the name themselves — "Mod Configuration Menu 1.11.221" — is kept, because that one is part of what the mod is called.
+*   Some downloads arrive with **no name at all**: certain Nexus content servers answer with an opaque id like `99824770-6ed9-4868-9f98-b54fb58ecad6`, which was then read out one character group at a time as though it were the mod. When the file name holds nothing readable, **the mod's name is now fetched from its Nexus page instead**. That is the only case that makes the extra request, so every other download is exactly as quick as it was.
+*   **Mods no longer install into folders named after the download.** A folder called `Address Library - All In One-47327-1-11-221-1780112703` is now simply `Address Library - All In One`. The archive itself keeps its original file name, deliberately — the id and version buried in it are what later tell the update check which release you have installed.
+*   **Mods installed before this release are read out by their names too.** Their folders keep the names they have, since renaming a folder would break the record of what has been deployed into your game — but the manager no longer reads the folder name aloud when it knows better.
+*   A download that arrived with no name also arrived with **no file extension**, which quietly kept it out of Downloads History. Those are now saved under a readable name so they can be found and re-installed like anything else.
+
+---
+
+## 🐛 Fixed: downloading a mod for a game you don't have open
+
+*   **"Mod Manager Download" now works whatever game you have loaded, or none at all.** Finding a mod on Nexus while another game was open — or with the manager closed, or sitting on the game list — reported `NXM Error: Error reading JArray from JsonReader`, which named nothing you could do anything about.
+*   The cause: every download link carries the game it is for, and the manager was ignoring it and **asking Nexus about the loaded game instead** — or, with no game loaded, about Stardew Valley, its fallback. So it asked for a Skyrim mod's id under another game's name, Nexus quite correctly said there is no such mod in that game, and the reply was an error message where the manager expected a list of download servers. The link's own game is now what counts, so the download no longer depends on your session at all.
+*   It also only knew **three of the five games**. Moonlight Peaks and The Witcher 3 were missing from the list it consulted, so a download for either could never work from another game — they now come from the same registry as everything else, and a sixth game would need no change here.
+*   **A mod for a game the manager doesn't support now says so** — "That mod is for a game this manager doesn't support yet" — instead of failing as a parser error. And where Nexus itself refuses a download, **Nexus's own explanation is what you hear**, which is usually that the link has expired and needs pressing again.
+*   Downloading is now separate from installing, because only installing needs a session. So the file is fetched first, filed under the game it is actually for, and **then** you are asked what to do:
+    *   **Switch to that game and install it now**, or **save it for that game and stay where you are** — in which case it is waiting in that game's **Downloads History** the next time you load it, one keypress from installed. Escape keeps the download and changes nothing else.
+    *   With **no game loaded** there is nothing to interrupt, so it just loads the game and installs, saying which game it went to.
+    *   If you own that game **twice**, you are asked which copy the mod is for — nothing in the link says, and guessing would file someone's mod under a copy they weren't thinking of.
+    *   Settings (Ctrl+P) → **Mods & Search** → **"When a download is for another game"** turns the question into an answer: *Ask me each time* (the default), *Switch to that game and install*, or *Save it for that game*.
+*   Two smaller consequences of the same wrong assumption went with it: a cross-game download used to be **filed in the loaded game's downloads folder** rather than its own, and the "is this an upgrade or a re-install?" check **asked about the wrong game**, so it could ask you to confirm overwriting a mod that was really an update.
 
 ---
 
@@ -11,6 +72,7 @@ Moonlight Peaks and The Witcher 3 join the manager as fully supported games, alo
 *   **"Refreshing everything" was announced twice**, with "update check already in progress" between the two. Holding a Refresh key a moment too long repeats it, which sent the command twice; a repeat now simply says **"Already refreshing"**. **Refresh Installed Mods** also said "Refreshed" before it had done anything — it now says "Refreshing" when it starts and "Refreshed" when the scan has actually finished.
 *   **Moonlight Peaks mods showed the version they were before you updated them.** A mod updated from 1.0.0 to 1.1 kept reading 1.0.0, while the update check — quite correctly — said it was up to date, because the two were answering from different places. The version came from BepInEx's log, which only records what it saw the last time the **game** ran; update your mods between play sessions and it is describing files that no longer exist. The mod's own declaration is now what counts, and a log older than the mod's files is not consulted at all.
 *   **The goodbye message is now spoken when you ask to exit, not as the program is going.** It sometimes didn't start until the shutdown was already under way, because the manager announced it and then waited by blocking — and speech needs the program responsive to be produced at all, so the wait was holding up the very message it was waiting for. Choosing Exit or pressing Alt+F4 now speaks the message straight away, waits for it to finish, plays the disconnect sound, waits for **that** to finish, and only then closes. Pressing Alt+F4 again while it is talking no longer cuts it short. (A Windows log-off still closes immediately — there is no time to be granted there.)
+*   **The keyboard shortcut for Open Error Log never opened anything.** It looked for the log by name alone, which searches the folder the program was started from rather than the folder the log is actually written to, so it always concluded there was no log and did nothing — in silence, with no way to tell that from a shortcut that had failed. The menu item was looking in the right place all along; both now go through the same code, and if the log really is empty the manager says so.
 *   **The tab strips no longer announce themselves before every tab.** Moving along the main tabs read "Search" in front of each tab name — the strip had no name, and a screen reader will not accept that: it goes looking and reads whatever text it finds nearby. Naming it only replaced one unwanted word with another, since the strip is announced every time the selection moves. Both the main tabs and the Settings tabs are now silent, so you hear the tab and nothing else.
 *   **The About screen's text said "Search" before it said anything else**, for the same reason and with the same cause: the text box had no name of its own, so the reader borrowed the search box's. It is now called "Program information", which is what it holds — and deliberately not what the heading above it already says.
 *   **A Witcher 3 mod packaged inside a `mods` folder installed one level too deep** — into `mods\mods\` — where the game never looks, so it silently never loaded. `mods` starts with `mod`, so it matched the engine's own naming rule and was mistaken for the mod itself.

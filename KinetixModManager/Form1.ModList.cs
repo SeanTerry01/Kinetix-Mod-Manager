@@ -109,8 +109,15 @@ public partial class Form1
 		{
 			SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser), speak: false);
 		}
+		// Which mod the user was on, remembered before the list is emptied and handed back to the rebuild at the
+		// end. RebuildInstalledListBox restores the selection from the list's own current item, and by the time it
+		// runs there is no current item left to read — so without carrying it across here, every refresh dropped
+		// the user on whatever ended up first. Editing a mod's config or manifest made that obvious, because the
+		// save refreshes and the user is returned to a list they were in the middle of working through.
+		string? selectedBefore = null;
 		Invoke(delegate
 		{
+			selectedBefore = (listInstalled.SelectedItem as StardewMod)?.UniqueId;
 			listInstalled.BeginUpdate();
 			if (doUpdateChecks)
 			{
@@ -207,7 +214,9 @@ public partial class Form1
 		});
 		Invoke(delegate
 		{
-			RebuildInstalledListBox();
+			// A mod that has since been deleted, or a game that has been switched, simply is not there any more —
+			// RebuildInstalledListBox falls back to the first row, which is the right answer for both.
+			RebuildInstalledListBox(selectedBefore, announceRestoredRow: true);
 			RefreshModPriorityList();
 			RefreshPluginOrderList();
 			RefreshCreationsList();
@@ -391,7 +400,13 @@ public partial class Form1
 	/// group's id here so selection lands on the group directly — without transiently selecting index 0,
 	/// which a screen reader would otherwise announce as the first mod.
 	/// </param>
-	private void RebuildInstalledListBox(string? preferUniqueId = null)
+	/// <param name="announceRestoredRow">
+	/// Whether the restored row should say what it is, rather than only where it sits. True for a rebuild the user
+	/// did not ask for — a rescan finishing under them — where nothing else will name the row they land on. False
+	/// when a keypress caused the rebuild, because the screen reader announces that row itself and a second
+	/// announcement is heard as a stutter.
+	/// </param>
+	private void RebuildInstalledListBox(string? preferUniqueId = null, bool announceRestoredRow = false)
 	{
 		string query = txtSearchInstalled.Text.Trim().ToLower();
 		string category = cmbCategoryFilter.SelectedItem?.ToString() ?? "All Categories";
@@ -459,7 +474,15 @@ public partial class Form1
 			{
 				if (listInstalled.Items[num] is StardewMod stardewMod2 && stardewMod2.UniqueId == restoreId)
 				{
+					// Putting the user back after a rescan is a move they did not make, so the row has to name
+					// itself — otherwise a refresh finishing under them reads out a position and nothing else.
+					// Not so when a keypress caused the rebuild (collapsing a group): the reader announces the row
+					// the key landed on, and naming it here as well would say it twice.
+					if (announceRestoredRow && num != listInstalled.SelectedIndex) _announceRowNameOnNextChange = true;
 					listInstalled.SelectedIndex = num;
+					// The list is usually not focused while a rescan runs, so the focus rectangle would otherwise
+					// stay on whatever row it was left on and be read out ahead of this one.
+					AlignListCaretToSelection(listInstalled);
 					break;
 				}
 			}
@@ -479,6 +502,91 @@ public partial class Form1
 		// swallowed the second. Closing Settings showed it plainly, since that both restores focus to the list
 		// and rebuilds it.
 		listInstalled.EndUpdate();
+	}
+
+	/// <summary>
+	/// Puts the selection back on the mod with <paramref name="uniqueId"/> after something moved it — a screen
+	/// that rebuilt the list on its way out, most often.
+	///
+	/// Does nothing when that mod is already selected, so no announcement is provoked for a selection that never
+	/// moved, and nothing when it is no longer in the list at all: a mod that has just been deleted, or one a
+	/// filter now hides, has no row to go back to and the list's own choice stands.
+	/// </summary>
+	/// <param name="announce">
+	/// Whether the move should name the mod it lands on. True for a move the user will hear nothing else about.
+	/// False when the move is a correction being made <em>before</em> focus returns to the list — there the
+	/// list's own focus announcement is about to describe where it landed, and saying it here as well would put
+	/// two announcements in flight for one arrival, the second cutting off the first.
+	/// </param>
+	private void ReselectMod(string? uniqueId, bool announce = true)
+	{
+		if (string.IsNullOrEmpty(uniqueId)) return;
+		if ((listInstalled.SelectedItem as StardewMod)?.UniqueId == uniqueId) return;
+
+		for (int i = 0; i < listInstalled.Items.Count; i++)
+		{
+			if (listInstalled.Items[i] is StardewMod candidate && candidate.UniqueId == uniqueId)
+			{
+				// Say which mod, not just where it sits: nothing else will, because the user did not move here.
+				_announceRowNameOnNextChange = announce;
+				// Held across the assignment only, because that is where SelectedIndexChanged is raised from and
+				// the handler reads it before its first await.
+				_movingListSilently = !announce;
+				try
+				{
+					listInstalled.SelectedIndex = i;
+				}
+				finally
+				{
+					_movingListSilently = false;
+				}
+				AlignListCaretToSelection(listInstalled);
+				// SelectedIndexChanged consumes the flag whether or not it goes on to speak, so a silent move
+				// cannot leave it set to surprise the user's next arrow press.
+				_announceRowNameOnNextChange = false;
+				return;
+			}
+		}
+	}
+
+	/// <summary>
+	/// The mod the installed list should be sitting on by the time focus comes back to it, set for as long as a
+	/// view that might move the selection is open.
+	///
+	/// <para>
+	/// Editing a mod's settings or its manifest can rebuild the list underneath the view — saving rescans the
+	/// mods folder — and the rebuild does not always land back on the mod being edited. The callers used to
+	/// correct that after the view returned, but by then the overlay has already handed focus back to the list
+	/// and everything that speaks on arrival has already spoken, about the wrong mod. Handing the id over here
+	/// lets the correction happen inside the close, before focus moves, so there is one arrival and one thing
+	/// said about it.
+	/// </para>
+	///
+	/// <para>Consumed by <see cref="RunOverlay"/>'s focus restore; see <see cref="EditModKeepingPlace"/>.</para>
+	/// </summary>
+	private string? _restoreInstalledSelectionTo;
+
+	/// <summary>
+	/// Opens an editor for <paramref name="mod"/> and guarantees the installed list is back on that mod by the
+	/// time the user is back in it, however the editor was left and whatever it did to the list on its way out.
+	/// </summary>
+	private void EditModKeepingPlace(StardewMod mod, Action openEditor)
+	{
+		string editingId = mod.UniqueId;
+		_restoreInstalledSelectionTo = editingId;
+		try
+		{
+			openEditor();
+		}
+		finally
+		{
+			// Cleared unconditionally: an editor that reported a problem and never opened a view at all would
+			// otherwise leave this set, to be spent on some unrelated screen closing later.
+			_restoreInstalledSelectionTo = null;
+			// Normally already done inside the close, and then this finds the mod selected and does nothing. It
+			// stands for the paths that never went through an overlay.
+			ReselectMod(editingId);
+		}
 	}
 
 	/// <summary>Scans the backups directory and repopulates <c>listBackups</c> with <see cref="BackupItem"/> entries.</summary>

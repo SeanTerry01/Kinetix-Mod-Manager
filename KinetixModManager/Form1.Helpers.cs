@@ -106,6 +106,10 @@ public partial class Form1
 			3 => !string.IsNullOrWhiteSpace(m.Note),
 			_ => true
 		};
+		// Keep the user's place where the mod they were on survives the filter. Typing in the search box narrows
+		// the list under them, and landing back at the top each keystroke loses a mod they had just found.
+		string? selectedBefore = (listInstalled.SelectedItem as StardewMod)?.UniqueId;
+
 		listInstalled.BeginUpdate();
 		listInstalled.Items.Clear();
 		List<StardewMod> list = _allInstalledMods.Where((StardewMod m) => (m.Name.ToLower().Contains(query) || m.Author.ToLower().Contains(query) || m.Note.ToLower().Contains(query)) && (category == "All Categories" || m.Category == category) && StatusMatch(m)).ToList();
@@ -114,6 +118,7 @@ public partial class Form1
 			listInstalled.Items.Add(item);
 		}
 		listInstalled.EndUpdate();
+		ReselectMod(selectedBefore);
 		if (!string.IsNullOrEmpty(query) || category != "All Categories" || status != 0)
 		{
 			Speak(Loc.T("discovery.modsFound", list.Count));
@@ -139,6 +144,12 @@ public partial class Form1
 
 	private async void List_Enter(object? sender, EventArgs e)
 	{
+		// Consumed before any early return, for the same reason as in List_SelectedIndexChanged.
+		bool announceRowName = _announceRowNameOnNextChange;
+		bool announceListName = _announceListNameOnNextChange;
+		_announceRowNameOnNextChange = false;
+		_announceListNameOnNextChange = false;
+
 		if (sender is not ListBox listBox) return;
 
 		if (listBox.Items.Count == 0)
@@ -148,19 +159,109 @@ public partial class Form1
 		}
 		if (listBox.SelectedIndex == -1)
 		{
-			// Selecting an item raises SelectedIndexChanged, which announces the position itself.
+			// Selecting an item raises SelectedIndexChanged, which announces the position itself — and needs the
+			// flags back, because that announcement is now the one this focus change is going to produce.
+			_announceRowNameOnNextChange = announceRowName;
+			_announceListNameOnNextChange = announceListName;
 			listBox.SelectedIndex = 0;
 			return;
 		}
 		// An item is already selected, so focusing did not raise SelectedIndexChanged. Announce the
 		// position here, after a short delay so the screen reader speaks the list name and selected
 		// item first — putting "X of Y" at the end, matching the arrow-key path (List_SelectedIndexChanged).
-		await Task.Delay(100);
+		//
+		// A programmatic focus change does not wait: the reader's announcement of it is wrong and has to be caught
+		// as it starts, which SpeakListPosition does across a short window of its own. See it for why.
+		await Task.Delay(announceRowName ? 0 : 100);
 		if (!listBox.Focused) return;
 		// The Discovery "Load more" row carries no position; its row text is read by the screen reader.
 		if (listBox.SelectedItem is DiscoveryLoadMoreRow) return;
 		int itemCount = listBox.Name == "listDiscovery" ? DiscoveryResultCount() : listBox.Items.Count;
-		SpeakListPosition(listBox, Loc.T("common.position", listBox.SelectedIndex + 1, itemCount));
+		string text = Loc.T("common.position", listBox.SelectedIndex + 1, itemCount);
+
+		// "The screen reader speaks the list name and selected item first" holds when the USER moved focus here —
+		// tabbing in, or clicking. It does not hold when the program put focus back, which is what closing a view
+		// does: the reader treats it as focus never having left and says nothing, so all that was heard was a
+		// position with no idea which mod it belonged to. Editing a mod's settings and pressing Escape landed
+		// exactly there. When the program moved focus, the row names itself.
+		if (announceRowName && listBox.SelectedItem != null)
+			text = RowThenPosition(listBox.SelectedItem, text);
+
+		// Focus arriving at a list is announced by a screen reader as its name, then the row it landed on, then
+		// where that row sits — "Installed Mods List. Stardew Access… 129 of 149". When the reader's version of that
+		// has to be swallowed (see SpeakListPosition), the name goes with it, and a list that no longer says what it
+		// is leaves the user to work it out from the row. So the name is put back at the front, in the same order
+		// the reader would have used. Only on the way in: moving within a list must not repeat it.
+		if (announceListName)
+			text = ListNameThenRest(listBox, text);
+
+		SpeakListPosition(listBox, text, replaceReader: announceRowName);
+	}
+
+	[System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+	private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+	/// <summary>LB_SETCARETINDEX — moves a multi-selection list box's focus rectangle to an item.</summary>
+	private const int LB_SETCARETINDEX = 0x019E;
+
+	/// <summary>LB_SETCURSEL — sets a single-selection list box's current item, caret included.</summary>
+	private const int LB_SETCURSEL = 0x0186;
+
+	/// <summary>
+	/// Makes a list's own idea of its current row agree with what is selected, so a screen reader reads the right
+	/// one when focus arrives.
+	///
+	/// A list box tracks two things: what is selected, and which row is <em>current</em> — where the focus
+	/// rectangle sits. A keypress moves both. Setting the selection from code, especially while the list does not
+	/// have focus, can leave the second behind, and the stale one is what the reader announces on focus, with
+	/// "not selected" attached because the selection is elsewhere. Heard leaving a settings screen, that is a mod
+	/// you were never on being read out ahead of the one you were.
+	///
+	/// The message depends on the kind of list, and using the wrong one does nothing at all: a single-selection
+	/// list box <b>ignores</b> LB_SETCARETINDEX — its current row and its selection are the same thing, moved with
+	/// LB_SETCURSEL — while a multi-selection one keeps them apart and needs LB_SETCARETINDEX. Both are sent as
+	/// messages rather than through <see cref="ListBox.SelectedIndex"/> deliberately: the value is not changing, so
+	/// nothing should raise a change event and nothing should be announced twice.
+	/// </summary>
+	private static void AlignListCaretToSelection(ListBox list)
+	{
+		if (list.IsDisposed || !list.IsHandleCreated) return;
+		int index = list.SelectedIndex;
+		if (index < 0 || index >= list.Items.Count) return;
+
+		SendMessage(list.Handle,
+			list.SelectionMode == SelectionMode.One ? LB_SETCURSEL : LB_SETCARETINDEX,
+			(IntPtr)index, IntPtr.Zero);
+	}
+
+	/// <summary>
+	/// "&lt;the row&gt;. &lt;position&gt;" for an announcement the program is making itself.
+	///
+	/// Row text already ends in a full stop — one is added deliberately so the reader pauses before whatever
+	/// follows — so joining with another produced "Enabled. . 129 of 149", heard as a stumble. The row's own stop
+	/// is dropped and the join puts one back, leaving exactly one pause where the pause was wanted.
+	/// </summary>
+	private static string RowThenPosition(object? row, string position)
+	{
+		string text = (row?.ToString() ?? "").TrimEnd();
+		if (text.EndsWith(".", StringComparison.Ordinal)) text = text.Substring(0, text.Length - 1).TrimEnd();
+		return text.Length == 0 ? position : Loc.T("common.rowThenPosition", text, position);
+	}
+
+	/// <summary>
+	/// "&lt;the list's name&gt;. &lt;the rest&gt;" — what a screen reader says when focus lands on a list, in the
+	/// order it says it.
+	///
+	/// The name comes from <see cref="Control.AccessibleName"/>, the same string the reader would have read, so the
+	/// two can never drift apart. A container deliberately silenced with <see cref="SilentAccessibleName"/> stays
+	/// silent, and a list with no name of its own adds nothing rather than an empty pause.
+	/// </summary>
+	private static string ListNameThenRest(ListBox list, string rest)
+	{
+		string name = (list.AccessibleName ?? "").Trim();
+		if (name.Length == 0) return rest;
+		if (name.EndsWith(".", StringComparison.Ordinal)) name = name.Substring(0, name.Length - 1).TrimEnd();
+		return name.Length == 0 ? rest : Loc.T("common.listNameThenRest", name, rest);
 	}
 
 	private ListBox? _lastPosList;
@@ -173,20 +274,85 @@ public partial class Form1
 	/// explicitly focuses its list on top of the focus it gets naturally on open). Arrowing changes the index, so
 	/// normal navigation is never suppressed.
 	/// </summary>
-	private void SpeakListPosition(ListBox list, string text)
+	private async void SpeakListPosition(ListBox list, string text, bool replaceReader = false)
 	{
 		if (_shuttingDown) return;
+
 		long now = Environment.TickCount64;
 		if (ReferenceEquals(_lastPosList, list) && _lastPosIndex == list.SelectedIndex && now - _lastPosTicks < 700)
 			return;
 		_lastPosList = list;
 		_lastPosIndex = list.SelectedIndex;
 		_lastPosTicks = now;
-		Speak(text);
+
+		// Claim this announcement — after the de-duplication above, never before it. A call that turns out to be a
+		// repeat says nothing, and if claiming came first it would also have cancelled the announcement it was a
+		// repeat of, leaving silence where there should have been one of them.
+		//
+		// Anything that claims after this has, by definition, newer information about where the user is, which makes
+		// this one a description of a row they have already left. The wrong answer is to say it anyway and let the
+		// newer one interrupt: the interruption is audible, and what is heard is a mod that was never selected being
+		// read out and cut off mid-sentence. A superseded announcement abandons instead, silently, and the last word
+		// belongs to whichever call knew the most.
+		int generation = ++_speakListGeneration;
+
+		if (!replaceReader)
+		{
+			Speak(text);
+			return;
+		}
+
+		// The program moved focus or the selection, and the reader's announcement of that is wrong — it reads a row
+		// the user was never on. It cannot be prevented from this side, so it is swallowed instead.
+		//
+		// Silencing once is not enough, and interrupting once is worse: the reader is set off by the same focus
+		// change this is, so it can start a moment before or a moment after. Waiting long enough to be sure it had
+		// started meant hearing the first syllable of it ("insta…") before the cut. Silencing repeatedly across a
+		// short window catches it whenever it begins, and each pass lands too soon after the last for a recognisable
+		// sound to escape. Then the truth is said once, and it is the only thing heard.
+		for (int i = 0; i < 12; i++)
+		{
+			if (_shuttingDown || list.IsDisposed || generation != _speakListGeneration) return;
+			SilenceSpeech();
+			await Task.Delay(25);
+		}
+		if (_shuttingDown || list.IsDisposed || !list.Focused || generation != _speakListGeneration) return;
+		Speak(text, interrupt: true);
+	}
+
+	/// <summary>Which announcement is the current one. See <see cref="SpeakListPosition"/>.</summary>
+	private int _speakListGeneration;
+
+	/// <summary>Stops whatever the screen reader is currently saying, if one is loaded.</summary>
+	private static void SilenceSpeech()
+	{
+		if (!Tolk.IsLoaded()) return;
+		try { Tolk.Silence(); } catch { }
 	}
 
 	[System.Runtime.InteropServices.DllImport("user32.dll")]
 	private static extern IntPtr GetFocus();
+
+	/// <summary>
+	/// Set immediately before the program moves a list's selection itself, so the next announcement says which row
+	/// it landed on rather than its position alone. See <see cref="List_SelectedIndexChanged"/> for why a
+	/// programmatic move needs this and a keyboard one must not have it.
+	/// </summary>
+	private bool _announceRowNameOnNextChange;
+
+	/// <summary>
+	/// Set immediately before the program moves <em>focus</em> into a list, so the announcement opens with the
+	/// list's name the way a screen reader's own would. Separate from <see cref="_announceRowNameOnNextChange"/>
+	/// because the two happen at different moments: a rebuild moves the selection inside a list the user is already
+	/// in, where naming it again would be a repetition of something they have not left.
+	/// </summary>
+	private bool _announceListNameOnNextChange;
+
+	/// <summary>
+	/// True while the program is moving a list's selection to a place it should already have been, with nothing to
+	/// announce about the move itself. See <see cref="ReselectMod"/>, which holds it across the assignment.
+	/// </summary>
+	private bool _movingListSilently;
 
 	private ListBox? _lastEmptyList;
 	private long _lastEmptyTicks;
@@ -281,11 +447,25 @@ public partial class Form1
 
 	private async void List_SelectedIndexChanged(object? sender, EventArgs e)
 	{
+		// Consumed here, before any early return, so a flag set for a move that turned out not to be announced
+		// cannot survive to put a name in front of the next one the user makes with the arrow keys.
+		bool announceRowName = _announceRowNameOnNextChange;
+		bool announceListName = _announceListNameOnNextChange;
+		_announceRowNameOnNextChange = false;
+		_announceListNameOnNextChange = false;
+
+		// A move made only to put the list right before the user gets back to it is not news in itself — the
+		// arrival is what gets announced, a moment later and with everything already correct. Read here, before
+		// the first await, because it is only held across the assignment that raised this event.
+		if (_movingListSilently) return;
+
 		if (!(sender is ListBox { SelectedItem: not null } list) || _isLoading || !list.Focused)
 		{
 			return;
 		}
-		await Task.Delay(100);
+		// No wait for a move the program made — see SpeakListPosition for why the reader has to be caught as it
+		// starts rather than waited for.
+		await Task.Delay(announceRowName ? 0 : 100);
 		if (!list.Focused) return;
 		// The Discovery list's inline "Load more" row is an action, not a numbered result: the screen
 		// reader already reads its row text on focus, so add no position announcement.
@@ -293,6 +473,14 @@ public partial class Form1
 		// Exclude that row from the Discovery count so positions read "20 of 20", not "20 of 21".
 		int itemCount = list.Name == "listDiscovery" ? DiscoveryResultCount() : list.Items.Count;
 		string text = Loc.T("common.position", list.SelectedIndex + 1, itemCount);
+
+		// The row's own text is normally the screen reader's job: it reads the row the user arrowed onto, and this
+		// adds the position a moment later. But a reader only announces a row the USER moved to — when the program
+		// moves the selection, it says nothing at all, and the position was being read out with no idea which mod
+		// it belonged to. So a programmatic move says the row itself first, and only a programmatic one, or an
+		// ordinary arrow-key press would hear the name twice.
+		if (announceRowName)
+			text = RowThenPosition(list.SelectedItem, text);
 		if (list.Name == "listLog")
 		{
 			string lineText = list.SelectedItem.ToString() ?? "";
@@ -313,7 +501,11 @@ public partial class Form1
 				text = text + Loc.T("helpers.pressEnterChoose", linkCount);
 			}
 		}
-		SpeakListPosition(list, text);
+		// Only when this change is standing in for a focus arrival — see List_Enter, which hands the flags over
+		// when it finds nothing selected yet and lets selecting row 0 do the announcing.
+		if (announceListName)
+			text = ListNameThenRest(list, text);
+		SpeakListPosition(list, text, replaceReader: announceRowName);
 	}
 
 	/// <summary>
@@ -325,7 +517,7 @@ public partial class Form1
 		switch (CurrentTab())
 		{
 		case AppTab.Installed:
-			text = Loc.T("help.installed", GetShortcutString("Search"), GetShortcutString("ChangeCategory"), GetShortcutString("BatchCategory"), GetShortcutString("OpenModPage"), GetShortcutString("ShowDependencies"), GetShortcutString("QuickFix"), GetShortcutString("ManualID"), GetShortcutString("InstallZip"), GetShortcutString("SaveProfile"), GetShortcutString("ReadDescription"), GetShortcutString("OpenConfig"), GetShortcutString("OpenManifest"), GetShortcutString("LaunchGame"));
+			text = Loc.T("help.installed", GetShortcutString("Search"), GetShortcutString("ChangeCategory"), GetShortcutString("BatchCategory"), GetShortcutString("OpenModPage"), GetShortcutString("ShowDependencies"), GetShortcutString("QuickFix"), GetShortcutString("ManualID"), GetShortcutString("InstallZip"), GetShortcutString("SaveProfile"), GetShortcutString("ReadDescription"), GetShortcutString("OpenConfig"), GetShortcutString("OpenConfigFile"), GetShortcutString("OpenManifest"), GetShortcutString("LaunchGame"));
 			break;
 		case AppTab.Updates:
 			text = Loc.T("help.updates", GetShortcutString("UpdateAll"), GetShortcutString("ReadDescription"), GetShortcutString("LaunchGame"));

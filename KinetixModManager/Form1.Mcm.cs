@@ -98,7 +98,9 @@ public partial class Form1
 			{
 				Dock = DockStyle.Fill,
 				Font = new Font("Segoe UI", 12f),
-				AccessibleName = Loc.T("mcm.listName", modName),
+				// Silent for the same reason as the Stardew settings list: the view's title and hint have already
+				// named it twice on the way in. See SilentAccessibleName and Form1.StardewConfig.
+				AccessibleName = SilentAccessibleName,
 				IntegralHeight = false,
 				HorizontalScrollbar = true
 			};

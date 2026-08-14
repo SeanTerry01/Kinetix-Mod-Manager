@@ -1,12 +1,12 @@
 # Kinetix Mod Manager
 ## The ultimate modding companion, built for everyone.
 
-Kinetix Mod Manager is a powerful, streamlined tool designed specifically for players who rely on screen readers or keyboard-only navigation. It removes the barriers to modding across **Stardew Valley**, **Skyrim Special Edition**, and **Fallout 4**, so you can focus on what matters most: playing.
+Kinetix Mod Manager is a powerful, streamlined tool designed specifically for players who rely on screen readers or keyboard-only navigation. It removes the barriers to modding across **Stardew Valley**, **Skyrim Special Edition**, **Fallout 4**, **Moonlight Peaks** and **The Witcher 3: Wild Hunt**, so you can focus on what matters most: playing.
 
 ### 🚀 Key Features
 
 *   **Designed for Accessibility**: Built from the ground up with full keyboard control and screen reader compatibility. Every action, status update, and notification is announced through your preferred screen reader (NVDA, JAWS, or SAPI).
-*   **Multi-Game Support**: One manager for Stardew Valley (SMAPI), Skyrim Special Edition (SKSE64), and Fallout 4 (F4SE). Switch games from the Games menu.
+*   **Multi-Game Support**: One manager for Stardew Valley (SMAPI), Skyrim Special Edition (SKSE64), Fallout 4 (F4SE), Moonlight Peaks (BepInEx) and The Witcher 3: Wild Hunt. Switch games from the Games menu — and if you own the same game twice, on Steam and GOG, both copies appear separately with their own mods.
 *   **Audio-First Feedback**: Features unique audio themes and sound cues. Know instantly when a mod is enabled, disabled, or when an update is available through high-quality sound effects.
 *   **One-Click Nexus Integration**: Browse, search, and download mods directly from Nexus Mods within the app. Full support for "Mod Manager Download" links ensures a seamless installation experience.
 *   **Smart Update Management**: Automatically checks your entire mod list for updates and notifies you when a new version is available.

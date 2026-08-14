@@ -537,21 +537,41 @@ public class NexusService
 	/// Resolves an <c>nxm://</c> URL to an actual CDN download URI and the real file name.
 	/// </summary>
 	/// <returns>
-	/// A tuple of (downloadUri, fileName), where fileName is the display name from the mod files list.
+	/// A tuple of (downloadUri, fileName, displayName): the file name is what the archive is saved as, and the
+	/// display name is what the mod is called when the manager talks about it. They are not the same thing — see
+	/// <see cref="ModDisplayName"/>.
 	/// </returns>
 	/// <exception cref="Exception">Thrown if the API call fails or the response is malformed.</exception>
-	public async Task<(string Uri, string FileName)> ResolveNxmUrlAsync(string nxmUrl)
+	public async Task<(string Uri, string FileName, string DisplayName)> ResolveNxmUrlAsync(string nxmUrl)
 	{
-		Uri parsed     = new Uri(nxmUrl);
-		string[] parts = parsed.AbsolutePath.Split('/');
-		string modId   = parts[2];
-		string fileId  = parts[4];
+		if (!NxmLink.TryParse(nxmUrl, out NxmLink link))
+			throw new ArgumentException($"'{nxmUrl}' is not a download link this manager understands.", nameof(nxmUrl));
 
-		// Get CDN download link
-		string linkUrl = $"https://api.nexusmods.com/v1/games/{CurrentGameDomain}/mods/{modId}/files/{fileId}/download_link.json{parsed.Query}";
+		string modId  = link.ModId;
+		string fileId = link.FileId;
+
+		// The game comes from the link, never from the loaded session — see NxmLink. Asking under the wrong game's
+		// name is what produced the "Current JsonReader item is not an array" report: Nexus answers an unknown
+		// mod-in-game pairing with an error object, not the array of download servers.
+		string linkUrl = $"https://api.nexusmods.com/v1/games/{link.GameDomain}/mods/{modId}/files/{fileId}/download_link.json{link.Query}";
 		using var linkReq = BuildRequest(HttpMethod.Get, linkUrl);
-		string dlUri = JArray.Parse(await (await HttpClient.SendAsync(linkReq)).Content.ReadAsStringAsync())
-			[0]["URI"]?.ToString() ?? "";
+		string body = await (await HttpClient.SendAsync(linkReq)).Content.ReadAsStringAsync();
+
+		// A success is an array of mirrors. Anything else is Nexus explaining itself — an expired key, a file that
+		// needs the website, a mod that is not in that game — and its own words beat a parser error every time.
+		JToken answer;
+		try { answer = JToken.Parse(body); }
+		catch (JsonReaderException) { throw new Exception("Nexus sent a reply that could not be read. Try the download again."); }
+
+		if (answer is not JArray mirrors || mirrors.Count == 0)
+		{
+			string? explanation = (answer as JObject)?["message"]?.ToString();
+			throw new Exception(string.IsNullOrWhiteSpace(explanation)
+				? "Nexus did not offer a download for that file. The link may have expired — press Mod Manager Download again."
+				: $"Nexus refused the download: {explanation}");
+		}
+
+		string dlUri = mirrors[0]["URI"]?.ToString() ?? "";
 
 		// Extract the real file name from the resolved CDN URL to avoid the 30-second timeout of files.json
 		string? realName = null;
@@ -568,12 +588,37 @@ public class NexusService
 			}
 		}
 
-		if (string.IsNullOrEmpty(realName))
+		// What to call the mod out loud. Usually the file name says it, but some content servers answer with an
+		// opaque id and nothing else — "99824770-6ed9-4868-9f98-b54fb58ecad6" — which must never be read out as
+		// though it were a name. That is the only case worth a second API call, so it is the only case that makes
+		// one: the mod page's own name is fetched, and every other download stays as fast as it was.
+		string display = ModDisplayName.Clean(realName, modId);
+		if (display.Length == 0)
 		{
-			realName = $"{modId}_file_{fileId}.zip";
+			JObject? details = await GetModDetailsAsync(modId, link.GameDomain);
+			display = details?["name"]?.ToString()?.Trim() ?? "";
+		}
+		if (display.Length == 0) display = $"mod {modId}";
+
+		// The file keeps whatever name the server gave it: the mod id and version inside a Nexus file name are what
+		// later tell the update check which release is installed. Only a name that is unusable as a file — nameless,
+		// or with no extension for Downloads History to recognise — is replaced, and then it is built from the mod's
+		// name so the downloads folder stays readable.
+		if (string.IsNullOrEmpty(realName) || Path.GetExtension(realName).Length == 0)
+		{
+			// Underscores, never "-<modId>-": that shape is how a Nexus file name states its version, and inventing
+			// one here would record a version this download never had.
+			realName = $"{SanitiseFileName(display)}_{modId}_file_{fileId}.zip";
 		}
 
-		return (dlUri, realName);
+		return (dlUri, realName, display);
+	}
+
+	/// <summary>Strips the characters Windows will not accept in a file name, for a name built from a mod's title.</summary>
+	private static string SanitiseFileName(string name)
+	{
+		foreach (char bad in Path.GetInvalidFileNameChars()) name = name.Replace(bad, ' ');
+		return name.Replace('.', ' ').Trim();
 	}
 
 	/// <summary>Downloads the raw bytes at <paramref name="uri"/> using a high-timeout HTTP client.</summary>
@@ -791,13 +836,18 @@ public class NexusService
 	/// <summary>
 	/// Fetches details for a specific mod from the Nexus Mods API.
 	/// </summary>
-	public async Task<JObject?> GetModDetailsAsync(string nexusId)
+	/// <param name="nexusId">Nexus Mods numeric mod ID.</param>
+	/// <param name="gameDomain">
+	/// The game to ask about, for callers holding a mod that is not from the loaded session — a download started
+	/// from the browser for another game. Defaults to the active game, which is what every other caller wants.
+	/// </param>
+	public async Task<JObject?> GetModDetailsAsync(string nexusId, string? gameDomain = null)
 	{
 		await _apiSemaphore.WaitAsync();
 		try
 		{
 			using var req = BuildRequest(HttpMethod.Get,
-				$"https://api.nexusmods.com/v1/games/{CurrentGameDomain}/mods/{nexusId}.json");
+				$"https://api.nexusmods.com/v1/games/{(string.IsNullOrEmpty(gameDomain) ? CurrentGameDomain : gameDomain)}/mods/{nexusId}.json");
 			var resp = await HttpClient.SendAsync(req);
 			CaptureRateLimit(resp);
 			if (!resp.IsSuccessStatusCode) return null;

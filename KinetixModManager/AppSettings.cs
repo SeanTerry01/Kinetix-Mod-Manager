@@ -44,6 +44,25 @@ public enum TextSize
 	ExtraLarge
 }
 
+/// <summary>
+/// What to do when a "Mod Manager Download" turns out to be for a game other than the loaded one — the user was
+/// browsing Nexus, found something for another game, and pressed the button.
+///
+/// The file is always downloaded either way; the link's key expires within minutes, so there is no such thing as
+/// deferring the download itself. What this chooses is whether the manager also leaves the session the user was in.
+/// </summary>
+public enum CrossGameDownloadAction
+{
+	/// <summary>Ask, naming both games. The default: it says what game the mod turned out to be for.</summary>
+	Ask,
+
+	/// <summary>Load the mod's game and install straight away, ending whatever session was open.</summary>
+	SwitchAndInstall,
+
+	/// <summary>Keep the session and file the download under its own game, to install from Downloads History later.</summary>
+	SaveForLater
+}
+
 /// <summary>A cached AI model entry (the id sent to the API plus the name shown in the dropdown). Serialized in
 /// <see cref="AppSettings.AiModelCache"/> so a refreshed model list survives across sessions.</summary>
 public class AiModelChoice
@@ -256,6 +275,14 @@ public class AppSettings
 
 	/// <summary>Check for a new version of the manager itself when the program starts.</summary>
 	public bool CheckForManagerUpdatesAtStartup { get; set; } = true;
+
+	/// <summary>
+	/// What happens when a browser download turns out to be for a game other than the loaded one.
+	/// <see cref="CrossGameDownloadAction.Ask"/> by default — the manager should not end a session the user is in
+	/// the middle of without saying so.
+	/// </summary>
+	[JsonConverter(typeof(StringEnumConverter))]
+	public CrossGameDownloadAction CrossGameDownloads { get; set; } = CrossGameDownloadAction.Ask;
 
 	/// <summary>Speak the welcome / shortcut-hint message at startup (and wait for it before loading).</summary>
 	public bool SpeakStartupMessage { get; set; } = true;
@@ -696,6 +723,13 @@ public class AppSettings
 			{
 				"OpenManifest",
 				Keys.M | Keys.Control
+			},
+			{
+				// The pair to OpenManifest: both open a file itself in the JSON editor, so they sit together on M.
+				// Ctrl+E is the settings list, which is what a mod's config normally deserves; this is the way to
+				// the file behind it for a setting the list cannot offer.
+				"OpenConfigFile",
+				Keys.M | Keys.Shift | Keys.Control
 			},
 			{
 				"DeleteOldBackups",

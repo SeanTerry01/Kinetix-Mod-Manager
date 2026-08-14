@@ -252,96 +252,238 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Parses a <c>nxm://</c> URL, fetches the download link from the Nexus API, downloads
-	/// the file, and prompts the user to install it. Requires a valid API key.
+	/// Handles a <c>nxm://</c> link: works out which game and which copy it is for, downloads the file into that
+	/// copy's downloads folder, and then either installs it or leaves it there for later. Requires a valid API key.
+	///
+	/// <para>
+	/// The link names its own game (see <see cref="NxmLink"/>), so a download no longer depends on that game being
+	/// the loaded one — the case this used to fail at, with a JSON parser error, was somebody browsing Nexus with
+	/// another game open or no session at all. Downloading is game-agnostic; only <em>installing</em> needs a
+	/// session, because that is what has a mods folder, a deployment and a load order. So the two are separated
+	/// here: download first, always, then decide about the session.
+	/// </para>
 	/// </summary>
 	private async Task HandleNxmUrl(string url)
 	{
 		try
 		{
-			if (url.StartsWith("nxm://", StringComparison.OrdinalIgnoreCase))
+			if (!NxmLink.TryParse(url, out NxmLink link))
 			{
-				string withoutProtocol = url.Substring(6);
-				int slashIndex = withoutProtocol.IndexOf('/');
-				if (slashIndex > 0)
-				{
-					string gameDomain = withoutProtocol.Substring(0, slashIndex).ToLowerInvariant();
-					string? targetGame = gameDomain switch
-					{
-						"stardewvalley" => "StardewValley",
-						"skyrimspecialedition" => "SkyrimSE",
-						"fallout4" => "Fallout4",
-						_ => null
-					};
-
-					if (targetGame != null && _settings.ActiveGame != targetGame)
-					{
-						if (InvokeRequired)
-						{
-							Invoke(new Action(() => SwitchActiveGame(targetGame)));
-						}
-						else
-						{
-							SwitchActiveGame(targetGame);
-						}
-						await Task.Delay(500);
-					}
-				}
+				OnUi(() => SpeakBox(Loc.T("nxm.badLink")));
+				return;
 			}
 
-			SetStatus(Loc.T("download.parsingLink"));
-			var (dlUri, realName) = await _nexusService.ResolveNxmUrlAsync(url);
-			SetStatus(Loc.T("download.downloading", realName), speak: false);
-			string path = Path.Combine(downloadsPath, realName);
+			GameProfile? game = GameProfiles.FindByNexusDomain(link.GameDomain);
+			if (game == null)
+			{
+				// Naming the domain is the most useful thing available: it is the game's name on Nexus, which is
+				// what the user was just looking at.
+				OnUi(() => SpeakBox(Loc.T("nxm.unsupportedGame", link.GameDomain)));
+				return;
+			}
 
-			ProgressAnnouncer progress = NewProgress(realName, installing: false);
+			// The link names a game; a mod is installed into a copy. Establish which copy before downloading, so
+			// the file is filed correctly whatever the user decides afterwards.
+			string? targetKey = ResolveDownloadTargetCopy(game);
+			if (targetKey == null) return;
+
+			bool alreadyLoaded = GameProfiles.IsGame(_settings.ActiveGame, game.Id) && targetKey == _settings.ActiveGame;
+
+			SetStatus(Loc.T("download.parsingLink"));
+			var (dlUri, fileName, modName) = await _nexusService.ResolveNxmUrlAsync(url);
+			SetStatus(Loc.T("download.downloading", modName), speak: false);
+			string path = Path.Combine(DownloadsPathFor(targetKey), fileName);
+
+			// modName is what the user hears throughout; fileName is only ever a path. See ModDisplayName.
+			ProgressAnnouncer progress = NewProgress(modName, installing: false);
 			await _nexusService.DownloadFileWithProgressAsync(dlUri, path, progress);
 			progress.Complete();
 			_soundEngine.Play("load_complete");
-			string? nexusId = null;
-			try
-			{
-				var match = Regex.Match(url, @"/mods/(\d+)(?:/|$)", RegexOptions.IgnoreCase);
-				if (match.Success)
-				{
-					nexusId = match.Groups[1].Value;
-				}
-			}
-			catch { }
-			// The download was started from the browser (Mod Manager Download button), so the browser
-			// owns the foreground by now. Pull the manager to the front first, otherwise this prompt can
-			// open behind the browser and never receive keyboard / screen-reader focus.
-			// If this download is a newer version of a mod you already have, treat it as an update and skip the
-			// "overwrite the installed copy?" prompt — that confirmation is meant for re-installing the same (or an
-			// older) copy, not for a genuine upgrade.
-			bool isUpgrade = false;
-			if (!string.IsNullOrEmpty(nexusId))
-			{
-				GameMod? installed = _allInstalledMods.FirstOrDefault(m => m.NexusID == nexusId);
-				if (installed != null)
-				{
-					try
-					{
-						var details = await _nexusService.GetModDetailsAsync(nexusId);
-						isUpgrade = IsNewerVersion(installed.Version, details?["version"]?.ToString());
-					}
-					catch { /* version lookup is best-effort; fall back to prompting */ }
-				}
-			}
 
-			ForceToForeground();
-			if (SpeakBox(this, Loc.T("download.installNow", realName), Loc.T("download.successTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
-				_ = InstallFromZip(path, nexusId, confirmReinstall: !isUpgrade);
+			if (!alreadyLoaded && !await OfferToSwitchForDownload(game, targetKey, modName))
+				return;
+
+			await OfferToInstallDownload(link, path, modName);
 		}
 		catch (TimeoutException)
 		{
 			SetStatus(Loc.T("download.timedOut"), speak: false);
-			SpeakBox(Loc.T("download.timedOut"));
+			OnUi(() => SpeakBox(Loc.T("download.timedOut")));
 		}
 		catch (Exception ex)
 		{
-			SpeakBox(Loc.T("download.nxmError", FriendlyError(ex)));
+			OnUi(() => SpeakBox(Loc.T("download.nxmError", FriendlyError(ex))));
 		}
+	}
+
+	/// <summary>
+	/// Runs <paramref name="work"/> on the UI thread. A nxm link can arrive on the named-pipe thread — a second
+	/// instance forwarding the browser's click — and everything below this speaks or shows a view.
+	/// </summary>
+	private void OnUi(Action work)
+	{
+		if (InvokeRequired) Invoke(work);
+		else work();
+	}
+
+	/// <inheritdoc cref="OnUi(Action)"/>
+	private T OnUi<T>(Func<T> work) => InvokeRequired ? (T)Invoke(work)! : work();
+
+	/// <summary>
+	/// Which copy of <paramref name="game"/> a download is for, or <c>null</c> if it cannot be answered — the game
+	/// is not set up, or the user backed out of the question.
+	///
+	/// The loaded copy wins without asking. Otherwise, one copy answers itself, and two or more is a genuine
+	/// question: nothing in the link says which, and guessing files somebody's mod under a copy they were not
+	/// thinking of.
+	/// </summary>
+	private string? ResolveDownloadTargetCopy(GameProfile game)
+	{
+		if (GameProfiles.IsGame(_settings.ActiveGame, game.Id))
+			return _settings.ActiveGame;
+
+		List<GameInstall> copies = _settings.InstallsOf(game.Id);
+		if (copies.Count == 0)
+		{
+			OnUi(() => SpeakBox(Loc.T("nxm.gameNotSetUp", game.DisplayName)));
+			return null;
+		}
+		if (copies.Count == 1) return copies[0].Key;
+
+		return OnUi(() =>
+		{
+			ForceToForeground();
+			List<string> labels = copies.Select(c => c.DisplayName(withPlatform: true)).ToList();
+			string? picked = ShowChoiceList(
+				Loc.T("nxm.chooseCopyTitle"),
+				Loc.T("nxm.chooseCopyListName", game.DisplayName),
+				labels,
+				labels[0],
+				Loc.T("nxm.chooseCopyHint", game.DisplayName));
+			int index = picked == null ? -1 : labels.IndexOf(picked);
+			return index < 0 ? null : copies[index].Key;
+		});
+	}
+
+	/// <summary>
+	/// Asks what to do about a download for a game other than the loaded one, and switches to it if that is the
+	/// answer. Returns <c>true</c> when the caller should go on to install, <c>false</c> when the file has been left
+	/// where it is on purpose or the user cancelled.
+	///
+	/// The file is downloaded by the time this runs, so every answer keeps it — "cancel" cancels the interruption,
+	/// not the download, and says so.
+	/// </summary>
+	private async Task<bool> OfferToSwitchForDownload(GameProfile game, string targetKey, string fileName)
+	{
+		string targetName = _settings.InstallFor(targetKey)?.DisplayName(withPlatform: _settings.InstallsOf(game.Id).Count > 1)
+			?? game.DisplayName;
+
+		CrossGameDownloadAction choice = _settings.CrossGameDownloads;
+		if (choice == CrossGameDownloadAction.Ask)
+		{
+			// With no session open there is nothing to interrupt, so the question is only worth asking when it
+			// would actually cost the user something.
+			if (_settings.ActiveGame == "None")
+			{
+				choice = CrossGameDownloadAction.SwitchAndInstall;
+			}
+			else
+			{
+				string? picked = OnUi(() =>
+				{
+					ForceToForeground();
+					List<string> options = new()
+					{
+						Loc.T("nxm.actionSwitch", targetName),
+						Loc.T("nxm.actionSave", targetName)
+					};
+					return ShowChoiceList(
+						Loc.T("nxm.crossGameTitle"),
+						Loc.T("nxm.chooseActionListName"),
+						options,
+						options[0],
+						Loc.T("nxm.crossGameHint", fileName, targetName, GameDisplayName()));
+				});
+
+				if (picked == null)
+				{
+					OnUi(() => Speak(Loc.T("nxm.keptDownload", targetName)));
+					return false;
+				}
+				choice = picked == Loc.T("nxm.actionSave", targetName)
+					? CrossGameDownloadAction.SaveForLater
+					: CrossGameDownloadAction.SwitchAndInstall;
+			}
+		}
+
+		if (choice == CrossGameDownloadAction.SaveForLater)
+		{
+			OnUi(() => SpeakBox(Loc.T("nxm.savedFor", fileName, targetName)));
+			return false;
+		}
+
+		OnUi(() =>
+		{
+			Speak(Loc.T("nxm.switching", targetName));
+			SwitchActiveGame(targetKey);
+		});
+
+		// SwitchActiveGame refuses a game that is no longer installed, having said so itself; carrying on would
+		// install into whatever session survived that refusal.
+		if (!GameProfiles.IsGame(_settings.ActiveGame, game.Id))
+		{
+			OnUi(() => SpeakBox(Loc.T("nxm.savedFor", fileName, targetName)));
+			return false;
+		}
+
+		// Give the switch's own mod-list refresh a moment before the install prompt lands on top of it. This is the
+		// wait the old code used before resolving the download, where it was load-bearing and raced; here nothing
+		// depends on it finishing — a list still refreshing only means the "already installed?" question gets asked.
+		await Task.Delay(500);
+		return true;
+	}
+
+	/// <summary>
+	/// Prompts to install a file that has finished downloading, and installs it on a Yes.
+	///
+	/// If this is a newer version of a mod already installed, the "overwrite the installed copy?" confirmation is
+	/// skipped — that question is meant for re-installing the same or an older copy, not for a genuine upgrade. The
+	/// check is best-effort in both directions: a mod list still refreshing after a game switch simply means the
+	/// question gets asked, which is the safe way to be wrong.
+	/// </summary>
+	private async Task OfferToInstallDownload(NxmLink link, string path, string modName)
+	{
+		string? nexusId = Regex.IsMatch(link.ModId, @"^\d+$") ? link.ModId : null;
+
+		bool isUpgrade = false;
+		if (!string.IsNullOrEmpty(nexusId))
+		{
+			GameMod? installed = _allInstalledMods.FirstOrDefault(m => m.NexusID == nexusId);
+			if (installed != null)
+			{
+				try
+				{
+					var details = await _nexusService.GetModDetailsAsync(nexusId, link.GameDomain);
+					isUpgrade = IsNewerVersion(installed.Version, details?["version"]?.ToString());
+				}
+				catch { /* version lookup is best-effort; fall back to prompting */ }
+			}
+		}
+
+		// The download was started from the browser (Mod Manager Download button), so the browser owns the
+		// foreground by now. Pull the manager to the front first, otherwise this prompt can open behind the browser
+		// and never receive keyboard / screen-reader focus.
+		bool install = OnUi(() =>
+		{
+			ForceToForeground();
+			return SpeakBox(this, Loc.T("download.installNow", modName), Loc.T("download.successTitle"),
+				MessageBoxButtons.YesNo) == DialogResult.Yes;
+		});
+
+		// Started on the UI thread: a nxm link can arrive on the named-pipe thread, and the install reports itself
+		// through the window as it goes. The name is carried across so the install talks about the same mod the
+		// download did, even where the file name it arrived under says nothing.
+		if (install) OnUi(() => { _ = InstallFromZip(path, nexusId, confirmReinstall: !isUpgrade, displayName: modName); });
 	}
 
 	[System.Runtime.InteropServices.DllImport("user32.dll")]
@@ -547,13 +689,24 @@ public partial class Form1
 	/// the same Nexus id, so that id must not be used to decide which installed mod is being replaced — it would
 	/// name a sibling and delete it. See <c>FindExistingInstall</c>.
 	/// </param>
+	/// <param name="displayName">
+	/// What to call the mod out loud, where the caller already knows — a download whose file name turned out to be
+	/// an opaque id, so the name came from the mod's page instead. Left null, the name is read out of the archive's
+	/// own name, which is right for a mod picked off disk.
+	/// </param>
 	private async Task InstallFromZip(string zipPath, string? nexusId = null, bool silent = false,
-		bool confirmReinstall = false, bool partOfMultiPartMod = false)
+		bool confirmReinstall = false, bool partOfMultiPartMod = false, string? displayName = null)
 	{
+		// Never the raw file name: a Nexus download is called "Skyrim Access-181131-1-2-3-1723456789.7z", and the
+		// mod id, version and timestamp on the end of that are not part of what the mod is called. See ModDisplayName.
+		string spokenName = !string.IsNullOrWhiteSpace(displayName)
+			? displayName!.Trim()
+			: ModDisplayName.ForSpeech(Path.GetFileNameWithoutExtension(zipPath), nexusId);
+
 		// Install progress runs even in a silent batch (Update All), following the user's tones/speech/both/off
 		// setting via ProgressAnnouncer. The silent flag suppresses only the per-mod spoken chatter and the
 		// per-mod "installed" message box (see below) — not the progress feedback.
-		ProgressAnnouncer? installProgress = NewProgress(Path.GetFileNameWithoutExtension(zipPath), installing: true);
+		ProgressAnnouncer? installProgress = NewProgress(spokenName, installing: true);
 		// Only interactive installs (manual Ctrl+I, Mod Manager Download) ask before overwriting; updates
 		// deliberately overwrite without prompting.
 		Func<string, string, bool>? confirmOverwrite = confirmReinstall ? ConfirmOverwrite : null;
@@ -598,7 +751,9 @@ public partial class Form1
 			}
 			// In a silent batch (Update All) don't pop a modal box per mod — the batch's status line and the
 			// end-of-run "All updates finished" cover it; a per-mod box would force a click on every mod.
-			if (!silent) SpeakBox(Loc.T("install.installed", name));
+			// The folder a mod landed in is not necessarily what it is called: Stardew names its folder from the
+			// mod's own manifest (already the real name), while the Bethesda games name it from the download.
+			if (!silent) SpeakBox(Loc.T("install.installed", ModDisplayName.ForSpeech(name, nexusId, spokenName)));
 		}
 		catch (OperationCanceledException)
 		{
@@ -608,18 +763,18 @@ public partial class Form1
 		{
 			// A denied path is almost always an external lock: the game still running, antivirus/Controlled Folder
 			// Access guarding the mods folder, or a file held open elsewhere. Say so rather than a bare path error.
-			AiInstallFailure(Loc.T("install.failedAccess", ex.Message), Path.GetFileNameWithoutExtension(zipPath));
+			AiInstallFailure(Loc.T("install.failedAccess", ex.Message), spokenName);
 		}
 		catch (ModFileSystem.ModArchiveContentException ex)
 		{
 			// The archive was fine but holds no mod for this game — say what to do about it, and keep the raw
 			// detail (what the archive did contain) in the error log rather than in the spoken message.
-			LogError(Path.GetFileNameWithoutExtension(zipPath), ex.Message);
-			AiInstallFailure(Loc.T("install.failed", FriendlyError(ex)), Path.GetFileNameWithoutExtension(zipPath));
+			LogError(spokenName, ex.Message);
+			AiInstallFailure(Loc.T("install.failed", FriendlyError(ex)), spokenName);
 		}
 		catch (Exception ex)
 		{
-			AiInstallFailure(Loc.T("install.failed", ex.Message), Path.GetFileNameWithoutExtension(zipPath));
+			AiInstallFailure(Loc.T("install.failed", ex.Message), spokenName);
 		}
 		finally
 		{

@@ -1,6 +1,6 @@
 # Kinetix Mod Manager
 
-A fully keyboard-driven, screen-reader-compatible mod manager for **Stardew Valley**, **Skyrim Special Edition**, and **Fallout 4**, built for the accessibility community. Designed to work with NVDA, JAWS, and SAPI-based readers out of the box via [Tolk](https://github.com/dkager/tolk).
+A fully keyboard-driven, screen-reader-compatible mod manager for **Stardew Valley**, **Skyrim Special Edition**, **Fallout 4**, **Moonlight Peaks** and **The Witcher 3: Wild Hunt**, built for the accessibility community. Designed to work with NVDA, JAWS, and SAPI-based readers out of the box via [Tolk](https://github.com/dkager/tolk).
 
 ---
 
@@ -28,6 +28,10 @@ A fully keyboard-driven, screen-reader-compatible mod manager for **Stardew Vall
 | Stardew Valley | SMAPI | stardewvalleywiki.com |
 | Skyrim Special Edition | SKSE64 | en.uesp.net |
 | Fallout 4 | F4SE | fallout.fandom.com |
+| Moonlight Peaks | BepInEx | moonlightpeaks.wiki.gg |
+| The Witcher 3: Wild Hunt | `mods` folder (no loader) | witcher.fandom.com |
+
+If you own the same game on both Steam and GOG, both copies appear in the menu and each keeps its own mods.
 
 Switch the active game from the **Games** menu.
 
@@ -69,7 +73,11 @@ Press **F1** at any time to open the full User Manual, or **Shift + F1** for con
 | Save profile | Ctrl + S |
 | View dependencies | Ctrl + Y |
 | Quick-fix missing dep | Ctrl + Q |
-| Prune old backups | Ctrl + Shift + B |
+| Change a mod's settings | Ctrl + E |
+| Edit a mod's config file directly | Ctrl + Shift + M |
+| Edit a mod's manifest | Ctrl + M |
+| Check my setup | Ctrl + Shift + K |
+| Delete old backups | Ctrl + Shift + D |
 
 See `MANUAL.md` for the complete shortcut reference.
 

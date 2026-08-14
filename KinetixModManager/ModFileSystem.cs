@@ -63,12 +63,19 @@ public static class ModFileSystem
 
 	/// <summary>
 	/// How a mod found on disk with no metadata is named in the list. For The Witcher 3 that is the folder name
-	/// made readable, since the folder name is genuinely all there is; every other game keeps what it had.
+	/// made readable, since the folder name is genuinely all there is; every other game gets the mod id, version and
+	/// upload timestamp that Nexus appends to a download taken off the end, because a mod installed before those
+	/// were stripped still sits in a folder called "Skyrim Access-181131-1-2-3-1723456789" and should not be read
+	/// out that way. Only what is shown changes — the folder keeps its name, and the mod keeps its identity.
 	/// </summary>
-	private static string LocalModDisplayName(string folderName, string activeGame) =>
-		GameProfiles.Find(activeGame)?.IsWitcher3 == true
-			? Witcher3Layout.DisplayNameFromFolder(folderName)
-			: folderName;
+	private static string LocalModDisplayName(string folderName, string activeGame)
+	{
+		if (GameProfiles.Find(activeGame)?.IsWitcher3 == true)
+			return Witcher3Layout.DisplayNameFromFolder(folderName);
+
+		string cleaned = ModDisplayName.Clean(folderName);
+		return cleaned.Length > 0 ? cleaned : folderName;
+	}
 
 	/// <summary>
 	/// Scans the mods directory for installed mods depending on the active game.
@@ -228,7 +235,7 @@ public static class ModFileSystem
 						{
 							Name        = placeholder
 								? LocalModDisplayName(folderName, activeGame)
-								: ManifestString(manifest, "Name") ?? folderName,
+								: ManifestString(manifest, "Name") ?? LocalModDisplayName(folderName, activeGame),
 							Version     = placeholder ? "" : ManifestString(manifest, "Version") ?? "",
 							Author      = placeholder ? "" : ManifestString(manifest, "Author")  ?? "",
 							UniqueId    = uid,
@@ -435,7 +442,13 @@ public static class ModFileSystem
 
 					// The plugin's own declaration wins over anything the manager guessed earlier and wrote to the
 					// manifest, because it is the author's answer rather than an inference from a file name.
-					string name = info.Name.Length > 0 ? info.Name : (ManifestString(manifest, "Name") ?? folderName);
+					// A folder named from a download still carries Nexus's mod id, version and timestamp; the plugin's
+					// own name is preferred anyway, so this only matters for a plugin that declares none.
+					string cleanedFolderName = ModDisplayName.Clean(folderName);
+					if (cleanedFolderName.Length == 0) cleanedFolderName = folderName;
+					string name = info.Name.Length > 0
+						? info.Name
+						: (ManifestString(manifest, "Name") ?? cleanedFolderName);
 					string version = info.Version.Length > 0
 						? info.Version
 						: (ManifestString(manifest, "Version") ?? ExtractVersionFromFileName(folderName, nexusId) ?? "1.0.0");
@@ -1707,12 +1720,30 @@ public static class ModFileSystem
 		Func<string, Task<bool>>? runInstaller = null,
 		bool matchExistingByNexusId = true)
 	{
+		// Two names, deliberately. The archive's own name is the one that identifies the download — the mod id and
+		// version inside it are what match a reinstall to what is already there — while the folder the mod ends up
+		// in is named after the mod, without the id, version and upload timestamp Nexus appends to every file.
+		// Those used to be the same string, which is why installed mods sat in folders called
+		// "Skyrim Access-181131-1-2-3-1723456789" and were announced by that name too.
+		string archiveName = Path.GetFileNameWithoutExtension(zipPath);
+		string installFolderName = SanitiseFolderName(ModDisplayName.Clean(archiveName, nexusId));
+		if (installFolderName.Length == 0) installFolderName = SanitiseFolderName(archiveName);
+
+		// The id Nexus buries in a file name is the only identity a hand-picked archive has, so it is read out of
+		// the raw name before that name is cleaned away — otherwise a manual re-install of a mod already installed
+		// would no longer recognise it and would leave two copies deploying the same files.
+		if (string.IsNullOrEmpty(nexusId))
+		{
+			var fromName = System.Text.RegularExpressions.Regex.Match(archiveName, @"-(\d{3,9})-");
+			if (fromName.Success) nexusId = fromName.Groups[1].Value;
+		}
+
 		// For Skyrim/Fallout 4 the mod's identity is known up front (its Nexus id or folder name), so a
 		// reinstall can be confirmed before we even extract. Stardew's identity lives in manifest.json inside
 		// the archive, so that prompt happens after extraction (below). A declined prompt cancels the install.
 		if (confirmOverwrite != null && !GameProfiles.IsGame(activeGame, GameProfiles.StardewValley))
 		{
-			GameMod? existing = FindExistingInstall(installedMods, nexusId, Path.GetFileNameWithoutExtension(zipPath), matchExistingByNexusId);
+			GameMod? existing = FindExistingInstall(installedMods, nexusId, archiveName, matchExistingByNexusId);
 			if (existing != null && Directory.Exists(existing.FolderPath) && !confirmOverwrite(existing.Name, existing.Version))
 				throw new OperationCanceledException("User declined to overwrite an existing mod.");
 		}
@@ -1763,7 +1794,7 @@ public static class ModFileSystem
 			if (GameProfiles.Find(activeGame)?.IsBepInEx == true)
 			{
 				return await FinalizeBepInExModAsync(
-					tempDir, Path.GetFileNameWithoutExtension(zipPath), zipPath, modsPath, installedMods,
+					tempDir, installFolderName, zipPath, modsPath, installedMods,
 					backupsPath, maxBackups, logError, nexusId, nexusService, gitHubRepo);
 			}
 
@@ -1788,7 +1819,7 @@ public static class ModFileSystem
 				}
 
 				return await FinalizeWitcher3ModAsync(
-					tempDir, Path.GetFileNameWithoutExtension(zipPath), zipPath, modsPath, installedMods,
+					tempDir, installFolderName, zipPath, modsPath, installedMods,
 					backupsPath, maxBackups, activeGame, logError, nexusId, nexusService, gitHubRepo, currentGamePath);
 			}
 
@@ -1833,13 +1864,13 @@ public static class ModFileSystem
 					FomodInstaller.BuildStaging(fomodConfig, selection, fomodRoot, stagingDir, fileState);
 
 					return await FinalizeBethesdaModAsync(
-						stagingDir, Path.GetFileNameWithoutExtension(zipPath), zipPath, modsPath, installedMods,
+						stagingDir, installFolderName, zipPath, modsPath, installedMods,
 						backupsPath, maxBackups, activeGame, logError, nexusId, nexusService, gitHubRepo, currentGamePath, fomodInfo,
 						docsSourceRoot: tempDir, matchExistingByNexusId: matchExistingByNexusId);
 				}
 
 				return await FinalizeBethesdaModAsync(
-					ResolveBethesdaModSource(tempDir), Path.GetFileNameWithoutExtension(zipPath), zipPath, modsPath, installedMods,
+					ResolveBethesdaModSource(tempDir), installFolderName, zipPath, modsPath, installedMods,
 					backupsPath, maxBackups, activeGame, logError, nexusId, nexusService, gitHubRepo, currentGamePath, null,
 					docsSourceRoot: tempDir, matchExistingByNexusId: matchExistingByNexusId);
 			}
@@ -1899,7 +1930,7 @@ public static class ModFileSystem
 				sourceFolderStardew    = commonPath;
 				targetFolderNameStardew = Path.GetFileName(sourceFolderStardew);
 				if (sourceFolderStardew.TrimEnd('\\') == tempDir.TrimEnd('\\'))
-					targetFolderNameStardew = Path.GetFileNameWithoutExtension(zipPath);
+					targetFolderNameStardew = installFolderName;
 			}
 			else
 			{
@@ -2378,7 +2409,10 @@ public static class ModFileSystem
 		Dictionary<string, string> before, string gameFolder, string modsPath, string zipPath,
 		string? nexusId, string? gitHubRepo, string activeGame, Action<string, string> logError)
 	{
-		string archiveName = Path.GetFileNameWithoutExtension(zipPath);
+		// Named after the mod, not after the download — the same rule the other install paths follow.
+		string rawArchiveName = Path.GetFileNameWithoutExtension(zipPath);
+		string archiveName = ModDisplayName.Clean(rawArchiveName, nexusId);
+		if (archiveName.Length == 0) archiveName = rawArchiveName;
 		if (string.IsNullOrEmpty(gameFolder)) return WitcherModFolderName(archiveName);
 
 		var (added, changed) = DiffWitcherGameFolder(before, gameFolder);

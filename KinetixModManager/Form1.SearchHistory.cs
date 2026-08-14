@@ -108,6 +108,10 @@ public partial class Form1
 				if (lstTerms.Items.Count > 0) lstTerms.SelectedIndex = 0;
 			}
 
+			// Position on the way in and on every arrow move. Without this the term list read its rows and never
+			// said where in the history they sat, so there was no way to tell a long list from a short one.
+			WireAccessibleDialogList(lstTerms);
+
 			bool building = true;
 			cmbScope.SelectedIndexChanged += delegate
 			{

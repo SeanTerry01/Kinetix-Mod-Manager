@@ -389,6 +389,7 @@ public partial class Form1
 		};
 		// Listed alphabetically.
 		foreach (string name in GameProfiles.AllDisplayNames) _lstGames.Items.Add(name);
+		WireAccessibleDialogList(_lstGames);
 		_lstGames.SelectedIndex = 0;
 
 		FlowLayoutPanel buttonLayout = new FlowLayoutPanel

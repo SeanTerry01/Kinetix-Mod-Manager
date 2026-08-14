@@ -269,8 +269,11 @@ public partial class Form1
 
 		layout.Controls.Add(new Label { Text = summary, AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 8) }, 0, 0);
 
-		var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = summary, IntegralHeight = false, HorizontalScrollbar = true };
+		// A short label, not the summary sentence: a list's name is read every time focus arrives on it, so a
+		// paragraph there is heard again on every Tab press. The summary is spoken once, below, and shown above.
+		var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("collection.preflightListName"), IntegralHeight = false, HorizontalScrollbar = true };
 		foreach (string line in lines) list.Items.Add(line);
+		WireAccessibleDialogList(list);
 		layout.Controls.Add(list, 0, 1);
 
 		var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, FlowDirection = FlowDirection.RightToLeft, AutoSize = true };

@@ -117,17 +117,22 @@ public partial class Form1 : Form, IMessageFilter
 
 	private static string dataBasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AudiVentureGames", "KinetixModManager");
 
-	private string downloadsPath
+	private string downloadsPath => DownloadsPathFor(_settings.ActiveGame);
+
+	/// <summary>
+	/// The downloads folder belonging to one copy of one game. Separate from <see cref="downloadsPath"/> because a
+	/// download can arrive for a game that is not the loaded one: a mod downloaded from the browser has to be filed
+	/// under the game it is <em>for</em>, which is also what puts it in that game's Downloads History, waiting, the
+	/// next time the user loads it.
+	/// </summary>
+	private static string DownloadsPathFor(string installKey)
 	{
-		get
+		string path = Path.Combine(dataBasePath, "downloads", installKey);
+		if (!Directory.Exists(path))
 		{
-			string path = Path.Combine(dataBasePath, "downloads", _settings.ActiveGame);
-			if (!Directory.Exists(path))
-			{
-				try { Directory.CreateDirectory(path); } catch { }
-			}
-			return path;
+			try { Directory.CreateDirectory(path); } catch { }
 		}
+		return path;
 	}
 
 	private string backupsPath
@@ -850,6 +855,22 @@ public partial class Form1 : Form, IMessageFilter
 
 
 	private string errorLogPath => Path.Combine(dataBasePath, "mod_manager_log.txt");
+
+	/// <summary>
+	/// Opens the manager's own error log in Notepad, and says so when there is nothing to open — a keypress that
+	/// does nothing in silence is indistinguishable from one that failed. Shared by the File menu item and the
+	/// shortcut, which is what this exists for: the shortcut used to look for the file by a bare relative name,
+	/// so it searched the install folder instead of the app data folder and could never find it.
+	/// </summary>
+	private void OpenErrorLog()
+	{
+		if (!File.Exists(errorLogPath))
+		{
+			Speak(Loc.T("menu.errorLogEmpty"));
+			return;
+		}
+		Process.Start(new ProcessStartInfo("notepad.exe", errorLogPath) { UseShellExecute = true });
+	}
 
 	/// <summary>Appends a timestamped error line to <c>mod_manager_log.txt</c> in the app data directory.</summary>
 	private void LogError(string mod, string msg)

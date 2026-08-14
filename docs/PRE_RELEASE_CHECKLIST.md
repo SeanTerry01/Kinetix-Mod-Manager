@@ -29,7 +29,26 @@ Never tested, and it is the only thing in this release that **moves your mods**.
     in it afterwards. Nothing is deleted until everything has been copied, so the mods should exist somewhere in
     every failure case.
 
-### 1.2 SKSE and SSE Engine Fixes — the whole file-picking rework
+### 1.2 Downloading a mod for a game that is not loaded — NEW, 2026-08-11
+
+Rewritten in response to a report: `NXM Error: Error reading JArray from JsonReader` whenever "Mod Manager
+Download" was pressed for a game other than the loaded one, or with no game loaded. The cause was the manager
+asking Nexus about the **loaded** game while taking the mod and file ids from the link — and, with no session, about
+Stardew Valley, its fallback. The link's own game is now what decides, and the old three-of-five-games switch is
+gone in favour of `GameProfiles.FindByNexusDomain`.
+
+*   From a game session, download a mod for a **different** game. Expect a choice: switch and install, or save it
+    for that game. Saved mods appear in that game's Downloads History (Ctrl+Shift+W).
+*   With **no session**, do the same. Expect no question — nothing is being interrupted, so it loads the game and
+    installs, saying which.
+*   **Moonlight Peaks and The Witcher 3** are the two that could never work before; try them if possible.
+*   A game the manager does not support should say so and name the domain, not fail as a parser error.
+*   Settings → Mods & Search → "When a download is for another game" (Ask / Switch / Save) should stop the question
+    appearing when set to Switch.
+*   Covered by 19 unit tests (`NxmLinkTests`), so the parsing and the domain-to-game mapping are proven for all five
+    games; what is unproven by ear is the prompt wording, the copy picker, and the switch-then-install sequence.
+
+### 1.3 SKSE and SSE Engine Fixes — the whole file-picking rework
 
 Unproven against a live install. This is the feature the GOG tester asked for.
 
@@ -51,7 +70,7 @@ accurate: the preloader is installed and the plugin it exists to load is not, so
 anything here. Its own log says so — `failed to search skse plugin directory`, then `loader finished`. Pressing
 Enter on that row should fetch the main plugin and put it in the mods folder.
 
-### 1.3 FMC Audio Remaster (The Witcher 3)
+### 1.4 FMC Audio Remaster (The Witcher 3)
 
 It was installed one level too deep and has **never loaded**. Repaired on disk on 2026-08-08; the repair itself
 is unverified.
@@ -59,7 +78,7 @@ is unverified.
 *   Launch The Witcher 3 and confirm the mod's audio changes are actually present.
 *   Check the game's own mod menu lists it once, under `modFMCAudioRemaster`, and not as a ghost called `mods`.
 
-### 1.4 The shutdown sequence
+### 1.5 The shutdown sequence
 
 Measured end to end (speech on the keypress, cue after it, process gone in about 4.5 seconds) but not heard.
 
@@ -70,7 +89,7 @@ Measured end to end (speech on the keypress, cue after it, process gone in about
 *   Note: the disconnect cue only plays when a game session is open. Closing a session with Ctrl+Shift+C already
     plays it, so exiting afterwards is silent by design. Say if you would rather hear it on every exit.
 
-### 1.5 The Witcher 3 mod list
+### 1.6 The Witcher 3 mod list
 
 Verified by reading the list programmatically, not by ear.
 
@@ -82,7 +101,7 @@ Verified by reading the list programmatically, not by ear.
     *   Mod Group: Shared Utils. Contains 8 mods. Collapsed.
 *   Expand the group with **Right Arrow** and confirm the eight shared-utility mods read sensibly.
 
-### 1.6 Mod settings offered as choices
+### 1.7 Mod settings offered as choices
 
 From commit `a5f0f2c`, which predates this session and was never ear-tested. It ships in this release.
 
@@ -135,7 +154,7 @@ The full reasoning for each lives in `docs/FUTURE_DEVELOPMENT_PLANS.txt` §6.
 *   **Zip-bundle Collections** — export a Collection as one zip with an embedded readme, pinning exact file IDs
     rather than "latest main file", so a shared setup reinstalls as the same versions.
 *   **Downloadable language packs** — worth doing only once non-English translations exist. The manager is
-    fully localised (about 1,418 keys) but English-only.
+    fully localised (about 1,470 keys) but English-only.
 *   **Voice notes on mods** — deferred by earlier decision.
 *   **Cyberpunk 2077 as a sixth game** — wanted, blocked on having the game and its accessibility mod installed
     to develop against. Nexus domain `cyberpunk2077`, game id 3333, Steam app 1091500, sold on GOG too.

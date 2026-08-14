@@ -89,7 +89,7 @@ Open the Settings Dashboard at any time with **Ctrl + P**. Everything you can co
 *   **Startup** — Show or hide the splash screen, choose whether to check for mod and manager updates at launch, and turn the spoken **welcome** and **goodbye** messages on or off.
 *   **Audio** — All sound options (see below).
 *   **Display** — Low-vision visual options: a **high-contrast colour scheme** (white-on-black, yellow-on-black, or black-on-yellow) and a **text size** (Normal, Large, or Extra Large). Both apply across the whole program and take effect as soon as you save — no restart needed. They change only what's drawn on screen and never affect screen-reader speech, so leaving them at their defaults keeps the normal appearance.
-*   **Mods & Search** — Search results per load, maximum backups kept per mod, whether to save your search history, and (for Skyrim and Fallout 4) **Protect Plugin Order and Creations**, which stops the game switching your Creations off when you start a new game — see "Keeping Your Creations On and Your Plugins in Order" below.
+*   **Mods & Search** — Search results per load, maximum backups kept per mod, whether to save your search history, **"When a download is for another game"** (see "Downloading a Mod for a Game You Don't Have Open" below), and (for Skyrim and Fallout 4) **Protect Plugin Order and Creations**, which stops the game switching your Creations off when you start a new game — see "Keeping Your Creations On and Your Plugins in Order" below.
 *   **AI** — Turn on optional AI features, pick an AI provider and model, and enter your own API key (see "AI Log Diagnosis" below).
 *   **Language** — Pick the manager's display language, or leave it on **Automatic** to follow Windows.
 
@@ -143,6 +143,26 @@ One reason to think about it first, which the manager says before it moves anyth
 Ticking or unticking the box moves the mods straight away, after asking. Nothing is deleted during the move: the mods are copied to the new place first and only removed from the old one once they have all arrived, so if anything goes wrong they are still where they were.
 
 If you already have mods staged in the manager's folder, they stay there until you choose otherwise — an update never moves them for you.
+
+---
+
+## Downloading a Mod for a Game You Don't Have Open
+
+You do not have to load a game before downloading a mod for it. Browsing Nexus, finding something you want and pressing **Mod Manager Download** works with a different game open, with no game open, and with the manager closed altogether — every download link names the game it is for, and the manager reads it from there.
+
+What happens next depends on where you were:
+
+*   **You were in that game already.** Nothing changes: the mod downloads and you are asked whether to install it, as always.
+*   **You were in a different game.** The mod is downloaded first — a download link expires within minutes, so waiting is not an option — and then you are asked what to do:
+    *   **Switch to that game and install it now.** The manager loads the mod's game and carries on with the install.
+    *   **Save it for that game and stay here.** Nothing about your session changes. The mod is filed under its own game, so the next time you load that game it is waiting in **Downloads History** (Ctrl + Shift + W), one keypress from installed.
+    *   **Escape** does the same as saving it, and says so. The download is never thrown away.
+*   **No game was open.** There is nothing to interrupt, so the manager loads the mod's game and installs it, telling you which game it went to.
+*   **You own that game twice.** You are asked which copy the mod is for. The link does not say, and the two copies are separate setups — installing into one does not install into the other.
+
+If you would rather not be asked, Settings (Ctrl + P) → **Mods & Search** → **"When a download is for another game"** offers three answers: **Ask me each time** (the default), **Switch to that game and install**, or **Save it for that game**. The mod is downloaded whichever you choose; the setting only decides whether the manager also leaves the session you are in.
+
+Two things it will tell you rather than fail at: a mod for a game the manager does not support says so and names the game as Nexus calls it, and a mod for a supported game you have not set up yet asks you to load that game once from the **Games** menu first.
 
 ---
 
@@ -218,6 +238,9 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Ctrl + K**: Manually assign a Nexus ID.
 *   **Ctrl + I**: Install a mod from an archive file. **`.zip`, `.7z`, and `.rar`** archives are all supported.
 *   **Ctrl + R**: **Read Description** - Speaks the full summary of the mod.
+*   **Ctrl + E**: **Change the Mod's Settings** - Where the mod's author has described its settings, they are offered as a **list to arrow through**, with each setting's explanation and the values it accepts. See "The Mods Menu" above for how this differs from the two below.
+*   **Ctrl + Shift + M**: **Edit the Config File Directly** - Opens the mod's `config.json` as text in the JSON editor, for a setting the author never described or a value outside the ones they listed. Most mods only write a config file the first time the game runs with the mod enabled.
+*   **Ctrl + M**: **Edit the Manifest** - Opens the mod's manifest, which holds its identity — name, version and update links — rather than its settings.
 *   **Apps Key**: View mod details.
 
 ### Profiles Tab Shortcuts
@@ -273,7 +296,13 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 
 The **Mods** menu (press **Alt**, then arrow to **Mods**) keeps its most common actions — **Install from Archive**, **Update All Mods**, and **Launch Game** — at the top, and groups everything else into **submenus** so you're not faced with one long list. Arrow to a submenu and press **Right Arrow** or **Enter** to open it. The submenus are:
 
-*   **Selected Mod** — actions on the mod highlighted in your list: edit note, config, or manifest; view dependencies; resolve missing requirements; view changelog or description; endorse; verify files.
+*   **Selected Mod** — actions on the mod highlighted in your list: edit note, settings, config file, or manifest; view dependencies; resolve missing requirements; view changelog or description; endorse; verify files.
+
+There are three ways into a mod's own files and settings, and it's worth knowing which does what:
+
+*   **Ctrl + E — Change Selected Mod's Settings.** The usual one. Where the mod's author has described its settings — a Content Patcher pack, a Mod Configuration Menu, a BepInEx config, or an ordinary Stardew config the manager can make sense of — you get a **list to arrow through** with the author's own explanation of each setting and the values it accepts, rather than a file to type into.
+*   **Ctrl + Shift + M — Edit Selected Mod's Config File Directly.** The same `config.json` opened as text in the JSON editor. Use it for a setting the author never described, or a value outside the ones they listed, which a list of choices cannot offer. Most mods only write a config file the first time the game runs with the mod enabled, so a brand-new mod may not have one yet.
+*   **Ctrl + M — Edit Selected Mod's Manifest.** The mod's identity — its name, version and update links — rather than its settings.
 *   **Install and Update Mods** — auto-match Nexus IDs, reinstall a downloaded mod, and check tracked mods for updates.
 *   **Profiles and Collections** — save a profile, export or install a Collection, import from Mod Organizer 2.
 *   **Health and Reports** — Check My Setup, Check Mod Requirements, Check for Broken Mods, File Conflicts, Update Coverage Report, Plugin Slot Usage, and Reset Ignored Requirements.

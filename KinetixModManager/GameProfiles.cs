@@ -553,6 +553,17 @@ public static class GameProfiles
 	public static GameProfile Require(string gameId) =>
 		Find(gameId) ?? throw new ArgumentException($"Unknown game id '{gameId}'.", nameof(gameId));
 
+	/// <summary>
+	/// The profile whose <see cref="GameProfile.NexusDomain"/> is <paramref name="domain"/> — the game named at the
+	/// start of every <c>nxm://</c> link — or <c>null</c> when the link is for a game this manager does not support.
+	/// A null answer is a sentence to say to the user, not a reason to guess: the alternative is asking Nexus about
+	/// one game's mod under another game's name, which is how the download path used to fail.
+	/// </summary>
+	public static GameProfile? FindByNexusDomain(string? domain) =>
+		string.IsNullOrWhiteSpace(domain)
+			? null
+			: All.FirstOrDefault(g => string.Equals(g.NexusDomain, domain, StringComparison.OrdinalIgnoreCase));
+
 	/// <summary>The display name for a game id, or <c>""</c> when no game is loaded.</summary>
 	public static string DisplayNameFor(string? gameId) => Find(gameId)?.DisplayName ?? "";
 

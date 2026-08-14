@@ -114,13 +114,14 @@ public partial class Form1
 			return;
 		}
 
-		OpenConfigEditor(mod.Name, manifestPath, delegate
+		// As with the settings editor: back to the mod whose manifest this is, however the editor was left.
+		EditModKeepingPlace(mod, () => OpenConfigEditor(mod.Name, manifestPath, delegate
 		{
 			// Re-scan so a corrected version is re-read; the refresh's prune pass also drops the mod
 			// from the updates list when its version now matches the latest. checkUpdates:false avoids
 			// re-running the full Nexus/GitHub update query.
 			_ = RefreshModList(checkUpdates: false);
-		}, Loc.T("config.labelManifest"));
+		}, Loc.T("config.labelManifest")));
 	}
 
 	/// <summary>
@@ -155,6 +156,46 @@ public partial class Form1
 		return null;
 	}
 
+	/// <summary>
+	/// Opens the selected mod's <c>config.json</c> in the JSON editor itself, bypassing the settings list.
+	///
+	/// The pair to <see cref="OpenSelectedModManifest"/>, and the answer to a gap the settings list created: once a
+	/// mod's settings could be offered as choices, there was no longer any way to reach the file behind them — and
+	/// a list can only offer what a mod declares. A setting an author never described, or a value outside the ones
+	/// they listed, is only reachable in the file.
+	/// </summary>
+	private void OpenSelectedModConfigFile()
+	{
+		if (!(listInstalled.SelectedItem is StardewMod mod))
+		{
+			Speak(Loc.T("common.noModSelected"));
+			return;
+		}
+		if (mod.IsGroup)
+		{
+			Speak(Loc.T("common.modGroupFirst"));
+			return;
+		}
+
+		string configPath = Path.Combine(mod.FolderPath, "config.json");
+		if (!File.Exists(configPath))
+		{
+			// Most mods write their config only after the game has run once with the mod enabled, so "not there
+			// yet" is the usual reason rather than anything being wrong.
+			Speak(Loc.T("modactions.noConfigFileSpeak", mod.Name));
+			SpeakBox(Loc.T("modactions.noConfigFileBox", mod.Name, GetShortcutString("OpenConfig")),
+				Loc.T("modactions.noConfigTitle"));
+			return;
+		}
+
+		EditModKeepingPlace(mod, () => OpenConfigEditor(mod.Name, configPath, delegate
+		{
+			// The file may have changed a version or a name the list shows, so re-read it — the same reason the
+			// manifest editor refreshes.
+			_ = RefreshModList(checkUpdates: false);
+		}, Loc.T("config.labelConfiguration")));
+	}
+
 	private void OpenSelectedModConfig()
 	{
 		if (!(listInstalled.SelectedItem is StardewMod mod))
@@ -168,6 +209,19 @@ public partial class Form1
 			return;
 		}
 
+		// Come back to the mod the settings were opened from, whichever of the editors below it turned out to
+		// need and however the user left it. Saving refreshes the list, which used to leave them somewhere else
+		// entirely — halfway through working down a long list, that means finding their place again every time.
+		EditModKeepingPlace(mod, () => OpenModSettingsFor(mod));
+	}
+
+	/// <summary>
+	/// Opens whichever settings editor suits <paramref name="mod"/>: the choices its author declared where they
+	/// can be read (Content Patcher, a Mod Configuration Menu, a BepInEx config, a Stardew config the manager can
+	/// make sense of), and the raw JSON editor only when nothing better is available.
+	/// </summary>
+	private void OpenModSettingsFor(StardewMod mod)
+	{
 		// A Content Patcher pack declares what each of its settings accepts, so it gets the settings editor
 		// rather than raw JSON: the choices are offered instead of typed. Checked before the config file exists,
 		// because a pack that has never been run has a schema but no config yet — and that is precisely when

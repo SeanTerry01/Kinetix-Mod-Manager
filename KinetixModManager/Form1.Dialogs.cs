@@ -78,13 +78,16 @@ public partial class Form1
 		// The list item text (the sound name) is already read by the screen reader on focus, so
 		// our announcement is just the description plus list position to avoid speaking the name
 		// twice. Spoken both when the selection changes by arrow key and when focus first lands on
-		// the list (Enter), so tabbing to the list reads the full description, not just the name.
+		// the list, so tabbing to the list reads the full description, not just the name.
 		Func<Task> announceSound = async () =>
 		{
 			if (lb.SelectedItem != null)
 			{
 				string key = lb.SelectedItem.ToString() ?? "";
 				await Task.Delay(100);
+				// Focus can have moved on during the wait, and speaking then would describe a list the user has
+				// already left — the same guard the shared list handlers use.
+				if (!lb.Focused) return;
 				Speak(Loc.T("soundDemo.announce", Loc.T("sound." + key), lb.SelectedIndex + 1, lb.Items.Count));
 			}
 		};
@@ -94,9 +97,14 @@ public partial class Form1
 			// combo) does not speak over the dialog opening.
 			if (lb.Focused) await announceSound();
 		};
-		lb.Enter += async delegate { await announceSound(); };
+		// GotFocus, not Enter: Enter does not fire when focus is restored to a control it never really left —
+		// coming back from a nested view, for one — and the list would then say nothing at all.
+		lb.GotFocus += async delegate { await announceSound(); };
 		lb.KeyDown += delegate(object? s, KeyEventArgs pe)
 		{
+			// Left/Right move the selection in a single-column list box exactly like Up/Down, which reads as the
+			// list jumping about for no reason. Every list in the app suppresses them.
+			if (pe.KeyCode == Keys.Left || pe.KeyCode == Keys.Right) { pe.Handled = pe.SuppressKeyPress = true; return; }
 			if (pe.KeyCode == Keys.Return && lb.SelectedItem != null)
 			{
 				_soundEngine.Play(lb.SelectedItem.ToString() ?? "", previewTheme);
@@ -125,6 +133,7 @@ public partial class Form1
 			Font = new Font("Segoe UI", 12f),
 			AccessibleName = Loc.T("themeMgr.installedThemes")
 		};
+		WireAccessibleDialogList(lb);
 
 		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
 		ShowInlineView(Loc.T("themeMgr.title"), (container, closeView) =>
