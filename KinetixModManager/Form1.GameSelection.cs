@@ -470,12 +470,25 @@ public partial class Form1
 		string chosen = folderBrowserDialog.SelectedPath;
 		if (!FolderContainsGameExe(game, chosen))
 		{
-			Speak(Loc.T("session.locateInvalidSpeak", targetName));
-			SpeakBox(
-				Loc.T("session.locateInvalidBox", targetName),
-				Loc.T("session.notInstalledTitle"),
-				MessageBoxButtons.OK,
-				MessageBoxIcon.Warning);
+			// Told after this returns, not during it.
+			//
+			// The folder picker closing sets the screen reader off re-reading the main window, and that lands on
+			// top of whatever is said or shown next — it is what swallowed a prompt's question elsewhere and left
+			// only the button audible. Clearing the field first means awaiting, and this method cannot: it answers
+			// a bool that decides whether a session loads, up a chain reaching SwitchActiveGame, whose result the
+			// cross-game download flow inspects on the very next line. Making that chain async would break it.
+			//
+			// So the message is posted to run once the message loop is free. Nothing waits on it: the answer is
+			// already no, the session is already being left alone, and this is purely telling the user why.
+			BeginInvoke(new Action(async () =>
+			{
+				if (!await SettleAfterForeignWindowAsync()) return;
+				SpeakBox(
+					Loc.T("session.locateInvalidBox", targetName),
+					Loc.T("session.notInstalledTitle"),
+					MessageBoxButtons.OK,
+					MessageBoxIcon.Warning);
+			}));
 			return false;
 		}
 

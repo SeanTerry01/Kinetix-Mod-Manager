@@ -47,9 +47,14 @@ public partial class Form1
 	private void AskFreeformAi()
 	{
 		if (!EnsureAiReady()) return;
-		string q = Interaction.InputBox(Loc.T("ai.askPrompt"), Loc.T("ai.askTitle"));
-		if (string.IsNullOrWhiteSpace(q)) return;
-		AskAiAbout(Loc.T("ai.askTitle"), q.Trim());
+
+		string? q = ShowTextPrompt(Loc.T("ai.askTitle"), Loc.T("ai.askPrompt"), "");
+		if (q == null) { Speak(Loc.T("common.changesCancelled")); return; }
+
+		q = q.Trim();
+		if (q.Length == 0) { Speak(Loc.T("ai.askEmpty")); return; }
+
+		AskAiAbout(Loc.T("ai.askTitle"), q);
 	}
 
 	/// <summary>

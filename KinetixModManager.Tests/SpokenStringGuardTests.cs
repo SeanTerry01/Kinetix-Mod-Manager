@@ -75,6 +75,24 @@ public class SpokenStringGuardTests
     }
 
     [Fact]
+    public void EveryBuiltInSuggestionCategoryHasAName()
+    {
+        // These keys are assembled as "curator.category" + the category's id, so the regex above can never see
+        // them and nothing else would notice them going missing. Renaming a built-in id — an ordinary-looking
+        // refactor — would leave the category picker reading "curator dot category dot cant by ear" out loud.
+        HashSet<string> known = EnglishKeys();
+        var missing = new List<string>();
+
+        foreach (SuggestionCategory category in SuggestionCategoryStore.Defaults())
+            if (!known.Contains(category.LocKey))
+                missing.Add($"{category.Id}  ->  {category.LocKey}");
+
+        Assert.True(missing.Count == 0,
+            "These built-in suggestion categories have no name in lang/en.json, so the category picker would read " +
+            "the key itself aloud. Add each one, or put the id back:\n  " + string.Join("\n  ", missing));
+    }
+
+    [Fact]
     public void NoPhraseIsDefinedTwice()
     {
         // A duplicated key is legal JSON and the last one silently wins, so two people can disagree about the

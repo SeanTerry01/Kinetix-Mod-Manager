@@ -659,13 +659,15 @@ public partial class Form1
 	/// <summary>Prompts the user to enter or replace their Nexus Mods API key, then refreshes the mod list.</summary>
 	private void PromptForApiKey()
 	{
-		string text = Interaction.InputBox(Loc.T("login.pasteApiKey"), Loc.T("login.title"), _settings.ApiKey);
-		if (!string.IsNullOrEmpty(text))
-		{
-			_settings.ApiKey = text.Trim();
-			_settings.Save();
-			_ = RefreshModList(checkUpdates: true);
-		}
+		string? text = ShowTextPrompt(Loc.T("login.title"), Loc.T("login.pasteApiKey"), _settings.ApiKey);
+		if (text == null) { Speak(Loc.T("common.changesCancelled")); return; }
+
+		text = text.Trim();
+		if (text.Length == 0) { Speak(Loc.T("login.keyEmpty")); return; }
+
+		_settings.ApiKey = text;
+		_settings.Save();
+		_ = RefreshModList(checkUpdates: true);
 	}
 
 	/// <summary>
@@ -741,13 +743,18 @@ public partial class Form1
 		if ((target ?? listInstalled.SelectedItem as StardewMod) is StardewMod stardewMod3)
 		{
 			string currentId = stardewMod3.NexusID ?? stardewMod3.GitHubRepo ?? "";
-			string input = Interaction.InputBox(
-				Loc.T("link.prompt", stardewMod3.Name),
+			string? typed = ShowTextPrompt(
 				Loc.T("link.title"),
-				currentId
-			).Trim();
+				Loc.T("link.prompt", stardewMod3.Name),
+				currentId);
 
-			if (!string.IsNullOrEmpty(input))
+			if (typed == null) { Speak(Loc.T("common.changesCancelled")); return; }
+
+			string input = typed.Trim();
+			// An emptied box leaves the link alone; "0" is what clears it, as the prompt says. Kept that way on
+			// purpose — it is documented in the prompt and people have it in their fingers.
+			if (input.Length == 0) { Speak(Loc.T("common.changesCancelled")); return; }
+
 			{
 				bool isGitHub = input.Contains("/");
 				string? val = (input == "0") ? null : input;

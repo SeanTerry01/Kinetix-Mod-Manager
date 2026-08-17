@@ -101,6 +101,49 @@ Moonlight Peaks and The Witcher 3 join the manager as fully supported games, alo
 
 ---
 
+## ✨ New: Suggested Mods — the mods that remove a wall, and why
+
+### 🎯 A second list, with a different promise
+
+*   The **Accessibility Suite** installs what a game *needs* before it can be played by ear at all. **Suggested Mods** answers the question that comes after that one: the game is playable now, so which mods remove a wall that is still there? Auto-fishing and time control for Stardew Valley; auto-tool-select and quick spells for Moonlight Peaks; audio lockpicking and the puzzle-pillar solvers for Skyrim and Fallout 4.
+*   The two are kept as **separate lists on purpose**, because they promise different things. Everything in the suite is required. **Nothing in Suggested Mods is** — every entry is optional, several make the game easier as well as more reachable, and each one says *why* it is there so you can turn it down on purpose rather than taking a list's word for it. It is called "Suggested" rather than "Recommended" for the same reason.
+*   Open it from the **Mods** menu → **Suggested Mods** → **"Suggested Mods for This Game"**.
+
+### 📖 Reading the list
+
+*   Mods are **grouped under category headings** that say how many are beneath them — *"Can't be done by ear, 3 mods"* — so a group you don't want can be skipped in a couple of presses. The alternative, repeating the category at the start of every row, buries the mod's name behind a phrase you have already heard.
+*   Each row reads as the mod's **name**, whether it is **Installed** or **Not installed**, and the reason it was suggested: *"Auto-Fishing. Not installed. The fishing minigame is a moving bar with no audio cue."* The installed check uses the strongest evidence available — Nexus ID, then mod ID, then name — so a mod you installed by hand is still recognised.
+*   **Enter** installs the mod you are on, after a confirmation. **Ctrl + G** opens its page so you can read about it first, the same key that opens a mod's page everywhere else. A game with nothing suggested for it yet says so plainly, because the list is filled in game by game and an empty one is an answer rather than a fault.
+
+### 🗂️ Your list and the shipped list stay separate
+
+*   There are **two sources**: the list that comes with the manager, and your own. You see them together, and where both describe the same mod **yours wins**.
+*   That split is the whole point. The shipped list is replaced by each new version of the manager, and your own list is never touched by an update — so a better shipped list can arrive without overwriting a reason you took the trouble to write, and nothing you write can freeze an out-of-date copy of the shipped list in place.
+
+### ✍️ Building a list of your own
+
+*   **Ctrl + Shift + F7** turns **Curation Mode** on or off. It is off to begin with, and while it is off the submenu holds only the commands that make sense — reading a list and importing one. Turn it on and three more appear, so the menu never offers a command you cannot use.
+*   **F7 marks the mod you are on, or unmarks it if it is already marked.** It works in your **Installed Mods** list *and* in **Find New Mods** — which matters, because otherwise you could only suggest a mod you had already installed, and recommending something for five games would mean installing it five times.
+*   Marking asks two things: a **category**, picked from a list, and a **reason**, in one line. The reason is the part worth care over — *"Auto-Fishing"* tells a reader nothing, while *"the fishing minigame is a moving bar with no audio cue"* tells them at once whether they need it. **Unmarking asks you to confirm**, because it throws away that sentence and nothing can bring it back.
+*   **Shift + F7** opens the mods you have marked, across every game. **Enter** changes a category or reason and **Delete** removes an entry. This is the only place to edit one, so that F7 means membership and nothing else — one key, one meaning.
+
+### 🏷️ Categories you can shape
+
+*   Four come with the manager: **Can't be done by ear**, **Much slower by ear**, **Bug fix or stability**, and **Makes the game easier**. That last one exists so a mod which also changes the difficulty says so, and a player who would rather keep the challenge can pass it by.
+*   The first two are also the test worth applying when you are unsure a mod belongs at all: **does the mechanic have to be read off the screen as it happens?** If it does, the mod that removes it is a good suggestion. That question settles most cases without needing an opinion about whether the mod is any good.
+*   **You are not limited to those four.** When none of them fit, **"New category..."** at the bottom of the pick list makes one on the spot — you are not sent to another screen and made to start the mod again.
+*   **Mods → Suggested Mods → Manage Categories** lists them in the order they are offered, each saying how many mods it holds. **Enter** renames (clearing the box puts a built-in's original name back), **Ctrl + N** adds, **Ctrl + Up / Ctrl + Down** reorders, and **Delete** removes. Deleting one that is in use **asks where its mods should go** and re-files them, so nothing is ever left pointing at a category that no longer exists. The four built-ins can be renamed and reordered but not deleted, since the shipped list is filed under them.
+
+### 🤝 Sharing a list with somebody else
+
+*   **Export Your Suggested Mods** writes your list to a file to pass on, asking for a name and an author — leave the author empty to stay anonymous. Only **your own** entries are exported, never the shipped list: a file carrying shipped entries would plant a frozen copy of them into the recipient's personal list, where they would then win over every future update. The categories your entries actually use travel with the file, so your headings arrive with them.
+*   **Import a Suggested Mods List** takes one in, and is available whether or not Curation Mode is on — receiving somebody's list is not the same as building one. Before anything is written it tells you what the file would do: *"3 new suggestions, 2 you already have described differently, and 4 already the same. Import it?"*
+*   **Where you disagree, you choose how to settle it** — keep your wording for all of them, use theirs for all of them, or **see each one and decide**. The bulk answers are there because a long list overlapping yours in a dozen places should not be a dozen prompts; the third is there because choosing between "mine" and "theirs" in bulk means choosing blind.
+*   Deciding one at a time shows you **both versions**, and asks about the **category and the reason separately** — so you can take their category and keep your own wording, which a single "mine or theirs" cannot express. A half you already agree about is not asked at all, so differing only over wording never makes you confirm the same category over and over. **Escape** at any point abandons the import with nothing written.
+*   **Duplicates are not something you have to watch for.** A mod is recognised by its Nexus ID (or its GitHub repository, or its mod ID, or failing those its name) scoped to the game, so importing the same file twice changes nothing the second time, and a mod that has merely been renamed is not treated as a disagreement.
+
+---
+
 ## ✨ New: A way to support development, for anyone who wants one
 
 *   **Help → Support Development (Donate)** opens a short note from the author and two ways to give: **PayPal** and **Cash App**. Both are buttons that open the payment page in your browser, and there is also a **Copy Cash Tag** button, which is the easier route if you'd rather pay from the Cash App on your phone than in a browser.

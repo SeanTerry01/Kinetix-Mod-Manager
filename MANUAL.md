@@ -182,7 +182,7 @@ While a question is on screen the rest of the window is switched off, so nothing
 
 Kinetix Mod Manager is fully keyboard-driven. The shortcuts are grouped by where they apply, and each group has its own topic in this manual's contents list, just below this one. Here is what each group covers:
 
-*   **Global Shortcuts**: Keys that work anywhere in the app — opening this manual, context help, launching the game, cycling focus with F6, opening Settings, logging in with your Nexus key, checking your remaining Nexus API requests, opening the downloads, backups, and error-log folders, and more.
+*   **Global Shortcuts**: Keys that work anywhere in the app — opening this manual, context help, launching the game, cycling focus with F6, opening Settings, logging in with your Nexus key, checking your remaining Nexus API requests, opening the downloads, backups, and error-log folders, turning Curation Mode on or off, and more.
 *   **Mod List Shortcuts (Installed Mods Tab)**: Managing your installed mods — enabling, disabling, deleting, searching, categorising, adding notes, saving profiles, exporting and installing Collections, endorsing mods, viewing dependencies, installing from a zip, reading descriptions, and opening a mod's Nexus page.
 *   **Profiles Tab Shortcuts**: Applying and deleting saved mod setups.
 *   **Backups Tab Shortcuts**: Restoring, deleting, and pruning your automatic mod backups.
@@ -211,6 +211,9 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Ctrl + Shift + L**: Open the error log.
 *   **Ctrl + H**: Open the **Accessibility Controls** viewer for the active game (a navigable drill-down of every control — see "Accessibility Controls Viewer" below).
 *   **Ctrl + Shift + H**: Open your **Search History** for the active game (see "Searching for Mods" below).
+*   **Ctrl + Shift + F7**: Turn **Curation Mode** on or off — the switch that reveals the commands for building your own Suggested Mods list. Works either way round, since turning it on is what it is for (see "Suggested Mods" below).
+*   **F7**: **Mark or unmark** the selected mod as a suggested mod. Works in the **Installed Mods** list and in **Find New Mods**. Only while Curation Mode is on.
+*   **Shift + F7**: Open **the mods you have marked**, across every game, where their categories and reasons can be edited. Only while Curation Mode is on.
 *   **Escape**: Close the Manual, Settings, or Sound Demo windows.
 
 ### Mod List Shortcuts (Installed Mods Tab)
@@ -304,6 +307,7 @@ There are three ways into a mod's own files and settings, and it's worth knowing
 *   **Ctrl + Shift + M — Edit Selected Mod's Config File Directly.** The same `config.json` opened as text in the JSON editor. Use it for a setting the author never described, or a value outside the ones they listed, which a list of choices cannot offer. Most mods only write a config file the first time the game runs with the mod enabled, so a brand-new mod may not have one yet.
 *   **Ctrl + M — Edit Selected Mod's Manifest.** The mod's identity — its name, version and update links — rather than its settings.
 *   **Install and Update Mods** — auto-match Nexus IDs, reinstall a downloaded mod, and check tracked mods for updates.
+*   **Suggested Mods** — read the suggested mods for this game, and import or export a list. With **Curation Mode** switched on it also holds the commands for building a list of your own: mark or unmark the selected mod, review the mods you have marked, and manage your categories. Those three are not shown while Curation Mode is off, so the menu never offers you a command you cannot use. See "Suggested Mods" below.
 *   **Profiles and Collections** — save a profile, export or install a Collection, import from Mod Organizer 2.
 *   **Health and Reports** — Check My Setup, Check Mod Requirements, Check for Broken Mods, File Conflicts, Update Coverage Report, Plugin Slot Usage, and Reset Ignored Requirements.
 *   **Load Order and Files** (Skyrim & Fallout 4 only) — auto-sort, choose file-conflict winners, load-order rules, rebuild or purge deployment, and export or import your load order. This whole submenu is hidden for Stardew Valley.
@@ -599,6 +603,133 @@ Some mod pages hold more than one download, and picking the wrong one — or mis
 **If a mod is already half-installed**, **Check My Setup** (Ctrl + Shift + K) reports it — for example *"SSE Engine Fixes is installed but incomplete: Part 2 — the preloader is missing"* — with **Enter** on that line to fetch the missing part. This works no matter how the mod arrived: installed by hand, brought in by a Collection, or carried over by the Mod Organizer 2 import.
 
 **Uninstalling the script extender (Skyrim & Fallout 4):** SKSE and F4SE install into the game folder itself rather than as normal mods, so they don't show up in your mod list. To remove one cleanly, open the **Mods** menu → **Game and Maintenance** and choose **"Uninstall Script Extender (SKSE/F4SE)"**. The manager removes the files it installed (asking you to confirm first). Remember that anything relying on the script extender — including the Mod Configuration Menu — stops working until you reinstall it, so only do this if you mean to.
+
+---
+
+## Suggested Mods
+
+The **Accessibility Suite** above is the set of mods a game *needs* before it can be played by ear at all. **Suggested Mods** answers a different question: once the game is playable, which mods remove a wall that is still there?
+
+These are two separate lists with two separate promises, and it is worth keeping them straight. Everything in the suite is required. **Nothing in the Suggested Mods list is required** — every entry is optional, several of them make the game easier as well as more reachable, and each one tells you *why* it is there so you can decide for yourself rather than taking the list's word for it.
+
+Open it from the **Mods** menu → **Suggested Mods** → **"Suggested Mods for This Game"**. It has no keyboard shortcut by default, but you can give it one in **Settings → Shortcut Manager** (the action is named "SuggestedMods").
+
+### Reading the list
+
+The list is grouped under **category headings**, each saying how many mods are under it — for example *"Can't be done by ear, 3 mods"*. The mods for that category follow it, and then the next heading. If a category has nothing in it for this game, it gets no heading at all.
+
+Grouping this way means you can skip a whole group in a couple of presses when it isn't what you're after, rather than hearing the same category name repeated at the start of every row.
+
+Each mod's row reads as its **name**, then whether it is **Installed** or **Not installed**, then the reason it was suggested. For example:
+
+> *Auto-Fishing. Not installed. The fishing minigame is a moving bar with no audio cue.*
+
+The installed check is made on the strongest evidence available — the mod's Nexus ID first, then its manifest ID, then its name — so a mod you installed by hand is still recognised.
+
+Two keys work on a mod:
+
+*   **Enter** — install it. The manager asks you to confirm first. If you are a Nexus Premium member it downloads and installs on its own; otherwise it opens the mod's **Files** page and installs it when the download comes back (the same arrangement described under the Accessibility Suite, and for the same reason — Nexus does not give the API a download link for a free account). Pressing Enter on a mod you already have simply says so.
+*   **Ctrl + G** — open the mod's page, so you can read about it before deciding. This is the same key that opens a mod's page everywhere else in the manager.
+
+Pressing **Enter** on a category heading just re-reads it. **Escape** closes the list.
+
+If a game has nothing suggested for it yet, the manager says so plainly — the list is filled in game by game, and an empty one is an answer rather than a fault.
+
+### Where the suggestions come from
+
+There are two sources and they are kept deliberately separate:
+
+*   **The list that ships with the manager**, which is replaced whole by each new version.
+*   **Your own list**, kept with your settings, which an update never touches.
+
+You see both together, and where the two describe the same mod, **yours wins**. That is the point of splitting them: a new version of the manager can bring a better shipped list without overwriting a reason you took the trouble to write, and nothing you write can freeze an out-of-date copy of the shipped list in place.
+
+### Curation Mode: building your own list
+
+Everything above is about reading a list. To *build* one, turn on **Curation Mode** with **Ctrl + Shift + F7**. The manager says which way you have just switched it, and it stays switched between sessions.
+
+Curation Mode is off to begin with, and while it is off the Suggested Mods submenu holds only the two commands that make sense — reading the list and importing one. Turn it on and three more appear.
+
+With Curation Mode on:
+
+*   **F7** — **mark** the mod you are on as one worth suggesting, or **unmark** it if it is already on your list. This works both in your **Installed Mods** list and in **Find New Mods**, which matters: you can suggest a mod you have never installed, instead of having to install something on all five games just to recommend it.
+*   **Shift + F7** — open **the mods you have marked**, across every game.
+
+All three can be remapped in **Settings → Shortcut Manager** (the actions are named "CurationMode", "MarkSuggestion" and "SuggestedList"). That is worth knowing if your screen reader already claims one of them: F7 was chosen because it is the last bare function key the manager does not use, but a screen-reader add-on can lay claim to any key, in which case the app never sees it and rebinding is the fix.
+
+Marking a mod asks you two things. First a **category** — what kind of wall this mod removes — picked from a list. Then a **reason**, in one line. The reason is the part worth taking care over: *"Auto-Fishing"* tells a reader nothing, whereas *"the fishing minigame is a moving bar with no audio cue"* tells them at once whether they need it. You can leave the reason empty and it will say so, but the entry is much less use that way.
+
+**Unmarking asks you to confirm**, because it throws away the reason you typed and nothing here can bring it back.
+
+### The mods you have marked (Shift + F7)
+
+This list shows every mod you have marked, for all games, reading as *game, mod, category, reason*. Three keys work on a row:
+
+*   **Enter** — change the category and reason. This is the *only* place to edit them: **F7** now means membership and nothing else, so that one key has one meaning.
+*   **Delete** — remove the entry, after confirming.
+*   **Escape** — close the list.
+
+### Categories
+
+A category is the heading a suggestion is filed under, and what the Suggested Mods list groups by. Four come with the manager:
+
+*   **Can't be done by ear** — the mechanic it removes cannot be done by ear at all: a timing minigame, a visual puzzle, a moving target.
+*   **Much slower by ear** — the mechanic *can* be done by ear, but costs several times more time or keystrokes than it should.
+*   **Bug fix or stability** — an unofficial patch, a crash fix, a performance mod. Everyone benefits from these, sighted or not.
+*   **Makes the game easier** — it makes the game easier as well as more reachable. Worth saying out loud, because a player who would rather keep the challenge can then pass it by on purpose.
+
+Those first two are the test worth applying when you are unsure whether a mod belongs at all: **does the mechanic have to be read off the screen as it happens?** If it does, the mod that removes it is a good suggestion. That question decides most cases without needing an opinion about whether the mod is any good.
+
+You are not limited to those four. When you are marking a mod and none of them fit, choose **"New category..."** at the bottom of the pick list and give it a name — you are not sent away to another screen and made to start the mod again.
+
+### Managing categories
+
+**Mods** menu → **Suggested Mods** → **Manage Categories** lists them in the order they are offered, each saying how many mods are filed under it and whether it came with the manager. Four keys:
+
+*   **Enter** — rename it. On one of the four built-in categories, clearing the box puts its original name back, because a rename sits in front of the original rather than replacing it.
+*   **Ctrl + N** — add a category.
+*   **Ctrl + Up / Ctrl + Down** — move it earlier or later. This order is what the pick list and the Suggested Mods headings both follow, so the ones you reach for most can sit at the top.
+*   **Delete** — remove it. If mods are filed under it, the manager asks **where they should go** and re-files them; nothing is ever left pointing at a category that no longer exists.
+
+The four built-in categories can be renamed and reordered but **not deleted**. The list that ships with the manager is filed under them, so removing one would leave those entries with no heading to appear under.
+
+### Sharing a list: export
+
+**Mods** menu → **Suggested Mods** → **Export Your Suggested Mods** writes your list to a file you can pass to somebody else.
+
+It asks for a **name** for the list (whoever opens it hears this) and an **author** — leave the author empty to stay anonymous. If you have marked mods for more than one game it also asks whether to export just the game you are in or everything; with only one game's worth marked there is nothing to decide, so it doesn't ask.
+
+Only **your own** suggestions are exported, never the list that shipped with the manager. That is deliberate: a file containing shipped entries would plant a frozen copy of them into the recipient's personal list, where they would then win over every future update.
+
+The categories your entries actually use travel with the file, so the person opening it gets your headings and not just bare names. Categories you have that nothing in the file uses are left out.
+
+### Sharing a list: import
+
+**Mods** menu → **Suggested Mods** → **Import a Suggested Mods List** takes a file in. It is available whether or not Curation Mode is on, because receiving somebody's list is not the same as building one.
+
+Before anything is written, the manager tells you what the file would do:
+
+> *Sean's Moonlight Peaks picks, by Sean. 3 new suggestions, 2 you already have described differently, and 4 already the same. Import it?*
+
+Answer **No** and nothing changes. Answer **Yes** and, **if any of them clash**, you are asked how to settle it — three ways:
+
+*   **Keep what I already wrote, for all of them.**
+*   **Use this list's wording, for all of them.**
+*   **Let me see each one and decide.**
+
+The first two are one decision for the whole file, which is what you want when a long list overlaps yours in a dozen places and you already know which you prefer. The third goes through the clashing mods one at a time, and for each one shows you **both versions** so you are not choosing blind.
+
+When you decide one by one, the **category** and the **reason** are asked separately, each as a list of two reading *"Mine: ..."* and *"Theirs: ..."*. That is what lets you take their category but keep your own wording, or the other way round — a single "mine or theirs" cannot express that. A half the two of you already agree about is not asked at all, so if you differ only over wording you are never made to confirm the same category over and over.
+
+The title of each question says which mod and how far through you are — *"Reason for Quick Spells - 2 of 3"*. **Escape** at any point abandons the whole import with nothing written.
+
+Afterwards the manager reports what happened — added, replaced or decided, and how many were already the same — and mentions any new categories that came with the file. Anything that landed somewhere you'd rather it hadn't can be corrected from the **Shift + F7** list.
+
+Duplicates are not something you need to watch for. A mod is recognised as the same suggestion by its Nexus ID (or its GitHub repository, or its mod ID, or failing all of those its name), scoped to the game, so importing the same file twice changes nothing the second time. A mod that has merely been renamed is recognised as the same mod and does not count as a disagreement.
+
+### Where the files are kept
+
+Both your marked list and your categories live with your settings, in `%AppData%\AudiVentureGames\KinetixModManager`, as `suggested-mods.json` and `suggestion-categories.json`. The list that ships with the manager sits in the `data` folder next to the program itself. You never need to touch any of them by hand, but they are plain text if you ever want to look.
 
 ---
 

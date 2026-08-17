@@ -77,6 +77,10 @@
     <!-- Self-contained Visual C++ runtime consistency check, plus the Wine detection it defers to (BCL only). -->
     <Compile Include="..\KinetixModManager\VcRuntimeCheck.cs" />
     <Compile Include="..\KinetixModManager\PlatformInfo.cs" />
+    <!-- Self-contained store behind the curator's list of mods worth suggesting (BCL + Newtonsoft + GameProfiles). -->
+    <Compile Include="..\KinetixModManager\SuggestedMod.cs" />
+    <!-- Self-contained read/write/merge rules for a shared suggestions list (BCL + Newtonsoft + SuggestedMod). -->
+    <Compile Include="..\KinetixModManager\SuggestionList.cs" />
   </ItemGroup>
 
   <!-- Real files.json bodies, recorded from the Nexus API rather than written by hand. The picking rules exist

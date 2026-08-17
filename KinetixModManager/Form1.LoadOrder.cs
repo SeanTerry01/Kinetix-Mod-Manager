@@ -228,7 +228,7 @@ public partial class Form1
 	/// Writes the active game's load order (mod priority + plugin order) to a JSON file the user chooses, so it
 	/// can be backed up or shared. Skyrim SE / Fallout 4 only; mods themselves are not exported, only their order.
 	/// </summary>
-	private void ExportLoadOrder()
+	private async Task ExportLoadOrder()
 	{
 		if (!IsBethesdaGame)
 		{
@@ -253,9 +253,15 @@ public partial class Form1
 			Filter = Loc.T("loadorder.fileFilter"),
 			FileName = $"{game}-loadorder-{DateTime.Now:yyyy-MM-dd}.json"
 		};
-		if (dlg.ShowDialog() != DialogResult.OK)
+		DialogResult picked = dlg.ShowDialog();
+
+		// Before anything is said or shown: the picker closing sets the reader off re-reading the main window,
+		// which otherwise lands on top of the next sentence or swallows a prompt's question.
+		if (!await SettleAfterForeignWindowAsync()) return;
+
+		if (picked != DialogResult.OK)
 		{
-			Speak(Loc.T("common.changesCancelled"));
+			SpeakWithBearings(Loc.T("common.changesCancelled"));
 			return;
 		}
 
@@ -263,7 +269,7 @@ public partial class Form1
 		{
 			File.WriteAllText(dlg.FileName, JsonConvert.SerializeObject(data, Formatting.Indented));
 			_soundEngine.Play("load_complete");
-			Speak(Loc.T("loadorder.exported", data.ModPriority.Count, data.PluginOrder.Count));
+			SpeakWithBearings(Loc.T("loadorder.exported", data.ModPriority.Count, data.PluginOrder.Count));
 		}
 		catch (Exception ex)
 		{
@@ -278,7 +284,7 @@ public partial class Form1
 	/// for mods/plugins that are not installed are dropped, and anything installed but missing from the file is
 	/// folded back in. Refuses files exported for a different game. Skyrim SE / Fallout 4 only.
 	/// </summary>
-	private void ImportLoadOrder()
+	private async Task ImportLoadOrder()
 	{
 		if (!IsBethesdaGame)
 		{
@@ -293,9 +299,14 @@ public partial class Form1
 			Filter = Loc.T("loadorder.fileFilter"),
 			CheckFileExists = true
 		};
-		if (dlg.ShowDialog() != DialogResult.OK)
+		DialogResult picked = dlg.ShowDialog();
+
+		// Before anything is said or shown — everything below either speaks or opens a prompt that speaks.
+		if (!await SettleAfterForeignWindowAsync()) return;
+
+		if (picked != DialogResult.OK)
 		{
-			Speak(Loc.T("common.changesCancelled"));
+			SpeakWithBearings(Loc.T("common.changesCancelled"));
 			return;
 		}
 

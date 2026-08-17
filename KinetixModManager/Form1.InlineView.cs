@@ -122,9 +122,10 @@ public partial class Form1
 	/// <summary>
 	/// Asks for a line of text inside the window, returning what was typed or <c>null</c> if it was cancelled.
 	///
-	/// The in-window equivalent of <c>Interaction.InputBox</c>, which opens a window of its own and so costs the
-	/// spoken window title on the way in and another on the way out. Around a dozen callers still use InputBox
-	/// and could move here; this exists so new code doesn't have to add to that number.
+	/// The in-window replacement for <c>Interaction.InputBox</c>, which opened a window of its own and so cost the
+	/// spoken window title on the way in and another on the way out — and whose text box carried no accessible
+	/// name, so a screen reader announced it as nothing but "edit" followed by "OK", with the question never
+	/// attached to the field being answered. As of 2026-08-17 every caller has moved here and none remain.
 	///
 	/// Enter accepts, Escape cancels. Cancelling is distinct from clearing the box, which InputBox cannot express
 	/// — it reports an emptied box and a cancelled one identically, so callers there have to treat "" as "leave

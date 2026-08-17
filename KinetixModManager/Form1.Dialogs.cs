@@ -167,23 +167,26 @@ public partial class Form1
 		};
 		button2.Click += delegate
 		{
-			string text = Interaction.InputBox(Loc.T("themeMgr.createPrompt"), Loc.T("themeMgr.createTitle"));
-			if (!string.IsNullOrEmpty(text))
+			string? text = ShowTextPrompt(Loc.T("themeMgr.createTitle"), Loc.T("themeMgr.createPrompt"), "");
+			if (text == null) { Speak(Loc.T("common.changesCancelled")); return; }
+
+			text = text.Trim();
+			if (text.Length == 0) { Speak(Loc.T("themeMgr.nameEmpty")); return; }
+
+			string text2 = Path.Combine(themesPath, text);
+			// Said rather than passed over in silence: a name that already exists used to leave the button looking
+			// like it had done nothing, with no way to tell that from a failure.
+			if (Directory.Exists(text2)) { Speak(Loc.T("themeMgr.nameTaken", text)); return; }
+
+			Directory.CreateDirectory(text2);
+			foreach (string key in SoundEngine.SoundDescriptions.Keys)
 			{
-				string text2 = Path.Combine(themesPath, text);
-				if (!Directory.Exists(text2))
-				{
-					Directory.CreateDirectory(text2);
-					foreach (string key in SoundEngine.SoundDescriptions.Keys)
-					{
-						Directory.CreateDirectory(Path.Combine(text2, key));
-					}
-					Directory.CreateDirectory(Path.Combine(text2, "logo"));
-					Speak(Loc.T("themeMgr.created"));
-					Process.Start("explorer.exe", text2);
-					RefreshList();
-				}
+				Directory.CreateDirectory(Path.Combine(text2, key));
 			}
+			Directory.CreateDirectory(Path.Combine(text2, "logo"));
+			Speak(Loc.T("themeMgr.created"));
+			Process.Start("explorer.exe", text2);
+			RefreshList();
 		};
 		Button button3 = new Button
 		{

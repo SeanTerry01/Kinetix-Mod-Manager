@@ -323,6 +323,17 @@ public class AppSettings
 	public bool SaveSearchHistory { get; set; } = false;
 
 	/// <summary>
+	/// Whether the curation tools are switched on: marking a mod as one worth suggesting to other players
+	/// (<c>MarkSuggestion</c>), and the list of everything marked so far (<c>SuggestedList</c>). Toggled with
+	/// <c>CurationMode</c>, which works whether or not curation is currently on. See <see cref="SuggestedModStore"/>.
+	///
+	/// Off by default rather than hidden. Building a suggestion list is a real thing a user may want to do — and
+	/// has to be, for one list to be shareable with another player — but it is not what most people open the
+	/// manager for, so nothing about it is in the way until it is asked for.
+	/// </summary>
+	public bool CuratorMode { get; set; } = false;
+
+	/// <summary>
 	/// Mods the user has told the manager arrive with another mod, per game:
 	/// <c>game -> child UniqueID -> parent UniqueID</c>.
 	///
@@ -826,6 +837,30 @@ public class AppSettings
 			{
 				"TrackedMods",
 				Keys.T | Keys.Shift | Keys.Control
+			},
+			// The curation keys sit together on F7, which is the only bare function key left: F1 to F6, F8 and F9
+			// are taken above, F10 opens the menu bar for Windows, and F12 is spoken for by screen-reader add-ons
+			// — a key the app never receives is not a free key. They are remappable like everything else here
+			// precisely because that collision will happen to someone else on some other key.
+			// Reading the suggested list is the one of these four that is not about curating, so it gets no key
+			// by default — the Mods menu is enough for something opened occasionally, and this way it costs
+			// nobody a combination they were using. It is in the table so it can be given one in the shortcut
+			// manager, which an unlisted command could never be.
+			{
+				"SuggestedMods",
+				Keys.None
+			},
+			{
+				"CurationMode",
+				Keys.F7 | Keys.Shift | Keys.Control
+			},
+			{
+				"MarkSuggestion",
+				Keys.F7
+			},
+			{
+				"SuggestedList",
+				Keys.F7 | Keys.Shift
 			}
 		})
 		{

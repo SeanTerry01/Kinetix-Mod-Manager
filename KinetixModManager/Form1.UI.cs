@@ -127,10 +127,40 @@ public partial class Form1
 		grpInstall.DropDownItems.Add(Loc.T("menu.trackedMods", GetShortcutString("TrackedMods")), null, async delegate { await ShowTrackedMods(); });
 		toolStripMenuItem2.DropDownItems.Add(grpInstall);
 
+		// Submenu: building a list of mods worth suggesting to other players. Everything but the on/off switch is
+		// disabled until curation is on — shown rather than hidden, so the two commands are discoverable and the
+		// switch that wakes them is sitting directly above. See Form1.Curator.
+		var grpCurate = new ToolStripMenuItem(Loc.T("menu.groupCurate")) { Name = "menuGroupCurate" };
+		// The list itself first and always available: it is the thing this submenu is named after, and reading it
+		// has nothing to do with whether you are building one.
+		grpCurate.DropDownItems.Add(Loc.T("menu.suggestedMods", GetShortcutString("SuggestedMods")), null,
+			delegate { ShowSuggestedMods(); }).Name = "menuSuggestedMods";
+		// Import and export sit together, and neither is gated on curation mode. Taking in somebody else's list is
+		// how a player gets one at all, and separating the pair so that one of them came and went with a setting
+		// was worse than the alternative — an export with nothing marked simply says so.
+		grpCurate.DropDownItems.Add(Loc.T("menu.importSuggestions"), null,
+			async delegate { await ImportSuggestions(); }).Name = "menuImportSuggestions";
+		grpCurate.DropDownItems.Add(Loc.T("menu.exportSuggestions"), null,
+			async delegate { await ExportSuggestions(); }).Name = "menuExportSuggestions";
+		grpCurate.DropDownItems.Add(new ToolStripSeparator());
+		grpCurate.DropDownItems.Add(Loc.T("menu.curationMode", GetShortcutString("CurationMode")), null,
+			delegate { ToggleCurationMode(); }).Name = "menuCurationMode";
+		grpCurate.DropDownItems.Add(Loc.T("menu.markSuggestion", GetShortcutString("MarkSuggestion")), null,
+			delegate { ToggleModSuggestion(); }).Name = "menuMarkSuggestion";
+		grpCurate.DropDownItems.Add(Loc.T("menu.suggestedList", GetShortcutString("SuggestedList")), null,
+			delegate { ShowSuggestedModsReview(); }).Name = "menuSuggestedList";
+		grpCurate.DropDownItems.Add(Loc.T("menu.manageCategories"), null,
+			delegate { ShowCategoryManager(); }).Name = "menuManageCategories";
+		toolStripMenuItem2.DropDownItems.Add(grpCurate);
+
+		// Curation can be switched on from the keyboard without the menu having been opened, so the tick and the
+		// greying are brought up to date as the menu opens rather than only when the switch itself is used.
+		toolStripMenuItem2.DropDownOpening += delegate { UpdateCuratorMenuState(); };
+
 		// Submenu: profiles and shareable collections.
 		var grpProfiles = new ToolStripMenuItem(Loc.T("menu.groupProfiles")) { Name = "menuGroupProfiles" };
 		grpProfiles.DropDownItems.Add(Loc.T("menu.saveProfile", GetShortcutString("SaveProfile")), null, delegate { CreateProfileFromCurrent(); });
-		grpProfiles.DropDownItems.Add(Loc.T("menu.exportCollection", GetShortcutString("ExportCollection")), null, delegate { ExportCollection(); });
+		grpProfiles.DropDownItems.Add(Loc.T("menu.exportCollection", GetShortcutString("ExportCollection")), null, async delegate { await ExportCollection(); });
 		grpProfiles.DropDownItems.Add(Loc.T("menu.installCollection", GetShortcutString("InstallCollection")), null, async delegate { await InstallCollectionAsync(); });
 		grpProfiles.DropDownItems.Add(Loc.T("menu.importMO2"), null, delegate { ImportFromMO2(); }).Name = "menuImportMO2";
 		toolStripMenuItem2.DropDownItems.Add(grpProfiles);
@@ -154,8 +184,8 @@ public partial class Form1
 		grpLoad.DropDownItems.Add(Loc.T("menu.manageLoadRules"), null, delegate { ShowLoadOrderRules(); }).Name = "menuManageLoadRules";
 		grpLoad.DropDownItems.Add(Loc.T("menu.rebuildDeploy"), null, delegate { RebuildDeployment(); }).Name = "menuRebuildDeploy";
 		grpLoad.DropDownItems.Add(Loc.T("menu.purgeDeploy"), null, delegate { PurgeDeployment(); }).Name = "menuPurgeDeploy";
-		grpLoad.DropDownItems.Add(Loc.T("menu.exportLoadOrder"), null, delegate { ExportLoadOrder(); }).Name = "menuExportLoadOrder";
-		grpLoad.DropDownItems.Add(Loc.T("menu.importLoadOrder"), null, delegate { ImportLoadOrder(); }).Name = "menuImportLoadOrder";
+		grpLoad.DropDownItems.Add(Loc.T("menu.exportLoadOrder"), null, async delegate { await ExportLoadOrder(); }).Name = "menuExportLoadOrder";
+		grpLoad.DropDownItems.Add(Loc.T("menu.importLoadOrder"), null, async delegate { await ImportLoadOrder(); }).Name = "menuImportLoadOrder";
 		toolStripMenuItem2.DropDownItems.Add(grpLoad);
 
 		// Submenu: game launch/setup and maintenance operations.

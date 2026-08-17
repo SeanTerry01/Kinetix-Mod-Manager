@@ -42,11 +42,17 @@ public partial class Form1
 
 		// 1. Locate the MO2 folder (the one containing "mods" and "profiles").
 		string baseDir;
+		DialogResult picked;
 		using (var dlg = new FolderBrowserDialog { Description = Loc.T("mo2.pickFolder"), UseDescriptionForTitle = true })
 		{
-			if (dlg.ShowDialog() != DialogResult.OK) { Speak(Loc.T("common.changesCancelled")); return; }
+			picked = dlg.ShowDialog();
 			baseDir = dlg.SelectedPath;
 		}
+
+		// Before anything is said or shown: the folder picker closing sets the reader off re-reading the main
+		// window, which otherwise lands on top of the next sentence or swallows a prompt's question.
+		if (!await SettleAfterForeignWindowAsync()) return;
+		if (picked != DialogResult.OK) { SpeakWithBearings(Loc.T("common.changesCancelled")); return; }
 
 		var ini = Mo2ReadIni(Path.Combine(baseDir, "ModOrganizer.ini"));
 		string modsDir = Mo2ResolveDir(ini, "Settings/mod_directory", baseDir, "mods");

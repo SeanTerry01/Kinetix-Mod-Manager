@@ -61,7 +61,7 @@ public partial class Form1
 	/// Exports the current enabled loadout to a collection file the user picks. Mods without a Nexus id can't be
 	/// re-downloaded, so they're recorded only as "you'll need to supply these yourself" rather than dropped.
 	/// </summary>
-	private void ExportCollection()
+	private async Task ExportCollection()
 	{
 		if (_settings.ActiveGame == "None")
 		{
@@ -100,9 +100,21 @@ public partial class Form1
 			return;
 		}
 
-		string name = Interaction.InputBox(Loc.T("collection.namePrompt"), Loc.T("collection.nameTitle"), Loc.T("collection.nameDefault"));
-		if (string.IsNullOrWhiteSpace(name)) return;
-		collection.Name = name.Trim();
+		// ShowTextPrompt, not Interaction.InputBox. InputBox is a window of its own whose text box carries no
+		// accessible name, so a screen reader announced it as nothing but "edit" followed by "OK" — the question
+		// itself was never attached to the field being answered. It also costs the spoken window caption on the
+		// way in and again on the way out, which is the whole reason the rest of the app's screens moved inside
+		// the main window. The inline prompt labels its field and stays put.
+		string? name = ShowTextPrompt(
+			Loc.T("collection.nameTitle"),
+			Loc.T("collection.namePrompt"),
+			Loc.T("collection.nameDefault"));
+
+		if (name == null) { Speak(Loc.T("common.changesCancelled")); return; }
+
+		name = name.Trim();
+		if (name.Length == 0) { Speak(Loc.T("collection.nameEmpty")); return; }
+		collection.Name = name;
 
 		using SaveFileDialog dialog = new SaveFileDialog
 		{
@@ -110,7 +122,12 @@ public partial class Form1
 			InitialDirectory = CollectionsDir(),
 			FileName = MakeSafeFileName(name) + ".json"
 		};
-		if (dialog.ShowDialog() != DialogResult.OK) return;
+		DialogResult picked = dialog.ShowDialog();
+
+		// Before anything is said or shown: the picker closing sets the reader off re-reading the main window,
+		// which otherwise lands on top of the next sentence or swallows a prompt's question.
+		if (!await SettleAfterForeignWindowAsync()) return;
+		if (picked != DialogResult.OK) return;
 
 		try
 		{
@@ -124,7 +141,7 @@ public partial class Form1
 		}
 
 		_soundEngine.Play("load_complete");
-		Speak(Loc.T("collection.exported", collection.Mods.Count, collection.UnavailableLocal.Count));
+		SpeakWithBearings(Loc.T("collection.exported", collection.Mods.Count, collection.UnavailableLocal.Count));
 	}
 
 	/// <summary>
@@ -144,13 +161,18 @@ public partial class Form1
 			Filter = Loc.T("collection.fileFilter"),
 			InitialDirectory = CollectionsDir()
 		};
-		if (dialog.ShowDialog() != DialogResult.OK) return;
+		DialogResult picked = dialog.ShowDialog();
+
+		// Before anything is said or shown: the picker closing sets the reader off re-reading the main window,
+		// which otherwise lands on top of the next sentence or swallows a prompt's question.
+		if (!await SettleAfterForeignWindowAsync()) return;
+		if (picked != DialogResult.OK) return;
 
 		Collection? collection = Collection.Load(dialog.FileName);
 		if (collection == null || collection.Mods.Count == 0)
 		{
 			_soundEngine.Play("error");
-			Speak(Loc.T("collection.loadFailed"));
+			SpeakWithBearings(Loc.T("collection.loadFailed"));
 			return;
 		}
 		// A collection is game-specific (mod ids and load order only mean anything for the game it was built for).

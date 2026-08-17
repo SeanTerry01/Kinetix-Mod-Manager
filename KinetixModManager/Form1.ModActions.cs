@@ -31,23 +31,44 @@ public partial class Form1
 	/// <summary>Prompts the user to assign a custom category string to the selected mod.</summary>
 	private void SetManualCategory()
 	{
-		if (listInstalled.SelectedItem is StardewMod stardewMod)
+		if (listInstalled.SelectedItem is not StardewMod stardewMod) return;
+
+		string? text = ShowTextPrompt(
+			Loc.T("modactions.changeCategoryTitle"),
+			Loc.T("modactions.changeCategoryPrompt", stardewMod.Name),
+			stardewMod.Category);
+
+		if (text == null) { Speak(Loc.T("common.changesCancelled")); return; }
+
+		text = text.Trim();
+
+		// An emptied box now means something, and the obvious thing: put the mod back where it was before a
+		// category was ever assigned. The old input box could not tell that from a cancel, so it had to treat both
+		// as "do nothing" and there was no way to undo a category at all.
+		if (text.Length == 0)
 		{
-			string text = Interaction.InputBox(Loc.T("modactions.changeCategoryPrompt", stardewMod.Name), Loc.T("modactions.changeCategoryTitle"), stardewMod.Category);
-			if (!string.IsNullOrEmpty(text))
+			if (!_settings.ModCategories.Remove(stardewMod.UniqueId))
 			{
-				_settings.ModCategories[stardewMod.UniqueId] = text.Trim();
-				_settings.Save();
-				_ = RefreshModList(checkUpdates: false);
-				Speak(Loc.T("modactions.categorySet", stardewMod.Name, text));
+				Speak(Loc.T("common.changesCancelled"));
+				return;
 			}
+			_settings.Save();
+			_ = RefreshModList(checkUpdates: false);
+			Speak(Loc.T("modactions.categoryCleared", stardewMod.Name));
+			return;
 		}
+
+		_settings.ModCategories[stardewMod.UniqueId] = text;
+		_settings.Save();
+		_ = RefreshModList(checkUpdates: false);
+		Speak(Loc.T("modactions.categorySet", stardewMod.Name, text));
 	}
 
 	/// <summary>
 	/// Prompts for a personal free-text note on the selected mod (e.g. "keep disabled until year 2"). The note is
-	/// spoken whenever the mod is selected in the list. Submitting an empty box offers to clear an existing note —
-	/// confirmed first, since the input box can't tell an emptied field from a cancel.
+	/// spoken whenever the mod is selected in the list. Emptying the box clears the note, after a confirmation —
+	/// kept not because an emptied box is ambiguous (it no longer is) but because a note is typed by hand and
+	/// nothing here can bring it back.
 	/// </summary>
 	private void SetModNote()
 	{
@@ -63,11 +84,17 @@ public partial class Form1
 		}
 
 		string existing = _settings.ModNotes.TryGetValue(mod.UniqueId, out string? current) ? current : "";
-		string text = Interaction.InputBox(Loc.T("modactions.notePrompt", mod.Name), Loc.T("modactions.noteTitle"), existing).Trim();
+		string? typed = ShowTextPrompt(Loc.T("modactions.noteTitle"), Loc.T("modactions.notePrompt", mod.Name), existing);
 
-		if (string.IsNullOrEmpty(text))
+		// Escape is now distinguishable from an emptied box, which is what the old input box could never manage.
+		if (typed == null) { Speak(Loc.T("common.changesCancelled")); return; }
+
+		string text = typed.Trim();
+
+		if (text.Length == 0)
 		{
-			// InputBox returns "" for both Cancel and an emptied field, so confirm before clearing an existing note.
+			// The confirmation stays, but for a different reason than before: not because we cannot tell what was
+			// meant, but because clearing throws away a sentence typed by hand and nothing else here can undo it.
 			if (_settings.ModNotes.ContainsKey(mod.UniqueId) &&
 				SpeakBox(Loc.T("modactions.noteClearConfirm", mod.Name), Loc.T("modactions.noteTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 			{
@@ -75,6 +102,10 @@ public partial class Form1
 				_settings.Save();
 				_ = RefreshModList(checkUpdates: false);
 				Speak(Loc.T("modactions.noteCleared", mod.Name));
+			}
+			else
+			{
+				Speak(Loc.T("common.changesCancelled"));
 			}
 			return;
 		}

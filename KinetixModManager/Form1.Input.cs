@@ -232,7 +232,7 @@ public partial class Form1
 		if (IsShortcut(e, "ExportCollection"))
 		{
 			e.SuppressKeyPress = true;
-			ExportCollection();
+			_ = ExportCollection();
 		}
 		if (IsShortcut(e, "InstallCollection"))
 		{
@@ -315,6 +315,37 @@ public partial class Form1
 		{
 			e.SuppressKeyPress = true;
 			OpenErrorLog();
+		}
+
+		// Reading the suggested list is not curating, so it is never gated. Unmapped by default; this is here so
+		// a key assigned in the shortcut manager works. See Form1.SuggestedMods.
+		if (IsShortcut(e, "SuggestedMods"))
+		{
+			e.Handled = true;
+			e.SuppressKeyPress = true;
+			ShowSuggestedMods();
+		}
+		// The way in, and the only one of the three that works while curation is off — turning it on is precisely
+		// what it is for. See Form1.Curator.
+		if (IsShortcut(e, "CurationMode"))
+		{
+			e.Handled = true;
+			e.SuppressKeyPress = true;
+			ToggleCurationMode();
+		}
+		// The other two do nothing until curation is on. Checked here rather than inside each command so a key
+		// that is switched off stays unhandled, and whatever else wants it can have it.
+		if (_settings.CuratorMode && IsShortcut(e, "MarkSuggestion"))
+		{
+			e.Handled = true;
+			e.SuppressKeyPress = true;
+			ToggleModSuggestion();
+		}
+		if (_settings.CuratorMode && IsShortcut(e, "SuggestedList"))
+		{
+			e.Handled = true;
+			e.SuppressKeyPress = true;
+			ShowSuggestedModsReview();
 		}
 	}
 

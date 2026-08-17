@@ -320,6 +320,89 @@ public partial class Form1
 		Speak(text, interrupt: true);
 	}
 
+	/// <summary>
+	/// Says something immediately after a window that is not ours has closed — a file picker, or anything else
+	/// shown with <c>ShowDialog</c> — so it is not talked over by the screen reader re-reading the window
+	/// underneath.
+	///
+	/// <para>
+	/// Closing a real window makes the reader announce whatever is revealed, which for us is the main window's
+	/// whole caption: "Moonlight Peaks Kinetix Mod Manager - Status: Connected as …". That lands on top of the
+	/// result of whatever the user just did — "Exported 11 suggestions to …" was cut off by it — and it is the
+	/// exact cost that moved every other screen in this app inside the main window. A file picker cannot be moved
+	/// inside it: choosing a path is the operating system's job.
+	/// </para>
+	///
+	/// <para>
+	/// So the same trick as <see cref="SpeakListPosition"/>: silence repeatedly across a short window, catching
+	/// the caption whenever the reader starts it. The window is longer here than for a list, because a closing
+	/// window and the focus change behind it take longer to work through than a selection moving.
+	/// </para>
+	///
+	/// <para>
+	/// ⚠️ But the caption is not <em>wrong</em>, only badly timed — unlike the list case, where what the reader
+	/// said was about a row the user was never on. Swallowing it and stopping there answered "what did that do?"
+	/// and lost "and where am I now?", which is the question the caption and the focused control exist to answer.
+	/// So all three are said here, in the order they are wanted: the result first, then the window, then whatever
+	/// focus came back to. Tolk queues, so they are simply spoken one after another.
+	/// </para>
+	/// </summary>
+	private async void SpeakAfterForeignWindow(string text)
+	{
+		if (_shuttingDown || string.IsNullOrWhiteSpace(text)) return;
+		if (!await SettleAfterForeignWindowAsync()) return;
+		SpeakWithBearings(text);
+	}
+
+	/// <summary>
+	/// Absorbs the screen reader's re-read of the main window after a foreign window has closed, and reports
+	/// whether the caller still owns the announcement afterwards.
+	///
+	/// <para>
+	/// Awaited by anything that means to speak, or to show something that speaks, in the moment after a file
+	/// picker closes. A prompt opened straight after one had its question cut off and left only the name of the
+	/// focused button audible — "…Connected as SeanTerry01", then "Yes", with the question itself never heard.
+	/// Clearing the field first is what lets whatever comes next be the thing that is heard, whether that is one
+	/// sentence from <see cref="SpeakWithBearings"/> or a whole prompt.
+	/// </para>
+	///
+	/// <para>
+	/// Returns <c>false</c> when something else has claimed the floor in the meantime, in which case the caller
+	/// should say nothing: whatever claimed it knows more than this call did.
+	/// </para>
+	/// </summary>
+	private async Task<bool> SettleAfterForeignWindowAsync()
+	{
+		// Claimed so that anything the app deliberately says next abandons this rather than being swallowed by
+		// it — Speak() bumps the same counter. See the note in Speak.
+		int generation = ++_speakListGeneration;
+
+		for (int i = 0; i < 20; i++)
+		{
+			if (_shuttingDown || generation != _speakListGeneration) return false;
+			SilenceSpeech();
+			await Task.Delay(25);
+		}
+
+		return !_shuttingDown && generation == _speakListGeneration;
+	}
+
+	/// <summary>
+	/// Says a result and then where the user now is: the window's caption, and whatever focus came back to.
+	///
+	/// The orientation is the half a plain swallow throws away. The caption after a foreign window closes is not
+	/// wrong, only badly timed, so it is put back behind the result rather than destroyed. Tolk queues, so the
+	/// three simply follow one another.
+	/// </summary>
+	private void SpeakWithBearings(string text)
+	{
+		if (_shuttingDown || string.IsNullOrWhiteSpace(text)) return;
+
+		Speak(text, interrupt: true);
+		Speak(Text);
+		AnnounceFocusRestored();
+	}
+
 	/// <summary>Which announcement is the current one. See <see cref="SpeakListPosition"/>.</summary>
 	private int _speakListGeneration;
 

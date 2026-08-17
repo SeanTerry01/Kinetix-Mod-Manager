@@ -34,11 +34,12 @@ public partial class Form1
 	/// </summary>
 	private void CreateProfileFromCurrent()
 	{
-		string text = Interaction.InputBox(Loc.T("profiles.savePrompt"), Loc.T("profiles.saveTitle"));
-		if (string.IsNullOrEmpty(text))
-		{
-			return;
-		}
+		string? text = ShowTextPrompt(Loc.T("profiles.saveTitle"), Loc.T("profiles.savePrompt"), "");
+		if (text == null) { Speak(Loc.T("common.changesCancelled")); return; }
+
+		text = text.Trim();
+		if (text.Length == 0) { Speak(Loc.T("profiles.nameEmpty")); return; }
+
 		ModProfile modProfile = new ModProfile
 		{
 			Name = text,
