@@ -33,14 +33,36 @@ public partial class Form1
 		Path.Combine(AppContext.BaseDirectory, "data", "suggested-mods.json");
 
 	/// <summary>
+	/// The list that ships with the manager, or an empty one when there isn't a readable file there.
+	///
+	/// <para>
+	/// Read through <see cref="SuggestionSharing.Parse"/> rather than the plain store, so that the shipped file
+	/// may be in either shape — a bare array of entries, or a proper exported list with a name, an author and the
+	/// categories it uses. That matters because the obvious way to produce this file is to curate a list in the
+	/// manager and export it, and an exported file is the second shape: read as a bare array it would throw, be
+	/// caught, and come back empty, leaving the shipped list silently absent with nothing to say why.
+	/// </para>
+	/// </summary>
+	private static SuggestionList LoadShippedSuggestions()
+	{
+		try
+		{
+			return File.Exists(ShippedSuggestionsPath)
+				? SuggestionSharing.Parse(File.ReadAllText(ShippedSuggestionsPath))
+				: new SuggestionList();
+		}
+		catch { return new SuggestionList(); }
+	}
+
+	/// <summary>
 	/// Everything to show for the game that is open: the shipped list with the user's own entries over the top.
 	/// </summary>
-	private List<SuggestedMod> SuggestionsForActiveGame()
+	private List<SuggestedMod> SuggestionsForActiveGame(SuggestionList shipped)
 	{
 		string game = GameProfiles.BaseId(_settings.ActiveGame);
 
 		return SuggestedModStore
-			.Merge(SuggestedModStore.Load(ShippedSuggestionsPath), SuggestedModStore.Load(CuratorFilePath))
+			.Merge(shipped.Entries, SuggestedModStore.Load(CuratorFilePath))
 			.Where(e => string.Equals(GameProfiles.BaseId(e.Game), game, StringComparison.Ordinal))
 			.ToList();
 	}
@@ -99,7 +121,8 @@ public partial class Form1
 		}
 
 		string gameName = GameProfiles.DisplayNameFor(GameProfiles.BaseId(_settings.ActiveGame));
-		List<SuggestedMod> entries = SuggestionsForActiveGame();
+		SuggestionList shipped = LoadShippedSuggestions();
+		List<SuggestedMod> entries = SuggestionsForActiveGame(shipped);
 
 		if (entries.Count == 0)
 		{
@@ -109,7 +132,11 @@ public partial class Form1
 			return;
 		}
 
-		List<SuggestionCategory> categories = SuggestionCategoryStore.Load(CategoryFilePath);
+		// The shipped list's own categories are folded in for display only, never saved. A shipped entry filed
+		// under a heading this user has never made would otherwise land in "Uncategorised" — correct, in that
+		// nothing is lost, but a poor showing for a list that arrived describing itself perfectly well.
+		List<SuggestionCategory> categories =
+			SuggestionSharing.MergeCategories(SuggestionCategoryStore.Load(CategoryFilePath), shipped.Categories);
 
 		ShowInlineView(Loc.T("suggested.title", gameName), (container, closeView) =>
 		{
