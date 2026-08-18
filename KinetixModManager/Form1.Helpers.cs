@@ -702,11 +702,17 @@ public partial class Form1
 		string searchType = cmbDiscoveryType.SelectedItem?.ToString() ?? "Search";
 		string searchTerm = txtSearch.Text.Trim();
 		string language = (cmbDiscoveryLanguage?.SelectedItem as LanguageOption)?.Name ?? _settings.DiscoveryLanguage;
-		string category = (cmbDiscoveryCategory?.SelectedItem as CategoryOption)?.Name ?? "";
+		// The category applies only to the mode that owns the selector. In any other mode the control is not on
+		// screen, and a filter narrowing your results with nothing anywhere to say so is exactly how the language
+		// filter used to read as "these mods aren't on Nexus".
+		bool browsingCategory = searchType == NexusService.NexusCategoryBrowse;
+		string category = browsingCategory
+			? (cmbDiscoveryCategory?.SelectedItem as CategoryOption)?.Name ?? ""
+			: "";
 
 		// Browsing a category with no category chosen has nothing to browse, and would silently behave as an
 		// ordinary popularity listing. Say so instead of quietly doing something else.
-		if (!loadMore && searchType == NexusService.NexusCategoryBrowse && category.Length == 0)
+		if (!loadMore && browsingCategory && category.Length == 0)
 		{
 			Speak(Loc.T("discovery.pickCategoryFirst"));
 			cmbDiscoveryCategory?.Focus();
@@ -932,6 +938,30 @@ public partial class Form1
 			cmbDiscoveryCategory.Items.Add(new CategoryOption { Name = name, Count = count });
 
 		cmbDiscoveryCategory.SelectedIndex = 0;
+	}
+
+	/// <summary>
+	/// Shows the Nexus category selector only while the search type it belongs to is chosen, and says so when it
+	/// appears.
+	///
+	/// <para>
+	/// A control arriving in the middle of a toolbar is invisible to somebody working along it by Tab, so its
+	/// arrival is announced rather than left to be discovered. Nothing is said when it goes: the type they just
+	/// chose is the answer, and a line about a control disappearing is noise on every other switch.
+	/// </para>
+	/// </summary>
+	private void UpdateDiscoveryCategoryVisibility(bool announce)
+	{
+		if (cmbDiscoveryCategory == null || _lblDiscoveryCategory == null) return;
+
+		bool wanted = string.Equals(
+			cmbDiscoveryType.SelectedItem?.ToString(), NexusService.NexusCategoryBrowse, StringComparison.Ordinal);
+		if (cmbDiscoveryCategory.Visible == wanted) return;
+
+		_lblDiscoveryCategory.Visible = wanted;
+		cmbDiscoveryCategory.Visible = wanted;
+
+		if (wanted && announce) Speak(Loc.T("discovery.categoryListShown"));
 	}
 
 	/// <summary>Maps a Nexus Mods numeric category ID to a human-readable category name.</summary>

@@ -474,10 +474,10 @@ public partial class Form1
 				_settings.Save();
 			}
 		};
-		// Always present, next to the language, rather than appearing only for the Nexus Categories mode. A
-		// category narrows whatever mode is running — a search, Trending, Most Popular — so it has to be
-		// reachable in all of them; and a control that comes and goes from the middle of a toolbar is one more
-		// thing to be unsure about when you are finding your way along it by Tab.
+		// Shown only while the Nexus Categories type is chosen, and the filter applies only then. Hiding it in the
+		// other modes and still applying it would be the worst of both: a filter narrowing your results with no
+		// control anywhere to say so, which is precisely how the language filter used to look like "these mods
+		// aren't on Nexus".
 		cmbDiscoveryCategory = new ComboBox
 		{
 			Width = 190,
@@ -535,13 +535,18 @@ public partial class Form1
 		// Search history sits right after the search box and before the search-type selector, per user preference.
 		flowLayoutPanel2.Controls.Add(btnHistory);
 		flowLayoutPanel2.Controls.Add(cmbDiscoveryType);
-		flowLayoutPanel2.Controls.Add(new Label { Text = Loc.T("ui.nexusCategoryLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
+		_lblDiscoveryCategory = new Label { Text = Loc.T("ui.nexusCategoryLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) };
+		flowLayoutPanel2.Controls.Add(_lblDiscoveryCategory);
 		flowLayoutPanel2.Controls.Add(cmbDiscoveryCategory);
 		flowLayoutPanel2.Controls.Add(new Label { Text = Loc.T("ui.languageLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
 		flowLayoutPanel2.Controls.Add(cmbDiscoveryLanguage);
 		flowLayoutPanel2.Controls.Add(new Label { Text = Loc.T("ui.resultsPerLoadLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
 		flowLayoutPanel2.Controls.Add(cmbDiscoveryPageSize);
 		flowLayoutPanel2.Controls.Add(btnSearch);
+		// The category selector belongs to one search type, so it comes and goes with the type. Set once here for
+		// the starting type (silently -- nothing has changed yet from the user's point of view), and on each change.
+		cmbDiscoveryType.SelectedIndexChanged += delegate { UpdateDiscoveryCategoryVisibility(announce: true); };
+		UpdateDiscoveryCategoryVisibility(announce: false);
 		listDiscovery = new ListBox
 		{
 			Dock = DockStyle.Fill,

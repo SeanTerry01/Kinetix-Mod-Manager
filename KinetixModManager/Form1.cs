@@ -317,6 +317,8 @@ public partial class Form1 : Form, IMessageFilter
 	/// <summary>Nexus category filter on the Discovery tab. Session-only: a category is a browsing choice for
 	/// the search in front of you, not a standing preference the way the language is.</summary>
 	private ComboBox cmbDiscoveryCategory = null!;
+	/// <summary>The "Nexus category:" label, hidden and shown with the combo it names.</summary>
+	private Label _lblDiscoveryCategory = null!;
 	/// <summary>Which game's categories <c>cmbDiscoveryCategory</c> currently holds, so the list is fetched once
 	/// per game rather than on every data refresh.</summary>
 	private string _discoveryCategoriesGame = "";
