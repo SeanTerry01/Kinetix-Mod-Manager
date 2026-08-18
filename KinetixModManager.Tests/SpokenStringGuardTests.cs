@@ -30,7 +30,9 @@ public class SpokenStringGuardTests
     {
         "settings.contrast.",
         "settings.textSize.",
-        "sound."
+        "sound.",
+        // Built as "curator.category" + the category's id; see EveryBuiltInSuggestionCategoryHasAName.
+        "curator.category"
     };
 
     [Fact]
@@ -108,6 +110,38 @@ public class SpokenStringGuardTests
         Assert.True(duplicates.Count == 0,
             "lang/en.json defines these keys more than once; the last definition wins silently:\n  " +
             string.Join("\n  ", duplicates));
+    }
+
+
+    [Fact]
+    public void NoPhraseIsLeftBehindWithNothingAskingForIt()
+    {
+        // The other direction, and the one nothing used to check: a key that no longer has any code asking for
+        // it. Harmless at runtime, but it is work handed to whoever translates this file into another language --
+        // sentences nobody will ever hear, indistinguishable from the ones that matter. Twenty-nine had built up
+        // by the time anybody looked.
+        //
+        // A key counts as asked for if it appears anywhere in the sources as a literal, which covers the ternary
+        // and variable forms the EveryPhrase... regex above cannot see, or if it begins with one of the prefixes
+        // the code assembles keys from.
+        HashSet<string> known = EnglishKeys();
+        var literals = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (string file in AppSourceFiles())
+            foreach (Match match in Regex.Matches(File.ReadAllText(file), @"""([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)+)"""))
+                literals.Add(match.Groups[1].Value);
+
+        var unused = known
+            .Where(k => !k.StartsWith("_", StringComparison.Ordinal))       // "_name" and friends are metadata
+            .Where(k => !literals.Contains(k))
+            .Where(k => !BuiltAtRuntimePrefixes.Any(p => k.StartsWith(p, StringComparison.Ordinal)))
+            .OrderBy(k => k, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(unused.Count == 0,
+            "lang/en.json defines these phrases but nothing in the app asks for them any more. Remove them, or " +
+            "if one is built at runtime add its prefix to BuiltAtRuntimePrefixes:\n  " +
+            string.Join("\n  ", unused));
     }
 
     private static HashSet<string> EnglishKeys()
