@@ -484,7 +484,11 @@ public partial class Form1
                 {
                     _soundEngine.Play("load_complete");
                     Speak(Loc.T("updates.githubSuccess", mod.Name));
-                    SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser));
+                    // ResetStatus, not SetStatus: the title only needs to stop showing "Installing...", and SetStatus speaks by
+                    // default, so this said "Connected as ..." straight after the update was announced. ResetStatus also asks
+                    // RestingStatus what the title should be, which answers "Ready" when there is no known user -- the hardcoded
+                    // line could put "Connected as Unknown User" up instead.
+                    ResetStatus();
                     AnnounceUpdatesListEmptyIfFocused();
                 }
                 return;
@@ -539,7 +543,11 @@ public partial class Form1
             {
                 _soundEngine.Play("load_complete");
                 Speak(Loc.T("updates.success", mod.Name));
-                SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser));
+                // ResetStatus, not SetStatus: the title only needs to stop showing "Installing...", and SetStatus speaks by
+                // default, so this said "Connected as ..." straight after the update was announced. ResetStatus also asks
+                // RestingStatus what the title should be, which answers "Ready" when there is no known user -- the hardcoded
+                // line could put "Connected as Unknown User" up instead.
+                ResetStatus();
                 AnnounceUpdatesListEmptyIfFocused();
             }
         }
