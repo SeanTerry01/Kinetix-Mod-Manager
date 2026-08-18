@@ -481,8 +481,17 @@ public partial class Form1
 	///
 	/// <para>
 	/// The tab strip, not the mod list: it is where Tab and the arrow keys both do something useful next, and it
-	/// is one F6 from the list. Spoken by the app rather than left to the reader, because focus moved
-	/// programmatically and a reader says nothing about a move the user did not make.
+	/// is one F6 from the list.
+	/// </para>
+	///
+	/// <para>
+	/// ⚠️ Whether the app says the tab or leaves it to the screen reader depends on where focus already was, and
+	/// the two cases really do differ. Focus arriving at the tab strip from somewhere else — the game-selection
+	/// list, on a session switch — is a move the reader announces itself, as "Installed Mods selected"; saying it
+	/// too was heard as the tab twice. Focus that was already on the strip, which is where startup leaves it,
+	/// raises nothing for the reader to describe, so there the app has to say it or nothing is said at all.
+	/// Neither swallowing the reader nor speaking unconditionally works: a swallow here would land while
+	/// "Connected as …" is very likely still being spoken, and clip it.
 	/// </para>
 	/// </summary>
 	private void LandOnFirstTab()
@@ -495,9 +504,14 @@ public partial class Form1
 		// screen opened during startup owns the window; taking focus out from under it would be worse still.
 		if (_userMovedSinceLoadBegan || OverlayIsOpen) return;
 
+		// Read before the move, because the move is what changes the answer.
+		bool alreadyOnTheStrip = mainTabs.Focused;
+
 		SelectTab(AppTab.Installed);
 		mainTabs.Focus();
-		Speak(Loc.T("common.tabSuffix", mainTabs.SelectedTab?.Text ?? ""));
+
+		if (alreadyOnTheStrip)
+			Speak(Loc.T("common.tabSuffix", mainTabs.SelectedTab?.Text ?? ""));
 	}
 
 	/// <summary>
