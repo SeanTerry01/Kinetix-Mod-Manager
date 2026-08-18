@@ -722,8 +722,13 @@ public partial class Form1
 		// Record real text searches (not "load more" pages or the browse modes) to the active game's history.
 		if (!loadMore && searchType == "Search" && searchTerm.Length > 0 && _settings.SaveSearchHistory)
 			SearchHistoryStore.Add(_settings.ActiveGame, searchTerm);
+		// Spoken here, and NOT again by SetStatus, which speaks by default. For a "load more" the two lines were
+		// the same sentence, so it was said twice in a row; for a fresh search they were two sentences saying the
+		// same thing ("Starting mod Search", then "Running Search"). The title bar still shows the status either
+		// way -- it just no longer reads it out on top of the announcement already made.
 		Speak(loadMore ? Loc.T("discovery.loadingMore", searchType) : Loc.T("discovery.startingSearch", searchType));
-		SetStatus(loadMore ? Loc.T("discovery.loadingMore", searchType) : Loc.T("discovery.statusRunning", searchType));
+		SetStatus(loadMore ? Loc.T("discovery.loadingMore", searchType) : Loc.T("discovery.statusRunning", searchType),
+			speak: false);
 		try
 		{
 			int pageSize = _currentDiscoveryPageSize;
