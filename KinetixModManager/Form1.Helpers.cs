@@ -678,6 +678,35 @@ public partial class Form1
 		listDiscovery.Items.Count - (DiscoveryHasLoadMoreRow() ? 1 : 0);
 
 	/// <summary>
+	/// What the manager says it is about to fetch, in the words of the mode doing the fetching.
+	///
+	/// <para>
+	/// The two modes with something particular to name say it: a search names the term, and a category browse
+	/// names the category. Hearing "Listing Armour mods" rather than a generic line is the difference between
+	/// knowing the dropdown took your choice and having to go back and check it.
+	/// </para>
+	///
+	/// <para>
+	/// The mode names themselves are never spoken. They are labels chosen to read well in a dropdown, not
+	/// sentences — which is what made the old single template produce "Starting mod Most Popular...".
+	/// </para>
+	/// </summary>
+	private static string DiscoveryStartPhrase(string searchType, string searchTerm, string category) => searchType switch
+	{
+		"Search" => searchTerm.Length > 0
+			? Loc.T("discovery.startSearchFor", searchTerm)
+			: Loc.T("discovery.startSearchBlank"),
+		"All"          => Loc.T("discovery.startAll"),
+		"Trending"     => Loc.T("discovery.startTrending"),
+		"Most Popular" => Loc.T("discovery.startPopular"),
+		"Recent"       => Loc.T("discovery.startRecent"),
+		NexusService.NexusCategoryBrowse => Loc.T("discovery.startCategory", category),
+		// Not reachable while the type list and this switch agree, but a mode added to one and not the other
+		// should still say something rather than nothing at all.
+		_ => Loc.T("discovery.startGeneric")
+	};
+
+	/// <summary>
 	/// Queries the Nexus Mods GraphQL API for the current search text and populates
 	/// <c>listDiscovery</c>. Pass <paramref name="loadMore"/> as <c>true</c> to append the
 	/// next page of results instead of starting fresh.
@@ -722,13 +751,14 @@ public partial class Form1
 		// Record real text searches (not "load more" pages or the browse modes) to the active game's history.
 		if (!loadMore && searchType == "Search" && searchTerm.Length > 0 && _settings.SaveSearchHistory)
 			SearchHistoryStore.Add(_settings.ActiveGame, searchTerm);
-		// Spoken here, and NOT again by SetStatus, which speaks by default. For a "load more" the two lines were
-		// the same sentence, so it was said twice in a row; for a fresh search they were two sentences saying the
-		// same thing ("Starting mod Search", then "Running Search"). The title bar still shows the status either
-		// way -- it just no longer reads it out on top of the announcement already made.
-		Speak(loadMore ? Loc.T("discovery.loadingMore", searchType) : Loc.T("discovery.startingSearch", searchType));
-		SetStatus(loadMore ? Loc.T("discovery.loadingMore", searchType) : Loc.T("discovery.statusRunning", searchType),
-			speak: false);
+		// One sentence per mode, rather than one template with the mode's name dropped into it. The template read
+		// "Starting mod Recent..." and "Starting mod Nexus Categories...", which is the wiring showing through:
+		// those names are labels on a dropdown, not things you can start. Each mode asks the catalogue a different
+		// question, so each says what it is about to fetch -- and the two that have something specific to name,
+		// a search term and a category, name it.
+		string phrase = loadMore ? Loc.T("discovery.loadingMore") : DiscoveryStartPhrase(searchType, searchTerm, category);
+		Speak(phrase);
+		SetStatus(phrase, speak: false);
 		try
 		{
 			int pageSize = _currentDiscoveryPageSize;

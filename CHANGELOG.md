@@ -328,10 +328,12 @@ Moonlight Peaks and The Witcher 3 join the manager as fully supported games, alo
 *   A mod whose name the manager could only take from its folder (an archive unpacked as `SkyUI-12604-5-2SE`) is renamed to its real page name. A mod that declares its own name — a Stardew manifest, a BepInEx plugin — keeps it, since that's the name it goes by in game.
 *   **Installing a mod outside Stardew Valley now records which release went on disk.** That was already done for Stardew; for Skyrim, Fallout 4 and Moonlight Peaks it wasn't, so their update checks fell back to comparing the version a mod declares against the version on its page — which, for the many mods whose authors never bump the number inside the mod, offers the same update forever.
 
-### 🔁 "Load more results" no longer says itself twice
+### 🔁 The search bar says what it is doing, once
 
 *   Pressing Enter on the **"Load more results"** row read *"Loading more Search…"* and then read it again. The search bar announced it, and then setting the title-bar status announced the very same sentence a second time, because updating the status speaks by default.
 *   Only the announcement is spoken now; the title bar still shows the status without reading it out on top. A fresh search had the milder version of the same fault — *"Starting mod Search…"* followed by *"Running Search…"*, two sentences for one event — and now says it once.
+*   **And each search type now says what it is actually fetching.** One template with the dropdown's label dropped into it produced *"Starting mod Recent…"* and *"Starting mod Nexus Categories…"* — the wiring showing through, since those are labels chosen to read well in a dropdown rather than things you can start. Each mode now has its own sentence: *"Searching for dragon."*, *"Listing every mod, A to Z."*, *"Listing the most downloaded mods."*, *"Listing the most recently updated mods."*
+*   The two modes with something particular to name now name it — a search says the **term** you typed, and a category browse says the **category**: *"Listing Armour mods, most downloaded first."* That is the difference between knowing the dropdown took your choice and having to go back and check it.
 
 ### 🔁 The focused mod is no longer announced twice after an action
 *   Enabling, disabling or deleting a mod read the focused entry — name, author, version, category, status — **twice**. Two separate causes, both fixed:
