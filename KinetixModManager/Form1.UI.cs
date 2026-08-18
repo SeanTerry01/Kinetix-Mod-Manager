@@ -445,7 +445,10 @@ public partial class Form1
 		ComboBox.ObjectCollection items = cmbDiscoveryType.Items;
 		// "All" browses the game's whole catalogue alphabetically — the way to find a specific mod you already
 		// know exists, rather than whatever is currently popular.
-		object[] items2 = new string[5] { "Search", "All", "Trending", "Most Popular", "Recent" };
+		// "Nexus Categories" browses the category chosen beside it, best-known first — the one-step way in when
+		// what you want is "show me the armour mods" rather than a search or a popularity chart.
+		object[] items2 = new string[6]
+			{ "Search", "All", "Trending", "Most Popular", "Recent", NexusService.NexusCategoryBrowse };
 		items.AddRange(items2);
 		cmbDiscoveryType.SelectedIndex = 0;
 		cmbDiscoveryLanguage = new ComboBox
@@ -471,6 +474,21 @@ public partial class Form1
 				_settings.Save();
 			}
 		};
+		// Always present, next to the language, rather than appearing only for the Nexus Categories mode. A
+		// category narrows whatever mode is running — a search, Trending, Most Popular — so it has to be
+		// reachable in all of them; and a control that comes and goes from the middle of a toolbar is one more
+		// thing to be unsure about when you are finding your way along it by Tab.
+		cmbDiscoveryCategory = new ComboBox
+		{
+			Width = 190,
+			Font = new Font("Segoe UI", 12f),
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			AccessibleName = Loc.T("ui.filterCategory")
+		};
+		// A starter entry so the control means something before the game's real categories have been fetched.
+		cmbDiscoveryCategory.Items.Add(new CategoryOption { Name = "" });   // Any category
+		cmbDiscoveryCategory.SelectedIndex = 0;
+
 		cmbDiscoveryPageSize = new ComboBox
 		{
 			Width = 70,
@@ -517,6 +535,8 @@ public partial class Form1
 		// Search history sits right after the search box and before the search-type selector, per user preference.
 		flowLayoutPanel2.Controls.Add(btnHistory);
 		flowLayoutPanel2.Controls.Add(cmbDiscoveryType);
+		flowLayoutPanel2.Controls.Add(new Label { Text = Loc.T("ui.nexusCategoryLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
+		flowLayoutPanel2.Controls.Add(cmbDiscoveryCategory);
 		flowLayoutPanel2.Controls.Add(new Label { Text = Loc.T("ui.languageLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
 		flowLayoutPanel2.Controls.Add(cmbDiscoveryLanguage);
 		flowLayoutPanel2.Controls.Add(new Label { Text = Loc.T("ui.resultsPerLoadLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) });

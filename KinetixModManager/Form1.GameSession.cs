@@ -272,8 +272,10 @@ public partial class Form1
 		PopulateModWikis();
 		// Load the (now reset) active wiki's live categories; splitWiki already exists on a game switch.
 		_ = RefreshCategoriesForActiveWikiAsync();
-		// Refresh the Discovery language list for the new game (languages and counts are game-specific).
+		// Refresh the Discovery language and category lists for the new game (both, and their counts, are
+		// game-specific — Skyrim's categories are nothing like Stardew Valley's).
 		_ = PopulateDiscoveryLanguagesAsync();
+		_ = PopulateDiscoveryCategoriesAsync();
 
 		if (webViewWiki.CoreWebView2 != null)
 		{

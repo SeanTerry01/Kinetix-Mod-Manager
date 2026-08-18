@@ -43,6 +43,10 @@ public partial class Form1
 		RefreshProfilesList();
 		RefreshSmapiLog();
 		RefreshGameLog();
+		// Startup comes through here rather than SwitchActiveGame, so without this the Discovery category list
+		// would stay empty until the user switched games. Guarded to fetch once per game, so the repeat calls
+		// from every other refresh cost nothing.
+		_ = PopulateDiscoveryCategoriesAsync();
 	}
 
 	/// <summary>

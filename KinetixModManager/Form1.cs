@@ -314,6 +314,12 @@ public partial class Form1 : Form, IMessageFilter
 	private TextBox txtSearchLog = null!;
 	private ComboBox cmbDiscoveryType = null!;
 	private ComboBox cmbDiscoveryLanguage = null!;
+	/// <summary>Nexus category filter on the Discovery tab. Session-only: a category is a browsing choice for
+	/// the search in front of you, not a standing preference the way the language is.</summary>
+	private ComboBox cmbDiscoveryCategory = null!;
+	/// <summary>Which game's categories <c>cmbDiscoveryCategory</c> currently holds, so the list is fetched once
+	/// per game rather than on every data refresh.</summary>
+	private string _discoveryCategoriesGame = "";
 	// Results-per-load selector on the Discovery tab. Seeded from the saved
 	// DiscoverySearchPageSize but its own changes are session-only (not persisted); only the
 	// matching combo in Settings persists. See AppSettings.DiscoverySearchPageSize.
@@ -939,7 +945,18 @@ public class LanguageOption
 	/// <summary>Number of mods in this language for the active game; 0 hides the count.</summary>
 	public int Count { get; set; }
 	public override string ToString() =>
-		string.IsNullOrEmpty(Name) ? "Any language" : (Count > 0 ? $"{Name} ({Count})" : Name);
+		string.IsNullOrEmpty(Name) ? Loc.T("ui.anyLanguage") : (Count > 0 ? $"{Name} ({Count})" : Name);
+}
+
+/// <summary>One entry in the Discovery tab's category selector.</summary>
+public class CategoryOption
+{
+	/// <summary>Nexus category name (e.g. "Armour"). Empty string means "Any category" (no filter).</summary>
+	public string Name { get; set; } = "";
+	/// <summary>Number of mods in this category for the active game; 0 hides the count.</summary>
+	public int Count { get; set; }
+	public override string ToString() =>
+		string.IsNullOrEmpty(Name) ? Loc.T("ui.anyCategory") : (Count > 0 ? $"{Name} ({Count})" : Name);
 }
 
 public class ModWikiLink

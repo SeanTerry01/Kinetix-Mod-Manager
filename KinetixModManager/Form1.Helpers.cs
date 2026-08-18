@@ -702,6 +702,16 @@ public partial class Form1
 		string searchType = cmbDiscoveryType.SelectedItem?.ToString() ?? "Search";
 		string searchTerm = txtSearch.Text.Trim();
 		string language = (cmbDiscoveryLanguage?.SelectedItem as LanguageOption)?.Name ?? _settings.DiscoveryLanguage;
+		string category = (cmbDiscoveryCategory?.SelectedItem as CategoryOption)?.Name ?? "";
+
+		// Browsing a category with no category chosen has nothing to browse, and would silently behave as an
+		// ordinary popularity listing. Say so instead of quietly doing something else.
+		if (!loadMore && searchType == NexusService.NexusCategoryBrowse && category.Length == 0)
+		{
+			Speak(Loc.T("discovery.pickCategoryFirst"));
+			cmbDiscoveryCategory?.Focus();
+			return;
+		}
 
 		// Record real text searches (not "load more" pages or the browse modes) to the active game's history.
 		if (!loadMore && searchType == "Search" && searchTerm.Length > 0 && _settings.SaveSearchHistory)
@@ -711,7 +721,8 @@ public partial class Form1
 		try
 		{
 			int pageSize = _currentDiscoveryPageSize;
-			var (results, total) = await _nexusService.SearchModsAsync(searchType, searchTerm, _currentDiscoveryPage, pageSize, language);
+			var (results, total) = await _nexusService.SearchModsAsync(
+				searchType, searchTerm, _currentDiscoveryPage, pageSize, language, category);
 			int offset = (_currentDiscoveryPage - 1) * pageSize;
 
 			// Drop the old inline "Load more" row (always last) before appending; firstNewIndex is then
@@ -785,6 +796,38 @@ public partial class Form1
 		}
 		cmbDiscoveryLanguage.SelectedIndex = selectIndex;
 		_suppressDiscoveryLanguageEvent = false;
+	}
+
+	/// <summary>
+	/// Fills the Discovery "Category" dropdown with the Nexus categories that actually have mods for the active
+	/// game, most-populated first and with counts. Keeps whatever is already there if the facet returns nothing,
+	/// so a network failure leaves a usable "Any category" rather than an empty control.
+	///
+	/// <para>
+	/// The selection is deliberately not carried over between games or sessions: a category is a choice about the
+	/// search in front of you, unlike the language, which is a standing preference worth remembering.
+	/// </para>
+	/// </summary>
+	private async Task PopulateDiscoveryCategoriesAsync()
+	{
+		if (cmbDiscoveryCategory == null) return;
+
+		// Fetched once per game rather than on every data refresh. A game's categories do not change while the
+		// manager is open, and RefreshAllData runs often enough that asking each time would be a request spent
+		// on an answer we already have.
+		string game = _settings.ActiveGame;
+		if (string.Equals(_discoveryCategoriesGame, game, StringComparison.Ordinal)) return;
+
+		var categories = await _nexusService.GetModCategoriesAsync();
+		if (cmbDiscoveryCategory == null || categories.Count == 0) return;
+		_discoveryCategoriesGame = game;
+
+		cmbDiscoveryCategory.Items.Clear();
+		cmbDiscoveryCategory.Items.Add(new CategoryOption { Name = "" });   // Any category
+		foreach (var (name, count) in categories)
+			cmbDiscoveryCategory.Items.Add(new CategoryOption { Name = name, Count = count });
+
+		cmbDiscoveryCategory.SelectedIndex = 0;
 	}
 
 	/// <summary>Maps a Nexus Mods numeric category ID to a human-readable category name.</summary>

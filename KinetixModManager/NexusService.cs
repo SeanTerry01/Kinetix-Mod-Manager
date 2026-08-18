@@ -317,7 +317,8 @@ public class NexusService
 	private const int MaxModsPerRequest = 80;
 
 	public async Task<(List<GameMod> Results, int Total)> SearchModsAsync(
-		string searchType, string searchTerm, int page, int pageSize, string? language = null)
+		string searchType, string searchTerm, int page, int pageSize, string? language = null,
+		string? category = null)
 	{
 		int baseOffset = (page - 1) * pageSize;
 		var all = new List<GameMod>();
@@ -327,7 +328,7 @@ public class NexusService
 		while (all.Count < pageSize)
 		{
 			int chunk = Math.Min(MaxModsPerRequest, pageSize - all.Count);
-			var (results, t) = await FetchModsPageAsync(searchType, searchTerm, baseOffset + all.Count, chunk, language);
+			var (results, t) = await FetchModsPageAsync(searchType, searchTerm, baseOffset + all.Count, chunk, language, category);
 			if (t > 0) total = t;               // keep a known total if a later chunk fails/returns nothing
 			all.AddRange(results);
 			if (results.Count < chunk) break;   // reached the end of the available results
@@ -346,7 +347,8 @@ public class NexusService
 	/// <summary>Runs a single Nexus GraphQL search request for <paramref name="count"/> mods starting at
 	/// <paramref name="offset"/> (<paramref name="count"/> must not exceed <see cref="MaxModsPerRequest"/>).</summary>
 	private async Task<(List<GameMod> Results, int Total)> FetchModsPageAsync(
-		string searchType, string searchTerm, int offset, int count, string? language = null)
+		string searchType, string searchTerm, int offset, int count, string? language = null,
+		string? category = null)
 	{
 		int pageSize = count;
 		string gqlQuery;
@@ -360,6 +362,13 @@ public class NexusService
 		};
 		if (!string.IsNullOrEmpty(language))
 			filter["languageName"] = new[] { new { value = language, op = "EQUALS" } };
+
+		// A category narrows whatever mode is running rather than being a mode of its own, so it is added here
+		// alongside the language and applies equally to a search, a catalogue listing or a popularity sort.
+		// Unlike languageName, every mod on Nexus has a category — it is required to upload one — so this filter
+		// does not quietly hide most of the catalogue the way the language filter can.
+		if (!string.IsNullOrEmpty(category))
+			filter["categoryName"] = new[] { new { value = category, op = "EQUALS" } };
 
 		if (searchType == "Search")
 		{
@@ -382,6 +391,9 @@ public class NexusService
 				"Most Popular" => ("downloads",    "DESC"),
 				"Recent"       => ("updatedAt",    "DESC"),
 				"All"          => ("name",         "ASC"),
+				// Browsing a category you don't know yet wants the best-known mods in it on the first page, not
+				// whichever happens to start with A.
+				NexusCategoryBrowse => ("downloads", "DESC"),
 				_              => ("endorsements", "DESC")   // Trending
 			};
 			gqlQuery = @"query ListMods($filter: ModsFilter, $sort: [ModsSort!], $count: Int, $offset: Int) {
@@ -481,6 +493,65 @@ public class NexusService
 			return count != null ? (int)count : -1;
 		}
 		catch { return -1; }
+	}
+
+	/// <summary>
+	/// The search type that browses one Nexus category rather than the whole catalogue. Shared with the UI so
+	/// the two cannot drift apart on the spelling of a magic string.
+	/// </summary>
+	public const string NexusCategoryBrowse = "Nexus Categories";
+
+	/// <summary>
+	/// Returns the Nexus categories that have mods for the active game, with a count for each, ordered
+	/// most-populated first. Returns an empty list on failure.
+	///
+	/// <para>
+	/// The same facet trick as <see cref="GetModLanguagesAsync"/>, and for the same reason: asking the catalogue
+	/// what it actually contains gives the categories this game really uses, with real counts, rather than a
+	/// fixed list of every category Nexus has ever defined — most of which would be empty for any one game and
+	/// would be a long walk through nothing.
+	/// </para>
+	/// </summary>
+	public async Task<List<(string Name, int Count)>> GetModCategoriesAsync()
+	{
+		var categories = new List<(string, int)>();
+		try
+		{
+			const string gql = @"query ModCategories($filter: ModsFilter) {
+				mods(filter: $filter, count: 0, facets: { categoryName: [""*""] }) {
+					facets { facet value count }
+				}
+			}";
+			var variables = new
+			{
+				filter = new Dictionary<string, object>
+				{
+					["gameId"] = new[] { new { value = CurrentGameId, op = "EQUALS" } }
+				}
+			};
+
+			using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.nexusmods.com/v2/graphql");
+			req.Headers.Add("User-Agent", $"KinetixModManager/{AppVersion}");
+			if (!string.IsNullOrEmpty(_settings.ApiKey)) req.Headers.Add("apikey", _settings.ApiKey);
+			req.Content = new StringContent(
+				JsonConvert.SerializeObject(new { query = gql, variables }),
+				Encoding.UTF8, "application/json");
+
+			var resp = await HttpClient.SendAsync(req);
+			if (!resp.IsSuccessStatusCode) return categories;
+
+			JObject data = JObject.Parse(await resp.Content.ReadAsStringAsync());
+			JArray facets = (data["data"]?["mods"]?["facets"] as JArray) ?? new JArray();
+			foreach (var f in facets)
+			{
+				if (f["facet"]?.ToString() != "categoryName") continue;
+				string name = f["value"]?.ToString() ?? "";
+				int count = f["count"] != null ? (int)f["count"]! : 0;
+				if (name.Length > 0) categories.Add((name, count));
+			}
+		}
+		catch { /* fall through to whatever was collected (possibly empty) */ }
+		return categories;
 	}
 
 	/// <summary>

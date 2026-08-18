@@ -261,6 +261,14 @@ Moonlight Peaks and The Witcher 3 join the manager as fully supported games, alo
 
 ## ✨ Also new
 
+### 🔎 Browse Nexus by category
+
+*   **Find New Mods gains a "Nexus category" dropdown**, listing Nexus's own classification — Armour, Gameplay, Audio, Patches and the rest. The list is built from the categories that **actually have mods for the game you are managing**, most-populated first and with a count beside each, so you get "Armour (1247)" rather than a walk through every category Nexus has ever defined, most of which any one game has never used. It reloads when you switch games, because Skyrim's categories are nothing like Stardew Valley's.
+*   **It narrows whatever the Type dropdown is already doing.** Type *dragon* with **Search** and pick **Armour** for dragon armour mods; leave the box empty, choose **Most Popular** and pick **Audio** for the game's best-known sound mods. The same goes for All, Trending and Recent.
+*   **Or browse a category on its own**: the Type dropdown gains **Nexus Categories**, which lists the chosen category with the **most downloaded first** — what you usually want when looking into a category you don't know yet. Choosing that Type without picking a category says so and moves you to the category list, rather than quietly listing something else.
+*   Unlike the language filter, the category is **not remembered between sessions**: it is a choice about the search in front of you rather than a standing preference. And it does not have the language filter's hiding problem — every mod on Nexus has a category, because uploading one requires choosing it.
+*   The manual's **Searching for Mods** section now also explains what each of the other Type options actually does, which had only ever been spelled out for **All**.
+
 ### 🌱 Stardew mod settings you can actually choose from
 *   **Edit Mod Config** on a **Content Patcher** mod now opens a **settings list** instead of raw JSON. Each setting is read as "name: current value", and **Enter** offers **the values the mod author allows** — pick one from a list rather than typing a string and hoping. Their explanation of the setting is read out as the chooser opens, where they wrote one.
 *   This closes a real gap rather than tidying one. The file these mods leave you to edit holds only the answers: a setting reads `"ObeliskOptions": "vanilla"`, and that `glass`, `garden`, `Yri` and `Juffuffles` are the alternatives is written somewhere else entirely. Changing a setting meant reading the author's own files or using an in-game menu.
