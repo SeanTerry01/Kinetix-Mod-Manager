@@ -328,12 +328,12 @@ public partial class Form1 : Form, IMessageFilter
 	/// A one-shot flag rather than something the refresh always does: every later refresh happens while the user
 	/// is somewhere of their own choosing, and taking focus back to the tab strip each time would be intolerable.
 	/// </summary>
-	private bool _landOnFirstTabAfterStartup;
+	private bool _landOnFirstTabWhenReady;
 	/// <summary>
 	/// True once the user has pressed a key in the main window during startup — they are navigating, so the
 	/// startup landing must not pull them back. See <see cref="LandOnFirstTab"/>.
 	/// </summary>
-	private bool _userDroveDuringStartup;
+	private bool _userMovedSinceLoadBegan;
 	/// <summary>
 	/// True while startup is speaking its own opening, so a list does not announce its position over the top.
 	///
@@ -743,8 +743,8 @@ public partial class Form1 : Form, IMessageFilter
 				// the reader has already been dealt with and the app is the only thing speaking.
 				Speak(Loc.T("app.welcome"));
 
-				// Left alone if they are already moving through the list themselves — see _userDroveDuringStartup.
-				if (form._lstGames != null && !form._userDroveDuringStartup)
+				// Left alone if they are already moving through the list themselves — see _userMovedSinceLoadBegan.
+				if (form._lstGames != null && !form._userMovedSinceLoadBegan)
 				{
 					form._lstGames.Focus();
 					if (form._lstGames.Items.Count > 0 && form._lstGames.SelectedIndex >= 0)
@@ -760,7 +760,7 @@ public partial class Form1 : Form, IMessageFilter
 			{
 				// Armed before the refresh, spent by it: the refresh is what says "Connecting…" and "Connected
 				// as …", so landing on the first tab has to happen at its end rather than here. See LandOnFirstTab.
-				form._landOnFirstTabAfterStartup = true;
+				form._landOnFirstTabWhenReady = true;
 				form.RefreshAllData(form._settings.CheckForUpdatesAtStartup);
 			}
 			else if (anyInstalled)

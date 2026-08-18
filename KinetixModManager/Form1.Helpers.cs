@@ -493,7 +493,7 @@ public partial class Form1
 		// somebody may already be several keystrokes into moving around — being hauled back to Installed Mods
 		// mid-keystroke is worse than never being told where you began. And a first-run wizard or a Settings
 		// screen opened during startup owns the window; taking focus out from under it would be worse still.
-		if (_userDroveDuringStartup || OverlayIsOpen) return;
+		if (_userMovedSinceLoadBegan || OverlayIsOpen) return;
 
 		SelectTab(AppTab.Installed);
 		mainTabs.Focus();

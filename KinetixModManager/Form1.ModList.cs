@@ -297,9 +297,9 @@ public partial class Form1
 			// there was nothing left to say where you had landed. Consumed here rather than in the Shown handler
 			// because the refresh is asynchronous, and this is the first point at which "Connected as …" has
 			// already been said.
-			if (_landOnFirstTabAfterStartup)
+			if (_landOnFirstTabWhenReady)
 			{
-				_landOnFirstTabAfterStartup = false;
+				_landOnFirstTabWhenReady = false;
 				LandOnFirstTab();
 			}
 		});

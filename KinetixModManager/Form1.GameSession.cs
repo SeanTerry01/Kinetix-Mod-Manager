@@ -295,8 +295,17 @@ public partial class Form1
 		}
 
 		mainTabs.SelectedIndex = 0;
-		mainTabs.Focus();
 		Speak(Loc.T("session.switched", gameName));
+
+		// Focus is NOT taken here. Doing so made the screen reader announce the tab — "Installed Mods selected" —
+		// while "Connecting to Nexus…" was still in flight, so the tab landed in the middle of the sequence
+		// instead of at the end of it. It is taken by LandOnFirstTab once the refresh has finished, which is
+		// after "Connected as …" and is the point at which the tab is actually worth landing on.
+		//
+		// The switch itself is the user's request, so the courtesy that leaves focus alone when they are already
+		// moving around starts again from here: only wandering off DURING this load should cancel the landing.
+		_userMovedSinceLoadBegan = false;
+		_landOnFirstTabWhenReady = true;
 		RefreshAllData(checkUpdates: _settings.CheckForUpdatesAtStartup);
 
 		// A BepInEx game with no BepInEx installed loads none of its mods and says nothing about it in-game, so

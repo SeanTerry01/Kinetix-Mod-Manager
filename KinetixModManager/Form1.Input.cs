@@ -41,7 +41,7 @@ public partial class Form1
 		// being pulled back to Installed Mods mid-keystroke is worse than never being told where you started.
 		// Set here rather than on any key at all, so typing into a first-run wizard does not count as wandering
 		// the main window.
-		_userDroveDuringStartup = true;
+		_userMovedSinceLoadBegan = true;
 
 		if (_settings.ActiveGame == "None")
 		{
