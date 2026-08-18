@@ -355,15 +355,21 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Absorbs the screen reader's re-read of the main window after a foreign window has closed, and reports
-	/// whether the caller still owns the announcement afterwards.
+	/// Absorbs a screen-reader announcement the app is about to replace, and reports whether the caller still
+	/// owns the floor afterwards.
 	///
 	/// <para>
-	/// Awaited by anything that means to speak, or to show something that speaks, in the moment after a file
-	/// picker closes. A prompt opened straight after one had its question cut off and left only the name of the
-	/// focused button audible — "…Connected as SeanTerry01", then "Yes", with the question itself never heard.
-	/// Clearing the field first is what lets whatever comes next be the thing that is heard, whether that is one
-	/// sentence from <see cref="SpeakWithBearings"/> or a whole prompt.
+	/// Two occasions need it, and both are the reader dutifully describing a window change the app is about to
+	/// say something better about. A file picker closing makes it re-read the main window's caption, which landed
+	/// on top of the result of whatever the user just did — and swallowed a prompt's question outright, leaving
+	/// only the name of the focused button audible. The main window first appearing makes it read that same
+	/// caption, ahead of the welcome.
+	/// </para>
+	///
+	/// <para>
+	/// <paramref name="passes"/> sets how long the field is held clear, at 25ms each. The default covers a window
+	/// closing; startup needs longer, because the reader gets to the caption later when the app is still coming
+	/// up. Nothing is lost by overshooting — the app says its own piece the moment the window ends.
 	/// </para>
 	///
 	/// <para>
@@ -371,13 +377,13 @@ public partial class Form1
 	/// should say nothing: whatever claimed it knows more than this call did.
 	/// </para>
 	/// </summary>
-	private async Task<bool> SettleAfterForeignWindowAsync()
+	private async Task<bool> SettleAfterForeignWindowAsync(int passes = 20)
 	{
 		// Claimed so that anything the app deliberately says next abandons this rather than being swallowed by
 		// it — Speak() bumps the same counter. See the note in Speak.
 		int generation = ++_speakListGeneration;
 
-		for (int i = 0; i < 20; i++)
+		for (int i = 0; i < passes; i++)
 		{
 			if (_shuttingDown || generation != _speakListGeneration) return false;
 			SilenceSpeech();

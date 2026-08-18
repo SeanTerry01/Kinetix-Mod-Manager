@@ -644,20 +644,30 @@ public partial class Form1 : Form, IMessageFilter
 		};
 		base.Shown += async delegate
 		{
-			// Speak the welcome / shortcut-hint, then wait for it before any startup loading speaks (connection
-			// status, refresh announcements, the focused list's position) so it isn't talked over. Toggleable in
-			// Settings (Startup tab).
+			// The startup order, deliberately: the welcome, then which session is loaded, then everything that
+			// loading a session says for itself. Each step waits for the one before it, so nothing is talked over.
+			// The welcome is toggleable in Settings (Startup tab).
 			if (form._settings!.SpeakStartupMessage)
 			{
-				// The screen reader announces the new window's title bar and focused tab the moment it appears —
-				// that foreground announcement fires just after this handler runs and would cut the welcome off.
-				// Let it play first, then speak the welcome last (interrupting any tail) so the welcome plays in
-				// full; nothing else changes focus or the title until after the wait below.
-				await Task.Delay(1500);
+				// The screen reader reads the new window's caption -- "The Witcher 3: Wild Hunt Kinetix Mod
+				// Manager" -- the moment it appears. Waiting for it and then interrupting was what cut it off
+				// half-said. It is swallowed outright instead, and the app says the same thing better: the
+				// welcome first, then which session is loaded, in a sentence rather than a title bar.
+				//
+				// A longer window than the default: at startup the reader gets to the caption later, with the
+				// app still coming up around it.
+				await form.SettleAfterForeignWindowAsync(passes: 60);
+
 				form.Speak(Loc.T("app.started"), interrupt: true);
 				await WaitForSpeechAsync();
-			}
 
+				// Only when there is one. Starting with no session goes to the game list, which announces itself.
+				if (form._settings.ActiveGame != "None")
+				{
+					form.Speak(Loc.T("app.sessionLoaded", form.GameDisplayName()));
+					await WaitForSpeechAsync();
+				}
+			}
 			if (form._settings.CheckForManagerUpdatesAtStartup)
 				await form.CheckForAppUpdates(manual: false);
 

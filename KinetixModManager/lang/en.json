@@ -249,6 +249,7 @@
   "status.authFailed": "Authentication Failed - Check API Key",
 
   "app.started": "Welcome to Kinetix Mod Manager. Press F1 for the manual, or Shift + F1 at any time to hear a list of shortcuts for the selected tab.",
+  "app.sessionLoaded": "{0} session is loaded.",
   "app.tolkFailed": "Tolk could not be loaded. Please ensure all native DLLs (Tolk.dll, nvdaControllerClient.dll, etc.) are in the application folder or lib folder.\nError: {0}",
   "app.welcome": "Welcome to Kinetix Mod Manager. Please select a game to manage from the list. Use arrow keys to select, and press Enter to confirm.",
   "app.shuttingDown": "Shutting down Kinetix Mod Manager. Goodbye.",
