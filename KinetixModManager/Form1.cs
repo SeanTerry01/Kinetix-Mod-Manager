@@ -334,6 +334,18 @@ public partial class Form1 : Form, IMessageFilter
 	/// startup landing must not pull them back. See <see cref="LandOnFirstTab"/>.
 	/// </summary>
 	private bool _userDroveDuringStartup;
+	/// <summary>
+	/// True while startup is speaking its own opening, so a list does not announce its position over the top.
+	///
+	/// <para>
+	/// A list that has focus when the window appears announces "1 of 5" about 100ms in, which arrived ahead of the
+	/// welcome — and did worse than that. The position goes out through <see cref="Speak"/>, which claims
+	/// <c>_speakListGeneration</c> and so cancelled the swallow holding the screen reader off, letting the
+	/// reader's own caption and row announcements escape and queue up behind the welcome. One stray ambient line
+	/// was enough to scramble the whole opening.
+	/// </para>
+	/// </summary>
+	private bool _startupSpeechInProgress;
 	// Results-per-load selector on the Discovery tab. Seeded from the saved
 	// DiscoverySearchPageSize but its own changes are session-only (not persisted); only the
 	// matching combo in Settings persists. See AppSettings.DiscoverySearchPageSize.
@@ -659,6 +671,14 @@ public partial class Form1 : Form, IMessageFilter
 			// The startup order, deliberately: the welcome, then which session is loaded, then everything that
 			// loading a session says for itself. Each step waits for the one before it, so nothing is talked over.
 			// The welcome is toggleable in Settings (Startup tab).
+			//
+			// Nothing ambient may speak until that opening is done. A list holding focus as the window appears
+			// announces its position within about 100ms, and that one line used to arrive first AND cancel the
+			// swallow keeping the screen reader quiet -- so the reader's caption and row announcements escaped and
+			// queued behind the welcome, leaving the whole opening out of order. Where the user is gets said
+			// deliberately, at the end, once there is something true to say about it.
+			form._startupSpeechInProgress = true;
+
 			if (form._settings!.SpeakStartupMessage)
 			{
 				// The screen reader reads the new window's caption -- "The Witcher 3: Wild Hunt Kinetix Mod
@@ -708,16 +728,27 @@ public partial class Form1 : Form, IMessageFilter
 				}
 			}
 
+			// The opening is done; ambient announcements may speak again from here.
+			form._startupSpeechInProgress = false;
+
 			if (form._settings.ActiveGame == "None")
 			{
-				// Same courtesy as the session path: the game list is on screen and arrowable while the welcome is
-				// still being spoken, so somebody already moving through it is left where they are. The
-				// instructions are still said either way — they are worth hearing wherever you happen to be.
+				// How to choose a game, and only then where you are — the reader's own version of that arrived in
+				// the middle of the opening and was swallowed with the caption, so it is said here instead, in the
+				// order a reader would have used it: the list's name, the game under the cursor, its position.
+				Speak(Loc.T("app.welcome"));
+				await WaitForSpeechAsync();
+
+				// Left alone if they are already moving through the list themselves — see _userDroveDuringStartup.
 				if (form._lstGames != null && !form._userDroveDuringStartup)
 				{
+					form._announceListNameOnNextChange = true;
+					form._announceRowNameOnNextChange = true;
 					form._lstGames.Focus();
+					// Focus is usually already here, in which case focusing raises nothing and there would be
+					// silence. SpeakListPosition de-duplicates, so asking twice costs nothing when it does fire.
+					form.List_Enter(form._lstGames, EventArgs.Empty);
 				}
-				Speak(Loc.T("app.welcome"));
 			}
 			else if (form.IsGameInstalled(form._settings.ActiveGame))
 			{

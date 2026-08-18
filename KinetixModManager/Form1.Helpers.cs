@@ -144,6 +144,10 @@ public partial class Form1
 
 	private async void List_Enter(object? sender, EventArgs e)
 	{
+		// Startup owns the floor until it has said its opening. Checked before the flags are consumed, so a
+		// deliberate announcement armed for afterwards survives. See _startupSpeechInProgress.
+		if (_startupSpeechInProgress) return;
+
 		// Consumed before any early return, for the same reason as in List_SelectedIndexChanged.
 		bool announceRowName = _announceRowNameOnNextChange;
 		bool announceListName = _announceListNameOnNextChange;
@@ -567,6 +571,9 @@ public partial class Form1
 
 	private async void List_SelectedIndexChanged(object? sender, EventArgs e)
 	{
+		// Startup owns the floor until it has said its opening. See _startupSpeechInProgress.
+		if (_startupSpeechInProgress) return;
+
 		// Consumed here, before any early return, so a flag set for a move that turned out not to be announced
 		// cannot survive to put a name in front of the next one the user makes with the arrow keys.
 		bool announceRowName = _announceRowNameOnNextChange;
