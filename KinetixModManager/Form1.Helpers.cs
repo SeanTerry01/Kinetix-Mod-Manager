@@ -485,6 +485,12 @@ public partial class Form1
 	{
 		if (_shuttingDown || mainTabs == null) return;
 
+		// Two reasons to leave focus exactly where it is. The window is usable while the session loads, so
+		// somebody may already be several keystrokes into moving around — being hauled back to Installed Mods
+		// mid-keystroke is worse than never being told where you began. And a first-run wizard or a Settings
+		// screen opened during startup owns the window; taking focus out from under it would be worse still.
+		if (_userDroveDuringStartup || OverlayIsOpen) return;
+
 		SelectTab(AppTab.Installed);
 		mainTabs.Focus();
 		Speak(Loc.T("common.tabSuffix", mainTabs.SelectedTab?.Text ?? ""));

@@ -36,6 +36,13 @@ public partial class Form1
 		// reaches the form whatever has focus, so it has to be turned away here.
 		if (OverlayIsOpen) return;
 
+		// The user is driving. Startup finishes by putting focus on the first tab and saying so, which is right
+		// when they have been waiting for it and wrong the moment they have started moving around themselves —
+		// being pulled back to Installed Mods mid-keystroke is worse than never being told where you started.
+		// Set here rather than on any key at all, so typing into a first-run wizard does not count as wandering
+		// the main window.
+		_userDroveDuringStartup = true;
+
 		if (_settings.ActiveGame == "None")
 		{
 			// On the game-selection screen most shortcuts act on a mod list that isn't loaded yet, but the

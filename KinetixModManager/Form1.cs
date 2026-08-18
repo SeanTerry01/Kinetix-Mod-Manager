@@ -329,6 +329,11 @@ public partial class Form1 : Form, IMessageFilter
 	/// is somewhere of their own choosing, and taking focus back to the tab strip each time would be intolerable.
 	/// </summary>
 	private bool _landOnFirstTabAfterStartup;
+	/// <summary>
+	/// True once the user has pressed a key in the main window during startup — they are navigating, so the
+	/// startup landing must not pull them back. See <see cref="LandOnFirstTab"/>.
+	/// </summary>
+	private bool _userDroveDuringStartup;
 	// Results-per-load selector on the Discovery tab. Seeded from the saved
 	// DiscoverySearchPageSize but its own changes are session-only (not persisted); only the
 	// matching combo in Settings persists. See AppSettings.DiscoverySearchPageSize.
@@ -705,7 +710,10 @@ public partial class Form1 : Form, IMessageFilter
 
 			if (form._settings.ActiveGame == "None")
 			{
-				if (form._lstGames != null)
+				// Same courtesy as the session path: the game list is on screen and arrowable while the welcome is
+				// still being spoken, so somebody already moving through it is left where they are. The
+				// instructions are still said either way — they are worth hearing wherever you happen to be.
+				if (form._lstGames != null && !form._userDroveDuringStartup)
 				{
 					form._lstGames.Focus();
 				}
