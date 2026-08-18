@@ -729,6 +729,7 @@ public partial class Form1
 			// the slot of the first freshly loaded result, which we select so focus lands on it.
 			RemoveDiscoveryLoadMoreRow();
 			int firstNewIndex = listDiscovery.Items.Count;
+			MarkAlreadyInstalled(results);
 			foreach (var mod in results) listDiscovery.Items.Add(mod);
 
 			// Re-add the inline "Load more" row only while this page returned results AND more remain.
@@ -796,6 +797,48 @@ public partial class Form1
 		}
 		cmbDiscoveryLanguage.SelectedIndex = selectIndex;
 		_suppressDiscoveryLanguageEvent = false;
+	}
+
+	/// <summary>
+	/// Flags the search results that are mods the user already has, so a row can say so before they act on it.
+	///
+	/// <para>
+	/// Matched on the Nexus id first, which is an exact fact and settles it outright. A mod with no id recorded
+	/// falls back to <see cref="ModNameMatch.IsConfident"/> — the same deliberately strict rules Auto Match uses,
+	/// where a partial name match only counts with the author agreeing. That matters because plenty of installed
+	/// mods have never been linked to a Nexus page, and those are exactly the ones a user is most likely to go
+	/// looking for and re-download.
+	/// </para>
+	///
+	/// <para>
+	/// A wrong "Installed" is worse than a missing one — it would talk somebody out of a mod they do not have —
+	/// so nothing looser than those two tests is used.
+	/// </para>
+	/// </summary>
+	private void MarkAlreadyInstalled(List<StardewMod> results)
+	{
+		if (results.Count == 0 || _allInstalledMods.Count == 0) return;
+
+		var installedIds = new HashSet<string>(
+			_allInstalledMods
+				.Where(m => !m.IsGroup && !string.IsNullOrWhiteSpace(m.NexusID))
+				.Select(m => m.NexusID!.Trim()),
+			StringComparer.OrdinalIgnoreCase);
+
+		var unmatched = _allInstalledMods
+			.Where(m => !m.IsGroup && string.IsNullOrWhiteSpace(m.NexusID))
+			.ToList();
+
+		foreach (StardewMod result in results)
+		{
+			if (!string.IsNullOrWhiteSpace(result.NexusID) && installedIds.Contains(result.NexusID.Trim()))
+			{
+				result.IsInstalled = true;
+				continue;
+			}
+
+			result.IsInstalled = unmatched.Any(m => ModNameMatch.IsConfident(m, result));
+		}
 	}
 
 	/// <summary>

@@ -269,6 +269,12 @@ Moonlight Peaks and The Witcher 3 join the manager as fully supported games, alo
 *   Unlike the language filter, the category is **not remembered between sessions**: it is a choice about the search in front of you rather than a standing preference. And it does not have the language filter's hiding problem — every mod on Nexus has a category, because uploading one requires choosing it.
 *   The manual's **Searching for Mods** section now also explains what each of the other Type options actually does, which had only ever been spelled out for **All**.
 
+### ✅ Search results say when you already have the mod
+
+*   **A result you have already installed now reads "Installed"**, right after its name and before its download and endorsement counts — *"Serena's Grimoire (ID: 23). Installed. 3,428 downloads…"*. It leads because it is the one fact that can end your interest in a row outright: a mod already in your mods folder needs no further thought, and no reason to open its page or start a download you would only have to undo.
+*   Only mods you **do** have are marked. Saying "not installed" on every one of a hundred results would bury the handful that matter.
+*   A mod is recognised by its **Nexus ID** where the manager knows it, and otherwise by **name and author** using the same strict rules Auto Match uses — a partial name match only counts when the author agrees. That second route is the one that earns its keep: plenty of installed mods have never been linked to a Nexus page, and those are exactly the ones you would otherwise re-download by accident. Nothing looser is used, because a wrong "Installed" would talk you out of a mod you do not actually have.
+
 ### 🌱 Stardew mod settings you can actually choose from
 *   **Edit Mod Config** on a **Content Patcher** mod now opens a **settings list** instead of raw JSON. Each setting is read as "name: current value", and **Enter** offers **the values the mod author allows** — pick one from a list rather than typing a string and hoping. Their explanation of the setting is read out as the chooser opens, where they wrote one.
 *   This closes a real gap rather than tidying one. The file these mods leave you to edit holds only the answers: a setting reads `"ObeliskOptions": "vanilla"`, and that `glass`, `garden`, `Yri` and `Juffuffles` are the alternatives is written somewhere else entirely. Changing a setting meant reading the author's own files or using an in-game menu.

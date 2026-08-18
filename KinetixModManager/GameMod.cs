@@ -69,6 +69,16 @@ public class GameMod
 	public bool IsSearchResult { get; set; }
 
 	/// <summary>
+	/// True when a Nexus search result turns out to be a mod already sitting in the user's mods folder.
+	///
+	/// Only ever set on a search result, and only by the Discovery tab, which is the one place that can see both
+	/// the catalogue and what is installed. It is the most decisive thing a result can say — a mod you already
+	/// have is one you can skip without reading any further — so <see cref="ToString"/> puts it before the
+	/// download and endorsement counts.
+	/// </summary>
+	public bool IsInstalled { get; set; }
+
+	/// <summary>
 	/// How many times the mod has been downloaded, and how many people endorsed it, as reported by Nexus.
 	/// <c>-1</c> means not known — nothing on disk records either, so they are only filled in for search
 	/// results. Together they are the quickest read on whether a mod is widely used and well thought of, which
@@ -123,6 +133,15 @@ public class GameMod
 		}
 		if (IsSearchResult)
 		{
+			// Whether you already have it comes first of all, because it is the one fact that can end your
+			// interest in a row outright: a mod already in your mods folder needs no further thought. Only the
+			// installed case is announced -- most results are not installed, and saying so on every one of a
+			// hundred rows would bury the few that matter.
+			//
+			// Plain English rather than a language-file lookup: GameMod is compiled into the test project on its
+			// own, without Loc, which is why nothing else in this method is localised either.
+			string installed = IsInstalled ? "Installed. " : "";
+
 			// Downloads and endorsements come BEFORE the summary on purpose. They are the two numbers that
 			// decide whether a result is worth more of your time, and putting them first means you can move on
 			// to the next result without sitting through a description you have already ruled out. It also keeps
@@ -139,7 +158,7 @@ public class GameMod
 			// The summary here is however much of it Nexus returns, which for a long one is NOT all of it:
 			// the API's summary field arrives already truncated at roughly 240 characters, often mid-word.
 			// Nothing can recover the rest — the full text lives in the mod's description (Ctrl+Shift+I).
-			return $"{Name} (ID: {NexusID}). {popularity}{Description}";
+			return $"{Name} (ID: {NexusID}). {installed}{popularity}{Description}";
 		}
 		string noteSuffix = string.IsNullOrEmpty(Note) ? "" : $" Note: {Note}.";
 		// Some mods genuinely carry no author or version — a Witcher 3 mod folder holds neither, because the
