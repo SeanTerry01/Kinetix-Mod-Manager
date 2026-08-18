@@ -306,6 +306,7 @@ public partial class Form1
 		// moving around starts again from here: only wandering off DURING this load should cancel the landing.
 		_userMovedSinceLoadBegan = false;
 		_landOnFirstTabWhenReady = true;
+		_landShouldSpeak = false;   // focus moves onto the strip here, and the reader announces that itself
 		RefreshAllData(checkUpdates: _settings.CheckForUpdatesAtStartup);
 
 		// A BepInEx game with no BepInEx installed loads none of its mods and says nothing about it in-game, so

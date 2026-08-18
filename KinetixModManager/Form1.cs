@@ -330,6 +330,14 @@ public partial class Form1 : Form, IMessageFilter
 	/// </summary>
 	private bool _landOnFirstTabWhenReady;
 	/// <summary>
+	/// Whether the landing should announce the tab itself, set by whoever armed it.
+	///
+	/// Startup leaves focus on the strip already, so focusing it moves nothing and the screen reader has nothing
+	/// to report — without this the session would open in silence. A session switch moves focus onto the strip
+	/// from the game-selection list, which the reader announces on its own.
+	/// </summary>
+	private bool _landShouldSpeak;
+	/// <summary>
 	/// True once the user has pressed a key in the main window during startup — they are navigating, so the
 	/// startup landing must not pull them back. See <see cref="LandOnFirstTab"/>.
 	/// </summary>
@@ -761,6 +769,7 @@ public partial class Form1 : Form, IMessageFilter
 				// Armed before the refresh, spent by it: the refresh is what says "Connecting…" and "Connected
 				// as …", so landing on the first tab has to happen at its end rather than here. See LandOnFirstTab.
 				form._landOnFirstTabWhenReady = true;
+				form._landShouldSpeak = true;   // focus is already on the strip; nothing else will say it
 				form.RefreshAllData(form._settings.CheckForUpdatesAtStartup);
 			}
 			else if (anyInstalled)

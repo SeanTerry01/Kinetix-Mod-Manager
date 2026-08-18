@@ -504,13 +504,14 @@ public partial class Form1
 		// screen opened during startup owns the window; taking focus out from under it would be worse still.
 		if (_userMovedSinceLoadBegan || OverlayIsOpen) return;
 
-		// Read before the move, because the move is what changes the answer.
-		bool alreadyOnTheStrip = mainTabs.Focused;
-
 		SelectTab(AppTab.Installed);
 		mainTabs.Focus();
 
-		if (alreadyOnTheStrip)
+		// Whether to say it is decided by whoever armed the landing, not guessed at here. Startup leaves focus on
+		// the strip already, so nothing moves and the reader has nothing to report — the app must say it or the
+		// session opens in silence. A session switch drags focus off the game-selection list onto the strip, which
+		// the reader announces itself; saying it too was heard as the tab twice.
+		if (_landShouldSpeak)
 			Speak(Loc.T("common.tabSuffix", mainTabs.SelectedTab?.Text ?? ""));
 	}
 
