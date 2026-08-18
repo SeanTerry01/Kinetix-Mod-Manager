@@ -728,26 +728,32 @@ public partial class Form1 : Form, IMessageFilter
 				}
 			}
 
-			// The opening is done; ambient announcements may speak again from here.
-			form._startupSpeechInProgress = false;
-
 			if (form._settings.ActiveGame == "None")
 			{
-				// How to choose a game, and only then where you are — the reader's own version of that arrived in
-				// the middle of the opening and was swallowed with the caption, so it is said here instead, in the
-				// order a reader would have used it: the list's name, the game under the cursor, its position.
+				// How to choose a game, and only then where you are — the reader's own version of the second half
+				// arrived in the middle of the opening and was swallowed with the caption, so it is said here
+				// instead, in the order a reader would have used: the list's name, the game under the cursor, its
+				// position.
+				//
+				// Both simply queued. Going through List_Enter for the second line looked tidier and was wrong:
+				// arming _announceRowNameOnNextChange also switches SpeakListPosition into replaceReader mode,
+				// which silences for 300ms and then interrupts. That is the right behaviour when fighting the
+				// reader over a programmatic move mid-session, and exactly the wrong one here — it cut the tail
+				// off the welcome and swallowed these instructions before they were heard at all. During startup
+				// the reader has already been dealt with and the app is the only thing speaking.
 				Speak(Loc.T("app.welcome"));
-				await WaitForSpeechAsync();
 
 				// Left alone if they are already moving through the list themselves — see _userDroveDuringStartup.
 				if (form._lstGames != null && !form._userDroveDuringStartup)
 				{
-					form._announceListNameOnNextChange = true;
-					form._announceRowNameOnNextChange = true;
 					form._lstGames.Focus();
-					// Focus is usually already here, in which case focusing raises nothing and there would be
-					// silence. SpeakListPosition de-duplicates, so asking twice costs nothing when it does fire.
-					form.List_Enter(form._lstGames, EventArgs.Empty);
+					if (form._lstGames.Items.Count > 0 && form._lstGames.SelectedIndex >= 0)
+					{
+						string position = Loc.T("common.position",
+							form._lstGames.SelectedIndex + 1, form._lstGames.Items.Count);
+						form.Speak(ListNameThenRest(form._lstGames,
+							RowThenPosition(form._lstGames.SelectedItem, position)));
+					}
 				}
 			}
 			else if (form.IsGameInstalled(form._settings.ActiveGame))
@@ -764,6 +770,12 @@ public partial class Form1 : Form, IMessageFilter
 				// screen rather than loading another game's mods by mistake.
 				form.SwitchActiveGame("None");
 			}
+
+			// The opening has had its say; lists may announce themselves again from here. Held until after the
+			// branch above so that focusing the game list could not set a competing announcement going underneath
+			// the two lines just spoken. A session's own announcements — "Connecting…", the mod list, the landing
+			// on the first tab — all come from the refresh started above, which runs after this.
+			form._startupSpeechInProgress = false;
 
 			// If no supported game is installed at all, guide the user to purchase one. This also
 			// covers a saved-but-uninstalled active game with no other game present (in which case
