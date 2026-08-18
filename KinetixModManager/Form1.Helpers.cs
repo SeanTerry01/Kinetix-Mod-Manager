@@ -842,6 +842,67 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// Re-marks the Discovery results against the installed list as it now stands, and rewrites the rows so a mod
+	/// that has just arrived stops inviting you to fetch it again.
+	///
+	/// <para>
+	/// Results are marked when they are fetched, but nothing is installed <em>from</em> that list — Enter on a
+	/// result opens its Nexus page, and the mod comes back through the download handler some time later, usually
+	/// while the user is still in their browser. So the moment worth re-checking is the one after a rescan, which
+	/// is where this is called from.
+	/// </para>
+	///
+	/// <para>
+	/// Two rules from hard experience govern the rebuild. It must <b>keep the user's place</b>, because losing it
+	/// means finding it again by ear. And the move must be <b>silent</b>: a selection the program sets is not
+	/// announced by the screen reader, so a bare position would be read against no mod at all. The one case worth
+	/// speaking is the row the user is actually sitting on changing meaning under them, which is said in full.
+	/// </para>
+	/// </summary>
+	private void RefreshDiscoveryInstalledMarks()
+	{
+		if (listDiscovery == null || listDiscovery.Items.Count == 0) return;
+
+		List<StardewMod> results = listDiscovery.Items.OfType<StardewMod>().ToList();
+		if (results.Count == 0) return;
+
+		bool[] before = results.Select(r => r.IsInstalled).ToArray();
+		MarkAlreadyInstalled(results);
+
+		// Nothing became installed since these results were fetched, so leave the list completely alone. A
+		// rebuild that changes nothing is still a rebuild, and this runs after every rescan.
+		if (!results.Where((r, i) => r.IsInstalled != before[i]).Any()) return;
+
+		int at = listDiscovery.SelectedIndex;
+		bool selectedRowChanged =
+			at >= 0 && at < results.Count && results[at].IsInstalled != before[at];
+		bool hadLoadMore = DiscoveryHasLoadMoreRow();
+
+		_movingListSilently = true;
+		try
+		{
+			listDiscovery.BeginUpdate();
+			listDiscovery.Items.Clear();
+			foreach (StardewMod result in results) listDiscovery.Items.Add(result);
+			// Put the "Load more" row back where it was, or the rest of the results become unreachable.
+			if (hadLoadMore) listDiscovery.Items.Add(new DiscoveryLoadMoreRow());
+			listDiscovery.EndUpdate();
+
+			if (listDiscovery.Items.Count > 0)
+				listDiscovery.SelectedIndex = Math.Clamp(at, 0, listDiscovery.Items.Count - 1);
+			// The selection and the focus rectangle are two different things, and only the second is what a screen
+			// reader reads when focus next arrives. See AlignListCaretToSelection.
+			AlignListCaretToSelection(listDiscovery);
+		}
+		finally { _movingListSilently = false; }
+
+		// Said only when the user is in the list AND it is their own row that changed. Anywhere else, the install
+		// has already announced itself and this would be a second announcement about something they cannot see.
+		if (selectedRowChanged && listDiscovery.Focused && listDiscovery.SelectedItem is StardewMod current)
+			Speak(Loc.T("discovery.nowInstalled", current.Name), interrupt: false);
+	}
+
+	/// <summary>
 	/// Fills the Discovery "Category" dropdown with the Nexus categories that actually have mods for the active
 	/// game, most-populated first and with counts. Keeps whatever is already there if the facet returns nothing,
 	/// so a network failure leaves a usable "Any category" rather than an empty control.

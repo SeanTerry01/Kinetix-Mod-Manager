@@ -1202,6 +1202,7 @@
   "discovery.loadingMore": "Loading more {0}...",
   "discovery.startingSearch": "Starting mod {0}...",
   "discovery.pickCategoryFirst": "Choose a category first. Moving you to the category list.",
+  "discovery.nowInstalled": "{0} is now installed.",
   "discovery.statusRunning": "Running {0}...",
   "discovery.added": "Added {0} mods.",
   "discovery.found": "Found {0} mods.",

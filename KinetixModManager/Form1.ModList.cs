@@ -224,6 +224,10 @@ public partial class Form1
 			RefreshModPriorityList();
 			RefreshPluginOrderList();
 			RefreshCreationsList();
+			// The Discovery results were marked against the installed list as it was when they were fetched, so a
+			// mod that has arrived since then is still sitting there inviting you to fetch it again. Re-marked
+			// here, where the scan has just finished and _allInstalledMods is current.
+			RefreshDiscoveryInstalledMarks();
 			listInstalled.EndUpdate();
 
 			// Say so when the sync above put Creations (or other Data-folder plugins) back after the game
