@@ -290,6 +290,18 @@ public partial class Form1
 			{
 				listUpdates.BeginUpdate();
 			}
+
+			// Startup only, and last: once the list is actually on screen, put the user on the first tab and say
+			// which one it is. Before this, a session opened, announced it was connected, and then went quiet with
+			// focus wherever Windows happened to leave it — and with the window's caption deliberately swallowed
+			// there was nothing left to say where you had landed. Consumed here rather than in the Shown handler
+			// because the refresh is asynchronous, and this is the first point at which "Connected as …" has
+			// already been said.
+			if (_landOnFirstTabAfterStartup)
+			{
+				_landOnFirstTabAfterStartup = false;
+				LandOnFirstTab();
+			}
 		});
 		if (!doUpdateChecks)
 		{

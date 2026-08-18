@@ -322,6 +322,13 @@ public partial class Form1 : Form, IMessageFilter
 	/// <summary>Which game's categories <c>cmbDiscoveryCategory</c> currently holds, so the list is fetched once
 	/// per game rather than on every data refresh.</summary>
 	private string _discoveryCategoriesGame = "";
+	/// <summary>
+	/// Set once, at startup, so the first completed mod-list refresh puts the user on the first tab and says so.
+	///
+	/// A one-shot flag rather than something the refresh always does: every later refresh happens while the user
+	/// is somewhere of their own choosing, and taking focus back to the tab strip each time would be intolerable.
+	/// </summary>
+	private bool _landOnFirstTabAfterStartup;
 	// Results-per-load selector on the Discovery tab. Seeded from the saved
 	// DiscoverySearchPageSize but its own changes are session-only (not persisted); only the
 	// matching combo in Settings persists. See AppSettings.DiscoverySearchPageSize.
@@ -706,6 +713,9 @@ public partial class Form1 : Form, IMessageFilter
 			}
 			else if (form.IsGameInstalled(form._settings.ActiveGame))
 			{
+				// Armed before the refresh, spent by it: the refresh is what says "Connecting…" and "Connected
+				// as …", so landing on the first tab has to happen at its end rather than here. See LandOnFirstTab.
+				form._landOnFirstTabAfterStartup = true;
 				form.RefreshAllData(form._settings.CheckForUpdatesAtStartup);
 			}
 			else if (anyInstalled)

@@ -466,6 +466,31 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// Puts the user on the first tab at the end of startup and says which tab that is.
+	///
+	/// <para>
+	/// The window's caption is deliberately not repeated. The welcome has already named the app and the line
+	/// after it named the session, so a third reading of "&lt;game&gt; Kinetix Mod Manager" would be the same
+	/// information a third time — and the title is a keypress away in the screen reader whenever it is wanted.
+	/// What is missing at this point is not what the program is called but where you now are.
+	/// </para>
+	///
+	/// <para>
+	/// The tab strip, not the mod list: it is where Tab and the arrow keys both do something useful next, and it
+	/// is one F6 from the list. Spoken by the app rather than left to the reader, because focus moved
+	/// programmatically and a reader says nothing about a move the user did not make.
+	/// </para>
+	/// </summary>
+	private void LandOnFirstTab()
+	{
+		if (_shuttingDown || mainTabs == null) return;
+
+		SelectTab(AppTab.Installed);
+		mainTabs.Focus();
+		Speak(Loc.T("common.tabSuffix", mainTabs.SelectedTab?.Text ?? ""));
+	}
+
+	/// <summary>
 	/// When the manager regains the foreground (e.g. Alt+Tab back in), the child control gets focus again without
 	/// reliably re-firing GotFocus, so an empty list would never re-announce that it is empty. If focus has landed
 	/// on an empty list, announce it here. Non-empty lists are left to the screen reader, which reads them itself.
