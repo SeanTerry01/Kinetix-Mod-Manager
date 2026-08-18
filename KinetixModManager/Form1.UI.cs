@@ -287,10 +287,19 @@ public partial class Form1
 		};
 		tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
 		tableLayoutPanel.Padding = new Padding(0, 25, 0, 0);
+		// No AccessibleName at all, deliberately — not SilentAccessibleName.
+		//
+		// The blank name was meant to stop the strip saying its own name before every tab. It did, and the reader
+		// then read the ROLE instead, so every tab change said "tab control". That is the same repetition it was
+		// supposed to cure, in a less useful word. A tab strip left alone is announced the way NVDA announces one
+		// in its own dialogs: named as you enter it, and silent about itself while you arrow across it.
+		//
+		// ⚠️ Watch for the strip borrowing a nearby label if it turns out to have no name of its own — that is
+		// what happened to the Settings strip once, which started calling itself "Search". If it comes back,
+		// the answer is a real short name here, not a blank one.
 		mainTabs = new TabControl
 		{
-			Dock = DockStyle.Fill,
-			AccessibleName = SilentAccessibleName
+			Dock = DockStyle.Fill
 		};
 		tabInstalled = new TabPage(Loc.T("tab.installed"));
 		TableLayoutPanel tableLayoutPanel2 = new TableLayoutPanel

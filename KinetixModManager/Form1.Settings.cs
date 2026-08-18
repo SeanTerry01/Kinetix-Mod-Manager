@@ -49,9 +49,9 @@ public partial class Form1
 		// Settings are grouped into tabs to keep the dialog readable as it grows. Each tab is a single-column
 		// TableLayoutPanel (same layout mechanics the dialog used when it was one long table), and the Save/Cancel
 		// buttons live outside the tabs so they're always reachable. Tab order within a tab follows add order.
-		// Silent for the same reason as the main window's strip: the reader says the strip's name before every
-		// tab, and the tab is the part worth hearing. See SilentAccessibleName.
-		TabControl tabs = new TabControl { Dock = DockStyle.Fill, AccessibleName = SilentAccessibleName };
+		// Left unnamed for the same reason as the main window's strip: a blank name did not silence it, it made
+		// the reader announce the role — "tab control" — before every tab instead. See the note there.
+		TabControl tabs = new TabControl { Dock = DockStyle.Fill };
 		TableLayoutPanel NewTab(string title)
 		{
 			var page = new TabPage(title);
