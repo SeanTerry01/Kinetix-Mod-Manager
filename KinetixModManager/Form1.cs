@@ -698,7 +698,48 @@ public partial class Form1 : Form, IMessageFilter
 				// app still coming up around it.
 				await form.SettleAfterForeignWindowAsync(passes: 60);
 
-				form.Speak(Loc.T("app.started"), interrupt: true);
+				// Hand the strip the focus for real, before a word of the opening is spoken.
+				//
+				// A screen reader names the window only when the focus reaches it from another application, and
+				// works out which application that is from the arrival. Startup offers none — the focus is already
+				// on the strip from the moment the window is built — so the reader goes on believing the app the
+				// manager was launched from is still the active one, reading that app's punctuation settings and
+				// answering "which window am I in" with that app's title, until a key press forces it to look
+				// again. Letting the focus go and taking it back makes the arrival genuine.
+				//
+				// It has to happen here and nowhere else. Earlier, the window is not yet in front, so the arrival
+				// is not an application switch and the reader ignores it — hence the wait. Later, once the opening
+				// is under way, the arrival cancels whatever Tolk still has queued and cuts it off mid-sentence.
+				// Here there is nothing queued to lose, and the welcome below interrupts the reader's account of
+				// the window, which the app is about to say better anyway.
+				//
+				// ⚠️ Nothing waits on how long any of this takes to speak, deliberately: Tolk reports IsSpeaking
+				// reliably only for its own voice, so any such wait is really a guess at the user's speech rate.
+				// Tolk queues, so the opening below stays in order at any rate.
+				for (int i = 0; i < 40 && GetForegroundWindow() != form.Handle; i++)
+				{
+					await Task.Delay(25);
+				}
+
+				if (form.mainTabs is { Focused: true })
+				{
+					form.ActiveControl = null;
+					form.mainTabs.Focus();
+				}
+
+
+				// Long enough for the reader to have reacted to the arrival above, and no longer.
+				//
+				// ⚠️ This is a reaction time, not a speaking time — the reader takes a moment to notice the focus
+				// event and start describing the window (measured at ~70ms). That does not change with the user's
+				// speech rate, which is why waiting it out is safe where waiting for speech to *finish* would not
+				// be. Without it the welcome is queued first and the reader's description cuts straight into it.
+				await Task.Delay(400);
+
+				// Queued, not interrupting, so it follows the reader's description of the window instead of
+				// cutting it in half. Tolk keeps the order at any speech rate; the whole opening below relies on
+				// the same thing, which is what makes it safe for a user who reads much slower or faster.
+				form.Speak(Loc.T("app.started"));
 				await WaitForSpeechAsync();
 
 				// Only when there is one. Starting with no session goes to the game list, which announces itself.
@@ -769,7 +810,10 @@ public partial class Form1 : Form, IMessageFilter
 				// Armed before the refresh, spent by it: the refresh is what says "Connecting…" and "Connected
 				// as …", so landing on the first tab has to happen at its end rather than here. See LandOnFirstTab.
 				form._landOnFirstTabWhenReady = true;
-				form._landShouldSpeak = true;   // focus is already on the strip; nothing else will say it
+				// The reader is told which window this is up in the Shown handler, before the opening starts, so
+				// by the time this lands there is nothing left to describe the arrival, and the app says which tab
+				// it landed on itself. See LandOnFirstTab.
+				form._landShouldSpeak = true;
 				form.RefreshAllData(form._settings.CheckForUpdatesAtStartup);
 			}
 			else if (anyInstalled)

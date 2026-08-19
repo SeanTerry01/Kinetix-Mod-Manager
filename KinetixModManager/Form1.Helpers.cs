@@ -90,39 +90,42 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Applies the current search query and category filter to the installed mods list,
-	/// then rebuilds the list box via <see cref="RebuildInstalledListBox"/>.
+	/// Applies the current search query, category and status filters to the installed mods list, then rebuilds the
+	/// list box via <see cref="RebuildInstalledListBox"/> and says how many mods came back.
+	///
+	/// <para>
+	/// The rebuild is delegated rather than done here, and that is the whole point of this method. It used to fill
+	/// the list itself, from a flat <c>Where</c> over every mod — which quietly threw the grouping away. Narrowing
+	/// by anything at all, a status as much as a search, replaced 147 grouped rows with 198 loose ones, and
+	/// widening back to All did not bring the grouping back, because nothing here ever knew how to build it.
+	/// <see cref="RebuildInstalledListBox"/> reads the same three controls and groups mods by folder whatever the
+	/// filters say, so grouping is never lost and never has to be rebuilt from scratch.
+	/// </para>
 	/// </summary>
 	private void FilterInstalledMods()
 	{
-		string query = txtSearchInstalled.Text.Trim().ToLower();
-		string category = cmbCategoryFilter.SelectedItem?.ToString() ?? "All Categories";
-		// Status filter by combo index (language-independent): 0 All, 1 Enabled, 2 Disabled, 3 Has Note.
-		int status = cmbStatusFilter?.SelectedIndex ?? 0;
-		bool StatusMatch(StardewMod m) => status switch
-		{
-			1 => m.IsEnabled,
-			2 => !m.IsEnabled,
-			3 => !string.IsNullOrWhiteSpace(m.Note),
-			_ => true
-		};
-		// Keep the user's place where the mod they were on survives the filter. Typing in the search box narrows
-		// the list under them, and landing back at the top each keystroke loses a mod they had just found.
-		string? selectedBefore = (listInstalled.SelectedItem as StardewMod)?.UniqueId;
+		RebuildInstalledListBox();
 
-		listInstalled.BeginUpdate();
-		listInstalled.Items.Clear();
-		List<StardewMod> list = _allInstalledMods.Where((StardewMod m) => (m.Name.ToLower().Contains(query) || m.Author.ToLower().Contains(query) || m.Note.ToLower().Contains(query)) && (category == "All Categories" || m.Category == category) && StatusMatch(m)).ToList();
-		foreach (StardewMod item in list)
-		{
-			listInstalled.Items.Add(item);
-		}
-		listInstalled.EndUpdate();
-		ReselectMod(selectedBefore);
-		if (!string.IsNullOrEmpty(query) || category != "All Categories" || status != 0)
-		{
-			Speak(Loc.T("discovery.modsFound", list.Count));
-		}
+		// Which sorting, before anything else. It is the one thing the user always wants back after changing it,
+		// and it used to arrive last if at all — leaving them to sit through two counts to learn which view they
+		// had landed in. The screen reader does not name the option itself, so if the app does not say it, nothing
+		// does.
+		//
+		// Said for every setting of the filter, All included. Widening back to All is as much an answer as
+		// narrowing was, and staying silent for the one option that happens not to narrow anything read as the
+		// app having missed the keypress.
+		//
+		// The total comes from the rebuild rather than from the rows, because a collapsed group holds its matching
+		// mods off screen and a group header is a row that is not a mod. Wherever any group is on show, the rows
+		// and groups are named as well: a group is one row standing for several mods, so the two counts differ —
+		// fewer rows than mods while groups are collapsed, more once they are expanded — and either reading is
+		// puzzling without the other.
+		string sorting = cmbStatusFilter?.SelectedItem?.ToString() ?? Loc.T("status.all");
+		int groups = listInstalled.Items.OfType<StardewMod>().Count(m => m.IsGroup);
+
+		Speak(groups == 0
+			? Loc.T("modlist.sortFound", sorting, _installedMatchCount)
+			: Loc.T("modlist.sortFoundWithGroups", sorting, _installedMatchCount, listInstalled.Items.Count, groups));
 	}
 
 	/// <summary>

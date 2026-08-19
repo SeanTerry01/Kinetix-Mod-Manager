@@ -4,6 +4,32 @@ Moonlight Peaks and The Witcher 3 join the manager as fully supported games, alo
 
 ---
 
+## 🐛 Fixed: moving between tabs no longer says "tab control" first
+
+*   **Every tab change was read as the role of the strip before the name of the tab** — "tab control, Installed Mods" — on the main window and in Settings alike, on every single press. It is now just the tab.
+*   The fault was in the tab strip's own bookkeeping, and it took measuring what the screen reader actually receives to find, rather than reading the code. A tab strip announces the focused tab **by number**, and the numbering it sent out did not match the list it published: the selected page's contents were counted first, pushing every tab one place along. So each announcement named the tab **before** the one you had moved to, and described it as neither focused nor selected. Given something that self-evidently could not be right, the reader discarded it and fell back on describing the strip itself — which is the "tab control" that was heard. The two now agree, so the tab you moved to is the tab that is named.
+*   Three earlier attempts had gone after the strip's *name* instead, on the reasonable theory that the reader was reading a label it should have ignored. None of them could have worked: the strip was never what the reader was being pointed at.
+*   **The opening now plays in one piece, and the manager is properly the window you are in.** As the session loads, the screen reader names the window and the tab you have landed on, and everything the manager says follows in order behind it — the welcome, which session is loaded, the connection to Nexus. Nothing cuts into anything else, at any speech rate: the manager no longer waits a guessed length of time for speech to finish, because a wait tuned to one person's speech rate is wrong for everyone else's.
+
+---
+
+## 🐛 Fixed: filtering the installed mods list no longer loses your mod groups
+
+*   **Narrowing the list threw away its grouping, permanently.** Choosing anything in the Status dropdown — or typing in the search box, or picking a category — replaced the grouped list with a flat one, and setting it back to **All Mods** did not bring the grouping back. On a Stardew Valley setup of 198 mods, 147 grouped rows became 198 loose ones and stayed that way.
+*   Two different parts of the manager knew how to build that list, and only one of them knew about mod groups. The filters were calling the other one, which had never done anything but flatten. They now both go through the one that groups, which is what the code had claimed to do all along.
+*   **Mod groups now survive filtering**, and are collapsed or expanded exactly as you last left them rather than being reset. A group is built from the mods that **matched**, so a group under **Enabled Only** saying "Contains 2 mods" means two enabled ones. A folder with only one match is shown as an ordinary row rather than a group of one.
+
+---
+
+## ✨ New: two more ways to sort the installed mods, and counts that explain themselves
+
+*   **Single Mods Only** and **Mod Groups Only** join the Status dropdown. The first four options sort by what you have done with a mod — all, enabled, disabled, has a note — while these two sort by its **shape**: whether it stands on its own or shares a folder with other mods. Between them they account for every mod you have, so the two counts adding up to your total is a quick check that nothing has been missed.
+*   **The sorting you are on is now announced first**, before any of the numbers, so you learn which view you have landed in without sitting through the rest of the sentence to find out.
+*   **Where mod groups are involved, the rows are counted as well as the mods** — *"All Mods. 198 mods found. 147 rows, including 31 mod groups."* A collapsed group is one row standing for several mods, so the two numbers are rarely the same, and a list that looks far shorter than its total was simply confusing. Where a sorting holds no groups, only the total is given.
+*   **Every setting of the dropdown is announced, including All Mods.** Widening back out is as much an answer as narrowing was, and the one option that stayed silent read as the manager having missed the keypress.
+
+---
+
 ## ✨ New: reach a mod's config file itself, as well as its settings
 
 *   **Ctrl + Shift + M opens the selected mod's `config.json` directly in the editor**, the same way Ctrl + M opens its manifest. It is also on the Mods menu, under Selected Mod, as **Edit Selected Mod's Config File Directly**.

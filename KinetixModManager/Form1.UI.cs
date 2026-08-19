@@ -287,7 +287,7 @@ public partial class Form1
 		};
 		tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
 		tableLayoutPanel.Padding = new Padding(0, 25, 0, 0);
-		mainTabs = new TabControl
+		mainTabs = new AccessibleTabControl
 		{
 			Dock = DockStyle.Fill,
 			AccessibleName = SilentAccessibleName
@@ -350,8 +350,13 @@ public partial class Form1
 			DropDownStyle = ComboBoxStyle.DropDownList,
 			AccessibleName = Loc.T("ui.statusFilterName")
 		};
-		// Order/text supplied by StatusFilterKeys so the selection can be matched by index regardless of language.
-		foreach (string label in new[] { Loc.T("status.all"), Loc.T("status.enabled"), Loc.T("status.disabled"), Loc.T("status.hasNote") })
+		// Order/text supplied here so the selection can be matched by index regardless of language. The last two
+		// filter by shape rather than by state: whether a mod stands on its own or shares a folder with others.
+		foreach (string label in new[]
+		{
+			Loc.T("status.all"), Loc.T("status.enabled"), Loc.T("status.disabled"), Loc.T("status.hasNote"),
+			Loc.T("status.singlesOnly"), Loc.T("status.groupsOnly")
+		})
 			cmbStatusFilter.Items.Add(label);
 		cmbStatusFilter.SelectedIndex = 0;
 		cmbStatusFilter.SelectedIndexChanged += delegate

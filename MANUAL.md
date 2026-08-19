@@ -362,9 +362,38 @@ Above the **Installed Mods** list are three controls that narrow down what's sho
 
 *   **Search box (Ctrl + F):** type any text to show only mods whose **name, author, or note** contains it. (Searching your notes means you can find a mod by something you wrote about it.)
 *   **Category dropdown:** show only mods in the category you pick, or **All Categories**.
-*   **Status dropdown:** show **All Mods**, **Enabled Only**, **Disabled Only**, or **Has a Note**.
+*   **Status dropdown:** show **All Mods**, **Enabled Only**, **Disabled Only**, **Has a Note**, **Single Mods Only**, or **Mod Groups Only**.
 
-The manager speaks how many mods match as you filter. Clear the search box and set both dropdowns back to "All" to see your full list again.
+### What the Status dropdown offers
+
+The first four sort by a mod's **state** — what you have done with it:
+
+*   **All Mods** — everything you have installed.
+*   **Enabled Only** and **Disabled Only** — the mods currently switched on, or currently switched off.
+*   **Has a Note** — only mods you have attached a note to with Ctrl + Shift + O.
+
+The last two sort by a mod's **shape** — whether it stands on its own or shares a folder with others:
+
+*   **Single Mods Only** — mods that are the only thing in their folder.
+*   **Mod Groups Only** — mods that share a folder with others, shown as the groups they belong to.
+
+Between them, those two account for every mod you have: none is in both, and none is left out of both. If the two counts add up to your full total, nothing has been missed.
+
+### Mod groups, and why the counts differ
+
+Mods that live under the same top-level folder are gathered into a **mod group**: one row standing for several mods, which you **expand with Right or Plus** and **collapse with Left or Minus**. Large mods that ship as a family of related pieces would otherwise fill the list with entries you never manage separately.
+
+Grouping applies whatever the filters say, and a group is built from the mods that **matched** — so a group under **Enabled Only** that says "Contains 2 mods" means two *enabled* mods, not two mods of which some are off. A folder with only one match is shown as an ordinary row rather than a group of one. Groups stay collapsed or expanded exactly as you last left them, filter or no filter.
+
+Because a collapsed group keeps its mods off the screen, **the number of mods and the number of rows are rarely the same**. Whenever any group is on show, the manager tells you both:
+
+> *"All Mods. 198 mods found. 147 rows, including 31 mod groups."*
+
+198 mods, but 147 rows to arrow through, because 31 of those rows are groups holding the rest. Expand them all and the rows would instead outnumber the mods. Where a sorting has no groups in it, only the total is given — *"Disabled Only. 2 mods found."*
+
+The announcement always **begins with the sorting you are now on**, so you know which view you have landed in without waiting for the numbers. It is spoken for every setting of the dropdown, including All Mods, so widening back is confirmed as clearly as narrowing was.
+
+Clear the search box and set both dropdowns back to "All" to see your full list again.
 
 ---
 

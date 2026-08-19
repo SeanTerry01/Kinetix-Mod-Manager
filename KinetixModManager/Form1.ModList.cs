@@ -411,6 +411,13 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// How many installed mods matched the search, category and status filters the last time the list was built —
+	/// including any sitting inside a collapsed group, which is why it is recorded rather than counted from the
+	/// rows. Spoken by <see cref="FilterInstalledMods"/> as "N mods found".
+	/// </summary>
+	private int _installedMatchCount;
+
+	/// <summary>
 	/// Re-renders <c>listInstalled</c> from <c>_allInstalledMods</c>, applying the current search
 	/// query and category filter, and grouping mods by their top-level sub-folder.
 	/// </summary>
@@ -430,7 +437,8 @@ public partial class Form1
 	{
 		string query = txtSearchInstalled.Text.Trim().ToLower();
 		string category = cmbCategoryFilter.SelectedItem?.ToString() ?? "All Categories";
-		// Status filter by combo index (language-independent): 0 All, 1 Enabled, 2 Disabled, 3 Has Note.
+		// Status filter by combo index (language-independent): 0 All, 1 Enabled, 2 Disabled, 3 Has Note,
+		// 4 Single Mods Only, 5 Mod Groups Only. The last two are applied per folder further down, not here.
 		int status = cmbStatusFilter?.SelectedIndex ?? 0;
 		bool StatusMatch(StardewMod m) => status switch
 		{
@@ -439,7 +447,10 @@ public partial class Form1
 			3 => !string.IsNullOrWhiteSpace(m.Note),
 			_ => true
 		};
-		bool flag = !string.IsNullOrEmpty(query) || category != "All Categories" || status != 0;
+		// How many mods matched, counted here because this is where the filter is actually applied. It cannot be
+		// taken from the rows afterwards: a collapsed group keeps its matches off screen, so counting rows would
+		// report only the ones that happen to be visible.
+		_installedMatchCount = 0;
 		listInstalled.BeginUpdate();
 		StardewMod? stardewMod = listInstalled.SelectedItem as StardewMod;
 		string? restoreId = preferUniqueId ?? stardewMod?.UniqueId;
@@ -449,12 +460,23 @@ public partial class Form1
 			select g)
 		{
 			List<StardewMod> list = item2.ToList();
+			// Status 4 and 5 filter by shape, not by state, so they are decided here: whether something is a mod
+			// group is a property of the folder it lives in and not of any one mod, which is all StatusMatch can
+			// see. "Single mods only" keeps folders holding exactly one mod; "Mod groups only" keeps the rest.
+			if (status == 4 && list.Count > 1) continue;
+			if (status == 5 && list.Count == 1) continue;
+
 			List<StardewMod> list2 = list.Where((StardewMod m) => (string.IsNullOrEmpty(query) || m.Name.ToLower().Contains(query) || m.Author.ToLower().Contains(query) || m.Note.ToLower().Contains(query)) && (category == "All Categories" || m.Category == category) && StatusMatch(m)).ToList();
+			_installedMatchCount += list2.Count;
 			if (list2.Count == 0)
 			{
 				continue;
 			}
-			if (flag || list.Count == 1)
+			// Grouping survives a filter. What changes is which mods the group is made of: a folder still reads as
+			// one group when more than one of its mods matched, and the header counts only those, so "Contains 3
+			// mods" is never a claim about rows that are not there. A folder with a single match is not a group at
+			// all, the same rule an unfiltered list of one follows.
+			if (list2.Count == 1)
 			{
 				foreach (StardewMod item3 in list2)
 				{
@@ -464,6 +486,9 @@ public partial class Form1
 				}
 				continue;
 			}
+			// Collapsed or expanded exactly as the user last left it, filter or no filter. A collapsed group under
+			// a filter reads as "Contains 2 mods", meaning two that matched — the same bargain the unfiltered list
+			// already makes, and the reason the count above is not taken from the visible rows.
 			bool flag2 = _expandedGroups.Contains(item2.Key);
 			StardewMod item = new StardewMod
 			{
@@ -471,7 +496,7 @@ public partial class Form1
 				GroupName = item2.Key,
 				IsExpanded = flag2,
 				UniqueId = "GROUP:" + item2.Key,
-				SubMods = list,
+				SubMods = list2,
 				// The active game's mods folder, not the legacy Stardew one this used — and for a group keyed by
 				// a Witcher family there is no folder of that name at all, so the parent is the honest answer.
 				FolderPath = _settings.CurrentModsPath
