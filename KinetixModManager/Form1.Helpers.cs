@@ -102,31 +102,64 @@ public partial class Form1
 	/// filters say, so grouping is never lost and never has to be rebuilt from scratch.
 	/// </para>
 	/// </summary>
-	private void FilterInstalledMods()
+	private void FilterInstalledMods(bool readerNamesTheChange = false)
 	{
 		RebuildInstalledListBox();
 
-		// Which sorting, before anything else. It is the one thing the user always wants back after changing it,
-		// and it used to arrive last if at all — leaving them to sit through two counts to learn which view they
-		// had landed in. The screen reader does not name the option itself, so if the app does not say it, nothing
-		// does.
-		//
-		// Said for every setting of the filter, All included. Widening back to All is as much an answer as
-		// narrowing was, and staying silent for the one option that happens not to narrow anything read as the
-		// app having missed the keypress.
+		// The counts, and only the counts. Which sorting the user has just moved to is the screen reader's to say —
+		// it names the new value of the dropdown as they arrow onto it — and the manager saying it as well was
+		// heard as the sorting twice over, once at each end: "All Mods. 198 mods found. 147 rows, including 31 mod
+		// groups. All Mods."
 		//
 		// The total comes from the rebuild rather than from the rows, because a collapsed group holds its matching
 		// mods off screen and a group header is a row that is not a mod. Wherever any group is on show, the rows
 		// and groups are named as well: a group is one row standing for several mods, so the two counts differ —
 		// fewer rows than mods while groups are collapsed, more once they are expanded — and either reading is
 		// puzzling without the other.
-		string sorting = cmbStatusFilter?.SelectedItem?.ToString() ?? Loc.T("status.all");
 		int groups = listInstalled.Items.OfType<StardewMod>().Count(m => m.IsGroup);
+		string counts = groups == 0
+			? Loc.T("modlist.found", _installedMatchCount)
+			: Loc.T("modlist.foundWithGroups", _installedMatchCount, listInstalled.Items.Count, groups);
 
-		Speak(groups == 0
-			? Loc.T("modlist.sortFound", sorting, _installedMatchCount)
-			: Loc.T("modlist.sortFoundWithGroups", sorting, _installedMatchCount, listInstalled.Items.Count, groups));
+		if (!readerNamesTheChange)
+		{
+			Speak(counts);
+			return;
+		}
+
+		_ = SpeakAfterReaderNamesTheChangeAsync(counts);
 	}
+
+	/// <summary>
+	/// Says <paramref name="counts"/> once the screen reader has had its say about the dropdown the user just
+	/// changed, so the sorting is heard before the numbers rather than after them.
+	///
+	/// <para>
+	/// The wait is the reader's <em>reaction</em> time, not its speaking time — how long it takes to notice the
+	/// selection changed and begin describing it, measured at around 70ms. That does not vary with the user's
+	/// speech rate, which is what makes it safe to wait out where waiting for speech to <em>finish</em> would not
+	/// be: Tolk reports <see cref="Tolk.IsSpeaking"/> reliably only for its own voice, so any such wait is really
+	/// a guess at how fast the user has their reader set. Announcing straight away instead put the numbers ahead
+	/// of the reader every time, which is the whole problem this exists to fix.
+	/// </para>
+	///
+	/// <para>
+	/// An announcement overtaken by a further change is dropped rather than spoken late: arrowing down the
+	/// dropdown should describe where the user stopped, not narrate every option they passed through.
+	/// </para>
+	/// </summary>
+	private async Task SpeakAfterReaderNamesTheChangeAsync(string counts)
+	{
+		int generation = ++_filterAnnounceGeneration;
+		await Task.Delay(400);
+
+		if (generation != _filterAnnounceGeneration || _shuttingDown) return;
+
+		Speak(counts);
+	}
+
+	/// <summary>Which filter announcement is the current one. See <see cref="SpeakAfterReaderNamesTheChangeAsync"/>.</summary>
+	private int _filterAnnounceGeneration;
 
 	/// <summary>
 	/// Wires the standard accessible behaviour onto a modal dialog's list: announce the "X of Y" position both when

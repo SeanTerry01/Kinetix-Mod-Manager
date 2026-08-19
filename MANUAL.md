@@ -391,7 +391,7 @@ Because a collapsed group keeps its mods off the screen, **the number of mods an
 
 198 mods, but 147 rows to arrow through, because 31 of those rows are groups holding the rest. Expand them all and the rows would instead outnumber the mods. Where a sorting has no groups in it, only the total is given — *"Disabled Only. 2 mods found."*
 
-The announcement always **begins with the sorting you are now on**, so you know which view you have landed in without waiting for the numbers. It is spoken for every setting of the dropdown, including All Mods, so widening back is confirmed as clearly as narrowing was.
+Your screen reader names the sorting itself as you arrow onto it, and the manager holds its counts back until that has been said — so you hear **which view you are in first, and the numbers after**. The counts are given for every setting of the dropdown, including All Mods, so widening back out is confirmed as clearly as narrowing was. Arrow quickly past several options and only the one you stop on is counted; the ones you passed through are dropped rather than read out late.
 
 Clear the search box and set both dropdowns back to "All" to see your full list again.
 

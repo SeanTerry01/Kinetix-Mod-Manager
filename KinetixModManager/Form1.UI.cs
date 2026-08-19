@@ -327,7 +327,8 @@ public partial class Form1
 		cmbCategoryFilter.SelectedIndexChanged += delegate
 		{
 			if (_suppressInstalledFilterEvent) return;
-			FilterInstalledMods();
+			// The reader names the dropdown's new value itself, so the counts wait their turn behind it.
+			FilterInstalledMods(readerNamesTheChange: true);
 		};
 		flowLayoutPanel.Controls.Add(new Label
 		{
@@ -362,7 +363,8 @@ public partial class Form1
 		cmbStatusFilter.SelectedIndexChanged += delegate
 		{
 			if (_suppressInstalledFilterEvent) return;
-			FilterInstalledMods();
+			// The reader names the dropdown's new value itself, so the counts wait their turn behind it.
+			FilterInstalledMods(readerNamesTheChange: true);
 		};
 		flowLayoutPanel.Controls.Add(new Label
 		{

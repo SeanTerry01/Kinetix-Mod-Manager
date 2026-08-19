@@ -1170,8 +1170,8 @@
   "wiki.backTo": "Back to {0}",
   "wiki.atTopLevel": "Already at top level.",
 
-  "modlist.sortFound": "{0}. {1} mods found.",
-  "modlist.sortFoundWithGroups": "{0}. {1} mods found. {2} rows, including {3} mod groups.",
+  "modlist.found": "{0} mods found.",
+  "modlist.foundWithGroups": "{0} mods found. {1} rows, including {2} mod groups.",
   "discovery.loginFirst": "Please login first.",
   "discovery.loadingMore": "Loading more results.",
   "discovery.startSearchFor": "Searching for {0}.",
