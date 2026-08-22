@@ -152,11 +152,19 @@ public partial class Form1
 					IgnoreKey = $"master|{issue.Plugin}|{issue.Master}"
 				});
 
-			// 2. Script extender (SKSE/F4SE) not installed at all.
+			// 2. Script extender (SKSE/F4SE) missing, or installed for a game build the user is not running —
+			// which looks identical from inside the game, because the extender simply never loads.
 			string seId = GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.SkyrimSE) ? "30379" : "42147"; // SKSE64 / F4SE Nexus ids
-			bool seInstalled = ModFileSystem.IsScriptExtenderInstalled(_settings.ActiveGame, _settings.CurrentGamePath);
-			if (!seInstalled)
-				rows.Add(new ReportRow { Text = Loc.T("reports.seMissing", GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.SkyrimSE) ? "SKSE" : "F4SE"), IgnoreKey = "se" });
+			string seName = ScriptExtenderInfo.DisplayName(_settings.ActiveGame);
+			ScriptExtenderStatus? se = ModFileSystem.ReadScriptExtenderStatus(_settings.ActiveGame, _settings.CurrentGamePath);
+			if (se == null)
+				rows.Add(new ReportRow { Text = Loc.T("reports.seMissing", seName), IgnoreKey = "se" });
+			else if (se.CanCompare && !se.Match)
+				rows.Add(new ReportRow
+				{
+					Text = Loc.T("reports.seMismatch", seName, se.TargetVersion, se.GameVersion),
+					IgnoreKey = "seMismatch"
+				});
 
 			// 3. Nexus "Requirements" tab for each installed Nexus-linked mod (online, best-effort).
 			var installedIds = new HashSet<string>(

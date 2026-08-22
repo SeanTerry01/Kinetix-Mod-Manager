@@ -114,7 +114,8 @@ public partial class Form1
 			string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder("SkyrimSE") : _settings.CurrentGamePath;
 			loaderInstalled = File.Exists(Path.Combine(gameFolder, "skse64_loader.exe"));
 
-			suiteItems.Add(new SuiteItem("SKSE64 (Script Extender)", loaderInstalled, "Loader", "https://skse.silverlock.org"));
+			suiteItems.Add(new SuiteItem("SKSE64 (Script Extender)", loaderInstalled, "Loader", "https://skse.silverlock.org",
+				ScriptExtenderStatusLine(game, gameFolder)));
 			suiteItems.Add(new SuiteItem("Address Library for SKSE Plugins", HasModNameContains("Address Library") || HasModNameContains("AddressLibrary"), "Nexus", "32444"));
 			suiteItems.Add(new SuiteItem("SkyUI", HasModNameContains("SkyUI"), "Nexus", "12604"));
 			suiteItems.Add(new SuiteItem("Better MessageBox Controls", HasModNameContains("Better MessageBox Controls") || HasModNameContains("BetterMessageBoxControls"), "Nexus", "1428"));
@@ -174,7 +175,8 @@ public partial class Form1
 			string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder("Fallout4") : _settings.CurrentGamePath;
 			loaderInstalled = File.Exists(Path.Combine(gameFolder, "f4se_loader.exe"));
 
-			suiteItems.Add(new SuiteItem("F4SE (Script Extender)", loaderInstalled, "Loader", "https://f4se.silverlock.org"));
+			suiteItems.Add(new SuiteItem("F4SE (Script Extender)", loaderInstalled, "Loader", "https://f4se.silverlock.org",
+				ScriptExtenderStatusLine(game, gameFolder)));
 			suiteItems.Add(new SuiteItem("Address Library for F4SE Plugins", HasModNameContains("Address Library") || HasModNameContains("AddressLibrary"), "Nexus", "47327"));
 			suiteItems.Add(new SuiteItem("Mod Configuration Menu (MCM)", HasModNameContains("Mod Configuration Menu") || HasModNameContains("MCM"), "Nexus", "21497"));
 			suiteItems.Add(new SuiteItem("Fallout 4 Access", HasModNameContains("Fallout4Access") || HasModNameContains("Fallout 4 Access"), "Nexus", "100314"));
@@ -182,7 +184,7 @@ public partial class Form1
 
 		foreach (var item in suiteItems)
 		{
-			string statusText = item.IsInstalled ? Loc.T("suite.installed") : Loc.T("suite.notInstalled");
+			string statusText = item.IsInstalled ? Loc.T("suite.installed") + item.Detail : Loc.T("suite.notInstalled");
 			lstStatus.Items.Add(Loc.T("suite.statusLine", item.Name, statusText));
 			// SMAPI (the Stardew "Loader") now installs automatically too, so a missing loader
 			// should also enable the Install button rather than being treated as already handled.
@@ -620,13 +622,48 @@ public partial class Form1
 		public bool IsInstalled { get; }
 		public string Type { get; }
 		public string Source { get; }
+		/// <summary>Extra words spoken after "Installed" for entries that can say more about themselves
+		/// (the script extender reports its version), or "" for the rest.</summary>
+		public string Detail { get; }
 
-		public SuiteItem(string name, bool isInstalled, string type, string source)
+		public SuiteItem(string name, bool isInstalled, string type, string source, string detail = "")
 		{
 			Name = name;
 			IsInstalled = isInstalled;
 			Type = type;
 			Source = source;
+			Detail = detail;
 		}
+	}
+
+	/// <summary>
+	/// What to say after "Installed" on the SKSE/F4SE row: the extender's own version, the game build it is
+	/// compiled for, and whether that is the build the user is running.
+	///
+	/// Neither extender appears in the mod list — it is loose files in the game folder — so this row is the only
+	/// place the manager can answer "which one have I got?". It matters most right after a game update, when the
+	/// answer decides whether the Mod Configuration Menu and every other extender-based feature still works.
+	/// Returns "" when there is nothing extra to say (no extender game, or nothing readable).
+	/// </summary>
+	private static string ScriptExtenderStatusLine(string game, string gameFolder)
+	{
+		ScriptExtenderStatus? se = ScriptExtenderInfo.Read(game, gameFolder);
+		if (se == null) return "";
+
+		string version = se.ProductVersion.Length > 0 ? Loc.T("se.lineVersion", se.ProductVersion) : "";
+
+		string build = !se.CanCompare
+			? ""                                                        // unreadable exe (e.g. under Wine): don't guess
+			: se.Match
+				? Loc.T("se.lineMatch", se.TargetVersion)
+				: Loc.T("se.lineMismatch", se.TargetVersion, se.GameVersion);
+
+		// A previous build's DLL left in the folder is harmless — the loader ignores it — but it is a file the
+		// user never chose to keep, so say it is there rather than leaving them to wonder.
+		string others = se.OtherBuilds.Count > 0
+			? Loc.T("se.lineOtherBuilds", string.Join(", ", se.OtherBuilds))
+			: "";
+
+		return version + build + others;
 	}
 }

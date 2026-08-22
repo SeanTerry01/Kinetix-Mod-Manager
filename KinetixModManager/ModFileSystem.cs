@@ -3424,12 +3424,7 @@ public static class ModFileSystem
 		Path.Combine(AppSettings.AppDataFolder, "script_extender", activeGame + ".json");
 
 	/// <summary>The script extender's loader exe name for a game, or "" for games without one (Stardew).</summary>
-	private static string ScriptExtenderLoaderName(string activeGame) => GameProfiles.BaseId(activeGame) switch
-	{
-		"SkyrimSE" => "skse64_loader.exe",
-		"Fallout4" => "f4se_loader.exe",
-		_          => ""
-	};
+	private static string ScriptExtenderLoaderName(string activeGame) => ScriptExtenderInfo.LoaderName(activeGame);
 
 	/// <summary>True if the script extender's loader is present in the game folder.</summary>
 	public static bool IsScriptExtenderInstalled(string activeGame, string gamePath)
@@ -3439,44 +3434,12 @@ public static class ModFileSystem
 	}
 
 	/// <summary>
-	/// Checks whether the installed script extender matches the game's runtime version. SKSE/F4SE only load when
-	/// built for the exact game build, so a mismatch (typically after the game auto-updates) silently stops them
-	/// loading — the usual reason MCM and other script-extender features vanish. Returns null when not applicable
-	/// (not a script-extender game, no loader installed, or versions can't be read); otherwise reports both
-	/// versions and whether they match.
+	/// What script extender is installed in the game folder and whether it will load — see
+	/// <see cref="ScriptExtenderInfo.Read"/>, which does the reading. Kept here so the rest of the app has one
+	/// name for every script-extender question it asks about a game folder.
 	/// </summary>
-	public static (bool Match, string GameVersion, string ExtenderVersion)? CheckScriptExtenderVersion(string activeGame, string gamePath)
-	{
-		string loader = ScriptExtenderLoaderName(activeGame);
-		if (string.IsNullOrEmpty(loader) || string.IsNullOrEmpty(gamePath)) return null;
-		if (!File.Exists(Path.Combine(gamePath, loader))) return null;
-
-		string gameExe = GameProfiles.IsGame(activeGame, GameProfiles.SkyrimSE) ? "SkyrimSE.exe" : "Fallout4.exe";
-		string gameExePath = Path.Combine(gamePath, gameExe);
-		if (!File.Exists(gameExePath)) return null;
-
-		// Game runtime version from the exe (first three parts, e.g. 1.6.1170).
-		var vi = System.Diagnostics.FileVersionInfo.GetVersionInfo(gameExePath);
-		string gameVer = $"{vi.FileMajorPart}.{vi.FileMinorPart}.{vi.FileBuildPart}";
-		if (vi.FileMajorPart == 0 && vi.FileMinorPart == 0 && vi.FileBuildPart == 0) return null; // exe version unreadable
-
-		// The versioned script-extender DLL is named for the runtime it targets, e.g. skse64_1_6_1170.dll.
-		string prefix = GameProfiles.IsGame(activeGame, GameProfiles.SkyrimSE) ? "skse64_" : "f4se_";
-		string? extVer = null;
-		try
-		{
-			foreach (string dll in Directory.EnumerateFiles(gamePath, prefix + "*.dll", SearchOption.TopDirectoryOnly))
-			{
-				string stem = Path.GetFileNameWithoutExtension(dll).Substring(prefix.Length); // "1_6_1170" or "steam_loader"
-				var m = System.Text.RegularExpressions.Regex.Match(stem, @"^(\d+)_(\d+)_(\d+)$");
-				if (m.Success) { extVer = $"{m.Groups[1].Value}.{m.Groups[2].Value}.{m.Groups[3].Value}"; break; }
-			}
-		}
-		catch { }
-		if (extVer == null) return null; // couldn't determine the extender's target build; don't guess
-
-		return (gameVer == extVer, gameVer, extVer);
-	}
+	public static ScriptExtenderStatus? ReadScriptExtenderStatus(string activeGame, string gamePath) =>
+		ScriptExtenderInfo.Read(activeGame, gamePath);
 
 	private static void SaveScriptExtenderManifest(string activeGame, string gamePath, List<string> files)
 	{

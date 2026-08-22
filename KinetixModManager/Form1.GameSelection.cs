@@ -799,16 +799,16 @@ public partial class Form1
 				if (!ConfirmBepInExBeforeLaunch(gamePath)) { SetStatus(Loc.T("launch.cancelled")); return; }
 
 				string gameName = GameDisplayName();
-				// Warn if the installed script extender won't load because it doesn't match the game's build —
-				// the common reason MCM and other SKSE/F4SE features disappear after a game update.
-				var seVer = ModFileSystem.CheckScriptExtenderVersion(game, gamePath);
-				if (seVer.HasValue && !seVer.Value.Match)
+				// Warn if the installed script extender won't load because no build of it matches the game —
+				// the common reason MCM and other SKSE/F4SE features disappear after a game update. A leftover
+				// DLL from the previous build sitting beside the current one is normal and is not a mismatch.
+				ScriptExtenderStatus? se = ModFileSystem.ReadScriptExtenderStatus(game, gamePath);
+				if (se != null && se.CanCompare && !se.Match)
 				{
-					string seName = GameProfiles.IsGame(game, GameProfiles.SkyrimSE) ? "SKSE" : "F4SE";
-					Speak(Loc.T("launch.seMismatchSpeak", seName));
+					Speak(Loc.T("launch.seMismatchSpeak", se.Name));
 					var choice = SpeakBox(
-						Loc.T("launch.seMismatchBox", seName, seVer.Value.ExtenderVersion, seVer.Value.GameVersion),
-						Loc.T("launch.seMismatchTitle", seName),
+						Loc.T("launch.seMismatchBox", se.Name, se.TargetVersion, se.GameVersion),
+						Loc.T("launch.seMismatchTitle", se.Name),
 						MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
 					if (choice == DialogResult.No) { SetStatus(Loc.T("launch.cancelled")); return; }
 				}

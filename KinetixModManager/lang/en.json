@@ -817,6 +817,7 @@
   "reports.missingMaster": "Plugin {0} (from {1}) needs master \"{2}\", which is not installed.",
   "reports.masterInactive": "Plugin {0} (from {1}) needs master \"{2}\", which is installed but not enabled. Enable it (Creations tab for Creation Club content).",
   "reports.seMissing": "The script extender ({0}) is not installed; most mods that add features need it.",
+  "reports.seMismatch": "The installed {0} is built for game version {1}, but your game is version {2}, so {0} will not load and neither will anything that needs it. Reinstall {0} from Install Accessibility Suite.",
   "reports.nexusReqMissing": "{0} lists \"{1}\" as a Nexus requirement that isn't installed (some are optional or have alternatives — check the mod page).{2}",
   "reports.nexusReqNote": " Author note: {0}",
   "reports.checkingReqs": "Checking requirements ({0}/{1})...",
@@ -1143,6 +1144,10 @@
   "suite.smapiUnconfirmed": "SMAPI installation could not be confirmed. Opening the SMAPI page so you can install it manually.",
   "suite.smapiAutoFailed": "Automatic SMAPI install failed. Opening the SMAPI download page.",
 
+  "se.lineVersion": ", version {0}",
+  "se.lineMatch": ", built for game {0}, which matches your game",
+  "se.lineMismatch": ", built for game {0}, but your game is {1}, so it will not load — reinstall it",
+  "se.lineOtherBuilds": ". Also in the folder, left by earlier installs and now unused: {0}",
   "se.uninstallTitle": "Uninstall {0}",
   "se.uninstallWrongGame": "Uninstalling the script extender only applies to Skyrim or Fallout 4.",
   "se.uninstallNotInstalled": "{0} does not appear to be installed.",
