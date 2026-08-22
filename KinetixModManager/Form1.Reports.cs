@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
@@ -165,6 +166,10 @@ public partial class Form1
 					Text = Loc.T("reports.seMismatch", seName, se.TargetVersion, se.GameVersion),
 					IgnoreKey = "seMismatch"
 				});
+
+			// 2b. The Address Library, and the DLL plugins that depend on it. A matching script extender is only
+			// the first link in the chain; everything below it fails silently, which is why this is checked at all.
+			rows.AddRange(GatherDllPluginFindings(se, _settings.CurrentGamePath));
 
 			// 3. Nexus "Requirements" tab for each installed Nexus-linked mod (online, best-effort).
 			var installedIds = new HashSet<string>(
@@ -440,5 +445,73 @@ public partial class Form1
 		// list rows themselves can stay short and scannable, rather than each carrying a paragraph.
 		if (hasRows && !string.IsNullOrEmpty(openingNote)) opening += ". " + openingNote;
 		return opening;
+	}
+
+	/// <summary>
+	/// The findings below the script extender: the Address Library's coverage of the game build, and the DLL
+	/// plugins the script extender actually refused the last time the game ran.
+	///
+	/// These deserve their own check because they are the only failures in the whole chain that leave no trace a
+	/// player can find. A missing mod is absent from a list; a broken load order stops the game starting. A DLL
+	/// plugin that will not load produces a game that launches normally and simply does less than it should —
+	/// and when the plugin is the accessibility mod, "does less" means says nothing at all.
+	/// </summary>
+	private List<ReportRow> GatherDllPluginFindings(ScriptExtenderStatus? se, string gamePath)
+	{
+		var rows = new List<ReportRow>();
+		if (se == null) return rows;   // no script extender at all is already reported above
+
+		// 1. Address Library coverage. Only when it is installed: a missing one is a missing requirement, which
+		// the suite check already reports, and saying both would be two rows for one thing.
+		var lib = ScriptExtenderPlugins.ReadAddressLibrary(_settings.ActiveGame, gamePath, se.GameVersion);
+		if (lib.CanJudge && !lib.CoversGame)
+			rows.Add(new ReportRow
+			{
+				Text = Loc.T("reports.addrLibBehind", se.GameVersion, lib.NewestBuild),
+				OpenUrl = $"https://www.nexusmods.com/{_nexusService.CurrentGameDomain}/mods/" +
+					(GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.SkyrimSE) ? "32444" : "47327"),
+				IgnoreKey = "addrLib"
+			});
+
+		// 2. What the script extender's own log says was refused last run. Historical rather than predictive —
+		// it describes the last launch — but it is the only place that names the individual mods, and it catches
+		// reasons the manager has no way to anticipate.
+		foreach (PluginLoadFailure fail in ReadLastPluginFailures())
+		{
+			// A plugin refused for want of an Address Library is the row above, said again per mod; naming them
+			// is the point, but the fix is the same one and does not need repeating on every line.
+			string key = fail.Kind switch
+			{
+				PluginFailureKind.AddressLibrary => "reports.pluginAddrLib",
+				PluginFailureKind.GameVersion    => "reports.pluginGameVersion",
+				_                                => "reports.pluginOther"
+			};
+			rows.Add(new ReportRow
+			{
+				Text = Loc.T(key, fail.Name, se.GameVersion, fail.Reason),
+				SearchTerm = fail.Name,
+				IgnoreKey = $"plugin|{fail.PluginFile}"
+			});
+		}
+
+		return rows;
+	}
+
+	/// <summary>Reads the script extender's log for the plugins it refused, or an empty list if there is no log
+	/// yet (the game has never been run through it) or it cannot be read.</summary>
+	private List<PluginLoadFailure> ReadLastPluginFailures()
+	{
+		try
+		{
+			string path = Path.Combine(GameLogFolder(), PrimaryGameLogName());
+			if (!File.Exists(path)) return new List<PluginLoadFailure>();
+			// Shared read: the game may be running and holding the log open.
+			return ScriptExtenderPlugins.ParseLoadFailures(ReadAllLinesShared(path));
+		}
+		catch (Exception ex)
+		{
+			LogError("Reports", "Could not read the script extender log: " + ex.Message);
+			return new List<PluginLoadFailure>();
+		}
 	}
 	}

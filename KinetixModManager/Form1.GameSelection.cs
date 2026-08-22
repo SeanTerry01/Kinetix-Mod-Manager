@@ -812,6 +812,23 @@ public partial class Form1
 						MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
 					if (choice == DialogResult.No) { SetStatus(Loc.T("launch.cancelled")); return; }
 				}
+				// The script extender matching is only the first link. Below it sits the Address Library, which
+				// ships one file per game build — and when the game updates ahead of it, every DLL plugin that
+				// uses it is skipped in silence. That is the whole of the symptom: the game runs, and the
+				// accessibility mod says nothing. Checked here because it can be known before the game starts.
+				else if (se != null && se.CanCompare)
+				{
+					var lib = ScriptExtenderPlugins.ReadAddressLibrary(game, gamePath, se.GameVersion);
+					if (lib.CanJudge && !lib.CoversGame)
+					{
+						Speak(Loc.T("launch.addrLibSpeak"));
+						var choice = SpeakBox(
+							Loc.T("launch.addrLibBox", se.GameVersion, lib.NewestBuild, se.Name),
+							Loc.T("launch.addrLibTitle"),
+							MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+						if (choice == DialogResult.No) { SetStatus(Loc.T("launch.cancelled")); return; }
+					}
+				}
 
 				// SetStatus speaks by default, so it announces the launch on its own.
 				SetStatus(Loc.T("launch.launching", gameName));

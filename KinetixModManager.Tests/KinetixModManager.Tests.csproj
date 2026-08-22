@@ -81,6 +81,8 @@
     <Compile Include="..\KinetixModManager\ScriptExtenderInfo.cs" />
     <!-- Self-contained Markdown outline + phrase search behind the F1/F2/F3 document viewers (BCL only). -->
     <Compile Include="..\KinetixModManager\DocOutline.cs" />
+    <!-- Self-contained "why did the DLL plugins not load?" reader: Address Library + SKSE/F4SE log (BCL). -->
+    <Compile Include="..\KinetixModManager\ScriptExtenderPlugins.cs" />
     <!-- Self-contained store behind the curator's list of mods worth suggesting (BCL + Newtonsoft + GameProfiles). -->
     <Compile Include="..\KinetixModManager\SuggestedMod.cs" />
     <!-- Self-contained read/write/merge rules for a shared suggestions list (BCL + Newtonsoft + SuggestedMod). -->
