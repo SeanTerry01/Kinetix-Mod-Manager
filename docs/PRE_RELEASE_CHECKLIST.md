@@ -165,6 +165,8 @@ The full reasoning for each lives in `docs/FUTURE_DEVELOPMENT_PLANS.txt` §6.
 
 From `reference-build-publish-release`. The publish output was verified complete on 2026-08-08.
 
+0.  **Publish your Suggested Mods picks** (see §5 below) — do this *before* the version bump, so the shipped
+    list records the version it went out with.
 1.  **Bump the version in both places** — `<Version>` in `KinetixModManager/KinetixModManager.csproj` and
     `AppVersion` in `KinetixModManager/setup.iss`. Both currently read **1.4.5**. Suggested: **1.5.0** — two new
     games (Moonlight Peaks, The Witcher 3), per-copy game installs, and the windows-to-panels conversion is well
@@ -190,3 +192,45 @@ From `reference-build-publish-release`. The publish output was verified complete
     setting is keyed.
     Existing settings files upgrade in place with nothing to redo, but it is worth keeping a copy of
     `%AppData%\AudiVentureGames\KinetixModManager\settings.json` before the first run of the new build.
+
+---
+
+## 5. Shipping your Suggested Mods picks
+
+The Suggested Mods viewer (**F7**) shows two layers merged:
+
+| Layer | Where | Who it is for |
+| --- | --- | --- |
+| Shipped | `KinetixModManager\data\suggested-mods.json` | everybody; replaced wholesale by each release |
+| Personal | `%AppData%\AudiVentureGames\KinetixModManager\suggested-mods.json` | just you; wins over the shipped one |
+
+Curating happens in the **personal** layer — **Ctrl + Shift + F7** marks the selected mod, **F7** views the
+list, **Shift + F7** edits categories. Marking a mod does *not* put it in front of anyone else. Publishing it
+does, and that is one command:
+
+```
+powershell -ExecutionPolicy Bypass -File tools\update-suggested-defaults.ps1
+```
+
+That reads your personal list, writes `KinetixModManager\data\suggested-mods.json`, and prints what it published
+broken down by game. **Commit that file with the release and it ships.** Nothing else needs changing: the
+project already copies `data\**` to the build output and `setup.iss` already installs `data\*`.
+
+Useful arguments:
+
+*   `-DryRun` — report what would ship and write nothing. Worth running first.
+*   `-Games MoonlightPeaks,SkyrimSE` — publish only those games' entries.
+*   `-Name` / `-Author` — what the file records about itself.
+
+The script warns (without stopping) about an entry with no reason written, or with neither a Nexus id nor a
+GitHub repo — that second one cannot be installed from the list, so it is only a name. `ShippedSuggestionsTests`
+then makes those checks binding, along with unknown games, categories the file forgot to carry, duplicate mods,
+and a stray byte-order mark. **So the safe loop is: run the script, run the tests, commit.** You never have to
+read the JSON.
+
+Two things worth knowing:
+
+*   Your own entries stay in your personal layer after publishing, and the personal layer wins — so you will not
+    see a difference locally. Everyone else gets them from the shipped list.
+*   Only what you have marked is published. The shipped list is never re-exported into itself, so entries cannot
+    accumulate copies of themselves release over release.

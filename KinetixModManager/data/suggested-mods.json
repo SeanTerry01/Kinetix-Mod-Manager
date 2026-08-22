@@ -1,0 +1,242 @@
+{
+    "Name":  "Kinetix Mod Manager suggested mods",
+    "Author":  "Kinetix Mod Manager",
+    "CreatedUtc":  "2026-08-22T01:11:44.2137810Z",
+    "AppVersion":  "1.5.1",
+    "Categories":  [
+                       {
+                           "Id":  "BugFix",
+                           "LocKey":  "curator.categoryBugFix",
+                           "Label":  "",
+                           "IsBuiltIn":  true
+                       },
+                       {
+                           "Id":  "QualityofLife",
+                           "LocKey":  "",
+                           "Label":  "Quality of Life",
+                           "IsBuiltIn":  false
+                       }
+                   ],
+    "Entries":  [
+                    {
+                        "Game":  "Fallout4",
+                        "Name":  "Easy Hacking",
+                        "Author":  "zilav",
+                        "NexusId":  "266",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "Easy Hacking",
+                        "Category":  "QualityofLife",
+                        "Reason":  "This mod makes it so that when hacking something, only 1 word is shown, which is the word you need to automatically hack the thing you are trying to hack.",
+                        "MarkedUtc":  "2026-08-17T23:12:50.9343316Z"
+                    },
+                    {
+                        "Game":  "Fallout4",
+                        "Name":  "Easy Lockpicking",
+                        "Author":  "The Iron Rose",
+                        "NexusId":  "227",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "Easy Lockpicking",
+                        "Category":  "QualityofLife",
+                        "Reason":  "You can pick locks much easier than you ever would be able to by default without this mod.",
+                        "MarkedUtc":  "2026-08-17T23:13:32.3021567Z"
+                    },
+                    {
+                        "Game":  "MoonlightPeaks",
+                        "Name":  "Always Show Item Value",
+                        "Author":  "Padme4000",
+                        "NexusId":  "27",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "padme4000.moonlightpeaks.alwaysshowvalue",
+                        "Category":  "QualityofLife",
+                        "Reason":  "This one will show an items sell value so you don\u0027t have to go to a shop to find out how much it sells for.",
+                        "MarkedUtc":  "2026-08-17T05:47:55.7681272Z"
+                    },
+                    {
+                        "Game":  "MoonlightPeaks",
+                        "Name":  "Bigger Stacks for Items",
+                        "Author":  "Kuriti0n",
+                        "NexusId":  "33",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "BiggerStacks",
+                        "Category":  "QualityofLife",
+                        "Reason":  "You don\u0027t have to worry about being to limited with the default limit a stack of an item gives you in game.",
+                        "MarkedUtc":  "2026-08-17T23:14:42.2560032Z"
+                    },
+                    {
+                        "Game":  "MoonlightPeaks",
+                        "Name":  "Infinite Energy",
+                        "Author":  "Ask for Mods",
+                        "NexusId":  "2",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "costmillion.moonlightpeaks.infiniteenergy",
+                        "Category":  "QualityofLife",
+                        "Reason":  "You can use tools as much as you want without needing to worry about finding something to give you more energy.",
+                        "MarkedUtc":  "2026-08-17T23:14:52.2585914Z"
+                    },
+                    {
+                        "Game":  "MoonlightPeaks",
+                        "Name":  "Moonlight Auto Tool Select",
+                        "Author":  "SeanTerry01",
+                        "NexusId":  "111",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "com.moonlightpeaks.autotoolselect",
+                        "Category":  "QualityofLife",
+                        "Reason":  "This one will select the correct tool for the thing you need to do like cutting down a tree or mining or anything else that requires a tool.",
+                        "MarkedUtc":  "2026-08-17T23:14:58.5586553Z"
+                    },
+                    {
+                        "Game":  "MoonlightPeaks",
+                        "Name":  "Moonlight Peaks House Storage Anywhere",
+                        "Author":  "lockyaw",
+                        "NexusId":  "7",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "com.lockyaw.moonlightpeaks.house_storage_anywhere",
+                        "Category":  "QualityofLife",
+                        "Reason":  "You can access your house storage from anywhere in game without needing to go back to your farm to access it.",
+                        "MarkedUtc":  "2026-08-17T23:15:04.651884Z"
+                    },
+                    {
+                        "Game":  "MoonlightPeaks",
+                        "Name":  "Moonlight Quick Spells",
+                        "Author":  "SeanTerry01",
+                        "NexusId":  "114",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "com.moonlightpeaks.quickspells",
+                        "Category":  "QualityofLife",
+                        "Reason":  "You can press k to do a spell without needing to worry about having to use the correct keys to complete the selected spell.",
+                        "MarkedUtc":  "2026-08-17T23:15:11.4628772Z"
+                    },
+                    {
+                        "Game":  "MoonlightPeaks",
+                        "Name":  "Moonlight Time Control",
+                        "Author":  "SeanTerry01",
+                        "NexusId":  "85",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "com.moonlightpeaks.timecontrol",
+                        "Category":  "QualityofLife",
+                        "Reason":  "You can stop or start time, slow it down or speed it up. This one will make it easier to do your nightly activities without worring if you are running out of time",
+                        "MarkedUtc":  "2026-08-17T23:15:18.0975718Z"
+                    },
+                    {
+                        "Game":  "MoonlightPeaks",
+                        "Name":  "Save Anywhere",
+                        "Author":  "SerenaEnchanted",
+                        "NexusId":  "11",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "serena.moonlightpeaks.saveanywhere",
+                        "Category":  "QualityofLife",
+                        "Reason":  "You can press f5 from anywhere, at any time in game to save your progress. Even in the middle of the night.",
+                        "MarkedUtc":  "2026-08-17T23:15:25.6206175Z"
+                    },
+                    {
+                        "Game":  "MoonlightPeaks",
+                        "Name":  "Stack To Chest",
+                        "Author":  "roguechikkin",
+                        "NexusId":  "22",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "com.ohsal.moonlightpeaks.stacktochest",
+                        "Category":  "QualityofLife",
+                        "Reason":  "You can press a key to stack items in a nearby chest if that chest already has some of the same item in it.",
+                        "MarkedUtc":  "2026-08-17T23:15:31.778972Z"
+                    },
+                    {
+                        "Game":  "SkyrimSE",
+                        "Name":  "Achievements Mods Enabler",
+                        "Author":  "xSHADOWMANx or Sumwunn at github",
+                        "NexusId":  "245",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "Achievements Mods Enabler SE-AE-245-1-41-1715217907",
+                        "Category":  "BugFix",
+                        "Reason":  "You can get achievements even when using mods. With this not installed, if you are using mods, you will not be able to get achievements.",
+                        "MarkedUtc":  "2026-08-17T22:53:48.1627969Z"
+                    },
+                    {
+                        "Game":  "SkyrimSE",
+                        "Name":  "Carry Weight Modifier",
+                        "Author":  "DrRibbs",
+                        "NexusId":  "2176",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "Carry Weight Modifiers-2176-1-1-3",
+                        "Category":  "QualityofLife",
+                        "Reason":  "You can use this mod to cary as much or even as little as you want rather than being stuck with the default cary wait.",
+                        "MarkedUtc":  "2026-08-17T22:59:16.9294134Z"
+                    },
+                    {
+                        "Game":  "SkyrimSE",
+                        "Name":  "Dragon Claws Auto-Unlock",
+                        "Author":  "Ashen",
+                        "NexusId":  "47329",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "Dragon Claws Auto-Unlock (Instant)-47329-1-1-1616381971",
+                        "Category":  "QualityofLife",
+                        "Reason":  "This mod will allow you to automatically unlock dragon claw doors.",
+                        "MarkedUtc":  "2026-08-17T23:07:02.1790682Z"
+                    },
+                    {
+                        "Game":  "SkyrimSE",
+                        "Name":  "Easy Lockpicking and Pickpocketing",
+                        "Author":  "C3",
+                        "NexusId":  "70017",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "easy lockpicking and pickpocketing-70017-1-0-1655767749",
+                        "Category":  "QualityofLife",
+                        "Reason":  "This mod makes lockpicking and pickpocketing much easier than how it works by default.",
+                        "MarkedUtc":  "2026-08-17T23:08:09.064009Z"
+                    },
+                    {
+                        "Game":  "SkyrimSE",
+                        "Name":  "Puzzle Pillar Auto-Solve",
+                        "Author":  "Thgewe",
+                        "NexusId":  "125875",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "Puzzle Pillar Auto-Unlock-125875-1-0-1722661747",
+                        "Category":  "QualityofLife",
+                        "Reason":  "This mod will automatically set the pillars to the correct facing direction for you.",
+                        "MarkedUtc":  "2026-08-17T23:10:31.1134313Z"
+                    },
+                    {
+                        "Game":  "SkyrimSE",
+                        "Name":  "Unlimited Stamina - NG",
+                        "Author":  "malus 741 - Styyx",
+                        "NexusId":  "77439",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "NoStamina-SKSE-77439-1-1-0-1666388436",
+                        "Category":  "QualityofLife",
+                        "Reason":  "This mod makes it so your stamina never drops when using weapons or other things that use stamina.",
+                        "MarkedUtc":  "2026-08-17T23:09:28.0900914Z"
+                    },
+                    {
+                        "Game":  "StardewValley",
+                        "Name":  "TimeSpeed",
+                        "Author":  "cantorsdust and Pathoschild",
+                        "NexusId":  "169",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "cantorsdust.TimeSpeed",
+                        "Category":  "QualityofLife",
+                        "Reason":  "Makes it so you can do things within a day at your own pace.",
+                        "MarkedUtc":  "2026-08-17T03:15:30.0390193Z"
+                    },
+                    {
+                        "Game":  "StardewValley",
+                        "Name":  "Tool Smart Switch",
+                        "Author":  "Fiorbeth",
+                        "NexusId":  "20829",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "Fiorbeth.ToolSmartSwitch",
+                        "Category":  "QualityofLife",
+                        "Reason":  "Your tools will automatically switch to the right one depending on the item you are facing. Trees will automatically select the axe, mine items will automatically select the pickaxe and so on.",
+                        "MarkedUtc":  "2026-08-17T03:18:38.8918716Z"
+                    },
+                    {
+                        "Game":  "MoonlightPeaks",
+                        "Name":  "Chest Labels",
+                        "Author":  "Dirtyredz",
+                        "NexusId":  "119",
+                        "GitHubRepo":  null,
+                        "UniqueId":  "com.dirtyredz.moonlightpeaks.chestlabels",
+                        "Category":  "QualityofLife",
+                        "Reason":  "You can add a special label to any chest you make to distinguish it from any others.",
+                        "MarkedUtc":  "2026-08-22T01:05:11.2216721Z"
+                    }
+                ]
+}

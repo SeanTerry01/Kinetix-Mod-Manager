@@ -1,3 +1,93 @@
+# Version 1.5.1
+
+A fix for Skyrim and Fallout 4: an up-to-date script extender is no longer reported as the wrong one, and you can now ask the manager which version you have. The manager also learned to explain the silent one — the game that launches perfectly and does nothing. The manual, the change log and the mod documentation all gained a proper search.
+
+---
+
+## ✨ New: the Suggested Mods list now ships with suggestions in it
+
+*   The Suggested Mods viewer (**F7**) has always shown two layers merged — the list that ships with the manager, and your own marks over the top. Until now the shipped layer was **empty**, so a new user opened the viewer to nothing at all.
+*   This release ships **20 suggestions across all four moddable games** — 10 for Moonlight Peaks, 6 for Skyrim Special Edition, and 2 each for Fallout 4 and Stardew Valley — each with the reason it is there.
+*   Your own marks still win over the shipped ones, so nothing you have curated changes.
+
+---
+
+## ✨ New: why the game launches fine and the mods still do nothing
+
+*   A matching SKSE/F4SE is only the **first link**. The real chain is **game → script extender → Address Library → DLL plugins → the mods that need them**, and a break anywhere below the script extender is **silent**: the game starts, the script extender loads, the plugins are skipped, and nothing anywhere says so. When one of those plugins is the accessibility mod, the entire symptom is a game that opens normally and then never speaks.
+*   **Before launching, the manager now checks the Address Library.** Most DLL plugins need it, and it ships one data file per game build — so when the game updates ahead of it, *every* plugin that uses it stops loading at once. The manager compares your game's build against the data files actually installed and, if yours is not among them, says so plainly and names the newest build the library does cover.
+*   **Check My Setup now reads the script extender's own log** and lists, by name, each DLL plugin that was refused the last time you played, sorted into the two problems that have different cures: *"it needs an Address Library for game version 1.11.240"* versus *"it is built for a different version of the game"*. The first waits on the Address Library's author; the second waits on that mod's own author.
+*   Support files that were never plugins — `msdia140.dll`, shipped by the crash loggers — are **not** reported. The script extender mentions them on every run and they are entirely normal; flagging them would be crying wolf about a healthy install.
+*   This also explains something that reads as a contradiction: the update check can say **"all mods are up to date"** while the game is unplayable. That check compares your mods against Nexus, and if no author has published a build for the new game version yet, there is genuinely no update to find. Your mods are not behind Nexus — they are behind the game.
+*   Written from a real case: Fallout 4 updated to 1.11.240 on 18 August 2026 and F4SE 0.7.9 arrived the same day, so the script-extender check was satisfied and said nothing — while Buffout 4, the crash logger and Fallout 4 Access were all disabled waiting on an Address Library newer than any that existed, and MCM and the Extended Dialogue Interface were disabled as builds for the previous game version.
+
+---
+
+## ✨ New: search the manual, the change log and the mod docs (Ctrl + F)
+
+*   **Ctrl + F** in the **User Manual** (**F1**), the **Change Log** (**F2**) or the **Mod Documentation** viewer (**F3**) searches **every line of every section at once**. Type a phrase, press **Enter**, and you get a list of the lines that contain it.
+*   Until now these were drill-downs and nothing else, which is a good way to read a document whose shape you already know and a poor way to answer *"where does it say anything about F4SE?"* — the list of sections can only offer the headings someone thought to write, and everything else had to be found by opening sections one at a time.
+*   **Each result says which section it is in**, after the matching text: *"…the installed F4SE must match your game's version — in Launching the Game, Script Extender Check."* The text comes first because that is what tells one result from another; the section is the context for it. A long line is shortened around the phrase, with its Markdown punctuation taken off so the row reads as words rather than asterisks.
+*   **Enter on a result takes you there** — the section opens and the cursor lands on that exact line, which is then read out along with which result it is. **Left Arrow** still walks back out a level at a time, exactly as if you had opened the section yourself.
+*   **F3 moves to the next result, Shift + F3 to the previous**, without going back to the list. They wrap around at either end and say so. **Escape** on the results list keeps the results, so F3 still steps through them; **Ctrl + F** starts a new search.
+
+---
+
+## ✨ New: follow a link from inside the manual and the mod documentation
+
+*   In the read-only text of any of the three document viewers, **Enter on a line containing a web address** asks whether to open it in your browser — the same as pressing Enter on a link in a game log or a mod's description. A manual full of Nexus and GitHub addresses was of little use when the only way to follow one was to write it down and type it in again. A line holding **several** addresses offers a short list to choose from, as a log line does.
+*   **An accessibility mod's documentation keeps its link addresses now.** Tidying a mod's page up for reading used to throw the address away and keep only the words, which reads better but leaves a link that nobody can follow — and these mods do link to things worth reaching. A link now reads as its words followed by its address, matching how a mod's description has always been shown.
+*   Links pointing **inside** the document, or at a file in the mod's own source repository, still keep just their words. Nothing here could open those, so reading their addresses aloud would be noise charged against nothing — and documentation written for GitHub is full of them.
+
+---
+
+## 🐛 Fixed: a manual section is now made of lines, not one enormous line
+
+*   **The text pane in the F1 and F2 viewers had no line breaks in it.** The whole of a section arrived as a single unbroken line, so arrowing down through it moved nowhere and there was nothing to read line by line. The manual's own line endings were being handed to the text box in a form it does not break lines on.
+*   It also had to be fixed for the search above to mean anything: "go to that line" needs there to be lines.
+
+---
+
+## ✨ New: a list entry that opens says so, and says how
+
+*   In the document viewers and the **Accessibility Controls** viewer (**Ctrl + H**), an entry that has sub-topics now names the keys that move in and out — *"3 of 21, has sub-topics. Press right arrow to open, left arrow to go back."* — the same hint a mod group carries in the installed mods list. The entry is a door, and nothing else about it said that it was one.
+
+---
+
+## 🐛 Fixed: SKSE reported as "not installed" when it was installed (GOG)
+
+*   **The manager decided whether the script extender was installed by looking for `skse64_loader.exe` and nothing else.** But the loader is only one way to *start* SKSE — many players, and most GOG ones, load it through the SSE Engine Fixes preloader instead and have no loader exe at all. Their perfectly working SKSE was reported as missing, in the Accessibility Suite list and in Check My Setup alike, and the installer offered to install it again over the top.
+*   The script extender is now judged by **its files** — the versioned runtime DLL or the loader — because the DLL is the script extender and the loader is a convenience. Launching is unaffected: the manager still starts the game through the loader where there is one, and through the game's own exe where there is not.
+*   **"I don't know where your game is" is no longer reported as "it isn't installed".** Those are different statements and only one of them was ever true. When the game folder is unknown the report says so and points at Settings; when the folder is known but empty of a script extender, the report **names the folder it searched** — which is also how you spot the manager looking at the wrong copy of a game you own twice.
+*   **A second copy is no longer answered with the first one's folder.** Where the manager had to fall back to detecting the game, it took whichever copy it found first and the probes run Steam-first — so on a machine with both, a GOG session could be handed the Steam folder and every question after it answered about a copy you were not playing. Detection now honours the store the session names.
+
+---
+
+## 🐛 Fixed: the script extender's version is the one that will actually load
+
+*   Installing a newer script extender replaces the loader but only adds **its own** build's file, leaving the previous build's file in place for the game you are still running. The manager read the version off the loader, so a folder holding a 2.3.0 loader alongside the 2.2.6 file the game would really load reported **2.3.0** — a version that was present but not in use.
+*   It now reports the version of the file that will actually be loaded for your game build, and lists the other builds present separately.
+
+---
+
+## 🐛 Fixed: an up-to-date SKSE/F4SE no longer reports itself as out of date
+
+*   **After updating the script extender, every launch still warned that it didn't match your game** — *"The installed F4SE is built for game version 1.11.221, but your game is version 1.11.240"* — even though the correct build had just been installed and would have loaded perfectly well.
+*   SKSE and F4SE ship **one file per game version**, named for the version it serves, and the loader uses only the one matching the game you are running. Installing a newer script extender therefore leaves the previous version's file in the folder — nothing removes it, and nothing needs to. The manager's pre-launch check, however, looked at whichever of those files it happened to find first and compared that one alone. Once two were present, it was as likely to pick the old one as the new one.
+*   The check now considers **every** script-extender file in the game folder. If any of them is built for the game you are running, the script extender will load and the manager says nothing — which is the truth of it. A warning now means what it always should have: that **no** installed build matches your game.
+*   The **leftover file itself is left alone.** It is harmless, it costs nothing, and if you ever roll your game back to the older build it is the file that will make the script extender work again.
+
+---
+
+## ✨ New: find out which script extender you have installed
+
+*   SKSE and F4SE install as loose files in the game folder rather than as mods, so they have never appeared in your mod list — which left **no way to ask what was installed**. Now the **Accessibility Suite** status list answers it: *"F4SE (Script Extender): Installed, version 0.7.9, built for game 1.11.240, which matches your game."*
+*   **Two numbers, because two numbers matter.** The first is the script extender's own version, written the way its download page writes it; the second is the game build it was compiled against — which is the one that decides whether it loads at all. Where they disagree the line says so plainly, and **Install Missing Mods** puts the matching build in place.
+*   The same line mentions any files **left by earlier installs**, so a file in your game folder that you never chose to keep isn't a mystery.
+*   **A script extender built for the wrong game version is now a Check My Setup finding**, listed alongside a missing one. From inside the game the two are indistinguishable — the script extender simply isn't there — so the health check now names the difference instead of reporting all-clear.
+
+---
+
 # Version 1.5.0
 
 Moonlight Peaks and The Witcher 3 join the manager as fully supported games, alongside Stardew Valley, Skyrim Special Edition and Fallout 4.

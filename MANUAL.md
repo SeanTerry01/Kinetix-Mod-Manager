@@ -12,8 +12,8 @@ You choose which game you're managing from the **Games** menu (press **Alt**, th
 3.  **Nexus Integration**: To search for mods or check for updates, you **must** provide a **Nexus Mods API Key** (sometimes called a Nexus ID). This is a standard requirement for all mod managers. See the **"Nexus Mods Setup"** section below for instructions on how to get yours for free.
 4.  **Closing Settings**: If you aren't ready to configure everything yet, you can press **Escape** or click **Cancel** to close the settings and browse the app. You can reopen this screen at any time by pressing **Ctrl + P**.
 5.  **Getting Help**: 
-    *   Press **F1** at any time to open this manual. It opens as a navigable list: arrow **Up / Down** through the sections, press **Right Arrow or Enter** to open a section that has sub-topics, **Left Arrow or Backspace** to go back, and **Tab** to move into the text on the right and read it line by line.
-    *   Press **F2** at any time to open the **Change Log**. It uses the same navigable window — a list of versions you open (with **Right Arrow or Enter**) to read what changed in each one.
+    *   Press **F1** at any time to open this manual. It opens as a navigable list: arrow **Up / Down** through the sections, press **Right Arrow or Enter** to open a section that has sub-topics, **Left Arrow or Backspace** to go back, and **Tab** to move into the text on the right and read it line by line. Press **Ctrl + F** to search the whole manual for a phrase — see [Searching a Document](#searching-a-document-ctrl--f).
+    *   Press **F2** at any time to open the **Change Log**. It uses the same navigable window — a list of versions you open (with **Right Arrow or Enter**) to read what changed in each one. **Ctrl + F** searches it too.
     *   Press **Shift + F1** while on any tab to hear a context-sensitive list of shortcuts for that specific area.
 6.  **Splash Screen**: On every startup, an audio logo plays. You can press **Enter** to skip it and go straight to the main window.
 7.  **On the game list**: while the "select a game" list is showing — at startup, or after you close a session — **F1** (manual), **F2** (change log), and **Ctrl + P** (Settings) all work, so you can read the manual or set a game folder before loading anything. When you close one of those windows, focus returns to the game list. **Escape** exits the manager.
@@ -197,8 +197,9 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 ### Global Shortcuts
 *   **F1**: Open this User Manual (Internal Window).
 *   **F2**: Open the **Change Log** (what's new and fixed in each version).
-*   **F3**: Open the **Mod Documentation** viewer for the active game's accessibility mod (see "Mod Documentation Viewer" below).
+*   **F3**: Open the **Mod Documentation** viewer for the active game's accessibility mod (see "Mod Documentation Viewer" below). Inside any of the three document viewers, F3 instead moves to the next search result.
 *   **Shift + F1**: **Context Help** - Speaks the shortcuts for your current tab.
+*   **Ctrl + F** (inside the F1, F2 or F3 viewer): Search the whole document for a phrase; **F3** / **Shift + F3** then step through the results. See "Searching a Document" below.
 *   **F5**: Launch the active game through its mod loader (SMAPI for Stardew Valley, SKSE for Skyrim Special Edition, F4SE for Fallout 4).
 *   **F6**: **Cycle Focus** - Jump between the tab headers and the primary list in each tab (and the web view in the Wiki tab).
 *   **F9**: **Diagnose Log with AI** - Send the current SMAPI or game log to your chosen AI provider for a plain-language explanation and fixes (opt-in; see "AI Log Diagnosis" below).
@@ -601,6 +602,27 @@ After you say yes, **play the game once**: the reader writes its file while the 
 
 ---
 
+## Searching a Document (Ctrl + F)
+
+The **User Manual** (**F1**), the **Change Log** (**F2**) and the **Mod Documentation** viewer (**F3**) are all the same navigable window, so they all search the same way.
+
+A drill-down list is a good way to read a document whose shape you already know, and a poor way to answer *"where does it say anything about F4SE?"* — the list of sections can only offer the headings someone thought to write. **Ctrl + F** searches every line of every section at once, whichever section you happen to be in.
+
+*   **Ctrl + F** asks what to find. Type a phrase and press **Enter**. Capital letters don't matter.
+*   You get a **list of matching lines**. Each one reads as the matching text followed by **the section it is in** — *"…the installed F4SE must match your game's version — in Launching the Game, Script Extender Check"* — so you can tell the results apart and know where each will take you before you go. Long lines are shortened around the phrase; the whole line is one keypress away.
+*   **Enter** on a result **takes you there**: the viewer opens the section holding it and puts the cursor on that exact line in the text on the right, then reads out which result it is and what the line says. **Left Arrow** still walks back out of the section a level at a time, exactly as if you had opened it yourself.
+*   **F3** moves to the **next** result and **Shift + F3** to the **previous** one, without going back to the list. They wrap around at either end and say so.
+*   **Escape** on the results list goes back without moving, but **keeps the results** — F3 still steps through them.
+*   **Ctrl + F** again searches for something else, replacing the previous results.
+
+**Following a link (all three viewers).** In the read-only text on the right, press **Enter** on a line that contains a web address and the manager asks whether to open it in your browser. If the line holds **more than one** address you get a short list to choose from, exactly as a game-log line with several links does.
+
+For the **Mod Documentation** viewer (**F3**) this means a link now reads as its words followed by its address — *"the Stardew Access Nexus page (https://www.nexusmods.com/stardewvalley/mods/16205)"* — because a document read line by line has no other way to offer a link at all. Links that point **inside** the document (to another heading) or at a file in the mod's own source repository keep just their words as before: nothing here could open those, so reading their addresses aloud would be noise for nothing.
+
+**Knowing which sections open.** When you land on a list entry that has sub-topics, it now tells you so and tells you the keys — *"3 of 21, has sub-topics. Press right arrow to open, left arrow to go back."* — the same hint a mod group carries in the installed mods list. The **Accessibility Controls** viewer (**Ctrl + H**) says the same thing on its groups.
+
+---
+
 ## Mod Documentation Viewer (F3)
 
 Press **F3** at any time (or choose **Help → Mod Documentation**) to open the how-to-play documentation for the accessibility mod that matches your current game — **Stardew Access** for Stardew Valley, **Skyrim Access** for Skyrim Special Edition, or **Fallout 4 Access** for Fallout 4. This saves you hunting for a README on your computer or searching for it on GitHub.
@@ -611,6 +633,7 @@ It opens in the **same navigable window as the User Manual**:
 *   **Right Arrow or Enter**: Open the selected document — or, once inside, open a section that has sub-topics — moving into its deeper list.
 *   **Left Arrow or Backspace**: Go back up to the previous list.
 *   **Tab**: Move into the read-only text on the right and read the selected section line by line. **Shift + Tab** returns to the list.
+*   **Ctrl + F**: Search the whole document for a phrase, then **F3** / **Shift + F3** for the next and previous result. See [Searching a Document](#searching-a-document-ctrl--f).
 *   **Shift + F1**: Hear help for this window. **Escape** closes it.
 
 How it stays current and works offline:
@@ -627,6 +650,10 @@ F3 is the default shortcut and can be remapped in **Settings → Shortcut Manage
 Each supported game needs a set of foundation mods to be accessible (its mod loader plus the screen-reader and helper mods). The **Accessibility Suite Installer** gathers them all in one place. Open it from the **Mods** menu → **Game and Maintenance** → **"Install [Game] Accessibility Suite"** (the exact name reflects the active game).
 
 The dialog shows a **status list**, with one line per required mod telling you whether it is **Installed** or **Not Installed**. The suite differs per game — for example SMAPI and Stardew Access for Stardew Valley; SKSE64, the Address Library, SkyUI, and others for Skyrim Special Edition; and F4SE, the Address Library, the Mod Configuration Menu, and Fallout 4 Access for Fallout 4.
+
+**How "installed" is decided.** The script extender counts as installed when **its files** are in the game folder — the versioned runtime file (`skse64_1_6_1170.dll`) or the loader (`skse64_loader.exe`). The runtime file *is* the script extender; the loader is one convenient way to start it. This matters on **GOG** especially, where many players load SKSE through the SSE Engine Fixes preloader and have no loader at all: judging by the loader alone reported their working SKSE as missing. Launching is unaffected — the manager starts the game through the loader where there is one and through the game's own program where there is not.
+
+**Which script extender have I got? (Skyrim & Fallout 4)** SKSE and F4SE install as loose files in the game folder rather than as mods, so they never appear in your mod list — and this status list is where you can ask what is installed. The version reported is the version of the file that will **actually load for your game build**, which is not always the newest file present: installing a newer script extender replaces the loader but only adds its own build's file, leaving the previous one in place for the game you are still running. Their line gives you both numbers that matter: *"F4SE (Script Extender): Installed, version 0.7.9, built for game 1.11.240, which matches your game."* The first is the script extender's own version, as written on its download page; the second is the game build it was compiled against, which is what decides whether it loads at all. If the two don't line up the line says so — *"built for game 1.11.221, but your game is 1.11.240, so it will not load — reinstall it"* — and pressing **Install Missing Mods** puts the matching build in place. The line may also mention files "left by earlier installs and now unused": each version of the script extender ships its own file named for the game build it serves, and installing a new one leaves the previous file behind. That is normal and harmless — the script extender only ever loads the file matching the game you are running — and the manager mentions it only so a file you never chose to keep isn't a mystery.
 
 There are two ways to get the missing mods:
 
@@ -647,7 +674,7 @@ Some mod pages hold more than one download, and picking the wrong one — or mis
 
 **If a mod is already half-installed**, **Check My Setup** (Ctrl + Shift + K) reports it — for example *"SSE Engine Fixes is installed but incomplete: Part 2 — the preloader is missing"* — with **Enter** on that line to fetch the missing part. This works no matter how the mod arrived: installed by hand, brought in by a Collection, or carried over by the Mod Organizer 2 import.
 
-**Uninstalling the script extender (Skyrim & Fallout 4):** SKSE and F4SE install into the game folder itself rather than as normal mods, so they don't show up in your mod list. To remove one cleanly, open the **Mods** menu → **Game and Maintenance** and choose **"Uninstall Script Extender (SKSE/F4SE)"**. The manager removes the files it installed (asking you to confirm first). Remember that anything relying on the script extender — including the Mod Configuration Menu — stops working until you reinstall it, so only do this if you mean to.
+**Uninstalling the script extender (Skyrim & Fallout 4):** SKSE and F4SE install into the game folder itself rather than as normal mods, so they don't show up in your mod list — the status list above is where to look up which version you have. To remove one cleanly, open the **Mods** menu → **Game and Maintenance** and choose **"Uninstall Script Extender (SKSE/F4SE)"**. The manager removes the files it installed (asking you to confirm first). Remember that anything relying on the script extender — including the Mod Configuration Menu — stops working until you reinstall it, so only do this if you mean to.
 
 ---
 
@@ -889,7 +916,7 @@ The manager does more than just launch the game:
 *   It detects when you close the game and announces *"Game closed."*
     *   **Why that isn't always instant.** A Steam game started from its own program file notices it wasn't launched by Steam and **restarts itself** — the game loads, your mods load and announce themselves, and then the whole thing shuts down and starts again about fifteen seconds later. The manager used to take that first shutdown at face value and announce *"Game closed"* while the game was in fact still starting. It now follows the game itself rather than the program it started, and allows for a restart during the first few minutes of a session, so a startup restart is no longer mistaken for you quitting. Once a session has been running a while, closing the game is announced within a few seconds as before.
     *   For Moonlight Peaks the restart is avoided altogether, because the manager asks Steam to start the game in the first place. Your mods are unaffected either way: BepInEx loads through a file sitting beside the game program, whoever starts it. Games launched through SMAPI, SKSE or F4SE are **never** routed through Steam, since bypassing those loaders would mean no mods at all; nor is a non-Steam copy, which is started directly as always.
-*   **Script-extender version check (Skyrim & Fallout 4):** before launching, it checks that the installed **SKSE/F4SE matches your game's version**. SKSE and F4SE only work when built for the exact game build, so if your game has updated and the script extender no longer matches, it silently won't load — which is the usual reason the **Mod Configuration Menu** and other script-extender features suddenly disappear. When this happens the manager **warns you and asks whether to launch anyway**; to fix it, reinstall the script extender from the Accessibility Suite so it matches your game.
+*   **Script-extender version check (Skyrim & Fallout 4):** before launching, it checks that the installed **SKSE/F4SE matches your game's version**. SKSE and F4SE only work when built for the exact game build, so if your game has updated and the script extender no longer matches, it silently won't load — which is the usual reason the **Mod Configuration Menu** and other script-extender features suddenly disappear. When this happens the manager **warns you and asks whether to launch anyway**; to fix it, reinstall the script extender from the Accessibility Suite so it matches your game. The check looks at **every** script-extender file in your game folder, not just one, so the file left behind by your previous install is correctly ignored rather than being mistaken for the one in use.
 
 ---
 
@@ -974,7 +1001,7 @@ This shows where your mods collide.
 This scans your **enabled** mods and lists anything they need but don't have. Press **Enter** on a line to act on it.
 
 *   **Stardew Valley:** required mods that are **missing, disabled, or older** than a mod asks for — including the host mod a content pack (such as a Content Patcher pack) needs. Enter offers to **search** for the missing mod in the Find New Mods tab.
-*   **Skyrim & Fallout 4:** plugins whose **master file isn't installed** (a missing master stops a plugin loading), a **missing script extender** (SKSE/F4SE), and each mod's **Nexus "Requirements"** that you don't have installed. Enter opens the missing mod's page. Because the Nexus part checks each mod online, a large load order can take a moment — the title bar shows the progress.
+*   **Skyrim & Fallout 4:** plugins whose **master file isn't installed** (a missing master stops a plugin loading), a **missing script extender** (SKSE/F4SE) — or one installed for a **different game version**, which from inside the game looks exactly the same, because it never loads — and each mod's **Nexus "Requirements"** that you don't have installed. Enter opens the missing mod's page. Because the Nexus part checks each mod online, a large load order can take a moment — the title bar shows the progress.
 
 ### Check for Broken Mods (Ctrl + Shift + B)
 This checks your installed mods against a community-maintained compatibility list and reports the ones known to have problems — issues that no Nexus update would tell you about. It needs an internet connection; if the list can't be reached it simply says so.
@@ -1037,6 +1064,20 @@ The single most common way a modded Bethesda game breaks is a **Steam or GOG upd
 ### The Game-Update Guardian (automatic)
 
 Every time you load a Skyrim or Fallout 4 session, the manager quietly records the game's version. If it notices the version **changed since last time**, it warns you **once** — for example *"Skyrim Special Edition updated from version 1.6.640 to 1.6.1170 since you last opened the manager. SKSE and any DLL-based plugins almost always need a matching update before the game will launch."* When a script extender is installed it also offers to open its Nexus page so you can grab the matching build. It's a one-time heads-up per update, not a nag. (This is separate from the pre-launch check on **F5**, which verifies the script extender matches right before the game starts.)
+
+### When the script extender is fine and the mods still don't load
+
+A matching SKSE/F4SE is only the **first link**. The full chain is:
+
+**game → script extender → Address Library → DLL plugins → the mods that need them**
+
+A break anywhere below the script extender is **silent**: the game launches, the script extender loads, and the plugins are quietly skipped. There is no error message, no crash, and nothing on screen to read — the accessibility mod simply says nothing. This is the single most confusing thing that can happen to a modded Bethesda game, so the manager now checks the rest of the chain too.
+
+**The Address Library.** Most DLL plugins depend on it, and it ships **one data file per game build**. When the game updates, there is no file for the new build until the Address Library's author publishes one — and until then *every* plugin that uses it refuses to start. Before launching, the manager compares your game's build against the data files in `Data\F4SE\Plugins` (or `Data\SKSE\Plugins`) and warns if yours is behind, naming the newest build it covers. Nothing about your setup can fix this one; it is waited out.
+
+**What actually failed last time.** **Check My Setup** (**Ctrl + Shift + K**) also reads the script extender's own log and lists, by name, each DLL plugin it refused and why — either *"it needs an Address Library for game version X"* or *"it is built for a different version of the game"*, which are two different problems with two different people to wait on. Support files that were never plugins (such as `msdia140.dll`, shipped by the crash loggers) are not reported: the script extender mentions them every run and they are perfectly normal.
+
+**Why "all mods are up to date" can be true at the same time.** The update check compares your mods against **Nexus**. If a mod's author hasn't released a build for the new game version yet, there is genuinely no update to find — your mods aren't behind Nexus, they are behind *the game*. Both messages are correct, and together they tell you the honest answer: wait, or put the game back on the version your mods were built for.
 
 ### Prepare for a Game Update, and Restore Afterwards
 
