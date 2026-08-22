@@ -3426,12 +3426,16 @@ public static class ModFileSystem
 	/// <summary>The script extender's loader exe name for a game, or "" for games without one (Stardew).</summary>
 	private static string ScriptExtenderLoaderName(string activeGame) => ScriptExtenderInfo.LoaderName(activeGame);
 
-	/// <summary>True if the script extender's loader is present in the game folder.</summary>
-	public static bool IsScriptExtenderInstalled(string activeGame, string gamePath)
-	{
-		string loader = ScriptExtenderLoaderName(activeGame);
-		return !string.IsNullOrEmpty(loader) && !string.IsNullOrEmpty(gamePath) && File.Exists(Path.Combine(gamePath, loader));
-	}
+	/// <summary>
+	/// True if the script extender is installed in the game folder.
+	///
+	/// Judged by <see cref="ScriptExtenderInfo.Read"/>, which accepts either the loader exe or the versioned
+	/// runtime DLLs. Looking for the loader alone — which this used to do — reported SKSE as missing for anyone
+	/// who starts it through the SSE Engine Fixes preloader rather than its own exe, which is a normal setup and
+	/// the usual one on GOG.
+	/// </summary>
+	public static bool IsScriptExtenderInstalled(string activeGame, string gamePath) =>
+		ScriptExtenderInfo.Read(activeGame, gamePath) != null;
 
 	/// <summary>
 	/// What script extender is installed in the game folder and whether it will load — see

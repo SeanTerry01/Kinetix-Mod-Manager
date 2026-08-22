@@ -38,6 +38,16 @@ public sealed class ScriptExtenderStatus
 	/// <summary>True when a DLL for the game's own build is installed, so the extender will load.</summary>
 	public bool Match { get; init; }
 
+	/// <summary>
+	/// True when the launcher exe (<c>skse64_loader.exe</c>) is there as well as the runtime DLLs.
+	///
+	/// It usually is, and its absence is not the same as the script extender being missing: GOG players in
+	/// particular often load SKSE through the SSE Engine Fixes preloader instead, which starts it from the DLL
+	/// and needs no loader exe at all. The manager launches through the loader where there is one and through the
+	/// game's own exe where there is not, so this decides how to start the game — never whether it is installed.
+	/// </summary>
+	public bool LoaderPresent { get; init; }
+
 	/// <summary>True when both versions were readable, so <see cref="Match"/> means something.</summary>
 	public bool CanCompare => GameVersion.Length > 0 && TargetVersion.Length > 0;
 
@@ -148,15 +158,28 @@ public static class ScriptExtenderInfo
 		if (loader.Length == 0 || string.IsNullOrEmpty(gamePath)) return null;
 
 		string loaderPath = Path.Combine(gamePath, loader);
-		if (!File.Exists(loaderPath)) return null;
+		bool loaderPresent = File.Exists(loaderPath);
 
-		string productVersion = "";
+		string prefix = DllPrefix(activeGame);
+		var builds = new List<string>();
+		var dllByBuild = new Dictionary<string, string>(StringComparer.Ordinal);
 		try
 		{
-			FileVersionInfo vi = FileVersionInfo.GetVersionInfo(loaderPath);
-			productVersion = FormatProductVersion(vi.FileMajorPart, vi.FileMinorPart, vi.FileBuildPart, vi.FilePrivatePart);
+			foreach (string dll in Directory.EnumerateFiles(gamePath, prefix + "*.dll", SearchOption.TopDirectoryOnly))
+			{
+				string? build = RuntimeBuildFromDllName(Path.GetFileName(dll), prefix);
+				if (build == null || builds.Contains(build)) continue;
+				builds.Add(build);
+				dllByBuild[build] = dll;
+			}
 		}
-		catch { /* the version block is a bonus; the install is still detected without it */ }
+		catch { /* unreadable folder — same as none found */ }
+
+		// Installed means the script extender's own files are here, which the runtime DLLs are and the loader
+		// exe merely helps with. Judging by the loader alone reported a perfectly good SKSE as missing for
+		// anyone starting it through the SSE Engine Fixes preloader instead — a normal thing to do, and the
+		// usual thing on GOG.
+		if (!loaderPresent && builds.Count == 0) return null;
 
 		string gameVersion = "";
 		try
@@ -171,19 +194,31 @@ public static class ScriptExtenderInfo
 		}
 		catch { /* unreadable exe (e.g. under Wine) — leave the comparison unmade */ }
 
-		string prefix = DllPrefix(activeGame);
-		var builds = new List<string>();
-		try
-		{
-			foreach (string dll in Directory.EnumerateFiles(gamePath, prefix + "*.dll", SearchOption.TopDirectoryOnly))
-			{
-				string? build = RuntimeBuildFromDllName(Path.GetFileName(dll), prefix);
-				if (build != null && !builds.Contains(build)) builds.Add(build);
-			}
-		}
-		catch { /* unreadable folder — same as none found */ }
-
 		(string target, bool match) = ChooseBuild(gameVersion, builds);
+
+		// The version reported is the version of the file that will actually load — the DLL for the target
+		// build — and only falls back to the loader when there is no DLL to ask.
+		//
+		// Those two can disagree, and the loader is the one that lies. Installing a newer script extender
+		// replaces the loader but only adds its own build's DLL, leaving the previous build's DLL in place for
+		// the game you are still running. Read from the loader, that folder claims to hold SKSE 2.3.0 while the
+		// file the game will load is the 2.2.6 one from a year earlier.
+		string productVersion = "";
+		var candidates = new List<string>();
+		if (target.Length > 0 && dllByBuild.TryGetValue(target, out string? targetDll)) candidates.Add(targetDll);
+		if (loaderPresent) candidates.Add(loaderPath);
+		candidates.AddRange(dllByBuild.Values);
+
+		foreach (string candidate in candidates)
+		{
+			try
+			{
+				FileVersionInfo vi = FileVersionInfo.GetVersionInfo(candidate);
+				productVersion = FormatProductVersion(vi.FileMajorPart, vi.FileMinorPart, vi.FileBuildPart, vi.FilePrivatePart);
+			}
+			catch { /* the version block is a bonus; the install is still detected without it */ }
+			if (productVersion.Length > 0) break;
+		}
 
 		return new ScriptExtenderStatus
 		{
@@ -192,7 +227,8 @@ public static class ScriptExtenderInfo
 			GameVersion     = gameVersion,
 			TargetVersion   = target,
 			InstalledBuilds = SortNewestFirst(builds),
-			Match           = match
+			Match           = match,
+			LoaderPresent   = loaderPresent
 		};
 	}
 }

@@ -140,20 +140,85 @@ public class ScriptExtenderInfoTests
 		Assert.StartsWith(prefix, loader);
 	}
 
-	/// <summary>A folder with no loader in it is "no extender installed", not an error.</summary>
+	/// <summary>An empty folder is "no extender installed", not an error.</summary>
 	[Fact]
-	public void AFolderWithoutTheLoaderReportsNothingInstalled()
+	public void AnEmptyFolderReportsNothingInstalled()
+	{
+		WithFolder(dir => Assert.Null(ScriptExtenderInfo.Read("Fallout4", dir)));
+	}
+
+	/// <summary>
+	/// Reported by an internal tester on 2026-08-20: the manager said SKSE was not installed when it plainly was,
+	/// on a GOG copy of Skyrim.
+	///
+	/// Detection looked for <c>skse64_loader.exe</c> and nothing else. But the loader exe is only one way to
+	/// start SKSE — many players, and most GOG ones, load it through the SSE Engine Fixes preloader instead and
+	/// have no loader exe at all. The runtime DLL is the script extender; the loader is a convenience. So a
+	/// perfectly working install was reported as missing, and the suite installer offered to install it again.
+	/// </summary>
+	[Fact]
+	public void TheScriptExtenderIsInstalledWhenItsRuntimeDllIsThereWithNoLoaderExe()
+	{
+		WithFolder(dir =>
+		{
+			File.WriteAllText(Path.Combine(dir, "skse64_1_6_1179.dll"), "");
+
+			ScriptExtenderStatus? se = ScriptExtenderInfo.Read("SkyrimSE", dir);
+
+			Assert.NotNull(se);
+			Assert.False(se!.LoaderPresent);
+			Assert.Equal(new List<string> { "1.6.1179" }, se.InstalledBuilds);
+		});
+	}
+
+	/// <summary>The ordinary install has both, and says so — the launcher is used where it exists.</summary>
+	[Fact]
+	public void AnInstallWithItsLoaderSaysTheLoaderIsThere()
+	{
+		WithFolder(dir =>
+		{
+			File.WriteAllText(Path.Combine(dir, "skse64_loader.exe"), "");
+			File.WriteAllText(Path.Combine(dir, "skse64_1_6_1170.dll"), "");
+
+			Assert.True(ScriptExtenderInfo.Read("SkyrimSE", dir)!.LoaderPresent);
+		});
+	}
+
+	/// <summary>The loader alone, with no runtime DLL yet, is still an install worth reporting.</summary>
+	[Fact]
+	public void TheLoaderOnItsOwnStillCounts()
+	{
+		WithFolder(dir =>
+		{
+			File.WriteAllText(Path.Combine(dir, "f4se_loader.exe"), "");
+
+			ScriptExtenderStatus? se = ScriptExtenderInfo.Read("Fallout4", dir);
+
+			Assert.NotNull(se);
+			Assert.True(se!.LoaderPresent);
+			Assert.Empty(se.InstalledBuilds);
+		});
+	}
+
+	/// <summary>Files that merely share the prefix must not be mistaken for an install.</summary>
+	[Fact]
+	public void UnrelatedFilesInTheGameFolderAreNotAnInstall()
+	{
+		WithFolder(dir =>
+		{
+			File.WriteAllText(Path.Combine(dir, "skse64_steam_loader.dll"), "");
+			File.WriteAllText(Path.Combine(dir, "skse64_readme.txt"), "");
+
+			Assert.Null(ScriptExtenderInfo.Read("SkyrimSE", dir));
+		});
+	}
+
+	private static void WithFolder(Action<string> body)
 	{
 		string dir = Path.Combine(Path.GetTempPath(), "SeInfo_" + Path.GetRandomFileName());
 		Directory.CreateDirectory(dir);
-		try
-		{
-			Assert.Null(ScriptExtenderInfo.Read("Fallout4", dir));
-		}
-		finally
-		{
-			Directory.Delete(dir, true);
-		}
+		try { body(dir); }
+		finally { try { Directory.Delete(dir, true); } catch { } }
 	}
 
 	/// <summary>The builds that are not the one being loaded are what the suite list offers to point out.</summary>

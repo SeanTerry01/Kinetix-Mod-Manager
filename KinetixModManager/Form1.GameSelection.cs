@@ -45,7 +45,20 @@ public partial class Form1
 	private string DetectInstalledGameFolder(string game)
 	{
 		var copies = DetectInstalledGameCopies(game);
-		return copies.Count > 0 ? copies[0].Folder : "";
+		if (copies.Count == 0) return "";
+
+		// An install key that names a store is asking about THAT copy, and the probes are ordered Steam-first —
+		// so on a machine with both, answering with copies[0] handed the GOG session the Steam folder. Every
+		// question that follows (is the script extender installed, which build is this, where do the mods go)
+		// would then be answered about a copy the user is not in.
+		GamePlatform wanted = GameProfiles.PlatformOf(game);
+		if (wanted != GamePlatform.Unknown)
+		{
+			foreach (var copy in copies)
+				if (copy.Platform == wanted) return copy.Folder;
+		}
+
+		return copies[0].Folder;
 	}
 
 	/// <summary>

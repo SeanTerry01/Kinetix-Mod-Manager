@@ -157,9 +157,21 @@ public partial class Form1
 			// which looks identical from inside the game, because the extender simply never loads.
 			string seId = GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.SkyrimSE) ? "30379" : "42147"; // SKSE64 / F4SE Nexus ids
 			string seName = ScriptExtenderInfo.DisplayName(_settings.ActiveGame);
-			ScriptExtenderStatus? se = ModFileSystem.ReadScriptExtenderStatus(_settings.ActiveGame, _settings.CurrentGamePath);
-			if (se == null)
-				rows.Add(new ReportRow { Text = Loc.T("reports.seMissing", seName), IgnoreKey = "se" });
+			// The same folder the suite installer works on, fallback included. The two screens answering "is the
+			// script extender installed?" from different paths is how one could say yes while the other said no.
+			string seGamePath = string.IsNullOrEmpty(_settings.CurrentGamePath)
+				? DetectGameFolder(_settings.ActiveGame)
+				: _settings.CurrentGamePath;
+			ScriptExtenderStatus? se = ModFileSystem.ReadScriptExtenderStatus(_settings.ActiveGame, seGamePath);
+
+			// "I looked there and it is not present" and "I do not know where your game is" are different
+			// statements, and reporting the second as the first tells the user something untrue about their
+			// install. Naming the folder that was searched is also what lets them see at a glance that it is the
+			// wrong copy — the Steam one when they play the GOG one, say.
+			if (string.IsNullOrEmpty(seGamePath) || !Directory.Exists(seGamePath))
+				rows.Add(new ReportRow { Text = Loc.T("reports.gameFolderUnknown", GameProfiles.DisplayNameFor(_settings.ActiveGame)), IgnoreKey = "gameFolder" });
+			else if (se == null)
+				rows.Add(new ReportRow { Text = Loc.T("reports.seMissing", seName, seGamePath), IgnoreKey = "se" });
 			else if (se.CanCompare && !se.Match)
 				rows.Add(new ReportRow
 				{
@@ -169,7 +181,7 @@ public partial class Form1
 
 			// 2b. The Address Library, and the DLL plugins that depend on it. A matching script extender is only
 			// the first link in the chain; everything below it fails silently, which is why this is checked at all.
-			rows.AddRange(GatherDllPluginFindings(se, _settings.CurrentGamePath));
+			rows.AddRange(GatherDllPluginFindings(se, seGamePath));
 
 			// 3. Nexus "Requirements" tab for each installed Nexus-linked mod (online, best-effort).
 			var installedIds = new HashSet<string>(

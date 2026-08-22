@@ -111,8 +111,10 @@ public partial class Form1
 		}
 		else if (GameProfiles.IsGame(game, GameProfiles.SkyrimSE))
 		{
-			string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder("SkyrimSE") : _settings.CurrentGamePath;
-			loaderInstalled = File.Exists(Path.Combine(gameFolder, "skse64_loader.exe"));
+			string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder(game) : _settings.CurrentGamePath;
+			// Not File.Exists on the loader exe: SKSE is installed when its files are there, and plenty of
+			// players — most GOG ones — start it through the SSE Engine Fixes preloader and have no loader exe.
+			loaderInstalled = ModFileSystem.IsScriptExtenderInstalled(game, gameFolder);
 
 			suiteItems.Add(new SuiteItem("SKSE64 (Script Extender)", loaderInstalled, "Loader", "https://skse.silverlock.org",
 				ScriptExtenderStatusLine(game, gameFolder)));
@@ -137,7 +139,7 @@ public partial class Form1
 		}
 		else if (GameProfiles.IsGame(game, GameProfiles.MoonlightPeaks))
 		{
-			string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder("MoonlightPeaks") : _settings.CurrentGamePath;
+			string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder(game) : _settings.CurrentGamePath;
 			loaderInstalled = IsBepInExInstalled(gameFolder);
 
 			suiteItems.Add(new SuiteItem("BepInEx (Mod Loader)", loaderInstalled, "Loader", "https://github.com/BepInEx/BepInEx"));
@@ -151,7 +153,7 @@ public partial class Form1
 		}
 		else if (GameProfiles.IsGame(game, GameProfiles.Witcher3))
 		{
-			string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder("Witcher3") : _settings.CurrentGamePath;
+			string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder(game) : _settings.CurrentGamePath;
 
 			// Nothing to install as a loader: the game loads its own mods folder, and the accessibility mod's
 			// native half is an .asi beside the game exe, loaded by the ASI loader its installer places there.
@@ -172,8 +174,9 @@ public partial class Form1
 		}
 		else
 		{
-			string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder("Fallout4") : _settings.CurrentGamePath;
-			loaderInstalled = File.Exists(Path.Combine(gameFolder, "f4se_loader.exe"));
+			string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder(game) : _settings.CurrentGamePath;
+			// See the SKSE branch: judged by the script extender's files, not by its loader exe alone.
+			loaderInstalled = ModFileSystem.IsScriptExtenderInstalled(game, gameFolder);
 
 			suiteItems.Add(new SuiteItem("F4SE (Script Extender)", loaderInstalled, "Loader", "https://f4se.silverlock.org",
 				ScriptExtenderStatusLine(game, gameFolder)));
@@ -286,7 +289,7 @@ public partial class Form1
 				else if (!loaderInstalled && GameProfiles.IsGame(game, GameProfiles.MoonlightPeaks))
 				{
 					loaderInstalled = await InstallBepInExAsync(
-						string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder("MoonlightPeaks") : _settings.CurrentGamePath);
+						string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder(game) : _settings.CurrentGamePath);
 				}
 
 				foreach (var item in suiteItems)
