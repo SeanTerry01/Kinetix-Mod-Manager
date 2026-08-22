@@ -645,29 +645,6 @@ public static class ModFileSystem
 	}
 
 	/// <summary>
-	/// Resolves dependencies by cross-referencing with other mods.
-	/// </summary>
-	public static void ResolveDependencies(
-		List<GameMod> mods,
-		Func<string?, string?, bool> isNewerVersion)
-	{
-		foreach (var mod in mods)
-		{
-			foreach (var dep in mod.Dependencies)
-			{
-				var found = mods.FirstOrDefault(m => m.UniqueId == dep.UniqueId);
-				if (found != null)
-				{
-					dep.IsPresent  = true;
-					dep.IsEnabled  = found.IsEnabled;
-					dep.IsNewEnough = isNewerVersion(dep.MinimumVersion, found.Version)
-					               || dep.MinimumVersion == found.Version;
-				}
-			}
-		}
-	}
-
-	/// <summary>
 	/// Finds Skyrim/Fallout 4 plugins whose declared master files are not available among the supplied mods
 	/// (or the base game/DLC masters) — the classic "missing master" that stops a plugin loading. Each result
 	/// is the plugin, the mod that ships it, and the master that can't be found. Reads masters from the TES4

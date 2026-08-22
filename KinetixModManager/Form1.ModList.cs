@@ -175,7 +175,7 @@ public partial class Form1
 		}
 
 		_allInstalledMods = scanned;
-		ModFileSystem.ResolveDependencies(_allInstalledMods, IsNewerVersion);
+		ModHealth.ResolveDependencies(_allInstalledMods, IsNewerVersion);
 		// Reconcile Skyrim/Fallout 4 asset deployment to the current enabled set and priority order, and
 		// refresh the conflict scan. Cheap when nothing changed (only files whose winner changed relink),
 		// so it is safe to run on every list rebuild and keeps the manifest and conflict counts current.

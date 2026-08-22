@@ -4,6 +4,16 @@ A fix for Skyrim and Fallout 4: an up-to-date script extender is no longer repor
 
 ---
 
+## 🐛 Fixed: a required mod reported as "not installed" when it was installed and enabled
+
+*   Check My Setup (**Ctrl + Shift + K**) and the requirements report could claim *"Artisan Valley requires "DIGUS.ProducerFrameworkMod", which is not installed"* while Producer Framework Mod sat in the list, enabled, and the game loaded both without complaint.
+*   **The two mods spelled the same id differently.** A Stardew mod's `UniqueID` is typed by hand in two places by two different authors — once by the mod itself, once by every mod that needs it — and they drift apart. Producer Framework Mod calls itself `Digus.ProducerFrameworkMod`; the packs written for it ask for `DIGUS.ProducerFrameworkMod`, the spelling its author used at the time. **SMAPI matches these ids ignoring case**, so the mods load; the manager compared them letter for letter and decided the mod was absent.
+*   Requirements are now matched **ignoring case and any stray spaces**, the way SMAPI matches them — so the report agrees with what the game does.
+*   **Where a mod is installed twice, an enabled copy now satisfies the requirement in preference to a disabled one**, since the enabled copy is what the game will load. Previously whichever copy the scan happened to reach first decided the answer, so a leftover disabled duplicate could produce "installed, but not enabled" about a mod that was enabled.
+*   This mattered beyond the report: the same matching decides what the dependency view (**Ctrl + Y**) shows, what "resolve missing requirements" offers to go and fetch, and whether a mod's row in the installed list ends with *"Warning: missing required dependencies"* — so a wrongly-matched id followed you around the list, spoken every time you arrowed past that mod.
+
+---
+
 ## ✨ New: the Suggested Mods list now ships with suggestions in it
 
 *   The Suggested Mods viewer (**F7**) has always shown two layers merged — the list that ships with the manager, and your own marks over the top. Until now the shipped layer was **empty**, so a new user opened the viewer to nothing at all.

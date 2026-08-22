@@ -1001,6 +1001,8 @@ This shows where your mods collide.
 This scans your **enabled** mods and lists anything they need but don't have. Press **Enter** on a line to act on it.
 
 *   **Stardew Valley:** required mods that are **missing, disabled, or older** than a mod asks for — including the host mod a content pack (such as a Content Patcher pack) needs. Enter offers to **search** for the missing mod in the Find New Mods tab.
+    *   A required mod is named by the `UniqueID` in its manifest, and that id is matched **ignoring capitalisation and stray spaces**, exactly as SMAPI matches it. Authors do not always agree on how to spell one — Producer Framework Mod calls itself `Digus.ProducerFrameworkMod` while the packs that need it ask for `DIGUS.ProducerFrameworkMod` — and the game loads them regardless, so this report treats them as the same mod too.
+    *   Where the same mod is installed twice, an **enabled** copy is what counts, since that is the copy the game will load.
 *   **Skyrim & Fallout 4:** plugins whose **master file isn't installed** (a missing master stops a plugin loading), a **missing script extender** (SKSE/F4SE) — or one installed for a **different game version**, which from inside the game looks exactly the same, because it never loads — and each mod's **Nexus "Requirements"** that you don't have installed. Enter opens the missing mod's page. Because the Nexus part checks each mod online, a large load order can take a moment — the title bar shows the progress.
 
 ### Check for Broken Mods (Ctrl + Shift + B)
