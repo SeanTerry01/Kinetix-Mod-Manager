@@ -232,8 +232,8 @@ public partial class Form1
 		}
 
 		string clean = CleanMarkdownForReading(markdown);
-		List<DocNode> parsed = NormalizeDocRoots(ParseDocTree(clean.Split('\n')));
-		CollapseRedundantLevels(parsed);
+		List<DocNode> parsed = DocOutline.NormalizeRoots(DocOutline.ParseTree(clean.Split('\n')), Loc.T("doc.intro"));
+		DocOutline.CollapseRedundantLevels(parsed);
 		PruneAndFillDocNodes(parsed);
 
 		if (parsed.Count > 0)
@@ -407,7 +407,9 @@ public partial class Form1
 		s = Regex.Replace(s, @"(?i)</(p|div|li|ul|ol|tr|h[1-6]|blockquote)\s*>", "\n");
 		s = Regex.Replace(s, @"(?m)^\s*!\[[^\]]*\]\([^)]*\)\s*$", "");                     // image-only lines
 		s = Regex.Replace(s, @"!\[[^\]]*\]\([^)]*\)", "");                                  // inline images
-		s = Regex.Replace(s, @"\[([^\]]+)\]\([^)]*\)", "$1");                               // [text](url) -> text
+		// [text](url) -> "text (url)" for a web address, "text" for anything else. The address is kept so that
+		// Enter on the line can open it; see DocOutline.RewriteLinksForReading for why only web addresses.
+		s = DocOutline.RewriteLinksForReading(s);
 		s = Regex.Replace(s, @"</?[a-zA-Z][^>]*>", "");                                     // stray HTML tags
 		s = Regex.Replace(s, @"\n{3,}", "\n\n");                                            // collapse blank runs
 		return s;
@@ -437,8 +439,11 @@ public partial class Form1
 		s = Regex.Replace(s, @"(?is)\[\*\]\s*", "\n- ");
 		s = Regex.Replace(s, @"(?is)\[/?list[^\]]*\]", "\n");
 
-		// Links and images.
-		s = Regex.Replace(s, @"(?is)\[url=[^\]]*\]\s*(.+?)\s*\[/url\]", "$1");
+		// Links and images. A Nexus link carries its address in the opening tag, and dropping it left the words
+		// with nothing behind them — so Enter on that line in the viewer had no address to open. Rewritten as
+		// Markdown here and turned into "text (address)" by the tidy-up that follows; a target no browser could
+		// be sent to is still dropped. See DocOutline.RewriteLinksForReading.
+		s = Regex.Replace(s, @"(?is)\[url=""?([^\]""]*)""?\]\s*(.+?)\s*\[/url\]", "[$2]($1)");
 		s = Regex.Replace(s, @"(?is)\[url\]\s*(.+?)\s*\[/url\]", "$1");
 		s = Regex.Replace(s, @"(?is)\[/?img[^\]]*\]", "");
 

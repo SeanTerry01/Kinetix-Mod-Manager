@@ -38,8 +38,8 @@ public partial class Form1
 			return;
 		}
 		// The manual is one '#' title with '##' sections beneath it; surface those sections as the top level.
-		List<DocNode> roots = NormalizeDocRoots(ParseDocTree(File.ReadAllLines(path)));
-		CollapseRedundantLevels(roots);
+		List<DocNode> roots = DocOutline.NormalizeRoots(DocOutline.ParseTree(File.ReadAllLines(path)), Loc.T("doc.intro"));
+		DocOutline.CollapseRedundantLevels(roots);
 
 		// Append a live "Current Key Mappings" entry reflecting the user's actual (possibly remapped) shortcuts.
 		StringBuilder mappings = new StringBuilder();
@@ -60,86 +60,10 @@ public partial class Form1
 			return;
 		}
 		// Each version is its own '#' heading; the "New in Version X" '##' under it is a redundant wrapper that
-		// CollapseRedundantLevels removes, so opening a version lists its change categories directly.
-		List<DocNode> roots = ParseDocTree(File.ReadAllLines(path));
-		CollapseRedundantLevels(roots);
+		// DocOutline.CollapseRedundantLevels removes, so opening a version lists its change categories directly.
+		List<DocNode> roots = DocOutline.ParseTree(File.ReadAllLines(path));
+		DocOutline.CollapseRedundantLevels(roots);
 		ShowDocDrilldown(roots, Loc.T("changelog.windowTitle"), Loc.T("changelog.toc"), Loc.T("changelog.topicInfo"));
-	}
-
-	/// <summary>One heading in a document: its title, the body text directly beneath it (before any sub-heading),
-	/// and its sub-headings as children. Built into a tree by <see cref="ParseDocTree"/>.</summary>
-	private class DocNode
-	{
-		public string Label { get; }
-		public string Content { get; set; } = "";
-		public List<DocNode> Children { get; } = new();
-
-		public DocNode(string label) { Label = label; }
-
-		public override string ToString() => Label;
-	}
-
-	/// <summary>
-	/// Parses Markdown into a tree keyed by heading level (one '#' is a parent of '##', and so on). Each heading
-	/// becomes a node; the lines beneath it, up to the next heading of any level, become that node's own content.
-	/// Lines before the first heading are dropped (the manual and change log both open with a heading).
-	/// </summary>
-	private static List<DocNode> ParseDocTree(string[] lines)
-	{
-		var roots = new List<DocNode>();
-		var stack = new List<(int level, DocNode node)>();
-		foreach (string raw in lines)
-		{
-			Match h = Regex.Match(raw, @"^(#{1,6})\s+(.*\S)\s*$");
-			if (h.Success)
-			{
-				int level = h.Groups[1].Value.Length;
-				var node = new DocNode(h.Groups[2].Value.Trim());
-				// A new heading closes any open headings at the same or deeper level, then nests under whatever
-				// shallower heading remains (or becomes a root if none does).
-				while (stack.Count > 0 && stack[^1].level >= level) stack.RemoveAt(stack.Count - 1);
-				if (stack.Count == 0) roots.Add(node);
-				else stack[^1].node.Children.Add(node);
-				stack.Add((level, node));
-			}
-			else if (stack.Count > 0)
-			{
-				stack[^1].node.Content += raw + "\n";
-			}
-		}
-		return roots;
-	}
-
-	/// <summary>If a document has a single top-level node (the manual's one title), surfaces its children as the
-	/// roots so the list doesn't open on a pointless one-item level. The title's own intro text, if any, becomes a
-	/// leading "Introduction" entry so nothing is lost.</summary>
-	private static List<DocNode> NormalizeDocRoots(List<DocNode> roots)
-	{
-		if (roots.Count != 1 || roots[0].Children.Count == 0) return roots;
-
-		DocNode title = roots[0];
-		var result = new List<DocNode>();
-		if (!string.IsNullOrWhiteSpace(title.Content))
-			result.Add(new DocNode(Loc.T("doc.intro")) { Content = title.Content });
-		result.AddRange(title.Children);
-		return result;
-	}
-
-	/// <summary>Removes redundant single-child wrapper levels: when a node has exactly one child that carries no
-	/// text of its own, that wrapper is dropped and its children are promoted up (e.g. a change log version whose
-	/// only child is "New in Version X" then lists categories — the wrapper just adds a needless extra step).</summary>
-	private static void CollapseRedundantLevels(List<DocNode> nodes)
-	{
-		foreach (DocNode node in nodes)
-		{
-			while (node.Children.Count == 1 && string.IsNullOrWhiteSpace(node.Children[0].Content) && node.Children[0].Children.Count > 0)
-			{
-				List<DocNode> grandchildren = node.Children[0].Children;
-				node.Children.Clear();
-				node.Children.AddRange(grandchildren);
-			}
-			CollapseRedundantLevels(node.Children);
-		}
 	}
 
 	/// <summary>
@@ -195,7 +119,9 @@ public partial class Form1
 
 		DocNode? Selected() => list.SelectedItem as DocNode;
 
-		// "x of y" for the selected item, noting whether it opens into sub-topics so the user knows Right will drill.
+		// "x of y" for the selected item. An item that opens into sub-topics says so and says which keys move in
+		// and back out — the same hint a mod group carries in the installed list, for the same reason: the item
+		// is a door, and nothing else about it says that it is one.
 		string PositionText(int i)
 		{
 			if (i < 0 || i >= currentNodes.Count) return "";
@@ -204,10 +130,12 @@ public partial class Form1
 		}
 
 		// Mirror the selected heading's own text into the content pane (silently — the pane isn't focused).
+		// DocOutline.ContentText normalises the line endings: parsing Markdown leaves bare line feeds behind, and a
+		// multiline TextBox only breaks a line on a carriage-return + line-feed pair, so without this a whole
+		// section arrived as one unbroken line with nothing to arrow through.
 		void UpdateContent()
 		{
-			DocNode? n = Selected();
-			tbContent.Text = n != null ? n.Content.Trim() : "";
+			tbContent.Text = DocOutline.ContentText(Selected());
 			tbContent.SelectionStart = 0;
 			tbContent.SelectionLength = 0;
 		}
@@ -271,6 +199,128 @@ public partial class Form1
 			GoToLevel(nodes, crumb, index);
 		}
 
+		// --- Search (Ctrl+F, then F3 / Shift+F3) --------------------------------------------------------
+		// The whole document is searched at once, not the section on screen: the point of searching a manual is
+		// to find the section you did not know to open.
+		List<DocMatch> matches = new List<DocMatch>();
+		int matchIndex = -1;
+		string searchPhrase = "";
+		// Set while a search is placing the caret, so the content box's "start at the top" rule stands aside for
+		// the one case that has already decided where the caret belongs.
+		bool caretPlacedBySearch = false;
+
+		// Opens the level holding a match, rebuilding the way back so Left still walks out of it one level at a
+		// time — arriving somewhere by search should leave the viewer in the state it would be in had you got
+		// there by opening sections yourself.
+		void OpenLevelOf(DocMatch m)
+		{
+			backStack.Clear();
+			List<DocNode> level = roots;
+			string crumb = "";
+			for (int depth = 0; depth + 1 < m.Path.Count; depth++)
+			{
+				DocNode parent = m.Path[depth];
+				backStack.Push((level, level.IndexOf(parent), crumb));
+				crumb = crumb.Length == 0 ? parent.Label : $"{crumb}, {parent.Label}";
+				level = parent.Children;
+			}
+
+			// Focus ends in the content box, not the list: the user asked for a line, so the line is where they
+			// should land. The bounce through the window is the same one GoToLevel uses, so the reader re-reads
+			// the rebuilt level rather than believing it is still showing the old one.
+			ActiveControl = null;
+			ShowLevel(level, crumb, Math.Max(level.IndexOf(m.Node), 0));
+			UpdateContent();
+			caretPlacedBySearch = true;
+			tbContent.Focus();
+		}
+
+		// Puts the caret on the matching line and reads out where we have landed. The line is spoken here rather
+		// than left to the screen reader: moving a caret programmatically is not a keystroke, and a reader has no
+		// reason to say anything about it.
+		//
+		// Everything is said as ONE utterance, prefix included. Two calls would not survive each other: the second
+		// interrupts, so a "back to the first result" spoken separately would be cut off by the result it was
+		// introducing and never heard.
+		void GoToMatch(int index, string prefix = "")
+		{
+			if (index < 0 || index >= matches.Count) return;
+			matchIndex = index;
+			DocMatch m = matches[index];
+
+			OpenLevelOf(m);
+			// Counted from the text, not asked of the box: a wrapped TextBox numbers the lines it draws, not the
+			// lines it was given, so its own line-to-character lookup would miss by however much has wrapped
+			// above. See DocOutline.CharOffsetOfLine.
+			tbContent.SelectionStart = Math.Min(DocOutline.CharOffsetOfLine(m.Node, m.LineIndex), tbContent.TextLength);
+			tbContent.SelectionLength = 0;
+			tbContent.ScrollToCaret();
+
+			string where = Loc.T("docsearch.atMatch", index + 1, matches.Count, m.Section);
+			SpeakLong((prefix.Length > 0 ? prefix + " " : "") + where + " " + m.Line);
+		}
+
+		// F3 / Shift+F3. Wraps around, saying so, rather than stopping dead at the last match — a manual is a
+		// loop you are scanning, not a file you are editing, and silence at the end reads as a broken key.
+		void StepMatch(int delta)
+		{
+			if (matches.Count == 0)
+			{
+				Speak(Loc.T(searchPhrase.Length == 0 ? "docsearch.noSearchYet" : "docsearch.noneLeft", searchPhrase));
+				return;
+			}
+			int next = matchIndex + delta;
+			string prefix = "";
+			if (next < 0) { next = matches.Count - 1; prefix = Loc.T("docsearch.wrappedToEnd"); }
+			else if (next >= matches.Count) { next = 0; prefix = Loc.T("docsearch.wrappedToStart"); }
+			GoToMatch(next, prefix);
+		}
+
+		// Ctrl+F. Asking again replaces the previous search outright — the results list is the search, so there
+		// is nothing to keep once a new phrase is typed.
+		void RunSearch()
+		{
+			string? typed = ShowTextPrompt(Loc.T("docsearch.promptTitle"), Loc.T("docsearch.promptLabel"), searchPhrase);
+			if (typed == null) return;                       // cancelled, as distinct from cleared
+			typed = typed.Trim();
+			if (typed.Length == 0) { Speak(Loc.T("docsearch.nothingTyped")); return; }
+
+			searchPhrase = typed;
+			matches = DocOutline.Find(roots, typed);
+			matchIndex = -1;
+
+			if (matches.Count == 0)
+			{
+				Speak(Loc.T("docsearch.noResults", typed));
+				return;
+			}
+
+			DocMatch? picked = ShowDocSearchResults(matches, typed);
+			// Backing out of the results keeps the search armed, so F3 still steps through what was found.
+			if (picked == null) { Speak(Loc.T("docsearch.keptResults", matches.Count)); return; }
+			GoToMatch(matches.IndexOf(picked));
+		}
+
+		// Ctrl+F and F3 work from the list and the content box alike, so a search never depends on which half of
+		// the viewer focus happens to be in.
+		void WireSearchKeys(Control c) => c.KeyDown += delegate (object? s, KeyEventArgs e)
+		{
+			if (e.Handled) return;
+			if (e.Control && e.KeyCode == Keys.F)
+			{
+				e.Handled = e.SuppressKeyPress = true;
+				RunSearch();
+			}
+			else if (e.KeyCode == Keys.F3)
+			{
+				e.Handled = e.SuppressKeyPress = true;
+				StepMatch(e.Shift ? -1 : 1);
+			}
+		};
+
+		WireSearchKeys(list);
+		WireSearchKeys(tbContent);
+
 		list.SelectedIndexChanged += delegate
 		{
 			UpdateContent();
@@ -301,12 +351,23 @@ public partial class Form1
 			}
 		};
 
-		// Tabbing into the content box should land the cursor at the start of the topic, not the bottom.
+		// Tabbing into the content box should land the cursor at the start of the topic, not the bottom. A search
+		// that has just placed the caret on a match is the exception — it put it exactly where it belongs.
 		tbContent.GotFocus += delegate
 		{
+			if (caretPlacedBySearch) { caretPlacedBySearch = false; return; }
 			tbContent.SelectionStart = 0;
 			tbContent.SelectionLength = 0;
 			tbContent.ScrollToCaret();
+		};
+
+		// Enter on a line holding a link offers to open it in the browser, the same as a mod's description and
+		// the game logs. A manual full of Nexus and GitHub addresses is of little use if the only way to follow
+		// one is to write it down and type it in again.
+		tbContent.KeyDown += delegate (object? s, KeyEventArgs e)
+		{
+			if (e.Handled || e.KeyCode != Keys.Enter) return;
+			if (TryOpenLinkOnCaretLine(tbContent)) e.Handled = e.SuppressKeyPress = true;
 		};
 
 		// Escape is wired by the view itself, on every control, so it closes from the list or the text box alike.

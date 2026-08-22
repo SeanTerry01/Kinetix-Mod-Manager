@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Text;
@@ -138,12 +139,62 @@ public partial class Form1
 		return s.Trim();
 	}
 
-	/// <summary>Returns the first http/https URL in a line (trimmed of trailing punctuation), or null if none.</summary>
-	private static string? ExtractFirstUrl(string line)
+	/// <summary>
+	/// Every http/https URL in a line, in order, de-duplicated and trimmed of the punctuation a sentence wraps
+	/// around one. A line of prose can easily carry several — a mod's documentation naming its Nexus page and its
+	/// source repository in the same breath — and the reader is on the line, not on any one link in it.
+	///
+	/// Deliberately not <see cref="LogAnalyzer.ExtractUrls"/>, which is the same idea for log lines but also
+	/// rewrites a Nexus mod page to its Files tab. That is right for a log, where a link is nearly always
+	/// something to download; it is wrong for a document, where following a link should land where the sentence
+	/// said it would.
+	/// </summary>
+	private static List<string> ExtractUrlsInLine(string line)
 	{
-		Match m = Regex.Match(line, @"https?://[^\s)\]]+", RegexOptions.IgnoreCase);
-		if (!m.Success) return null;
-		return m.Value.TrimEnd('.', ',', ';', ':', '!', '?', ')', ']', '"', '\'');
+		var found = new List<string>();
+		foreach (Match m in Regex.Matches(line, @"https?://[^\s)\]]+", RegexOptions.IgnoreCase))
+		{
+			string url = m.Value.TrimEnd('.', ',', ';', ':', '!', '?', ')', ']', '"', '\'');
+			if (url.Length > 0 && !found.Contains(url, StringComparer.OrdinalIgnoreCase)) found.Add(url);
+		}
+		return found;
+	}
+
+	/// <summary>The whole line the caret is sitting on in a text box, without its line ending.</summary>
+	private static string LineAtCaret(TextBox box)
+	{
+		string all = box.Text;
+		int caret = Math.Min(box.SelectionStart, all.Length);
+		int start = caret > 0 ? all.LastIndexOf('\n', caret - 1) + 1 : 0;
+		int end = all.IndexOf('\n', caret);
+		if (end < 0) end = all.Length;
+		return all.Substring(start, end - start).TrimEnd('\r');
+	}
+
+	/// <summary>
+	/// Enter on a line that holds a link: confirms, then opens it in the browser. Returns false when the line has
+	/// no link, so the caller can leave the key alone.
+	///
+	/// Shared by every read-only text pane the user arrows through — a mod's description, the manual, the change
+	/// log, an accessibility mod's documentation — because a link in a body of text is unreachable to someone
+	/// reading it line by line unless the line itself can be acted on. It confirms first: Enter is a key people
+	/// press to move on, and launching a browser is not something to do to somebody by surprise.
+	/// </summary>
+	private bool TryOpenLinkOnCaretLine(TextBox box)
+	{
+		List<string> urls = ExtractUrlsInLine(LineAtCaret(box));
+		if (urls.Count == 0) return false;
+
+		// Several links on one line: choose which, exactly as a log line with several does. The picker is the
+		// confirmation in that case, so it does not ask twice.
+		if (urls.Count > 1) { ShowLogLinkPicker(urls); return true; }
+
+		if (SpeakBox(Loc.T("modinfo.openLinkConfirm", urls[0]), Loc.T("modinfo.openLinkTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
+		{
+			try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(urls[0]) { UseShellExecute = true }); }
+			catch (Exception ex) { LogError("OpenLink", "Could not open link: " + ex.Message); Speak(Loc.T("smapi.couldNotOpenLink")); }
+		}
+		return true;
 	}
 
 	/// <summary>
@@ -172,19 +223,7 @@ public partial class Form1
 		box.KeyDown += (_, e) =>
 		{
 			if (e.KeyCode != Keys.Enter) return;
-			string all = box.Text;
-			int caret = Math.Min(box.SelectionStart, all.Length);
-			int start = caret > 0 ? all.LastIndexOf('\n', caret - 1) + 1 : 0;
-			int end = all.IndexOf('\n', caret);
-			if (end < 0) end = all.Length;
-			string? url = ExtractFirstUrl(all.Substring(start, end - start));
-			if (url == null) return;
-			e.Handled = e.SuppressKeyPress = true;
-			if (SpeakBox(Loc.T("modinfo.openLinkConfirm", url), Loc.T("modinfo.openLinkTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
-			{
-				try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
-				catch { }
-			}
+			if (TryOpenLinkOnCaretLine(box)) e.Handled = e.SuppressKeyPress = true;
 		};
 
 		box.SelectionStart = 0;

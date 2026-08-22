@@ -79,6 +79,8 @@
     <Compile Include="..\KinetixModManager\PlatformInfo.cs" />
     <!-- Self-contained "which script extender is installed and will it load?" reader (BCL + GameProfiles). -->
     <Compile Include="..\KinetixModManager\ScriptExtenderInfo.cs" />
+    <!-- Self-contained Markdown outline + phrase search behind the F1/F2/F3 document viewers (BCL only). -->
+    <Compile Include="..\KinetixModManager\DocOutline.cs" />
     <!-- Self-contained store behind the curator's list of mods worth suggesting (BCL + Newtonsoft + GameProfiles). -->
     <Compile Include="..\KinetixModManager\SuggestedMod.cs" />
     <!-- Self-contained read/write/merge rules for a shared suggestions list (BCL + Newtonsoft + SuggestedMod). -->
