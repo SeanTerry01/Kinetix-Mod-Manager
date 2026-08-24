@@ -4,6 +4,14 @@ A fix for Skyrim and Fallout 4: an up-to-date script extender is no longer repor
 
 ---
 
+## ✨ New: a Witcher 3 mod's controls are named, and say which mod they belong to
+
+*   The controls list (**Ctrl + H**) showed a mod's own bindings as the identifiers the game stores — **"N: WA Compass"**. They were there, but read as code rather than controls, and nothing said they came from a mod rather than the game.
+*   A mod names its actions after itself, and its folder is named after itself too, so the initials in `WA_Compass` can be matched against `modWitcherAccess`. Those bindings now read **"Compass (Witcher Access)"** — which also tells them apart from the game's own controls where both sit under one key.
+*   Nothing is assumed about any particular mod. A prefix matching no installed mod is left exactly as the file wrote it, and where two installed mods share the same initials neither claims the action — a guess about what a control does is worse than the identifier it came from.
+
+---
+
 ## 🐛 Fixed: Skyrim Access installed but silent — the NVDA file was left where the game could not find it
 
 *   Skyrim Access ships `nvdaControllerClient.dll` **inside an "NVDACC" folder**, and an earlier build kept it in `Data\Root`. Neither is the top level of the archive, and only top-level loose files were ever treated as belonging in the game's root folder — so the DLL was installed as ordinary `Data` content, where nothing can load it. The game started perfectly and never spoke, and the fix being passed around by hand was "go and find that file yourself and copy it next to the exe".

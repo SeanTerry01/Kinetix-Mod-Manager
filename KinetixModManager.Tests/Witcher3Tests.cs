@@ -268,6 +268,62 @@ public class Witcher3Tests
     }
 
     [Fact]
+    public void AModsOwnActionIsReadAsWordsAndAttributedToIt()
+    {
+        // WitcherAccess binds WA_Compass and WA_Announce. Read as they are stored they are identifiers, and in
+        // a list where a mod's controls sit beside the game's there is nothing to say which is which.
+        using var dir = new TempDir();
+        string path = WriteInputSettings(dir,
+            "[Exploration]",
+            "IK_N=(Action=WA_Compass)",
+            "IK_Home=(Action=WA_Announce)",
+            "IK_E=(Action=SitAndWait)");
+
+        string mods = Path.Combine(dir.Path, "mods");
+        Directory.CreateDirectory(Path.Combine(mods, "modWitcherAccess"));
+
+        var bindings = Witcher3InputSettings.Read(path, mods);
+
+        Assert.Equal(new[] { "Compass (Witcher Access)" }, bindings.Single(b => b.Key == "N").Actions);
+        Assert.Equal(new[] { "Announce (Witcher Access)" }, bindings.Single(b => b.Key == "Home").Actions);
+        // The game's own actions are untouched.
+        Assert.Equal(new[] { "Sit And Wait" }, bindings.Single(b => b.Key == "E").Actions);
+    }
+
+    [Fact]
+    public void AnActionWhosePrefixMatchesNoInstalledModIsLeftAlone()
+    {
+        // Inventing a meaning for an unknown prefix would be worse than the identifier it came from.
+        using var dir = new TempDir();
+        string path = WriteInputSettings(dir, "[Exploration]", "IK_N=(Action=ZZ_Something)");
+        string mods = Path.Combine(dir.Path, "mods");
+        Directory.CreateDirectory(Path.Combine(mods, "modWitcherAccess"));
+
+        Assert.Equal(new[] { "ZZ Something" }, Witcher3InputSettings.Read(path, mods).Single().Actions);
+    }
+
+    [Fact]
+    public void TwoModsWithTheSameInitialsClaimNeither()
+    {
+        using var dir = new TempDir();
+        string path = WriteInputSettings(dir, "[Exploration]", "IK_N=(Action=WA_Compass)");
+        string mods = Path.Combine(dir.Path, "mods");
+        Directory.CreateDirectory(Path.Combine(mods, "modWitcherAccess"));
+        Directory.CreateDirectory(Path.Combine(mods, "modWildArmour"));
+
+        Assert.Equal(new[] { "WA Compass" }, Witcher3InputSettings.Read(path, mods).Single().Actions);
+    }
+
+    [Fact]
+    public void WithoutAModsFolderTheActionsAreStillListed()
+    {
+        using var dir = new TempDir();
+        string path = WriteInputSettings(dir, "[Exploration]", "IK_N=(Action=WA_Compass)");
+
+        Assert.Equal(new[] { "WA Compass" }, Witcher3InputSettings.Read(path).Single().Actions);
+    }
+
+    [Fact]
     public void EverythingAKeyDoesIsGatheredUnderThatKey()
     {
         // A key is listed once per context it applies in, and all of those are true at the same time — the

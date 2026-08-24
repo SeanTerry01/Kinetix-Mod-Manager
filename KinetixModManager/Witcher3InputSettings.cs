@@ -61,8 +61,52 @@ public static class Witcher3InputSettings
 	/// Every keyboard and mouse binding in <paramref name="path"/>, one entry per key, with everything that key
 	/// does gathered under it. Gamepad bindings are left out: this list answers a keyboard question.
 	/// </summary>
-	public static List<GameKeyBinding> Read(string path)
+	/// <summary>
+	/// Maps the short prefix a mod puts on its action names to the mod's readable name, by reading the mod
+	/// folder names beside the game.
+	///
+	/// A mod names its actions after itself — WitcherAccess binds <c>WA_Compass</c>, <c>WA_Announce</c> — and
+	/// read aloud those are identifiers, not controls. The folder is called <c>modWitcherAccess</c>, so the
+	/// initials of the words in that name give the prefix the actions use, and the words themselves give the
+	/// name to say. Nothing is assumed about any particular mod: a prefix that matches no installed mod is left
+	/// exactly as the file wrote it, because a guess at what it meant would be worse than the identifier.
+	/// </summary>
+	public static Dictionary<string, string> ModActionPrefixes(string? modsFolder)
 	{
+		var byPrefix = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		if (string.IsNullOrEmpty(modsFolder) || !Directory.Exists(modsFolder)) return byPrefix;
+
+		try
+		{
+			foreach (string dir in Directory.EnumerateDirectories(modsFolder))
+			{
+				string folder = Path.GetFileName(dir);
+				if (!folder.StartsWith("mod", StringComparison.OrdinalIgnoreCase) || folder.Length <= 3) continue;
+
+				string name = folder.Substring(3).TrimStart('_');
+				string spaced = Humanise(name);
+				string[] words = spaced.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+				if (words.Length < 2) continue;   // one word gives a one-letter prefix, which would match anything
+
+				string prefix = string.Concat(words.Select(w => w[0]));
+				// Two mods whose initials collide can't be told apart, so neither is claimed.
+				byPrefix[prefix] = byPrefix.ContainsKey(prefix) ? "" : spaced;
+			}
+		}
+		catch { }
+
+		return byPrefix;
+	}
+
+	public static List<GameKeyBinding> Read(string path) => Read(path, null);
+
+	/// <param name="modsFolder">
+	/// The game's <c>mods</c> folder, so a mod's own actions can be read as words and attributed to it. Optional:
+	/// without it those actions are still listed, just under the names the file gives them.
+	/// </param>
+	public static List<GameKeyBinding> Read(string path, string? modsFolder)
+	{
+		Dictionary<string, string> modPrefixes = ModActionPrefixes(modsFolder);
 		var byKey = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 		var order = new List<string>();
 
@@ -80,7 +124,7 @@ public static class Witcher3InputSettings
 				// them. The two mouse-look axes go too: IK_MouseX is the mouse being moved, not a key to press.
 				if (IsNotAKeyboardKey(entry.Key)) continue;
 
-				string? action = FriendlyAction(entry.Value);
+				string? action = FriendlyAction(entry.Value, modPrefixes);
 				if (action == null) continue;
 
 				string key = FriendlyKeyName(entry.Key.Substring(KeyPrefix.Length));
@@ -126,12 +170,20 @@ public static class Witcher3InputSettings
 	/// <summary>
 	/// The action a binding line describes, in words — or <c>null</c> when the line binds nothing readable.
 	/// </summary>
-	private static string? FriendlyAction(string value)
+	private static string? FriendlyAction(string value, Dictionary<string, string> modPrefixes)
 	{
 		Match action = Regex.Match(value, @"Action\s*=\s*([A-Za-z0-9_]+)");
 		if (!action.Success) return null;
 
 		string name = action.Groups[1].Value;
+
+		// An action belonging to an installed mod: "WA_Compass" is the mod's Compass, and saying so is what
+		// tells it apart from the game's own controls in a list where both appear under the same key.
+		Match owned = Regex.Match(name, @"^([A-Za-z]{2,5})_(.+)$");
+		if (owned.Success &&
+			modPrefixes.TryGetValue(owned.Groups[1].Value, out string? modName) &&
+			modName.Length > 0)
+			return Humanise(owned.Groups[2].Value) + " (" + modName + ")";
 
 		// An axis binding carries its direction in the same line, and the direction is the whole meaning.
 		Match axisValue = Regex.Match(value, @"Value\s*=\s*(-?[\d.]+)");

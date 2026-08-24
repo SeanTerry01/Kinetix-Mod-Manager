@@ -84,7 +84,9 @@ public sealed class GameKeybindExport
 		if (profile.IsWitcher3)
 		{
 			string inputSettings = Witcher3InputSettings.PathFor(profile, gameFolder);
-			var witcherBindings = Witcher3InputSettings.Read(inputSettings);
+			// The mods folder lets a mod's own actions be read as words and attributed to it, rather than as the
+			// identifiers the file stores ("WA_Compass").
+			var witcherBindings = Witcher3InputSettings.Read(inputSettings, Path.Combine(gameFolder, "mods"));
 			if (witcherBindings.Count == 0) return null;
 
 			// The game rewrites the file whenever a key is remapped, so its timestamp genuinely is "when these
