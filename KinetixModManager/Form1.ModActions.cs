@@ -261,6 +261,57 @@ public partial class Form1
 	/// can be read (Content Patcher, a Mod Configuration Menu, a BepInEx config, a Stardew config the manager can
 	/// make sense of), and the raw JSON editor only when nothing better is available.
 	/// </summary>
+	/// <summary>
+	/// The player's <c>user.settings</c> — where The Witcher 3 keeps every mod's settings, in the player's
+	/// documents rather than anywhere near the mod.
+	/// </summary>
+	private string Witcher3UserSettingsPath()
+	{
+		GameProfile? profile = GameProfiles.Find(_settings.ActiveGame);
+		string userData = profile?.UserDataDirectoryFor(_settings.CurrentGamePath) ?? "";
+		return userData.Length == 0 ? "" : Path.Combine(userData, Witcher3UserConfig.UserSettingsFileName);
+	}
+
+	/// <summary>
+	/// Checks the two ways a Witcher 3 settings edit is silently thrown away, and says so before the user spends
+	/// time making one. Returns false when they choose not to go on.
+	///
+	/// The game rewrites user.settings wholesale when it exits, so anything changed while it is running is
+	/// overwritten — the edit appears to work and is simply gone. And if the file has been made read-only (a
+	/// trick people are told to use to stop the game rewriting it), the game itself silently fails to save any
+	/// in-game change too. Both are quiet failures, which is why they are worth interrupting for.
+	/// </summary>
+	private bool WarnBeforeEditingWitcherSettings()
+	{
+		GameProfile? profile = GameProfiles.Find(_settings.ActiveGame);
+		if (profile != null && IsGameProcessRunning(profile.GameExeName))
+		{
+			if (SpeakBox(Loc.T("witcher.settingsGameRunningBox"), Loc.T("witcher.settingsWarningTitle"),
+					MessageBoxButtons.YesNo) != DialogResult.Yes)
+			{
+				Speak(Loc.T("witcher.settingsNotOpened"));
+				return false;
+			}
+		}
+
+		string path = Witcher3UserSettingsPath();
+		try
+		{
+			if (path.Length > 0 && File.Exists(path) && File.GetAttributes(path).HasFlag(FileAttributes.ReadOnly))
+			{
+				if (SpeakBox(Loc.T("witcher.settingsReadOnlyBox"), Loc.T("witcher.settingsWarningTitle"),
+						MessageBoxButtons.YesNo) == DialogResult.Yes)
+				{
+					File.SetAttributes(path, File.GetAttributes(path) & ~FileAttributes.ReadOnly);
+					Speak(Loc.T("witcher.settingsReadOnlyCleared"));
+				}
+			}
+		}
+		catch (Exception ex) { LogError(path, "Could not check user.settings: " + ex.Message); }
+
+		return true;
+	}
+
 	private void OpenModSettingsFor(StardewMod mod)
 	{
 		// A Content Patcher pack declares what each of its settings accepts, so it gets the settings editor
@@ -283,6 +334,21 @@ public partial class Form1
 			McmMenu menu = mcmMenus.First(m => m.Settings.Any());
 			ShowMcmSettings(mod.Name, menu);
 			return;
+		}
+
+		// A Witcher 3 mod declares its Options → Mods menu in the game's config matrix, and the game keeps the
+		// values in the player's own user.settings — neither of which is in the mod folder, which is why the
+		// settings key used to find nothing at all for these mods.
+		if (GameProfiles.Find(_settings.ActiveGame)?.IsWitcher3 == true)
+		{
+			McmMenu? witcherMenu = Witcher3UserConfig.ReadMenu(
+				mod.FolderPath, _settings.CurrentGamePath, Witcher3UserSettingsPath());
+			if (witcherMenu != null && witcherMenu.Settings.Any())
+			{
+				if (!WarnBeforeEditingWitcherSettings()) return;
+				ShowMcmSettings(mod.Name, witcherMenu);
+				return;
+			}
 		}
 
 		// A BepInEx mod keeps its settings OUTSIDE its own folder — BepInEx writes one file per plugin into

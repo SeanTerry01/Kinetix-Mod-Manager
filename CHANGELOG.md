@@ -4,6 +4,18 @@ A fix for Skyrim and Fallout 4: an up-to-date script extender is no longer repor
 
 ---
 
+## ✨ New: The Witcher 3 mod settings, from the settings key (Ctrl + E)
+
+*   A Witcher 3 mod's settings were unreachable from the manager: pressing the settings key on one found nothing, because there is nothing in the mod's folder to find. **The Witcher 3 keeps every mod's settings in the player's own `Documents\The Witcher 3\user.settings`**, under a section named after the group — `[WAGeneral]`, `[WASounds]` — while the *menu* those settings belong to is declared in a separate file in the game folder.
+*   The manager now reads both. A mod that ships an Options → Mods menu gets **the same settings list Skyrim and Fallout 4 mods get**: every setting with its own label, offered as a choice or a number in its proper range, rather than a file to type into. **WitcherAccess** comes through with **32 settings** across General and Sounds.
+*   **The author's own defaults are shown for settings the game has not written yet.** The Witcher 3 only writes a setting into `user.settings` once it has been touched in-game, so on a fresh install a mod's settings are simply absent — which is exactly when reading them from outside is most useful. The defaults come from the menu file itself, so the list is complete from the start.
+*   **The two silent ways an edit gets thrown away are now called out before you make one.** If the game is running, it rewrites that file wholesale on exit and your change disappears with no warning — the manager says so and lets you decide. If the file has been marked read-only, *the game itself* silently fails to save any in-game change too; the manager offers to make it writable.
+*   Labels are made readable rather than spoken as identifiers: `wa_snd_enemy_ping` is offered as **"Sound: Enemy ping"**. The real labels live in a compiled `.w3strings` file that no outside program can read, so the setting's own name is tidied up instead.
+*   The mod's **Glossary** group is not shown. Its thirteen entries are "play this sound" buttons that store no value and only the game can carry out — listing them would offer thirteen things that cannot be done from here.
+*   Group headings are read as the section's name rather than the mod's own label for it: **"General"** and **"Sounds"**, not "Wageneral" and "Wasounds".
+
+---
+
 ## ✨ New: a Witcher 3 mod's controls are named, and say which mod they belong to
 
 *   The controls list (**Ctrl + H**) showed a mod's own bindings as the identifiers the game stores — **"N: WA Compass"**. They were there, but read as code rather than controls, and nothing said they came from a mod rather than the game.

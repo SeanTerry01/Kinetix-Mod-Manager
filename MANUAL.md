@@ -1068,6 +1068,20 @@ A mod that has **never been run** still works here: it has no settings file yet,
 
 **Every other mod** gets the plain JSON editor as before — the mod's `config.json` in a text box, with **Ctrl + S** to save and a syntax check before it's written.
 
+### Editing a Mod's Settings (The Witcher 3)
+
+A Witcher 3 mod that adds a page to the game's **Options → Mods** menu gets the same settings list, reached the same way — **Ctrl + E** on the mod. **WitcherAccess** has 32 settings across its General and Sounds groups.
+
+This one needs explaining because nothing about it is where you would expect:
+
+*   **The settings are not in the mod's folder.** The Witcher 3 keeps every mod's settings in **`Documents\The Witcher 3\user.settings`**, in a section named after the group — `[WAGeneral]`, `[WASounds]` — while the menu itself is declared in a file in the game folder. The manager reads both and puts them back together, which is why pressing Ctrl + E on the mod now shows something.
+*   **A mod you have never configured in-game still works here.** The Witcher 3 writes a setting into that file only once it has been touched, so on a fresh install a mod's settings are simply missing from it. The list shows **the author's own defaults** in that case, taken from the menu definition, so it is complete from the start.
+*   ⚠️ **Close the game before changing anything.** The Witcher 3 rewrites `user.settings` when it exits, so a change made while it is running is overwritten when you quit — silently, with nothing to say it happened. The manager warns you if it sees the game running and lets you decide.
+*   ⚠️ **If the file is read-only, nothing saves — including from inside the game.** This one has caught people out: settings changed in the game's own menu appear to work and are gone next time. The manager checks, and offers to make the file writable.
+*   **Key bindings are a separate matter.** They live in `Documents\The Witcher 3\input.settings`, and the game reads that file **only at startup** — so a change to a binding does not apply until the game is fully restarted. The manager's controls list (**Ctrl + H**) reads that file.
+
+Settings whose entries are buttons — WitcherAccess's **Glossary** group is thirteen "play this sound" previews — are not listed, since only the game itself can carry those out.
+
 ### Mods that install to the game's root folder (ENB, ReShade, script extenders)
 
 Most Skyrim and Fallout 4 mods install into the game's **Data** folder, but some — graphics injectors like **ENB** and **ReShade**, or tools that sit next to the game's `.exe` — need their files in the game's **root** folder instead. The manager detects these automatically when you install them: their game-root files (such as `d3d11.dll`, `dxgi.dll`, `enbseries\`, or an archive's `Root\` folder) are deployed to the root, while any `Data` files in the same archive still go to Data. You don't have to do anything special — install them like any other mod, and enable/disable and Purge/Rebuild treat them the same as the rest. (Full script extenders like SKSE and F4SE are still installed directly, as before.)

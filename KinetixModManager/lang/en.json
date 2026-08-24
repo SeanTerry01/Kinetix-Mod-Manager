@@ -1047,6 +1047,11 @@
   "guardian.updatedSe": "{0} updated from version {1} to {2} since you last opened the manager. {3} and any DLL-based plugins almost always need a matching update before the game will launch. Open the {3} page to check for an update now?",
   "guardian.updatedNoSe": "{0} updated from version {1} to {2} since you last opened the manager. If any of your mods rely on DLL plugins (script-extender style), check that they support the new game version before launching.",
 
+  "witcher.settingsWarningTitle": "Witcher 3 Settings",
+  "witcher.settingsGameRunningBox": "The Witcher 3 appears to be running. It rewrites its settings file when it exits, so anything changed now will be overwritten when you quit the game, without any warning. Close the game first if you can. Open the settings anyway?",
+  "witcher.settingsReadOnlyBox": "The Witcher 3 settings file is marked read-only. While it is, the game itself silently fails to save any setting you change in-game, and changes made here cannot be saved either. Make the file writable now?",
+  "witcher.settingsReadOnlyCleared": "The settings file is now writable.",
+  "witcher.settingsNotOpened": "Settings not opened.",
   "updates.markTitle": "Mark Version As Installed",
   "updates.markConfirm": "Record version {0} as the version of {1} you already have? Updates will be compared against {0} from now on, and anything newer will still be reported.",
   "updates.markedPos": "{0} recorded as version {1}. {2}. {3} of {4}",

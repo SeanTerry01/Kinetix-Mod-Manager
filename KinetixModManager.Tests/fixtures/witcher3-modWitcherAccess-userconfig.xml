@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserConfig>
+	<Group id="WAGeneral" displayName="Mods.witcheraccess.wageneral">
+		<PresetsArray>
+			<Preset id="0" displayName="wa_default">
+				<Entry varId="waAimEnabled" value="true"/>
+				<Entry varId="waSoundsMaster" value="true"/>
+				<Entry varId="waMapRevealAll" value="false"/>
+				<Entry varId="waSubtitlesRead" value="false"/>
+			</Preset>
+		</PresetsArray>
+		<VisibleVars>
+			<Var id="waAimEnabled" displayName="wa_aim_enabled" displayType="TOGGLE"/>
+			<Var id="waSoundsMaster" displayName="wa_sounds_master" displayType="TOGGLE"/>
+			<Var id="waMapRevealAll" displayName="wa_map_reveal_all" displayType="TOGGLE"/>
+			<Var id="waSubtitlesRead" displayName="wa_subtitles_read" displayType="TOGGLE"/>
+			<Var id="waInit" displayName="waInit" displayType="SLIDER;0;1;1" visibilityCondition="hideAlways"/>
+		</VisibleVars>
+	</Group>
+	<Group id="WASounds" displayName="Mods.witcheraccess.wasounds">
+		<PresetsArray>
+			<Preset id="0" displayName="wa_default">
+				<Entry varId="waSndHit" value="true"/>
+				<Entry varId="waVolHit" value="100"/>
+				<Entry varId="waSndDodge" value="true"/>
+				<Entry varId="waVolDodge" value="100"/>
+				<Entry varId="waSndDanger" value="true"/>
+				<Entry varId="waVolDanger" value="100"/>
+				<Entry varId="waSndDeath" value="true"/>
+				<Entry varId="waVolDeath" value="100"/>
+				<Entry varId="waSndAdrenGain" value="true"/>
+				<Entry varId="waVolAdrenGain" value="100"/>
+				<Entry varId="waSndAdrenLoss" value="true"/>
+				<Entry varId="waVolAdrenLoss" value="100"/>
+				<Entry varId="waSndCineStart" value="true"/>
+				<Entry varId="waVolCineStart" value="100"/>
+				<Entry varId="waSndCineEnd" value="true"/>
+				<Entry varId="waVolCineEnd" value="100"/>
+				<Entry varId="waSndHealth50" value="true"/>
+				<Entry varId="waVolHealth50" value="100"/>
+				<Entry varId="waSndHealth20" value="true"/>
+				<Entry varId="waVolHealth20" value="100"/>
+				<Entry varId="waSndAimLoop" value="true"/>
+				<Entry varId="waVolAimLoop" value="100"/>
+				<Entry varId="waSndEnemyPing" value="true"/>
+				<Entry varId="waVolEnemyPing" value="100"/>
+				<Entry varId="waSndDoorPing" value="true"/>
+				<Entry varId="waVolDoorPing" value="100"/>
+				<Entry varId="waSndBeacon" value="true"/>
+				<Entry varId="waVolBeacon" value="100"/>
+			</Preset>
+		</PresetsArray>
+		<VisibleVars>
+			<Var id="waSndHit" displayName="wa_snd_hit" displayType="TOGGLE"/>
+			<Var id="waVolHit" displayName="wa_vol_hit" displayType="SLIDER;0;100;100"/>
+			<Var id="sep1" displayName="" displayType="SUBTLE_SEPARATOR"/>
+			<Var id="waSndDodge" displayName="wa_snd_dodge" displayType="TOGGLE"/>
+			<Var id="waVolDodge" displayName="wa_vol_dodge" displayType="SLIDER;0;100;100"/>
+			<Var id="sep2" displayName="" displayType="SUBTLE_SEPARATOR"/>
+			<Var id="waSndDanger" displayName="wa_snd_danger" displayType="TOGGLE"/>
+			<Var id="waVolDanger" displayName="wa_vol_danger" displayType="SLIDER;0;100;100"/>
+			<Var id="sep3" displayName="" displayType="SUBTLE_SEPARATOR"/>
+			<Var id="waSndDeath" displayName="wa_snd_death" displayType="TOGGLE"/>
+			<Var id="waVolDeath" displayName="wa_vol_death" displayType="SLIDER;0;100;100"/>
+			<Var id="sep4" displayName="" displayType="SUBTLE_SEPARATOR"/>
+			<Var id="waSndAdrenGain" displayName="wa_snd_adren_gain" displayType="TOGGLE"/>
+			<Var id="waVolAdrenGain" displayName="wa_vol_adren_gain" displayType="SLIDER;0;100;100"/>
+			<Var id="sep5" displayName="" displayType="SUBTLE_SEPARATOR"/>
+			<Var id="waSndAdrenLoss" displayName="wa_snd_adren_loss" displayType="TOGGLE"/>
+			<Var id="waVolAdrenLoss" displayName="wa_vol_adren_loss" displayType="SLIDER;0;100;100"/>
+			<Var id="sep6" displayName="" displayType="SUBTLE_SEPARATOR"/>
+			<Var id="waSndCineStart" displayName="wa_snd_cine_start" displayType="TOGGLE"/>
+			<Var id="waVolCineStart" displayName="wa_vol_cine_start" displayType="SLIDER;0;100;100"/>
+			<Var id="sep7" displayName="" displayType="SUBTLE_SEPARATOR"/>
+			<Var id="waSndCineEnd" displayName="wa_snd_cine_end" displayType="TOGGLE"/>
+			<Var id="waVolCineEnd" displayName="wa_vol_cine_end" displayType="SLIDER;0;100;100"/>
+			<Var id="sep8" displayName="" displayType="SUBTLE_SEPARATOR"/>
+			<Var id="waSndHealth50" displayName="wa_snd_health50" displayType="TOGGLE"/>
+			<Var id="waVolHealth50" displayName="wa_vol_health50" displayType="SLIDER;0;100;100"/>
+			<Var id="sep9" displayName="" displayType="SUBTLE_SEPARATOR"/>
+			<Var id="waSndHealth20" displayName="wa_snd_health20" displayType="TOGGLE"/>
+			<Var id="waVolHealth20" displayName="wa_vol_health20" displayType="SLIDER;0;100;100"/>
+			<Var id="sep10" displayName="" displayType="SUBTLE_SEPARATOR"/>
+			<Var id="waSndAimLoop" displayName="wa_snd_aim_loop" displayType="TOGGLE"/>
+			<Var id="waVolAimLoop" displayName="wa_vol_aim_loop" displayType="SLIDER;0;100;100"/>
+			<Var id="sep11" displayName="" displayType="SUBTLE_SEPARATOR"/>
+			<Var id="waSndEnemyPing" displayName="wa_snd_enemy_ping" displayType="TOGGLE"/>
+			<Var id="waVolEnemyPing" displayName="wa_vol_enemy_ping" displayType="SLIDER;0;100;100"/>
+			<Var id="sep12" displayName="" displayType="SUBTLE_SEPARATOR"/>
+			<Var id="waSndDoorPing" displayName="wa_snd_door_ping" displayType="TOGGLE"/>
+			<Var id="waVolDoorPing" displayName="wa_vol_door_ping" displayType="SLIDER;0;100;100"/>
+
+			<Var id="waSndBeacon" displayName="wa_snd_beacon" displayType="TOGGLE"/>
+			<Var id="waVolBeacon" displayName="wa_vol_beacon" displayType="SLIDER;0;100;100"/>
+		</VisibleVars>
+	</Group>
+	<Group id="WAGlossary" displayName="Mods.witcheraccess.waglossary">
+		<PresetsArray>
+			<Preset id="0" displayName="wa_default"/>
+		</PresetsArray>
+		<VisibleVars>
+			<Var id="waPlayHit" displayName="wa_play_hit" displayType="BUTTON"/>
+			<Var id="waPlayDodge" displayName="wa_play_dodge" displayType="BUTTON"/>
+			<Var id="waPlayDanger" displayName="wa_play_danger" displayType="BUTTON"/>
+			<Var id="waPlayDeath" displayName="wa_play_death" displayType="BUTTON"/>
+			<Var id="waPlayAdrenGain" displayName="wa_play_adren_gain" displayType="BUTTON"/>
+			<Var id="waPlayAdrenLoss" displayName="wa_play_adren_loss" displayType="BUTTON"/>
+			<Var id="waPlayCineStart" displayName="wa_play_cine_start" displayType="BUTTON"/>
+			<Var id="waPlayCineEnd" displayName="wa_play_cine_end" displayType="BUTTON"/>
+			<Var id="waPlayHealth50" displayName="wa_play_health50" displayType="BUTTON"/>
+			<Var id="waPlayHealth20" displayName="wa_play_health20" displayType="BUTTON"/>
+			<Var id="waPlayAimLoop" displayName="wa_play_aim_loop" displayType="BUTTON"/>
+			<Var id="waPlayEnemyPing" displayName="wa_play_enemy_ping" displayType="BUTTON"/>
+			<Var id="waPlayDoorPing" displayName="wa_play_door_ping" displayType="BUTTON"/>
+		</VisibleVars>
+	</Group>
+</UserConfig>

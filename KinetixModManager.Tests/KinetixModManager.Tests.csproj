@@ -70,6 +70,8 @@
     <Compile Include="..\KinetixModManager\Witcher3InputSettings.cs" />
     <!-- Self-contained reader/writer for The Witcher 3's own mods.settings (BCL + IniDocument). -->
     <Compile Include="..\KinetixModManager\Witcher3ModSettings.cs" />
+    <!-- Self-contained reader for a Witcher 3 mod's Options-menu declaration (BCL + System.Xml.Linq + McmConfigSchema). -->
+    <Compile Include="..\KinetixModManager\Witcher3UserConfig.cs" />
     <!-- Self-contained "which file on this mod page do we actually need?" rules (BCL + Newtonsoft + GameProfiles). -->
     <Compile Include="..\KinetixModManager\ModPartRules.cs" />
     <!-- Self-contained "which folders in this archive are Witcher 3 mods?" rules (depends only on the BCL). -->
@@ -97,6 +99,10 @@
        that would be reproduced by a fixture invented to match the code. -->
   <ItemGroup>
     <None Include="fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- WitcherAccess's real Options-menu declaration, copied from an installed copy of the mod. Its separators,
+         its hidden bookkeeping var and its three groups are what the reader has to cope with, and an invented
+         file would only reproduce what the code already expects. -->
+    <None Include="fixtures\*.xml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -59,6 +59,17 @@ public sealed class McmControl
 	/// <summary>The high end of a number's range, or <c>null</c>.</summary>
 	public double? Max { get; init; }
 
+	/// <summary>
+	/// The author's default, for a menu that declares its defaults in the menu itself rather than in a separate
+	/// file. Used only when neither settings file mentions the setting. <c>""</c> when there is none.
+	///
+	/// The Witcher 3 needs this: the game writes a setting into user.settings only once it has been touched, so
+	/// a mod's settings are simply absent until the player has been through the menu in-game — which is exactly
+	/// when reading them from outside is most useful. MCM Helper mods ship a defaults INI instead and leave
+	/// this empty, so they are unaffected.
+	/// </summary>
+	public string Default { get; init; } = "";
+
 	/// <summary>True when this control corresponds to a value in the INI that can be read and written.</summary>
 	public bool IsSetting => Kind != McmControlKind.NotASetting && SettingName.Length > 0;
 
@@ -255,9 +266,12 @@ public sealed class McmSettings
 		return settings;
 	}
 
-	/// <summary>The current value of a setting, or <c>""</c> when neither file mentions it.</summary>
+	/// <summary>
+	/// The current value of a setting: what the player's file says, falling back to the author's default when
+	/// neither file mentions it, and <c>""</c> when there is no default either.
+	/// </summary>
 	public string Get(McmControl control) =>
-		_values.TryGetValue(control.ValueKey, out string? value) ? value : "";
+		_values.TryGetValue(control.ValueKey, out string? value) ? value : control.Default;
 
 	/// <summary>Sets a value in memory. Use <see cref="Save"/> to write it to the player's file.</summary>
 	public void Set(McmControl control, string value) => _values[control.ValueKey] = value;
