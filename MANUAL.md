@@ -566,7 +566,23 @@ What it shows:
 *   **Each installed mod's own controls**: read straight from what the mod documents — its README or guide, or its config file — captured when the mod was installed. Because they come from the mod itself, they stay correct even when the mod updates; nothing is hard-coded.
 *   **MCM keybinds (Skyrim & Fallout 4)**: mods that set their keys through the **Mod Configuration Menu** (such as Fallout 4 Access and Extended Dialogue Interface) have those keybinds read directly from MCM, showing the real key each action is bound to — including any you've changed in-game.
 *   **Moonlight Peaks mod keys**: read from each mod's BepInEx configuration file, showing the key it is currently set to and what that key does.
-*   **The Witcher 3's own keys**: read straight from the game's `input.settings`, so the list is always **your** bindings, including any you have remapped in the game's options. A key that does several things in different places — the left mouse button attacks, selects and casts — lists all of them together, because all of them are true.
+*   **The Witcher 3's own keys**: read straight from the game's `input.settings`, so the list is always **your** bindings, including any you have remapped in the game's options. They are offered two ways — see below.
+
+### The Witcher 3: two ways through your controls
+
+The Witcher 3 has more bindings than any other game the manager handles, and it stores them in a way that makes a plain list unreadable. It declares its controls **once per situation** — while exploring, in combat, on horseback, in a boat, swimming — and forty-two situations is not a misprint. Gather those by key and the interact key answers with one sentence seventy-five items long, beginning *"E: Bury Body, Place Trophy, Hide In, Dispose Paint, Take Paint Purple…"*. Every word of it is true, and none of it is usable.
+
+So the game's entry opens onto **two ways in**, and you pick the question you actually have:
+
+*   **By situation** answers *"what can I press right now?"* — **Exploring on foot**, **In combat**, **On horseback**, **Sailing a boat**, **Swimming**, **Casting signs**, **Menus and panels**, and so on. Open one to get its keys.
+*   **By key** answers *"what does this key do?"* — every key once, in alphabetical order, and opening one lists each thing it does with the situation it applies in.
+
+Neither is a summary: both hold every binding you have. A few things worth knowing about how they read:
+
+*   **A key that does one thing is a line; a key that does several is a group.** So the interact key is one row saying **"E, 79 things it does"**, and its seventy-five interactions are there for you when you open it — rather than read at you when you pass by.
+*   **Controls that apply everywhere are listed once, under their own heading.** The game copies its general bindings into every situation that uses them — the same seventy-five interactions are written out again under Exploring, Combat, Swimming, Diving and both Ciri contexts. Listing them each time would bury whatever is genuinely particular to swimming, so they sit under **Interacting with things**, **Moving around** or **Menus and panels**, and a situation is left holding what is true there and nowhere else.
+*   **A mod's keys are the mod's entry, not the game's.** A Witcher 3 mod declares its keys in the game's own `input.settings`, on the same keys the game uses — which is how the Home key came to read *"Toggle Hud, Announce, Keys First, Hist First, Map Announce"*: five unrelated things from two different programs on one line. **WitcherAccess** now has its own entry with its 39 controls, one per line, and the game's list has only the game's.
+*   **The game's internal contexts are not shown.** A handful of its forty-two are engine scaffolding rather than situations — debug keys, an empty context, a scene-loading placeholder — and a row named after one is a row you can do nothing with.
 
 ### The Witcher 3: what's different
 

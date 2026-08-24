@@ -1016,16 +1016,25 @@ public partial class Form1
 	/// every installed mod whose own shipped docs/config actually document keybinds. Mod controls are never
 	/// hardcoded — an out-of-date hardcoded key would silently mislead the user.
 	/// </summary>
-	private List<ModKeybinds> BuildControlSources()
+	/// <param name="witcherBindings">
+	/// The Witcher 3's bindings when that is the active game, empty otherwise. When they are present the game's
+	/// own entry has already been built by <see cref="BuildWitcher3GameNode"/>, and what is left to do here is
+	/// give each mod that owns actions in that file an entry of its own.
+	/// </param>
+	private List<ModKeybinds> BuildControlSources(List<Witcher3Binding>? witcherBindings = null)
 	{
 		var sources = new List<ModKeybinds>();
+		witcherBindings ??= new List<Witcher3Binding>();
 
 		// The game's own controls. Read from the game where a keybind export exists, otherwise the short
 		// hardcoded list, otherwise nothing at all — a game we have no list for gets no entry rather than
 		// another game's keys, because a blind player cannot see that the keys being read out are the wrong
 		// game's. (Moonlight Peaks used to fall through to Stardew Valley's.)
-		ModKeybinds? gameControls = BuildExportedGameControls() ?? BuildHardcodedGameControls();
-		if (gameControls != null) sources.Add(gameControls);
+		if (witcherBindings.Count == 0)
+		{
+			ModKeybinds? gameControls = BuildExportedGameControls() ?? BuildHardcodedGameControls();
+			if (gameControls != null) sources.Add(gameControls);
+		}
 
 		// The installed mods come from the manager's own scan rather than a directory walk of our own. Walking
 		// the Mods folder assumed every mod is a folder directly inside it, and two kinds of mod are not: a
@@ -1087,7 +1096,37 @@ public partial class Form1
 			sources.Add(mod);
 		}
 
+		// A Witcher 3 mod's keys live in the game's own input.settings, not in anything the mod ships, so
+		// nothing above can find them. They fold into the mod's existing entry where it has one — a mod with a
+		// README should not appear twice — and stand alone where it does not, which is the usual case: a
+		// Witcher 3 mod is a folder of compiled scripts with no documentation in it at all.
+		foreach (string modName in Witcher3Controls.ModsWithBindings(witcherBindings))
+		{
+			ModKeybinds source = BuildWitcher3ModSource(witcherBindings, modName);
+			if (!source.HasContent) continue;
+
+			ModKeybinds? existing = sources.FirstOrDefault(s => IsSameMod(s.Name, modName));
+			if (existing != null) existing.Sections.AddRange(source.Sections);
+			else sources.Add(source);
+		}
+
 		return sources;
+	}
+
+	/// <summary>
+	/// Whether two names refer to the same mod, allowing for the ways one mod gets named twice: the manager
+	/// shows a Witcher 3 mod by its folder (<c>modWitcherAccess</c>), while its bindings are attributed from the
+	/// same folder read as words ("Witcher Access").
+	/// </summary>
+	private static bool IsSameMod(string a, string b)
+	{
+		static string Normalise(string name)
+		{
+			string bare = new string(name.Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
+			return bare.StartsWith("mod", StringComparison.Ordinal) && bare.Length > 3 ? bare.Substring(3) : bare;
+		}
+
+		return Normalise(a).Length > 0 && Normalise(a) == Normalise(b);
 	}
 
 	/// <summary>
@@ -1393,9 +1432,121 @@ public partial class Form1
 	private List<NavNode> BuildNavForest()
 	{
 		var roots = new List<NavNode>();
-		foreach (ModKeybinds mod in BuildControlSources())
+
+		// The Witcher 3's own controls are built here rather than as an ordinary source, because they are the
+		// one game's list that needs to be deeper than a source can describe: two ways in, then situations, then
+		// keys, then what a key does. Its mods still come through BuildControlSources like everyone else's.
+		List<Witcher3Binding> witcher = ReadWitcher3Bindings();
+		if (witcher.Count > 0) roots.Add(BuildWitcher3GameNode(witcher));
+
+		foreach (ModKeybinds mod in BuildControlSources(witcher))
 			roots.Add(BuildNavNode(mod));
+
 		return roots;
+	}
+
+	/// <summary>
+	/// The active game's bindings straight from The Witcher 3's <c>input.settings</c>, or an empty list for any
+	/// other game. This game needs no export plugin: it writes every binding, including the player's own
+	/// remappings, to a plain file in their documents folder.
+	/// </summary>
+	private List<Witcher3Binding> ReadWitcher3Bindings()
+	{
+		GameProfile? profile = GameProfiles.Find(_settings.ActiveGame);
+		if (profile == null || !profile.IsWitcher3) return new List<Witcher3Binding>();
+
+		return Witcher3InputSettings.ReadDetailed(
+			Witcher3InputSettings.PathFor(profile, _settings.CurrentGamePath),
+			Path.Combine(_settings.CurrentGamePath, "mods"));
+	}
+
+	/// <summary>
+	/// The Witcher 3's own controls as a drill-down: the same bindings offered "By situation" and "By key",
+	/// because those are two different questions and this game answers neither one well flat.
+	///
+	/// A key that does one thing in a situation is a line to be read. A key that does seventy-five — which the
+	/// interact key genuinely does, the game having bound every interaction verb it owns to it — becomes a group
+	/// to open, so the list stays one row per key and the seventy-five are there for whoever wants them.
+	/// </summary>
+	private NavNode BuildWitcher3GameNode(List<Witcher3Binding> bindings)
+	{
+		var owner = new ModKeybinds(Loc.T("controls.gameKeysLive"));
+		var root = new NavNode(owner.Name, owner);
+
+		DateTime? written = null;
+		try
+		{
+			GameProfile? profile = GameProfiles.Find(_settings.ActiveGame);
+			string path = profile == null ? "" : Witcher3InputSettings.PathFor(profile, _settings.CurrentGamePath);
+			if (path.Length > 0 && File.Exists(path)) written = File.GetLastWriteTime(path);
+		}
+		catch { }
+
+		// Which bindings these are, said before them: the game rewrites this file whenever a key is remapped, so
+		// its date is honestly "when these bindings were last changed".
+		root.Children.Add(new NavNode(
+			Loc.T("controls.gameKeysLiveInfo", written?.ToString("d MMMM yyyy") ?? ""), owner) { IsInfo = true });
+
+		List<Witcher3Binding> gameOwn = bindings.Where(b => b.ModName.Length == 0).ToList();
+
+		var bySituation = new NavNode(Loc.T("controls.w3BySituation"), owner);
+		foreach (Witcher3Situation situation in Witcher3Controls.BySituation(gameOwn))
+		{
+			var node = new NavNode(Loc.T("controls.w3SituationGroup", situation.Name, situation.Count), owner);
+			foreach (Witcher3KeyControls key in situation.Keys)
+				node.Children.Add(KeyNode(key, owner, withSituations: false));
+			bySituation.Children.Add(node);
+		}
+
+		var byKey = new NavNode(Loc.T("controls.w3ByKey"), owner);
+		foreach (Witcher3KeyControls key in Witcher3Controls.ByKey(gameOwn))
+			byKey.Children.Add(KeyNode(key, owner, withSituations: true));
+
+		if (bySituation.Children.Count > 0) root.Children.Add(bySituation);
+		if (byKey.Children.Count > 0) root.Children.Add(byKey);
+		return root;
+	}
+
+	/// <summary>
+	/// One key in the Witcher 3 list: a line when it does a single thing, a group when it does several.
+	///
+	/// <paramref name="withSituations"/> is what tells the two views apart. Inside a situation the situation is
+	/// already known — repeating it on every line would be the same three words over and over — while in the
+	/// by-key view it is the entire reason the key has more than one entry.
+	/// </summary>
+	private static NavNode KeyNode(Witcher3KeyControls key, ModKeybinds owner, bool withSituations)
+	{
+		string ActionText(Witcher3Binding b) => withSituations
+			? Loc.T("controls.w3ActionInSituation", b.Action, Witcher3Controls.SituationFor(b.Context))
+			: b.Action;
+
+		if (key.Bindings.Count == 1)
+			return new NavNode(Loc.T("controls.w3KeyRow", KeyToSpeech(key.Key), ActionText(key.Bindings[0])), owner);
+
+		var group = new NavNode(Loc.T("controls.w3KeyGroup", KeyToSpeech(key.Key), key.Bindings.Count), owner);
+		foreach (Witcher3Binding b in key.Bindings)
+			group.Children.Add(new NavNode(ActionText(b), owner));
+		return group;
+	}
+
+	/// <summary>
+	/// A Witcher 3 mod's own bindings as an ordinary control source, so they sit beside the mod's other
+	/// documentation rather than inside the game's list.
+	///
+	/// Splitting them out is the point. A mod's actions are declared in the same file as the game's and land on
+	/// the same keys, so a single list had "Home: Toggle Hud, Announce, Keys First, Hist First, Map Announce" —
+	/// five unrelated things on one line, from two different programs, and no way to tell which was whose.
+	/// </summary>
+	private static ModKeybinds BuildWitcher3ModSource(List<Witcher3Binding> bindings, string modName)
+	{
+		var mod = new ModKeybinds(modName);
+		var section = new KbSection();
+
+		foreach (Witcher3Binding b in Witcher3Controls.ForMod(bindings, modName))
+			section.Entries.Add(new KbEntry { Key = b.Key, Text = b.Action });
+
+		mod.Sections.Add(section);
+		return mod;
 	}
 
 	/// <summary>Builds the drill-down node for one source. A flat source (e.g. the base game, or a README that

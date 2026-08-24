@@ -58,10 +58,6 @@ public static class Witcher3InputSettings
 	}
 
 	/// <summary>
-	/// Every keyboard and mouse binding in <paramref name="path"/>, one entry per key, with everything that key
-	/// does gathered under it. Gamepad bindings are left out: this list answers a keyboard question.
-	/// </summary>
-	/// <summary>
 	/// Maps the short prefix a mod puts on its action names to the mod's readable name, by reading the mod
 	/// folder names beside the game.
 	///
@@ -100,52 +96,40 @@ public static class Witcher3InputSettings
 
 	public static List<GameKeyBinding> Read(string path) => Read(path, null);
 
+	/// <summary>
+	/// Every keyboard and mouse binding in <paramref name="path"/>, one entry per key, with everything that key
+	/// does gathered under it. Gamepad bindings are left out: this list answers a keyboard question.
+	///
+	/// <para>
+	/// This is the flat answer, and for The Witcher 3 flat is a poor one — a key can carry seventy actions,
+	/// because the game binds every interaction verb it has to the interact key. <see cref="ReadDetailed"/>
+	/// keeps the context each binding sits in, which is what lets the controls list group them.
+	/// </para>
+	/// </summary>
 	/// <param name="modsFolder">
 	/// The game's <c>mods</c> folder, so a mod's own actions can be read as words and attributed to it. Optional:
 	/// without it those actions are still listed, just under the names the file gives them.
 	/// </param>
 	public static List<GameKeyBinding> Read(string path, string? modsFolder)
 	{
-		Dictionary<string, string> modPrefixes = ModActionPrefixes(modsFolder);
 		var byKey = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 		var order = new List<string>();
 
-		if (string.IsNullOrEmpty(path) || !File.Exists(path)) return new List<GameKeyBinding>();
-
-		try
+		foreach (Witcher3Binding binding in ReadDetailed(path, modsFolder))
 		{
-			foreach (IniDocument.Entry entry in IniDocument.Load(path).Entries())
+			if (!byKey.TryGetValue(binding.Key, out List<string>? actions))
 			{
-				if (!entry.Key.StartsWith(KeyPrefix, StringComparison.OrdinalIgnoreCase)) continue;
-				if (entry.Key.Equals(Unbound, StringComparison.OrdinalIgnoreCase)) continue;
-
-				// Controller bindings, under all the names the file gives them (IK_Pad_A_CROSS, IK_PS4_OPTIONS,
-				// IK_Joy…). A keyboard player reading a list of them learns nothing about the keys in front of
-				// them. The two mouse-look axes go too: IK_MouseX is the mouse being moved, not a key to press.
-				if (IsNotAKeyboardKey(entry.Key)) continue;
-
-				string? action = FriendlyAction(entry.Value, modPrefixes);
-				if (action == null) continue;
-
-				string key = FriendlyKeyName(entry.Key.Substring(KeyPrefix.Length));
-				if (key.Length == 0) continue;
-
-				if (!byKey.TryGetValue(key, out List<string>? actions))
-				{
-					actions = new List<string>();
-					byKey[key] = actions;
-					order.Add(key);
-				}
-
-				// The same action appears under a key once per context it applies in; saying it once is enough.
-				if (!actions.Contains(action, StringComparer.OrdinalIgnoreCase)) actions.Add(action);
+				actions = new List<string>();
+				byKey[binding.Key] = actions;
+				order.Add(binding.Key);
 			}
-		}
-		catch
-		{
-			// An unreadable or half-written input.settings is not worth failing the controls list over; the
-			// caller falls back to having no bindings, which it already handles.
-			return new List<GameKeyBinding>();
+
+			// The mod's name is part of the text here because this list has nowhere else to put it: a flat list
+			// mixes a mod's actions in with the game's under the same key.
+			string action = binding.ModName.Length > 0 ? binding.Action + " (" + binding.ModName + ")" : binding.Action;
+
+			// The same action appears under a key once per context it applies in; saying it once is enough.
+			if (!actions.Contains(action, StringComparer.OrdinalIgnoreCase)) actions.Add(action);
 		}
 
 		return order
@@ -160,6 +144,66 @@ public static class Witcher3InputSettings
 	}
 
 	/// <summary>
+	/// Every keyboard and mouse binding in the file, one per line of it, each still carrying the context it was
+	/// found in and the mod that owns it.
+	///
+	/// <para>
+	/// The context is the thing the flat read throws away, and it is the only thing that makes this file
+	/// legible. The Witcher 3 declares its bindings once per input context — <c>[Exploration]</c>,
+	/// <c>[Combat]</c>, <c>[Horse]</c>, <c>[Boat]</c> — and a key means different things in each. Gathering by
+	/// key alone produces the seventy-item sentence the controls list used to read out. See
+	/// <see cref="Witcher3Controls"/> for what is done with them.
+	/// </para>
+	///
+	/// <para>
+	/// Duplicates are left in. The same binding is declared in several contexts, and which contexts a binding
+	/// appears in is information — deciding what counts as a duplicate is the grouping's job, not the reader's.
+	/// </para>
+	/// </summary>
+	public static List<Witcher3Binding> ReadDetailed(string path, string? modsFolder)
+	{
+		var bindings = new List<Witcher3Binding>();
+		if (string.IsNullOrEmpty(path) || !File.Exists(path)) return bindings;
+
+		Dictionary<string, string> modPrefixes = ModActionPrefixes(modsFolder);
+
+		try
+		{
+			foreach (IniDocument.Entry entry in IniDocument.Load(path).Entries())
+			{
+				if (!entry.Key.StartsWith(KeyPrefix, StringComparison.OrdinalIgnoreCase)) continue;
+				if (entry.Key.Equals(Unbound, StringComparison.OrdinalIgnoreCase)) continue;
+
+				// Controller bindings, under all the names the file gives them (IK_Pad_A_CROSS, IK_PS4_OPTIONS,
+				// IK_Joy…). A keyboard player reading a list of them learns nothing about the keys in front of
+				// them. The two mouse-look axes go too: IK_MouseX is the mouse being moved, not a key to press.
+				if (IsNotAKeyboardKey(entry.Key)) continue;
+
+				if (DescribeAction(entry.Value, modPrefixes) is not { } described) continue;
+
+				string key = FriendlyKeyName(entry.Key.Substring(KeyPrefix.Length));
+				if (key.Length == 0) continue;
+
+				bindings.Add(new Witcher3Binding
+				{
+					Key = key,
+					Action = described.Action,
+					Context = entry.Section,
+					ModName = described.Mod
+				});
+			}
+		}
+		catch
+		{
+			// An unreadable or half-written input.settings is not worth failing the controls list over; the
+			// caller falls back to having no bindings, which it already handles.
+			return new List<Witcher3Binding>();
+		}
+
+		return bindings;
+	}
+
+	/// <summary>
 	/// True for a binding that isn't a key on the keyboard: a controller button, or the mouse's own movement.
 	/// </summary>
 	private static bool IsNotAKeyboardKey(string rawKey) =>
@@ -168,22 +212,27 @@ public static class Witcher3InputSettings
 		rawKey.Equals("IK_MouseY", StringComparison.OrdinalIgnoreCase);
 
 	/// <summary>
-	/// The action a binding line describes, in words — or <c>null</c> when the line binds nothing readable.
+	/// The action a binding line describes, in words, and the mod that owns it (<c>""</c> for the game's own) —
+	/// or <c>null</c> when the line binds nothing readable.
+	///
+	/// The owner is returned separately rather than written into the action's name, because where it belongs
+	/// depends on where the binding is being shown: under the mod's own entry the name would be saying the mod
+	/// twice, and in a list that mixes both it is the only thing telling them apart.
 	/// </summary>
-	private static string? FriendlyAction(string value, Dictionary<string, string> modPrefixes)
+	private static (string Action, string Mod)? DescribeAction(string value, Dictionary<string, string> modPrefixes)
 	{
 		Match action = Regex.Match(value, @"Action\s*=\s*([A-Za-z0-9_]+)");
 		if (!action.Success) return null;
 
 		string name = action.Groups[1].Value;
 
-		// An action belonging to an installed mod: "WA_Compass" is the mod's Compass, and saying so is what
+		// An action belonging to an installed mod: "WA_Compass" is the mod's Compass, and knowing so is what
 		// tells it apart from the game's own controls in a list where both appear under the same key.
 		Match owned = Regex.Match(name, @"^([A-Za-z]{2,5})_(.+)$");
 		if (owned.Success &&
 			modPrefixes.TryGetValue(owned.Groups[1].Value, out string? modName) &&
 			modName.Length > 0)
-			return Humanise(owned.Groups[2].Value) + " (" + modName + ")";
+			return (Humanise(owned.Groups[2].Value), modName);
 
 		// An axis binding carries its direction in the same line, and the direction is the whole meaning.
 		Match axisValue = Regex.Match(value, @"Value\s*=\s*(-?[\d.]+)");
@@ -191,9 +240,9 @@ public static class Witcher3InputSettings
 			double.TryParse(axisValue.Groups[1].Value, System.Globalization.NumberStyles.Float,
 				System.Globalization.CultureInfo.InvariantCulture, out double v) &&
 			AxisActions.TryGetValue((name, v >= 0), out string? movement))
-			return movement;
+			return (movement, "");
 
-		return Humanise(name);
+		return (Humanise(name), "");
 	}
 
 	/// <summary>
@@ -241,8 +290,9 @@ public static class Witcher3InputSettings
 		return Humanise(raw);
 	}
 
-	/// <summary>Splits an engine name into words: <c>AttackHeavy</c> becomes "Attack Heavy".</summary>
-	private static string Humanise(string name)
+	/// <summary>Splits an engine name into words: <c>AttackHeavy</c> becomes "Attack Heavy". Public because the
+	/// same tidying is what makes an unrecognised input context readable — see <see cref="Witcher3Controls"/>.</summary>
+	public static string Humanise(string name)
 	{
 		// Engine prefixes carry no meaning for a player reading the list.
 		name = Regex.Replace(name, @"^(GI|IK)_", "");

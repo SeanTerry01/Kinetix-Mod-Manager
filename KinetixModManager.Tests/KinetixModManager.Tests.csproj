@@ -70,6 +70,8 @@
     <Compile Include="..\KinetixModManager\Witcher3InputSettings.cs" />
     <!-- Self-contained reader/writer for The Witcher 3's own mods.settings (BCL + IniDocument). -->
     <Compile Include="..\KinetixModManager\Witcher3ModSettings.cs" />
+    <!-- Self-contained "how do you read 2,800 bindings aloud?" grouping (BCL + Witcher3InputSettings). -->
+    <Compile Include="..\KinetixModManager\Witcher3Controls.cs" />
     <!-- Self-contained reader for a Witcher 3 mod's Options-menu declaration (BCL + System.Xml.Linq + McmConfigSchema). -->
     <Compile Include="..\KinetixModManager\Witcher3UserConfig.cs" />
     <!-- Self-contained "which file on this mod page do we actually need?" rules (BCL + Newtonsoft + GameProfiles). -->

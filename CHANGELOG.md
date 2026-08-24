@@ -4,6 +4,19 @@ A fix for Skyrim and Fallout 4: an up-to-date script extender is no longer repor
 
 ---
 
+## ✨ New: The Witcher 3's controls, by situation or by key (Ctrl + H)
+
+*   The controls list read The Witcher 3 as one flat list of keys, and the game does not survive being read that way. The interact key answered with a single sentence seventy-five items long — *"E: Bury Body, Place Trophy, Hide In, Dispose Paint, Take Paint Purple, Take Paint Yellow…"* — and the Home key with *"Toggle Hud, Announce, Keys First, Hist First, Map Announce"*, which is five unrelated things from two different programs.
+*   **The reason is in the file.** The Witcher 3 declares its bindings once per *situation* — exploring, in combat, on horseback, in a boat, swimming — and it has forty-two of them. Gathering by key alone threw away the one thing that separates one item from the next, which is where you have to be for it to happen.
+*   **The game's entry now opens onto two ways in, and you pick the question you have.** **By situation** answers "what can I press right now?" — Exploring on foot, In combat, On horseback, Sailing a boat, Casting signs, Menus and panels — with the keys under each. **By key** answers "what does this key do?" — every key once, alphabetically, and opening one lists each thing it does alongside the situation it applies in. Neither is a summary: both hold every binding you have.
+*   **A key that does one thing is a line; a key that does several is a group.** The interact key is one row — *"E, 79 things it does"* — and its seventy-five interactions are there when you open it, rather than read at you when you pass by.
+*   **What applies everywhere is listed once, under its own heading.** The game does not reference its general bindings from the situations that use them, it copies them out in full — those same seventy-five interactions are written again under Exploring, Combat, Swimming, Diving and both Ciri contexts. Saying them six times would bury what is genuinely particular to swimming, so they sit under **Interacting with things**, and Swimming is left holding what is true of swimming. This is the game's own distinction, not a guess: it marks those blocks itself.
+*   ⚠️ **A mod's keys are now the mod's entry, not the game's.** A Witcher 3 mod declares its keys in the game's own file, on the same keys the game uses, which is exactly why they were impossible to tell apart. **WitcherAccess** has its own entry with its 39 controls, one to a line, and the game's list has only the game's.
+*   **The situations are named after what you are doing**, not after what the file calls them: "On horseback", not `Horse_Replacer_Ciri`; "Interacting with things", not `BASE_INTERACTIONS_KEYBOARD`. Where the game splits one thing across several contexts for its own reasons — six of them for attacking alone — they fold into the one heading a player would recognise. A context the manager doesn't know is still shown, tidied into words, because a binding under an odd heading is findable and a binding left out is not.
+*   The engine's own scaffolding is left out: debug keys, an empty context, a scene-loading placeholder. A row named after one of those is a row that cannot be acted on.
+
+---
+
 ## ✨ New: lists with headings now count you within your section
 
 *   A list divided into sections used to number every row alike, headings included. A settings list of two groups read *"3 of 35"* — a number spanning both groups and counting the headings themselves, which answered neither "how far through this group am I" nor "how much is left". The headings were numbered too, which is a position for something that is not an item.

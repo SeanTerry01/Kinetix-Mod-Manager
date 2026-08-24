@@ -367,6 +367,12 @@
   "controls.gameKeysLiveInfo": "Read from your game on {0}, so these include any keys you have remapped.",
   "controls.gameKeysDefaultInfo": "The game's default bindings. To see your own instead, install the Moonlight Keybind Export mod and start the game once.",
   "controls.gameKeysUnnamed": "Unnamed action",
+  "controls.w3BySituation": "By situation",
+  "controls.w3ByKey": "By key",
+  "controls.w3SituationGroup": "{0}, {1} controls",
+  "controls.w3KeyGroup": "{0}, {1} things it does",
+  "controls.w3KeyRow": "{0}: {1}",
+  "controls.w3ActionInSituation": "{0}, {1}",
 
   "keybindReader.offerSpeak": "The keybind reader is not installed.",
   "keybindReader.offerBox": "{0} decides its key bindings while it is running and stores them nowhere the manager can read, so the controls list (Control plus H) can only show the game's default keys.\n\nThe manager can install a small mod, the Keybind Export, which writes your bindings out to a file each time you play. The controls list then shows your own keys, including any you have remapped. It has no keys of its own, no menus, and does not change how the game plays.\n\nIt is 15 kilobytes and is already included with the manager, so nothing is downloaded. Install it?",
