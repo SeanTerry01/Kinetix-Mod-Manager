@@ -87,6 +87,8 @@
     <Compile Include="..\KinetixModManager\SuggestedMod.cs" />
     <!-- Self-contained read/write/merge rules for a shared suggestions list (BCL + Newtonsoft + SuggestedMod). -->
     <Compile Include="..\KinetixModManager\SuggestionList.cs" />
+    <!-- Self-contained "is this a real key press or auto-repeat?" rule (no BCL dependency at all). -->
+    <Compile Include="..\KinetixModManager\KeyRepeatFilter.cs" />
   </ItemGroup>
 
   <!-- Real files.json bodies, recorded from the Nexus API rather than written by hand. The picking rules exist

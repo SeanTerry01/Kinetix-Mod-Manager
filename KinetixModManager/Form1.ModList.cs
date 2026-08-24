@@ -362,14 +362,23 @@ public partial class Form1
 	/// <summary>
 	/// Runs the user's Refresh Everything / Refresh Installed Mods command and says what is happening.
 	///
-	/// The repeat check is the point. A held key auto-repeats, and these commands arrive twice for one press
-	/// often enough that it is the normal case, not the edge case — which produced two identical "Refreshing
-	/// everything" announcements with an "update check already in progress" wedged between them. Saying plainly
-	/// that a refresh is already running is both shorter and true.
+	/// The busy check is the point, and it has to cover the whole operation. <c>_refreshInFlight</c> alone does
+	/// not: it is released as soon as the update checks have been *launched*, because they are fire-and-forget
+	/// and finish long afterwards. That left a wide window — the entire length of the check, which is the slow
+	/// part — in which another Refresh Everything was waved through. It then announced "Refreshing everything",
+	/// found the check already running, said so, and rescanned the folder anyway, so a second press produced a
+	/// second full rescan and a contradictory pair of announcements.
+	///
+	/// So a running update check counts as busy too, for Refresh Everything — which is a refresh plus a check,
+	/// and cannot honestly claim to have run either while the previous one is still going. Refresh Installed
+	/// Mods is deliberately not blocked by it: rescanning the folder has nothing to do with asking Nexus about
+	/// versions, and that is the whole difference between the two commands.
 	/// </summary>
 	private async void RequestManualRefresh(bool everything)
 	{
-		if (Volatile.Read(ref _refreshInFlight) > 0)
+		bool refreshing = Volatile.Read(ref _refreshInFlight) > 0;
+		bool checking = everything && Volatile.Read(ref _updateCheckRunning) != 0;
+		if (refreshing || checking)
 		{
 			Speak(Loc.T("modlist.refreshAlreadyRunning"));
 			return;

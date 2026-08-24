@@ -30,6 +30,10 @@ public partial class Form1
 {
 	private void Form1_KeyDown(object? sender, KeyEventArgs e)
 	{
+		// Recorded before anything else can return, so the held key is known even for presses this handler
+		// otherwise ignores — an overlay opening mid-press would otherwise leave a stale key held here.
+		bool isAutoRepeat = !_keyRepeat.IsFirstPress((int)e.KeyData);
+
 		// While a prompt or an in-window view is covering the window, the window's own shortcuts must stay out
 		// of the way — F5 must not launch the game from behind a confirmation, and Escape belongs to whatever
 		// is on top, which handles it itself. The overlay disables the controls beneath it, but key preview
@@ -42,6 +46,12 @@ public partial class Form1
 		// Set here rather than on any key at all, so typing into a first-run wizard does not count as wandering
 		// the main window.
 		_userMovedSinceLoadBegan = true;
+
+		// Every command below is a one-shot, and none of them wants to run again because a key was held a
+		// moment too long: holding Refresh Everything started a refresh per repeat, and holding F1 would have
+		// opened the manual as many times. Returning without marking the key handled leaves it to whatever has
+		// focus, so a held Backspace in a text box still repeats the way typing is supposed to.
+		if (isAutoRepeat) return;
 
 		if (_settings.ActiveGame == "None")
 		{

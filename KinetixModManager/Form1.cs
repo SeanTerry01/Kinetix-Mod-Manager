@@ -176,6 +176,9 @@ public partial class Form1 : Form, IMessageFilter
 	// Refresh command arrives twice for one press, which a held key makes routine.
 	private int _refreshInFlight;
 
+	// Keeps a held key from running a one-shot command over and over. See KeyRepeatFilter for the rule.
+	private readonly KeyRepeatFilter _keyRepeat = new();
+
 	/// <summary>True while the goodbye message and disconnect cue are playing, so a second Alt+F4 is ignored.</summary>
 	private bool _shuttingDown;
 

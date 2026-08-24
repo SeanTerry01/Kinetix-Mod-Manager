@@ -4,6 +4,15 @@ A fix for Skyrim and Fallout 4: an up-to-date script extender is no longer repor
 
 ---
 
+## 🐛 Fixed: holding a shortcut ran its command over and over
+
+*   Holding **Refresh Everything** started a refresh per key repeat — three or four for a key held about a second — and the runs then argued with each other, announcing *"Refreshing everything"* and *"an update check is already in progress"* in turn. Choosing the same command from the **Mods** menu behaved perfectly, which is the tell: a menu item cannot auto-repeat.
+*   **Windows repeats KeyDown for as long as a key is held**, and every one of the window's shortcuts is a one-shot — refresh, open the manual, launch the game. Each repeat ran the whole command again. Repeats are now ignored, on the rule that **a repeat cannot have a key release in between**, so pressing the same shortcut twice deliberately still runs it twice however quickly it is done. Typing is untouched: a held Backspace in a search box still repeats, because the key is left to whatever has focus.
+*   **A second fault underneath it, which a held key only exposed.** The "a refresh is already running" guard was released the moment the update check was *launched*, not when it finished — and the check is the slow part. For its whole duration another Refresh Everything was waved through, so even two deliberate presses produced two full folder rescans. A running update check now counts as busy for Refresh Everything, which is a refresh *and* a check.
+*   **Refresh Installed Mods is deliberately not blocked by a running check.** Rescanning the folder has nothing to do with asking Nexus about versions, and that difference is the whole point of having two commands.
+
+---
+
 ## ✨ New: settle a mod that is offered the same update forever (Ctrl + Shift + Y)
 
 *   Some mods are offered an update that installing never settles — the row returns on the next check, at the same version, however many times you take it. **Stardew Voices** is a real example: Nexus says 2.0.3.5, the mod's own manifest says 2.0.3, and no update can ever close that gap.
