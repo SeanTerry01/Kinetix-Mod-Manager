@@ -1072,6 +1072,10 @@ A mod that has **never been run** still works here: it has no settings file yet,
 
 Most Skyrim and Fallout 4 mods install into the game's **Data** folder, but some — graphics injectors like **ENB** and **ReShade**, or tools that sit next to the game's `.exe` — need their files in the game's **root** folder instead. The manager detects these automatically when you install them: their game-root files (such as `d3d11.dll`, `dxgi.dll`, `enbseries\`, or an archive's `Root\` folder) are deployed to the root, while any `Data` files in the same archive still go to Data. You don't have to do anything special — install them like any other mod, and enable/disable and Purge/Rebuild treat them the same as the rest. (Full script extenders like SKSE and F4SE are still installed directly, as before.)
 
+**Screen-reader files are placed for you.** An accessibility mod such as **Skyrim Access** needs `nvdaControllerClient.dll` sitting directly beside the game's `.exe` — Windows looks for a file asked for by name in the game's own folder and nowhere else, so anywhere tidier simply fails, and the symptom is a game that starts perfectly and never speaks. Mods do not agree on where to keep it: Skyrim Access ships it inside an `NVDACC` folder, and an older build kept it in `Data\Root`. **The manager now finds it wherever it is and puts it in the right place**, along with the other screen-reader bridge files a mod might ship (`Tolk.dll` and the JAWS, ZoomText and Dolphin clients). If a mod ships both a 32- and a 64-bit build, the 64-bit one is used, since Skyrim Special Edition and Fallout 4 are both 64-bit.
+
+This applies to mods **already installed** as well — you don't need to reinstall anything, just refresh. And removing the mod takes the file back out again, like everything else it installed.
+
 ---
 
 ## Surviving a Game Update (Skyrim & Fallout 4)

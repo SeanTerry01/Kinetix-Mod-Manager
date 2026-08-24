@@ -50,6 +50,28 @@ public static class BethesdaLayout
         ".exe", ".dll",
     };
 
+    // Files that work only when they sit directly beside the game's .exe, wherever in the archive they happen to
+    // be kept. These are the screen-reader bridge DLLs an accessibility mod loads by bare name: Windows resolves
+    // a bare name against the running .exe's own folder, so anywhere else is invisible to it no matter how tidy.
+    //
+    // Every other root rule here is about a file at the archive's top level, which is why this one is needed at
+    // all. Skyrim Access ships nvdaControllerClient.dll inside an "NVDACC" folder, and an earlier build kept it
+    // in "Data\Root" — neither is top level, so it was filed as ordinary Data content and landed somewhere the
+    // mod could never load it. The symptom is a game that starts perfectly and never speaks, and the fix people
+    // were passing round by hand was "find that DLL and copy it next to the exe yourself".
+    private static readonly HashSet<string> GameRootFileNamesAnywhere = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "nvdacontrollerclient.dll", "nvdacontrollerclient32.dll", "nvdacontrollerclient64.dll",
+        "tolk.dll", "saapi32.dll", "saapi64.dll", "jfwapi.dll", "jfwapi32.dll", "jfwapi64.dll", "dolapi32.dll",
+    };
+
+    // Folder names that mark a build as the 64-bit one. Skyrim Special Edition and Fallout 4 are both 64-bit
+    // only, so when an archive carries both builds of the same DLL this is how the right one is told apart.
+    private static readonly HashSet<string> SixtyFourBitFolderNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "x64", "win64", "amd64", "x86_64", "64", "64bit", "64-bit",
+    };
+
     // Top-level folders whose contents belong in the game root (ENB/ReShade support trees).
     private static readonly HashSet<string> RootFolderNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -81,10 +103,20 @@ public static class BethesdaLayout
             .ToList();
 
         bool hasDataFolder = paths.Any(p => TopSegment(p).Equals("Data", StringComparison.OrdinalIgnoreCase));
+        HashSet<string> besideTheExe = ChooseFilesForGameRoot(paths);
 
         var entries = new List<Entry>(paths.Count);
         foreach (string p in paths)
         {
+            // Checked before the Data\ and Root\ rules, because this is exactly the case those rules get wrong:
+            // the file has to end up beside the .exe whether the archive filed it under Data, under a folder of
+            // its own, or anywhere else. The folders around it are dropped — only the file name survives.
+            if (besideTheExe.Contains(p))
+            {
+                entries.Add(new Entry(p, RootFolderName + "/" + FileName(p), isRoot: true));
+                continue;
+            }
+
             string top = TopSegment(p);
 
             // Explicit game-folder layout: Data\... is Data content (unwrap the prefix), Root\... is game-root.
@@ -125,6 +157,66 @@ public static class BethesdaLayout
         folderName.Equals(RootFolderName, StringComparison.OrdinalIgnoreCase) ||
         DataFolderNames.Contains(folderName) ||
         RootFolderNames.Contains(folderName);
+
+    /// <summary>
+    /// Picks which archive paths get hoisted to sit beside the game's .exe — one per file name, since they all
+    /// land on the same single destination and only one copy can occupy it.
+    ///
+    /// An archive that ships both builds of the same DLL, as <c>x86\nvdaControllerClient.dll</c> and
+    /// <c>x64\nvdaControllerClient.dll</c>, is the case worth getting right: Skyrim Special Edition and Fallout 4
+    /// are 64-bit, and quietly installing the 32-bit copy would fail exactly the way the original bug did — a
+    /// game that starts and never speaks. So a 64-bit-looking folder wins; failing that the shallowest path, on
+    /// the grounds that a copy sitting near the top of an archive is the one the author meant to be used.
+    ///
+    /// Copies that lose are not discarded. They stay wherever the ordinary rules put them, so an archive is
+    /// never silently made lighter than it was shipped.
+    ///
+    /// <para>
+    /// Public because the deployment engine asks the same question of an already-installed mod folder. Deciding
+    /// it in both places, from this one rule, is what repairs a mod installed before this existed: its next
+    /// deployment puts the DLL beside the .exe without anyone reinstalling anything.
+    /// </para>
+    /// </summary>
+    /// <param name="relativePaths">Paths relative to the archive or mod folder; either separator.</param>
+    /// <returns>The winning paths, <c>/</c>-separated, matched case-insensitively.</returns>
+    public static HashSet<string> ChooseFilesForGameRoot(IEnumerable<string> relativePaths)
+    {
+        var paths = relativePaths
+            .Select(p => p.Replace('\\', '/').TrimStart('/'))
+            .Where(p => p.Length > 0)
+            .ToList();
+
+        var chosen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (IGrouping<string, string> sameName in paths
+            .Where(p => GameRootFileNamesAnywhere.Contains(FileName(p)))
+            .GroupBy(FileName, StringComparer.OrdinalIgnoreCase))
+        {
+            chosen.Add(sameName
+                .OrderByDescending(LooksSixtyFourBit)
+                .ThenBy(p => p.Count(c => c == '/'))
+                .ThenBy(p => p, StringComparer.OrdinalIgnoreCase)
+                .First());
+        }
+        return chosen;
+    }
+
+    /// <summary>True when a folder on the way to this file marks it as the 64-bit build.</summary>
+    private static bool LooksSixtyFourBit(string relPath)
+    {
+        int lastSlash = relPath.LastIndexOf('/');
+        if (lastSlash < 0) return false;
+        foreach (string segment in relPath.Substring(0, lastSlash).Split('/'))
+            if (SixtyFourBitFolderNames.Contains(segment)) return true;
+        return false;
+    }
+
+    /// <summary>The file name from a <c>/</c>-separated relative path.</summary>
+    private static string FileName(string relPath)
+    {
+        int slash = relPath.LastIndexOf('/');
+        return slash < 0 ? relPath : relPath.Substring(slash + 1);
+    }
 
     /// <summary>A top-level loose file (no subfolder) that belongs in the game root by name or by tool extension.</summary>
     private static bool IsRootLooseFile(string relPath)

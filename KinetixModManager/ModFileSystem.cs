@@ -1210,7 +1210,15 @@ public static class ModFileSystem
 			if (string.IsNullOrEmpty(folderPath) || !Directory.Exists(folderPath)) continue;
 			string canonical = Path.GetFullPath(folderPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
 
-			foreach (string sourceFile in Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories))
+			string[] modFiles = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories);
+			// Which of this mod's files must sit beside the game's .exe rather than under Data, whatever folder
+			// the mod keeps them in. Asked here as well as at install time so a mod already installed in the
+			// wrong shape is put right by its next deployment, with nothing to reinstall. One mod shipping two
+			// builds of the same DLL resolves to one winner here, exactly as it would during an install.
+			HashSet<string> besideTheExe = BethesdaLayout.ChooseFilesForGameRoot(
+				modFiles.Select(f => Path.GetFullPath(f).Substring(canonical.Length)));
+
+			foreach (string sourceFile in modFiles)
 			{
 				if (Path.GetFileName(sourceFile).Equals(".manager_manifest.json", StringComparison.OrdinalIgnoreCase))
 					continue;
@@ -1223,7 +1231,13 @@ public static class ModFileSystem
 
 				bool isRootFile = relativePath.StartsWith("Root" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
 								  relativePath.StartsWith("Root" + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
-				string destRel = isRootFile ? relativePath.Substring(5) : Path.Combine("Data", relativePath);
+				// A screen-reader bridge DLL deploys beside the .exe under its bare name — the folders around it
+				// in the mod are dropped, because Windows resolves the name the mod asks for against the .exe's
+				// own folder and looks nowhere else.
+				string destRel =
+					besideTheExe.Contains(relativePath.Replace(Path.DirectorySeparatorChar, '/')) ? Path.GetFileName(relativePath)
+					: isRootFile ? relativePath.Substring(5)
+					: Path.Combine("Data", relativePath);
 
 				desiredSource[destRel] = sourceFile;
 				desiredOwner[destRel]  = modName;
@@ -1839,6 +1853,10 @@ public static class ModFileSystem
 
 					string stagingDir = Path.Combine(tempDir, "__fomod_stage__");
 					FomodInstaller.BuildStaging(fomodConfig, selection, fomodRoot, stagingDir, fileState);
+					// A FOMOD cannot place a file beside the game's .exe — its destinations are always relative
+					// to Data — so a mod needing one ships it outside the scripted install. Without this the
+					// screen-reader bridge DLL was simply dropped, and the mod installed mute.
+					FomodInstaller.AddGameRootFiles(fomodRoot, stagingDir);
 
 					return await FinalizeBethesdaModAsync(
 						stagingDir, installFolderName, zipPath, modsPath, installedMods,

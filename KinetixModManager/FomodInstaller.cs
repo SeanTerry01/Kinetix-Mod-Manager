@@ -165,6 +165,72 @@ public static class FomodInstaller
 		return copied;
 	}
 
+	/// <summary>
+	/// Adds the files that have to sit beside the game's <c>.exe</c> but that a scripted installer can never
+	/// place there itself.
+	///
+	/// <para>
+	/// A FOMOD destination is always relative to the game's <c>Data</c> folder — the format has no way of
+	/// saying "next to the exe" at all. A mod needing such a file therefore ships it *outside* the scripted
+	/// install and leaves placing it to the mod manager, which is what Vortex does with a game-specific
+	/// extension, or failing that to the user with an instruction in a readme.
+	/// </para>
+	///
+	/// <para>
+	/// Skyrim Access is the case in point: <c>nvdaControllerClient.dll</c> sits in an <c>NVDACC</c> folder the
+	/// ModuleConfig never mentions, so the install produced a mod with no bridge DLL in it whatsoever — and a
+	/// game that started perfectly and never spoke. Anything found is copied into the staging tree under
+	/// <c>Root\</c>, which the deployment engine maps to the game root, so it is placed like any other file:
+	/// tracked, and taken away again when the mod is removed.
+	/// </para>
+	///
+	/// <para>
+	/// A file the scripted install already placed is left alone — the mod's own choice wins over this rescue.
+	/// </para>
+	/// </summary>
+	/// <param name="archiveRoot">The extracted archive's content root (the folder holding <c>fomod\</c>).</param>
+	/// <param name="stagingDir">The staging tree <see cref="BuildStaging"/> just wrote.</param>
+	/// <returns>How many files were added.</returns>
+	public static int AddGameRootFiles(string archiveRoot, string stagingDir)
+	{
+		if (string.IsNullOrEmpty(archiveRoot) || !Directory.Exists(archiveRoot)) return 0;
+		Directory.CreateDirectory(stagingDir);
+
+		string canonicalRoot = Path.GetFullPath(archiveRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+		string canonicalStage = Path.GetFullPath(stagingDir).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+		// The staging tree can sit inside the archive folder, so it has to be kept out of its own search.
+		var candidates = Directory.EnumerateFiles(archiveRoot, "*", SearchOption.AllDirectories)
+			.Select(Path.GetFullPath)
+			.Where(f => !f.StartsWith(canonicalStage, StringComparison.OrdinalIgnoreCase))
+			.ToList();
+		if (candidates.Count == 0) return 0;
+
+		// Names the scripted install already produced, at any depth: those are the mod's own decision.
+		var alreadyStaged = Directory.Exists(stagingDir)
+			? Directory.EnumerateFiles(stagingDir, "*", SearchOption.AllDirectories)
+				.Select(f => Path.GetFileName(f)!)
+				.ToHashSet(StringComparer.OrdinalIgnoreCase)
+			: new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+		HashSet<string> wanted = BethesdaLayout.ChooseFilesForGameRoot(
+			candidates.Select(f => f.Substring(canonicalRoot.Length)));
+
+		int added = 0;
+		foreach (string file in candidates)
+		{
+			string relative = file.Substring(canonicalRoot.Length).Replace(Path.DirectorySeparatorChar, '/');
+			if (!wanted.Contains(relative)) continue;
+
+			string name = Path.GetFileName(file);
+			if (alreadyStaged.Contains(name)) continue;
+
+			CopyFile(file, Path.Combine(stagingDir, BethesdaLayout.RootFolderName, name));
+			added++;
+		}
+		return added;
+	}
+
 	/// <summary>Copies a single file/folder item into the staging tree, returning how many files it wrote.</summary>
 	private static int CopyItem(string fomodRoot, FomodFileItem item, string stagingDir)
 	{

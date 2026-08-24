@@ -4,6 +4,16 @@ A fix for Skyrim and Fallout 4: an up-to-date script extender is no longer repor
 
 ---
 
+## 🐛 Fixed: Skyrim Access installed but silent — the NVDA file was left where the game could not find it
+
+*   Skyrim Access ships `nvdaControllerClient.dll` **inside an "NVDACC" folder**, and an earlier build kept it in `Data\Root`. Neither is the top level of the archive, and only top-level loose files were ever treated as belonging in the game's root folder — so the DLL was installed as ordinary `Data` content, where nothing can load it. The game started perfectly and never spoke, and the fix being passed around by hand was "go and find that file yourself and copy it next to the exe".
+*   **A file like this now goes beside the game's .exe wherever the archive keeps it**, with the folders around it dropped. Windows resolves a DLL asked for by bare name against the running .exe's own folder and looks nowhere else, which is why any tidier location fails. The same applies to the other screen-reader bridge files a mod might ship — `Tolk.dll`, the JAWS, ZoomText and Dolphin clients — since they all load the same way.
+*   **Mods already installed are repaired too, with nothing to reinstall.** The rule is applied when deploying as well as when installing, so the next refresh puts the file where it belongs. This also covers mods that were staged by the Mod Organizer 2 importer or put in place by hand.
+*   **An archive carrying both a 32- and a 64-bit build gets the right one.** Only one copy can sit beside the exe; Skyrim Special Edition and Fallout 4 are 64-bit, and installing the 32-bit copy would fail in exactly the same silent way. A build in an `x64` (or `win64`, `amd64`) folder wins, and failing any such hint the copy nearest the top of the archive does. The copy that loses is still installed, just left where it was — an archive never comes out lighter than it went in.
+*   Removing the mod removes the file again. Everything deployed into the game folder is tracked, so this is taken back out with the rest of the mod, and the folder it sat in is only tidied away if nothing else is left in it.
+
+---
+
 ## 🐛 Fixed: holding a shortcut ran its command over and over
 
 *   Holding **Refresh Everything** started a refresh per key repeat — three or four for a key held about a second — and the runs then argued with each other, announcing *"Refreshing everything"* and *"an update check is already in progress"* in turn. Choosing the same command from the **Mods** menu behaved perfectly, which is the tell: a menu item cannot auto-repeat.

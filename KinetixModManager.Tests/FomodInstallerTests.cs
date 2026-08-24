@@ -30,6 +30,74 @@ public class FomodInstallerTests : IDisposable
         try { if (Directory.Exists(_staging)) Directory.Delete(_staging, true); } catch { }
     }
 
+    // ----- files a FOMOD cannot place, because its destinations are Data-relative ------------------
+
+    [Fact]
+    public void AddGameRootFiles_RescuesTheBridgeDllTheFomodNeverInstalls()
+    {
+        // Skyrim Access's real archive: the ModuleConfig installs SkyrimData and never mentions NVDACC, so the
+        // staged mod had no bridge DLL at all and the game started mute.
+        WriteSource(@"NVDACC\nvdaControllerClient.dll", "nvda");
+        WriteSource(@"NVDACC\license.md", "license");
+        WriteSource(@"SkyrimData\SKSE\Plugins\SkyrimAccess.dll", "plugin");
+        Directory.CreateDirectory(_staging);
+        File.WriteAllText(Path.Combine(_staging, "placeholder.txt"), "staged by the fomod");
+
+        int added = FomodInstaller.AddGameRootFiles(_root, _staging);
+
+        Assert.Equal(1, added);
+        Assert.True(File.Exists(Path.Combine(_staging, "Root", "nvdaControllerClient.dll")));
+        // Only the bridge DLL is rescued — its licence stays where it was, and nothing else is dragged in.
+        Assert.False(File.Exists(Path.Combine(_staging, "Root", "license.md")));
+        Assert.False(File.Exists(Path.Combine(_staging, "Root", "SkyrimAccess.dll")));
+    }
+
+    [Fact]
+    public void AddGameRootFiles_LeavesAloneWhatTheFomodAlreadyInstalled()
+    {
+        // The mod's own scripted choice wins; rescuing it again would put a second copy in the mod folder.
+        WriteSource(@"NVDACC\nvdaControllerClient.dll", "nvda");
+        Directory.CreateDirectory(Path.Combine(_staging, "NVDACC"));
+        File.WriteAllText(Path.Combine(_staging, "NVDACC", "nvdaControllerClient.dll"), "already staged");
+
+        Assert.Equal(0, FomodInstaller.AddGameRootFiles(_root, _staging));
+        Assert.False(File.Exists(Path.Combine(_staging, "Root", "nvdaControllerClient.dll")));
+    }
+
+    [Fact]
+    public void AddGameRootFiles_DoesNothingForAModWithNoSuchFile()
+    {
+        WriteSource(@"SkyrimData\SKSE\Plugins\Whatever.dll", "plugin");
+        Directory.CreateDirectory(_staging);
+
+        Assert.Equal(0, FomodInstaller.AddGameRootFiles(_root, _staging));
+        Assert.False(Directory.Exists(Path.Combine(_staging, "Root")));
+    }
+
+    [Fact]
+    public void AddGameRootFiles_IgnoresTheStagingTreeInsideTheArchiveFolder()
+    {
+        // The staging folder is created inside the extraction folder, so it must be kept out of its own search
+        // or a rescued file would immediately be found again as a candidate.
+        WriteSource(@"NVDACC\nvdaControllerClient.dll", "nvda");
+        string nestedStage = Path.Combine(_root, "__fomod_stage__");
+        Directory.CreateDirectory(nestedStage);
+
+        Assert.Equal(1, FomodInstaller.AddGameRootFiles(_root, nestedStage));
+        Assert.Single(Directory.GetFiles(nestedStage, "*", SearchOption.AllDirectories));
+    }
+
+    [Fact]
+    public void AddGameRootFiles_PicksTheSixtyFourBitBuildWhenBothAreShipped()
+    {
+        WriteSource(@"clients\x86\nvdaControllerClient.dll", "32-bit");
+        WriteSource(@"clients\x64\nvdaControllerClient.dll", "64-bit");
+        Directory.CreateDirectory(_staging);
+
+        Assert.Equal(1, FomodInstaller.AddGameRootFiles(_root, _staging));
+        Assert.Equal("64-bit", File.ReadAllText(Path.Combine(_staging, "Root", "nvdaControllerClient.dll")));
+    }
+
     // ----- helpers --------------------------------------------------------
 
     private void WriteSource(string relative, string content)
