@@ -22,10 +22,13 @@ namespace KinetixModManager;
 public partial class Form1
 {
 	/// <summary>One row: an MCM control and its current value, or a heading with no value of its own.</summary>
-	private sealed class McmRow
+	private sealed class McmRow : IListHeadingRow
 	{
 		public required McmControl Control { get; init; }
 		public required string Value { get; init; }
+
+		/// <summary>A heading names the group of settings under it; the rows are numbered within that group.</summary>
+		public bool IsHeading => Control.Kind == McmControlKind.NotASetting;
 
 		public override string ToString() => Control.Kind switch
 		{

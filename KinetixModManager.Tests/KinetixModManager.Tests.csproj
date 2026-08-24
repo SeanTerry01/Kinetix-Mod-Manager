@@ -91,6 +91,8 @@
     <Compile Include="..\KinetixModManager\SuggestionList.cs" />
     <!-- Self-contained "is this a real key press or auto-repeat?" rule (no BCL dependency at all). -->
     <Compile Include="..\KinetixModManager\KeyRepeatFilter.cs" />
+    <!-- Self-contained "where am I in a list divided by headings?" counting (BCL only). -->
+    <Compile Include="..\KinetixModManager\ListSections.cs" />
   </ItemGroup>
 
   <!-- Real files.json bodies, recorded from the Nexus API rather than written by hand. The picking rules exist

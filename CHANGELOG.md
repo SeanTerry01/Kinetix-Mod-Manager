@@ -4,6 +4,14 @@ A fix for Skyrim and Fallout 4: an up-to-date script extender is no longer repor
 
 ---
 
+## ✨ New: lists with headings now count you within your section
+
+*   A list divided into sections used to number every row alike, headings included. A settings list of two groups read *"3 of 35"* — a number spanning both groups and counting the headings themselves, which answered neither "how far through this group am I" nor "how much is left". The headings were numbered too, which is a position for something that is not an item.
+*   **Each row is now numbered within its own section, and headings are not numbered at all.** So a settings list reads *"General, heading"*, then *"Aim enabled, on, 1 of 4"*, and further down *"Sounds, heading"*, then *"Sound: Hit, on, 1 of 28"*.
+*   This is done in the one place every list's position announcement goes through, so **it applies to every list in the manager that has headings** — settings lists, reports, and anything added later. A list with no headings is counted whole, exactly as before, and mod groups in the installed list are unaffected: those are rows you can act on, not headings.
+
+---
+
 ## ✨ New: The Witcher 3 mod settings, from the settings key (Ctrl + E)
 
 *   A Witcher 3 mod's settings were unreachable from the manager: pressing the settings key on one found nothing, because there is nothing in the mod's folder to find. **The Witcher 3 keeps every mod's settings in the player's own `Documents\The Witcher 3\user.settings`**, under a section named after the group — `[WAGeneral]`, `[WASounds]` — while the *menu* those settings belong to is declared in a separate file in the game folder.

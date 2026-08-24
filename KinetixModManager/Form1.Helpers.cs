@@ -216,8 +216,7 @@ public partial class Form1
 		if (!listBox.Focused) return;
 		// The Discovery "Load more" row carries no position; its row text is read by the screen reader.
 		if (listBox.SelectedItem is DiscoveryLoadMoreRow) return;
-		int itemCount = listBox.Name == "listDiscovery" ? DiscoveryResultCount() : listBox.Items.Count;
-		string text = Loc.T("common.position", listBox.SelectedIndex + 1, itemCount);
+		string text = PositionTextFor(listBox);
 
 		// "The screen reader speaks the list name and selected item first" holds when the USER moved focus here —
 		// tabbing in, or clicking. It does not hold when the program put focus back, which is what closing a view
@@ -285,7 +284,37 @@ public partial class Form1
 	{
 		string text = (row?.ToString() ?? "").TrimEnd();
 		if (text.EndsWith(".", StringComparison.Ordinal)) text = text.Substring(0, text.Length - 1).TrimEnd();
+		// A heading has no position, so the row is all there is to say — joining it to nothing would leave a
+		// dangling separator hanging off the end of the sentence.
+		if (position.Length == 0) return text;
 		return text.Length == 0 ? position : Loc.T("common.rowThenPosition", text, position);
+	}
+
+	/// <summary>
+	/// The "X of Y" a list should say for the row it is on, or <c>""</c> when it should say none.
+	///
+	/// In a list divided by headings the count is per section and the headings are not numbered — see
+	/// <see cref="ListSections"/> for why. A list with no headings is counted whole, exactly as before.
+	/// </summary>
+	private string PositionTextFor(ListBox list)
+	{
+		if (list.SelectedIndex < 0) return "";
+
+		// Discovery keeps its own count: its inline "Load more" row is an action, not a result, and must not be
+		// counted among them.
+		if (list.Name == "listDiscovery")
+			return Loc.T("common.position", list.SelectedIndex + 1, DiscoveryResultCount());
+
+		var headings = new bool[list.Items.Count];
+		bool anyHeading = false;
+		for (int i = 0; i < headings.Length; i++)
+			anyHeading |= headings[i] = ListSections.IsHeading(list.Items[i]);
+
+		if (!anyHeading)
+			return Loc.T("common.position", list.SelectedIndex + 1, list.Items.Count);
+
+		(int position, int total) = ListSections.PositionWithinSection(headings, list.SelectedIndex);
+		return position == 0 ? "" : Loc.T("common.position", position, total);
 	}
 
 	/// <summary>
@@ -301,7 +330,8 @@ public partial class Form1
 		string name = (list.AccessibleName ?? "").Trim();
 		if (name.Length == 0) return rest;
 		if (name.EndsWith(".", StringComparison.Ordinal)) name = name.Substring(0, name.Length - 1).TrimEnd();
-		return name.Length == 0 ? rest : Loc.T("common.listNameThenRest", name, rest);
+		if (name.Length == 0) return rest;
+		return rest.Length == 0 ? name : Loc.T("common.listNameThenRest", name, rest);
 	}
 
 	private ListBox? _lastPosList;
@@ -317,6 +347,9 @@ public partial class Form1
 	private async void SpeakListPosition(ListBox list, string text, bool replaceReader = false)
 	{
 		if (_shuttingDown) return;
+		// A heading gets no position and, when the user arrowed onto it themselves, the reader has already read
+		// the row. There is nothing left to say, and saying an empty utterance would cut the reader off to do it.
+		if (text.Length == 0) return;
 
 		long now = Environment.TickCount64;
 		if (ReferenceEquals(_lastPosList, list) && _lastPosIndex == list.SelectedIndex && now - _lastPosTicks < 700)
@@ -648,9 +681,9 @@ public partial class Form1
 		// The Discovery list's inline "Load more" row is an action, not a numbered result: the screen
 		// reader already reads its row text on focus, so add no position announcement.
 		if (list.SelectedItem is DiscoveryLoadMoreRow) return;
-		// Exclude that row from the Discovery count so positions read "20 of 20", not "20 of 21".
-		int itemCount = list.Name == "listDiscovery" ? DiscoveryResultCount() : list.Items.Count;
-		string text = Loc.T("common.position", list.SelectedIndex + 1, itemCount);
+		// Excludes that row from the Discovery count so positions read "20 of 20", not "20 of 21", and counts
+		// per section in a list divided by headings.
+		string text = PositionTextFor(list);
 
 		// The row's own text is normally the screen reader's job: it reads the row the user arrowed onto, and this
 		// adds the position a moment later. But a reader only announces a row the USER moved to — when the program
