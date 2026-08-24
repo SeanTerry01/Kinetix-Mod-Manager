@@ -698,7 +698,7 @@ public partial class Form1
 			text = Loc.T("help.installed", GetShortcutString("Search"), GetShortcutString("ChangeCategory"), GetShortcutString("BatchCategory"), GetShortcutString("OpenModPage"), GetShortcutString("ShowDependencies"), GetShortcutString("QuickFix"), GetShortcutString("ManualID"), GetShortcutString("InstallZip"), GetShortcutString("SaveProfile"), GetShortcutString("ReadDescription"), GetShortcutString("OpenConfig"), GetShortcutString("OpenConfigFile"), GetShortcutString("OpenManifest"), GetShortcutString("LaunchGame"));
 			break;
 		case AppTab.Updates:
-			text = Loc.T("help.updates", GetShortcutString("UpdateAll"), GetShortcutString("ReadDescription"), GetShortcutString("LaunchGame"));
+			text = Loc.T("help.updates", GetShortcutString("UpdateAll"), GetShortcutString("ReadDescription"), GetShortcutString("LaunchGame"), GetShortcutString("MarkVersionInstalled"));
 			break;
 		case AppTab.Backups:
 			text = Loc.T("help.backups", GetShortcutString("DeleteOldBackups"), GetShortcutString("OpenBackups"));

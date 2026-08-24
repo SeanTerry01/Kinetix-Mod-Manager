@@ -270,6 +270,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
     *   In **Updates**: Open the Nexus page for the update.
     *   In **Search for Mods**: Open the Nexus page for the selected mod — **or**, on the **"Load more results"** row at the bottom of the list, load the next batch of results.
 *   **Delete**: (In Updates tab) **Ignore Update** - Hides this specific version from the updates list.
+*   **Ctrl + Shift + Y**: (In Updates tab) **Mark As Already Installed** - Records the offered version as the one you already have. See "When a mod is offered the same update forever" below.
 *   **Ctrl + U**: **Update All** mods (Premium only).
 *   **Ctrl + R**: Read the mod's summary.
 
@@ -815,6 +816,20 @@ When you check for updates, the manager works out the latest version of each ins
 Where both sources have an answer and they disagree, the manager takes the **newer** of the two. A Nexus page's version field is typed in by the author and often lags the files actually on the page, so the mod database is frequently ahead of it. A mod is only ever listed in the Updates tab when the version it would fetch really is newer than the one you have.
 
 When that lookup identifies a mod, the manager also **remembers its Nexus page**, so a mod that arrived with no link becomes fully actionable — you can download its update and open its page like any other. This happens quietly during a normal update check; nothing in the mod's own files is edited.
+
+### When a mod is offered the same update forever
+
+A few mods are offered an update that installing never settles: the row comes back on the next check, at the same version, no matter how many times you take it.
+
+This happens when **a mod's own version number cannot match the one on its download page**. SMAPI requires a *semantic* version in `manifest.json` — SMAPI's own wording is *"should be formatted like 1.2, 1.2.30, or 1.2.30-beta"* — while a Nexus version field is free text with no rule at all. An author who publishes **2.0.3.5** on Nexus therefore has a manifest that must still say **2.0.3**, and those two will never agree. Stardew Voices is one real example.
+
+**Do not edit the manifest to match.** SMAPI does not warn about a version it cannot parse — it refuses the mod outright and skips it, so the mod stops loading altogether. That trades a nagging row for a mod that silently does nothing, which is much harder to notice. If someone has already tried it, put the original version back.
+
+Normally the manager avoids the whole problem: when it installs a download it **records the release it actually installed**, and compares against that rather than against any manifest. The mods this affects are the ones that arrived some other way — installed by hand, or before that recording existed — leaving nothing to compare against but the manifest.
+
+To settle one, arrow to it in the **Updates** tab and press **Ctrl + Shift + Y** (**Mods → Mark Selected Update As Already Installed**). Confirm, and the offered version is recorded as the one you have. The row goes, and stays gone — **but anything genuinely newer is still reported**, because what is stored is a version to compare against, not a version to hide. That is the difference between this and **Delete** (Ignore Update), which mutes one specific version and nothing else.
+
+Two other routes reach the same place: **update the mod through the manager once**, which records the release as a matter of course, or leave its original download in the manager's downloads folder, where the Update Coverage repair can read the version out of the Nexus file name.
 
 ### Mods that arrive together in one download
 

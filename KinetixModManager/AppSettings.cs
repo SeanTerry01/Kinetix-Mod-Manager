@@ -720,6 +720,13 @@ public class AppSettings
 				Keys.U | Keys.Control
 			},
 			{
+				// Acts on the selected Updates row, like Delete does. Not on a letter that spells "installed":
+				// Ctrl+I and Ctrl+Shift+I are both taken, and Insert is out of the question - screen readers own
+				// that key, so a binding on it would be pressed at them, not at us.
+				"MarkVersionInstalled",
+				Keys.Y | Keys.Shift | Keys.Control
+			},
+			{
 				"SaveProfile",
 				Keys.S | Keys.Control
 			},

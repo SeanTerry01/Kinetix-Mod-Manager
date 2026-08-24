@@ -4,6 +4,17 @@ A fix for Skyrim and Fallout 4: an up-to-date script extender is no longer repor
 
 ---
 
+## ✨ New: settle a mod that is offered the same update forever (Ctrl + Shift + Y)
+
+*   Some mods are offered an update that installing never settles — the row returns on the next check, at the same version, however many times you take it. **Stardew Voices** is a real example: Nexus says 2.0.3.5, the mod's own manifest says 2.0.3, and no update can ever close that gap.
+*   **The two numbers are not allowed to agree.** SMAPI requires a semantic version in a manifest — in its own words, *"should be formatted like 1.2, 1.2.30, or 1.2.30-beta"* — while a Nexus version field is free text with no rule at all. An author who publishes a four-part version on Nexus has a manifest that must still carry a three-part one.
+*   ⚠️ **Editing the manifest to match is not the answer, and the manual now says so plainly.** SMAPI does not warn about a version it cannot parse; it refuses the mod and skips it. The mod stops loading entirely — a far worse problem than the one being solved, and a much quieter one.
+*   In the **Updates** tab, **Ctrl + Shift + Y** now records the offered version as the one you already have. The row goes and stays gone — **and anything genuinely newer is still reported**, because what is stored is a version to compare against, not a version to hide. That is what separates it from **Delete**, which mutes one specific version and nothing else.
+*   It is also in the **Mods** menu, it is remappable like every other shortcut, and **Shift + F1** on the Updates tab now reads it out along with the rest of that tab's keys.
+*   This only ever mattered for mods that arrived outside the manager. When the manager installs a download it already records the release it actually installed and compares against that — which is why most mods never showed the problem at all.
+
+---
+
 ## 🐛 Fixed: a required mod reported as "not installed" when it was installed and enabled
 
 *   Check My Setup (**Ctrl + Shift + K**) and the requirements report could claim *"Artisan Valley requires "DIGUS.ProducerFrameworkMod", which is not installed"* while Producer Framework Mod sat in the list, enabled, and the game loaded both without complaint.

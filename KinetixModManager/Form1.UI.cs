@@ -96,6 +96,8 @@ public partial class Form1
 		{
 			ManualInstall();
 		});
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.markVersionInstalled", GetShortcutString("MarkVersionInstalled")), null,
+			delegate { MarkSelectedUpdateAsInstalled(); }).Name = "menuMarkVersionInstalled";
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.updateAll", GetShortcutString("UpdateAll")), null, async delegate
 		{
 			await UpdateAllMods();

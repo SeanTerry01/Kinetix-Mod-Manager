@@ -83,6 +83,85 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// Takes a row the user has settled off the Updates list and reports where the cursor landed: the row now
+	/// under it and its position, or <c>null</c> when that was the last one. Shared by "ignore this version" and
+	/// "mark this version as installed" — a list that quietly loses the row you were on leaves you somewhere you
+	/// were never told about.
+	///
+	/// The caller does the speaking so each phrase stays a literal <c>Loc.T</c> key in the source, where
+	/// <c>SpokenStringGuardTests</c> can see it. Passing the key in as a variable would put the announcement
+	/// beyond the reach of the test that stops a typo being read aloud as itself.
+	/// </summary>
+	private (string Row, int Index, int Count)? RemoveSettledUpdateRow(StardewMod mod)
+	{
+		int oldIndex = listUpdates.SelectedIndex;
+		listUpdates.Items.Remove(mod);
+		if (listUpdates.Items.Count == 0) return null;
+
+		listUpdates.SelectedIndex = Math.Min(oldIndex, listUpdates.Items.Count - 1);
+		return (listUpdates.SelectedItem?.ToString() ?? "", listUpdates.SelectedIndex + 1, listUpdates.Items.Count);
+	}
+
+	/// <summary>
+	/// Records the version the Updates tab is offering as the one the user already has, for the selected row.
+	///
+	/// This is the answer to a mod whose manifest version can never match its Nexus page. SMAPI requires a
+	/// semantic version — two or three numbers — while a Nexus version field is free text, so an author who
+	/// publishes "2.0.3.5" has a manifest that must still say "2.0.3". The check falls back to the manifest
+	/// version when nothing better is recorded, so such a mod is offered the same update forever. Editing the
+	/// manifest to match is not a fix: SMAPI refuses to parse it and skips the mod entirely.
+	///
+	/// The manager already records the real release whenever it installs a download itself. This is the way to
+	/// say so for a mod that arrived some other way — installed by hand, or before that recording existed —
+	/// without reinstalling it. Unlike ignoring a version, this is not a mute: a genuinely newer release is
+	/// still reported, because what gets stored is a version to compare against, not a version to skip.
+	/// </summary>
+	private void MarkSelectedUpdateAsInstalled()
+	{
+		// The Updates tab has to be the one in front. This is a global shortcut, and listUpdates keeps whatever
+		// was selected the last time the user was there — so without this, pressing it from the Installed tab
+		// would silently settle a row they are not looking at and cannot hear.
+		if (mainTabs.SelectedTab != tabUpdates || listUpdates.SelectedItem is not StardewMod mod || mod.IsGroup)
+		{
+			Speak(Loc.T("updates.markSelectMod"));
+			return;
+		}
+		if (string.IsNullOrWhiteSpace(mod.LatestVersion))
+		{
+			Speak(Loc.T("updates.markNoVersion", mod.Name));
+			return;
+		}
+		// Without a Nexus page or GitHub repo there is no download to key the record to, and recording it
+		// against nothing would look like it had worked while changing nothing at all.
+		if (!UpdateCoverage.HasUpdateLink(mod))
+		{
+			Speak(Loc.T("updates.markNoLink", mod.Name));
+			return;
+		}
+
+		if (SpeakBox(Loc.T("updates.markConfirm", mod.LatestVersion, mod.Name), Loc.T("updates.markTitle"),
+				MessageBoxButtons.YesNo) != DialogResult.Yes)
+		{
+			SpeakAfterPrompt(Loc.T("updates.markCancelled"));
+			return;
+		}
+
+		string version = mod.LatestVersion!;
+		RecordInstalledDownloadVersion(DownloadKey(mod), version);
+		// The mod's own Version is left alone on purpose: it is what the manifest says, and on exactly the mods
+		// this command exists for the manifest legitimately says something else. Overwriting it here would put a
+		// number in the installed list that no file on disk agrees with, until the next rescan quietly undid it.
+
+		// SpeakAfterPrompt, not Speak: closing the confirmation hands focus back and the screen reader answers by
+		// re-reading the window, which flushes anything said in that instant. This is the same treatment the
+		// search-history and backup-trim confirmations get.
+		if (RemoveSettledUpdateRow(mod) is { } landed)
+			SpeakAfterPrompt(Loc.T("updates.markedPos", mod.Name, version, landed.Row, landed.Index, landed.Count));
+		else
+			SpeakAfterPrompt(Loc.T("updates.markedEmpty", mod.Name, version));
+	}
+
+	/// <summary>
 	/// Queries the Nexus Mods REST API or GitHub Releases for the latest version of a group of mods that share
 	/// one download, and lists that download once when it has a newer release. Rate-limited by
 	/// <c>_apiSemaphore</c> for Nexus.

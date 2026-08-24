@@ -181,6 +181,11 @@ public partial class Form1
 			e.SuppressKeyPress = true;
 			ShowDependencies();
 		}
+		if (IsShortcut(e, "MarkVersionInstalled"))
+		{
+			e.SuppressKeyPress = true;
+			MarkSelectedUpdateAsInstalled();
+		}
 		if (IsShortcut(e, "QuickFix"))
 		{
 			e.SuppressKeyPress = true;
@@ -590,21 +595,10 @@ public partial class Form1
 			{
 				_settings.IgnoredVersions[stardewMod4.UniqueId] = stardewMod4.LatestVersion ?? "";
 				_settings.Save();
-				int oldIndex = listUpdates.SelectedIndex;
-				listUpdates.Items.Remove(stardewMod4);
-				if (listUpdates.Items.Count > 0)
-				{
-					listUpdates.SelectedIndex = Math.Min(oldIndex, listUpdates.Items.Count - 1);
-					if (listUpdates.SelectedItem != null)
-					{
-						string itemText = listUpdates.SelectedItem.ToString() ?? "";
-						Speak(Loc.T("modlist.updateIgnoredPos", itemText, listUpdates.SelectedIndex + 1, listUpdates.Items.Count));
-					}
-				}
+				if (RemoveSettledUpdateRow(stardewMod4) is { } landed)
+					Speak(Loc.T("modlist.updateIgnoredPos", landed.Row, landed.Index, landed.Count));
 				else
-				{
 					Speak(Loc.T("modlist.updateIgnoredEmpty"));
-				}
 			}
 			e.Handled = true;
 			e.SuppressKeyPress = true;
