@@ -409,9 +409,7 @@ public partial class Form1
 	/// </summary>
 	private string InstalledGroupKey(StardewMod mod)
 	{
-		string relativePath = Path.GetRelativePath(_settings.CurrentModsPath, mod.FolderPath);
-		int sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
-		string topFolder = sep != -1 ? relativePath.Substring(0, sep) : relativePath;
+		string topFolder = ModEnableState.InstalledGroupFolder(_settings.CurrentModsPath, mod.FolderPath);
 
 		if (GameProfiles.Find(_settings.ActiveGame)?.IsWitcher3 == true)
 			return Witcher3Layout.FamilyKey(topFolder) ?? topFolder;

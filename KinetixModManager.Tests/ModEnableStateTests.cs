@@ -140,4 +140,70 @@ public class ModEnableStateTests
     {
         Assert.Equal("", ModEnableState.TargetPath("", enable: false, GameProfiles.MoonlightPeaks));
     }
+
+    // -------------------------------------------------------------------------
+    // The key the installed list groups by
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public void EachDisabledBepInExModIsKeyedByItsOwnFolder()
+    {
+        // The bug this exists for: plugins-disabled is a SIBLING of plugins, so measured from the mods folder
+        // every disabled mod's path begins "..", and keying on that first segment collapsed all of them into one
+        // group as soon as a second mod was switched off — a group with no name, because ".." is not a name.
+        Assert.Equal("SaveAnywhere", ModEnableState.InstalledGroupFolder(Plugins, P(Disabled, "SaveAnywhere")));
+        Assert.Equal("BetterChests", ModEnableState.InstalledGroupFolder(Plugins, P(Disabled, "BetterChests")));
+    }
+
+    [Fact]
+    public void AModKeepsTheSameKeyWhetherItIsEnabledOrDisabled()
+    {
+        Assert.Equal(
+            ModEnableState.InstalledGroupFolder(Plugins, P(Plugins, "SaveAnywhere")),
+            ModEnableState.InstalledGroupFolder(Plugins, P(Disabled, "SaveAnywhere")));
+    }
+
+    [Fact]
+    public void ModsSharingAFolderStillShareAKey()
+    {
+        // Grouping itself is not the thing being fixed: a download that unpacks several mods into one folder
+        // should still read as one group.
+        Assert.Equal("PPJA", ModEnableState.InstalledGroupFolder(@"C:\Mods", P(@"C:\Mods", "PPJA", "ArtisanValley")));
+        Assert.Equal("PPJA", ModEnableState.InstalledGroupFolder(@"C:\Mods", P(@"C:\Mods", "PPJA", "FruitsAndVeggies")));
+    }
+
+    [Fact]
+    public void AModDirectlyInTheModsFolderIsKeyedByItself()
+    {
+        Assert.Equal("SomeMod", ModEnableState.InstalledGroupFolder(@"C:\Mods", P(@"C:\Mods", "SomeMod")));
+        Assert.Equal(".SomeMod", ModEnableState.InstalledGroupFolder(@"C:\Mods", P(@"C:\Mods", ".SomeMod")));
+    }
+
+    [Fact]
+    public void AModSomewhereElseEntirelyIsItsOwnGroup()
+    {
+        // Not under the mods folder and not in the disabled folder either. Two such mods must not answer alike:
+        // a shared key claims they came out of one folder.
+        string first = ModEnableState.InstalledGroupFolder(Plugins, @"E:\Elsewhere\FirstMod");
+        string second = ModEnableState.InstalledGroupFolder(Plugins, @"E:\Elsewhere\SecondMod");
+
+        Assert.Equal("FirstMod", first);
+        Assert.Equal("SecondMod", second);
+        Assert.NotEqual(first, second);
+    }
+
+    [Fact]
+    public void ATrailingSeparatorDoesNotEmptyTheKey()
+    {
+        Assert.Equal("SaveAnywhere",
+            ModEnableState.InstalledGroupFolder(Plugins, P(Disabled, "SaveAnywhere") + Path.DirectorySeparatorChar));
+    }
+
+    [Fact]
+    public void AnEmptyPathOrRootIsNotAKeyOthersCanShare()
+    {
+        Assert.Equal("", ModEnableState.InstalledGroupFolder(Plugins, ""));
+        // With no mods folder to measure from, the mod's own folder is still the answer.
+        Assert.Equal("SaveAnywhere", ModEnableState.InstalledGroupFolder("", P(Plugins, "SaveAnywhere")));
+    }
 }

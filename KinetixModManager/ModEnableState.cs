@@ -82,4 +82,58 @@ public static class ModEnableState
 
 		return !Path.GetFileName(trimmed).StartsWith(DisabledPrefix(activeGame), StringComparison.Ordinal);
 	}
+
+	/// <summary>
+	/// The top-level folder a mod sits in, within whichever root holds it — the key the installed list groups by,
+	/// so two mods answer with the same string only when they really do share a folder.
+	///
+	/// <para>
+	/// The disabled folder is what makes this more than one line. For every other game a disabled mod is renamed
+	/// where it stands, so it stays under the mods folder; a disabled BepInEx mod moves out of it entirely, into
+	/// <c>plugins-disabled</c> — a <em>sibling</em> of <c>plugins</c>, not a child. Measured from the mods folder
+	/// its path therefore reads <c>..\plugins-disabled\SomeMod</c>, and the first segment of that is <c>..</c> for
+	/// every disabled mod alike. Keyed on it they collapsed into a single group the moment a second mod was
+	/// switched off — one that could not even be named, because <c>..</c> is not a name.
+	/// </para>
+	///
+	/// <para>
+	/// A mod somewhere else again is keyed by its own folder. A shared key is a claim that two mods came out of
+	/// one folder, and the honest answer for a mod whose location is not understood is that it is on its own.
+	/// </para>
+	/// </summary>
+	public static string InstalledGroupFolder(string modsRoot, string modFolderPath)
+	{
+		if (string.IsNullOrEmpty(modFolderPath)) return "";
+
+		string trimmed = modFolderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+		string ownFolder = Path.GetFileName(trimmed);
+		if (string.IsNullOrEmpty(modsRoot)) return ownFolder;
+
+		if (FirstSegmentUnder(modsRoot, trimmed) is { } inMods) return inMods;
+
+		string bepInExRoot = Path.GetDirectoryName(modsRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)) ?? "";
+		if (bepInExRoot.Length > 0 &&
+			FirstSegmentUnder(Path.Combine(bepInExRoot, BepInExDisabledFolderName), trimmed) is { } inDisabled)
+			return inDisabled;
+
+		return ownFolder;
+	}
+
+	/// <summary>
+	/// The first path segment of <paramref name="path"/> beneath <paramref name="root"/>, or <c>null</c> when it
+	/// is not beneath it at all — which <see cref="Path.GetRelativePath"/> reports by walking back out with
+	/// <c>..</c>, or by handing back an absolute path when the two are on different drives.
+	/// </summary>
+	private static string? FirstSegmentUnder(string root, string path)
+	{
+		string relative;
+		try { relative = Path.GetRelativePath(root, path); }
+		catch { return null; }
+
+		if (Path.IsPathRooted(relative)) return null;
+		if (relative == ".." || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)) return null;
+
+		int sep = relative.IndexOfAny(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar });
+		return sep == -1 ? relative : relative.Substring(0, sep);
+	}
 }

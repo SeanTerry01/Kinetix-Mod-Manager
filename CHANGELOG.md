@@ -1,3 +1,16 @@
+# Version 1.5.2
+
+## 🐛 Fixed: disabling a second Moonlight Peaks mod put them both in a nameless group
+
+*   Switch off one Moonlight Peaks mod and it read normally. Switch off a second and the two of them vanished into a **mod group with no name** — a row you had to open to find your own disabled mods in.
+*   **They were being grouped by a folder that isn't one.** The installed list groups mods by the top-level folder they share, measured from your mods folder. Every other game disables a mod by renaming it where it stands, so it stays inside that folder — but Moonlight Peaks uses BepInEx, which pays no attention to folder names and would happily go on loading a renamed mod. A disabled mod there has to **move out** of the scanned folder entirely, into `plugins-disabled` — which sits *beside* `plugins`, not inside it.
+*   Measured from the mods folder, the path to a disabled mod therefore starts by walking back **out** of it, and that step out was being read as the folder they shared. It is the same step for every disabled mod, so the second one to arrive turned the pair into a group — one that could not be named, because a step out of a folder is not a name.
+*   **Each disabled mod is now keyed by its own folder**, so it reads as itself, exactly as it did while it was switched on. Mods that genuinely share a folder are unaffected and still group as before.
+*   Nothing moved on disk and nothing needs redoing — disabled mods stay in `plugins-disabled`, which is what keeps them switched off.
+*   The same miscount was also behind the group key used when collapsing a group from one of the mods inside it, so that path is fixed with it.
+
+---
+
 # Version 1.5.1
 
 A fix for Skyrim and Fallout 4: an up-to-date script extender is no longer reported as the wrong one, and you can now ask the manager which version you have. The manager also learned to explain the silent one — the game that launches perfectly and does nothing. The manual, the change log and the mod documentation all gained a proper search.

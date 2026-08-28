@@ -560,9 +560,9 @@ public partial class Form1
 			}
 			else if (stardewMod3.IsSubMod && flag2)
 			{
-				string relativePath = Path.GetRelativePath(_settings.CurrentModsPath, stardewMod3.FolderPath);
-				int num4 = relativePath.IndexOf(Path.DirectorySeparatorChar);
-				string text3 = ((num4 == -1) ? relativePath : relativePath.Substring(0, num4));
+				// The same key the list grouped by, worked out the same way — a sub-mod has to name the group it
+				// is under, and a disabled BepInEx mod does not live under the mods folder to be measured from.
+				string text3 = ModEnableState.InstalledGroupFolder(_settings.CurrentModsPath, stardewMod3.FolderPath);
 				if (_expandedGroups.Contains(text3))
 				{
 					_expandedGroups.Remove(text3);
