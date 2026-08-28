@@ -76,4 +76,39 @@ public class ManifestFieldTests
     {
         Assert.Null(ModManifest.ParseNexusIdFromFileName(fileName));
     }
+
+    // -------------------------------------------------------------------------
+    // The stricter read, for a file the user picked from anywhere on their disk
+    // -------------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("Granny's Recipe Box-23737-1-0-2-1715181269.zip", "23737")]
+    [InlineData("Cape Stardew 1.6-14635-7-1-12-1775991448.zip", "14635")]
+    [InlineData("SomeMod-4242-1-0.7z", "4242")]
+    [InlineData("Skyrim Access-181131-1-2-3-1723456789.7z", "181131")]
+    public void NexusIdFromDownloadName_ReadsTheIdOutOfARealNexusDownload(string fileName, string expected)
+    {
+        Assert.Equal(expected, ModManifest.NexusIdFromDownloadName(fileName));
+    }
+
+    [Theory]
+    [InlineData("ModBackup-12345-old.zip")]          // a number in the name, but not a Nexus download
+    [InlineData("Save Anywhere-90210-final.zip")]
+    [InlineData("MyMod-4242-1-0 (1).zip")]           // renamed by the browser on a second download
+    [InlineData("manually-made.zip")]
+    [InlineData("")]
+    public void NexusIdFromDownloadName_RefusesAnythingItIsNotSureOf(string fileName)
+    {
+        // The cost of refusing is one automatic link the user can make themselves; the cost of a wrong id is
+        // another mod's updates being offered for this one, which reads as if the manager knows something.
+        Assert.Null(ModManifest.NexusIdFromDownloadName(fileName));
+    }
+
+    [Fact]
+    public void NexusIdFromDownloadName_RefusesANameWithTwoIdsItCannotChooseBetween()
+    {
+        // A title ending in a dashed number puts a second candidate in the name, and nothing about their shape
+        // says which is the mod. Taking the first would be a guess wearing a fact's clothes.
+        Assert.Null(ModManifest.NexusIdFromDownloadName("Cape Stardew-16000-14635-7-1-12-1775991448.zip"));
+    }
 }

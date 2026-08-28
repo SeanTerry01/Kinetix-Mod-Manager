@@ -563,7 +563,13 @@ public partial class Form1
 		};
 		if (openFileDialog.ShowDialog() == DialogResult.OK)
 		{
-			_ = InstallFromZip(openFileDialog.FileName, confirmReinstall: true);
+			// A Nexus download carries its mod id in its own file name, and this is the moment that is known for
+			// certain — afterwards nothing on disk says where the mod came from, and it takes a name search
+			// against Nexus to guess it back. Installing by hand used to throw it away, so a mod installed this
+			// way could not be checked for updates until the user ran Auto-match. Read straight from the name,
+			// it also records which release is installed, so the mod compares against what it actually has.
+			_ = InstallFromZip(openFileDialog.FileName,
+				ModManifest.NexusIdFromDownloadName(openFileDialog.FileName), confirmReinstall: true);
 		}
 	}
 

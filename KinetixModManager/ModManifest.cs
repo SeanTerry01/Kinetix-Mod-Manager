@@ -65,4 +65,40 @@ public static class ModManifest
 		Match m = Regex.Match(Path.GetFileName(fileName), @"-(\d{3,9})-");
 		return m.Success ? m.Groups[1].Value : null;
 	}
+
+	/// <summary>
+	/// The Nexus mod id in a file whose name is unmistakably a Nexus download, or <c>null</c> for anything else.
+	///
+	/// <para>
+	/// Deliberately stricter than <see cref="ParseNexusIdFromFileName"/>, because of who is asking. That one
+	/// reads archives in the manager's own downloads folder, where something else already vouches for the file:
+	/// the mods inside it are checked against the mods on disk before its id is believed. This one is asked
+	/// about a file the user picked from anywhere, so nothing vouches for it, and reading
+	/// <c>"ModBackup-12345-old.zip"</c> as mod 12345 would quietly offer another mod's updates for this one.
+	/// </para>
+	///
+	/// <para>
+	/// Nexus names a download <c>&lt;name&gt;-&lt;mod id&gt;-&lt;version, dashes for dots&gt;[-&lt;timestamp&gt;]</c>,
+	/// so everything after the id is digits and dashes and nothing else. A file renamed by a browser — the
+	/// <c>" (1)"</c> a second download picks up — fails that test and is treated as unknown, which costs only
+	/// the automatic link and never records a wrong one.
+	/// </para>
+	/// </summary>
+	public static string? NexusIdFromDownloadName(string fileName)
+	{
+		string name = Path.GetFileNameWithoutExtension(fileName ?? "");
+
+		// Every "-digits-" in the name is a candidate, overlapping ones included: a title that itself ends in a
+		// number puts a second candidate in the name, and the two are not distinguishable by shape. So they are
+		// all collected, and an id is returned only when exactly one of them can be the mod's — with two, the
+		// name genuinely does not say which, and picking the earlier one is a guess wearing a fact's clothes.
+		var ids = new List<string>();
+		foreach (Match m in Regex.Matches(name, @"(?=-(\d{3,9})-)"))
+		{
+			string tail = name.Substring(m.Index + m.Groups[1].Value.Length + 2);
+			if (Regex.IsMatch(tail, @"^\d+(-\d+)*$")) ids.Add(m.Groups[1].Value);
+		}
+
+		return ids.Count == 1 ? ids[0] : null;
+	}
 }

@@ -1,5 +1,15 @@
 # Version 1.5.2
 
+## ✨ New: a mod you install from a zip yourself is checked for updates like any other (Ctrl + I)
+
+*   A mod installed with **Ctrl + I** arrived with no Nexus page recorded, so the update check could not cover it until you ran **Auto-match Nexus IDs** and hoped the name search found it. With a lot of mods installed that way, keeping up meant visiting each mod's page by hand.
+*   **The page was there to be read all along.** Nexus puts the mod's own ID in the file name it gives you — `Granny's Recipe Box-23737-1-0-2-1715181269.zip` is mod **23737** — and the moment you pick that file is the moment it is known for certain. Afterwards nothing on disk says where the mod came from, which is why recovering it later takes a search and a guess. It is now read straight from the name, and the mod is checkable from then on with nothing else to do.
+*   **The release you installed is recorded with it**, so the mod is compared against the version you actually have rather than whatever its own files claim — the same thing that stops a mod being offered the same update forever.
+*   ⚠️ **A renamed file is treated as unknown, on purpose.** The `" (1)"` a browser adds to a second download, or a name you have changed yourself, no longer follows the convention — and a name carrying two numbers that could each be a mod ID is refused rather than guessed between. A wrong page is worse than none: it offers another mod's version and "updating" fetches an unrelated download. Nothing is lost either way, since Auto-match can still find those by name.
+*   Mods copied into place by hand are unchanged: they have no file name to read, and **Auto-match Nexus IDs** (Mods → Install and Update Mods) remains the way to link them.
+
+---
+
 ## 🐛 Fixed: disabling a second Moonlight Peaks mod put them both in a nameless group
 
 *   Switch off one Moonlight Peaks mod and it read normally. Switch off a second and the two of them vanished into a **mod group with no name** — a row you had to open to find your own disabled mods in.
