@@ -407,8 +407,14 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Speaks a prompt's question. Spoken immediately: the choice buttons start out unnamed (see
+	/// Speaks a prompt's question. Immediately in the ordinary case: the choice buttons start out unnamed (see
 	/// BuildPromptPanel), so there is nothing from the screen reader to talk over or be cut off by.
+	///
+	/// The exception is a prompt raised just after the manager pulled itself to the front — the question asked
+	/// when a browser download lands. The reader is working out what to say about the new foreground window while
+	/// this runs, and finishes after it, wiping the question and leaving only the choices; that was heard as a
+	/// prompt that read out "Yes. No." and never said what it was asking. Speaking earlier cannot win that race,
+	/// so the question waits for it to pass instead. See <see cref="WhenReaderHasSettled"/>.
 	///
 	/// Just the question — the choice is not appended. Giving the buttons their names back a moment later is
 	/// itself a change the screen reader reports, so it announces "Yes, Alt Y" on its own straight afterwards;
@@ -416,7 +422,7 @@ public partial class Form1
 	/// </summary>
 	private void SpeakPromptQuestion(string text)
 	{
-		Speak(text, interrupt: true);
+		WhenReaderHasSettled(() => Speak(text, interrupt: true));
 	}
 
 	/// <summary>

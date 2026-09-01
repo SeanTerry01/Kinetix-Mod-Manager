@@ -1,3 +1,4 @@
+using System;
 using System.Windows.Forms;
 
 namespace KinetixModManager;
@@ -16,6 +17,63 @@ namespace KinetixModManager;
 public partial class Form1
 {
 	/// <summary>
+	/// When the window last pulled itself to the foreground, or -1 if it never has this session. Set by
+	/// <see cref="ForceToForeground"/>.
+	/// </summary>
+	private long _foregroundTakenAt = -1;
+
+	/// <summary>
+	/// How long a screen reader takes to finish reacting to a window becoming the foreground one.
+	///
+	/// The reader's reaction is not something the app can suppress or wait on — <c>Tolk.IsSpeaking</c> does not
+	/// answer this question — so it is waited out. 400ms is the figure the startup landing already uses, arrived
+	/// at the same way and against the same readers.
+	/// </summary>
+	private const int ReaderReactionMs = 400;
+
+	/// <summary>
+	/// How much of the screen reader's reaction to a foreground grab is still to come, in milliseconds; 0 when
+	/// nothing grabbed the foreground recently.
+	///
+	/// The reason anything needs this: a prompt raised straight after <see cref="ForceToForeground"/> was
+	/// announcing only its buttons. Nothing was wrong with the prompt — the reader had been handed a
+	/// foreground-change event a few milliseconds earlier, works that out on its own schedule, and speaks the
+	/// result, wiping whatever the app had said in between. Speaking sooner cannot win that race, because the
+	/// reader's announcement is the one that lands last. The question therefore has to wait for the window to
+	/// stop being news before it is asked.
+	///
+	/// This is the same shape as the fix for the opening announcement at startup, and for the same reason.
+	/// </summary>
+	private int RemainingReaderReaction()
+	{
+		if (_foregroundTakenAt < 0) return 0;
+		long since = Environment.TickCount64 - _foregroundTakenAt;
+		return since >= ReaderReactionMs ? 0 : (int)(ReaderReactionMs - since);
+	}
+
+	/// <summary>
+	/// Runs <paramref name="speak"/> once the screen reader has stopped reacting to a foreground grab, or
+	/// immediately when nothing grabbed the foreground.
+	///
+	/// The timer ticks on the UI message loop, which an overlay's own nested loop keeps pumping, so this lands
+	/// while a prompt is up exactly as it does anywhere else.
+	/// </summary>
+	private void WhenReaderHasSettled(Action speak)
+	{
+		int wait = RemainingReaderReaction();
+		if (wait <= 0) { speak(); return; }
+
+		var timer = new System.Windows.Forms.Timer { Interval = wait };
+		timer.Tick += (s, e) =>
+		{
+			timer.Stop();
+			timer.Dispose();
+			speak();
+		};
+		timer.Start();
+	}
+
+	/// <summary>
 	/// Speaks a modal prompt's message so the screen reader reads it reliably. The announcement is posted on a
 	/// short timer instead of spoken immediately, because a modal <see cref="MessageBox"/> grabs focus the moment
 	/// it shows and the screen reader's announcement of the focused button flushes any speech queued *before* the
@@ -29,7 +87,9 @@ public partial class Form1
 	/// </summary>
 	private void SpeakPrompt(string text)
 	{
-		var timer = new System.Windows.Forms.Timer { Interval = 200 };
+		// 200ms for the box's own focus grab, plus whatever is left of the reader's reaction if the window was
+		// pulled to the front to show it.
+		var timer = new System.Windows.Forms.Timer { Interval = 200 + RemainingReaderReaction() };
 		timer.Tick += (s, e) =>
 		{
 			timer.Stop();

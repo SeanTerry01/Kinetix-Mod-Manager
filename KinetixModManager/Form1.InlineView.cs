@@ -101,7 +101,7 @@ public partial class Form1
 			// heading on every focus change, which is what made the title such noise before. Queued rather than
 			// interrupting, so it follows whatever was being said as the view opened instead of cutting it off.
 			RunOverlay(host, view, focusFirst, finished: () => closed, onEscape: Close,
-				afterShown: () =>
+				afterShown: () => WhenReaderHasSettled(() =>
 				{
 					Speak(title);
 					// SpeakLong, not Speak: a hint is usually a sentence, but a view whose opening IS its content
@@ -109,7 +109,7 @@ public partial class Form1
 					// single very long utterance. Chunked and queued it reads whole, and a short hint is one chunk,
 					// so nothing changes for the ordinary case.
 					if (!string.IsNullOrEmpty(hint)) SpeakLong(hint, interrupt: false);
-				});
+				}));
 		}
 		finally
 		{

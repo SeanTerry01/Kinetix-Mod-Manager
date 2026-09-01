@@ -522,6 +522,9 @@ public partial class Form1
 	/// </summary>
 	private void ForceToForeground()
 	{
+		// Stamped before the window moves, not after: the screen reader starts reacting the instant the
+		// foreground changes, and what is being timed is how long that reaction runs for. See ReaderIsReacting.
+		_foregroundTakenAt = Environment.TickCount64;
 		try
 		{
 			IntPtr hWnd = Handle;

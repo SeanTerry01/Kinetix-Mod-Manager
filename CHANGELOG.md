@@ -1,5 +1,14 @@
 # Version 1.5.2
 
+## 🐛 Fixed: a prompt raised from a browser download read out its buttons and not its question
+
+*   Click **Mod Manager Download** on Nexus and the manager asks *"Downloaded Such-and-such. Install now?"*. What was actually spoken was **"Yes. No."** — the choices, without the question they answer.
+*   **Nothing was wrong with the prompt.** The download starts in your browser, so the browser owns the screen by the time the file lands; the manager pulls itself to the front to ask. That is a foreground change, the screen reader is told about it, and it works out what to say on its own schedule — a fraction of a second later. Anything the manager said in between was wiped by the reader's own announcement, which lands last. Speaking sooner could never win that race.
+*   **The question now waits for the window to stop being news before it is asked** — the same wait the manager already uses for its opening announcement at startup, for the same reason. The buttons still read normally afterwards.
+*   This covers every prompt and list the manager raises after pulling itself to the front, which is all three of them: the install question, "which copy of the game is this download for?", and the cross-game download question. Prompts raised while you are already in the manager are unchanged — there is no foreground change to wait out, and they speak immediately as before.
+
+---
+
 ## 🐛 Fixed: a GOG copy of Skyrim was handed the Steam script extender
 
 *   Install SKSE while you are in the **GOG** copy of Skyrim and you could get the **Steam** build. It installs without complaint and then never loads — the two are compiled against different program files, and the wrong one simply does nothing.
