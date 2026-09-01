@@ -101,23 +101,54 @@ public partial class Form1
 
 		// Before anything is said or shown: the picker closing sets the reader off re-reading the main window,
 		// and that lands on top of whatever comes next — a sentence or a prompt's question alike.
-		if (!await SettleAfterForeignWindowAsync()) return;
+		// Settled for the timing alone — the answer must not decide whether the work happens.
+		await SettleAfterForeignWindowAsync();
 
 		if (picked != DialogResult.OK) { SpeakWithBearings(Loc.T("share.cancelled")); return; }
 
+		if (!WriteSharedFile(dialog.FileName, SuggestionSharing.Write(list), Loc.T("share.exportTitle"))) return;
+
+		_soundEngine.Play("load_complete");
+		// A prompt, not a spoken line. "Where did my file go?" was the report, and a sentence that the screen
+		// reader may or may not get to say is not an answer to it — an OK box is still there when you go looking,
+		// and it names the full path rather than just the file, because the folder is the half that was in doubt.
+		SpeakBox(Loc.T("share.exportedBox", chosen.Count, Path.GetFileName(dialog.FileName), dialog.FileName),
+			Loc.T("share.exportTitle"));
+	}
+
+	/// <summary>
+	/// Writes a file the user asked to save, and does not leave them guessing either way.
+	///
+	/// Saving is the one operation where "it seemed to work" is worthless: the file is either there when they go
+	/// looking or it is not, and they will not find out until later. So the write is checked — the file has to
+	/// exist and have something in it afterwards — and the outcome is said in a box rather than a sentence,
+	/// because a spoken line can be missed and a box cannot.
+	///
+	/// Returns true when the file is really on disk.
+	/// </summary>
+	private bool WriteSharedFile(string path, string contents, string title)
+	{
 		try
 		{
-			File.WriteAllText(dialog.FileName, SuggestionSharing.Write(list));
+			File.WriteAllText(path, contents);
+
+			// Not paranoia: a save can be redirected or undone underneath you — by folder virtualisation, by
+			// sync clients, by security software — and every one of those returns from the write perfectly
+			// happily. The only proof is to go and look.
+			var written = new FileInfo(path);
+			if (!written.Exists || written.Length == 0)
+				throw new IOException(Loc.T("share.saveVanished", path));
+
+			DiagnosticLog.Write("Share", $"saved {written.Length} bytes to {path}");
+			return true;
 		}
 		catch (Exception ex)
 		{
+			LogFailure("Share", $"saving {path}", ex);
 			_soundEngine.Play("error");
-			SpeakBox(Loc.T("share.exportFailed", FriendlyError(ex)), Loc.T("share.exportTitle"));
-			return;
+			SpeakBox(Loc.T("share.saveFailedBox", path, FriendlyError(ex)), title);
+			return false;
 		}
-
-		_soundEngine.Play("load_complete");
-		SpeakWithBearings(Loc.T("share.exported", chosen.Count, Path.GetFileName(dialog.FileName)));
 	}
 
 	/// <summary>
@@ -142,7 +173,8 @@ public partial class Form1
 		// Before anything is said or shown. Everything from here on either speaks or opens a prompt that speaks,
 		// and the reader's re-read of the main window would cut the first of them off — which is exactly what
 		// swallowed the "Import it?" question and left only the "Yes" button audible.
-		if (!await SettleAfterForeignWindowAsync()) return;
+		// Settled for the timing alone — the answer must not decide whether the work happens.
+		await SettleAfterForeignWindowAsync();
 
 		if (picked != DialogResult.OK) { SpeakWithBearings(Loc.T("share.cancelled")); return; }
 

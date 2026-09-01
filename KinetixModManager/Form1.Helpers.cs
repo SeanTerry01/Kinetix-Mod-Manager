@@ -450,6 +450,14 @@ public partial class Form1
 	/// should say nothing: whatever claimed it knows more than this call did.
 	/// </para>
 	/// </summary>
+	/// <remarks>
+	/// ⚠️ <b>The answer must never decide whether the user's work happens.</b> It reports one thing only:
+	/// whether this announcement still owns the floor. Seven callers used it as <c>if (!settled) return;</c>
+	/// placed between a file dialog and the work that dialog was for — so anything else that happened to speak
+	/// during the half second it waits (a refresh finishing, a status line, an update check) abandoned the
+	/// export or import entirely. No file, no error, no sound: the user named a file, chose a folder, pressed
+	/// Save, and nothing was ever written. Do the work first, then ask this about the talking.
+	/// </remarks>
 	private async Task<bool> SettleAfterForeignWindowAsync(int passes = 20)
 	{
 		// Claimed so that anything the app deliberately says next abandons this rather than being swallowed by

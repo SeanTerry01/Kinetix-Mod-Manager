@@ -51,7 +51,8 @@ public partial class Form1
 
 		// Before anything is said or shown: the folder picker closing sets the reader off re-reading the main
 		// window, which otherwise lands on top of the next sentence or swallows a prompt's question.
-		if (!await SettleAfterForeignWindowAsync()) return;
+		// Settled for the timing alone — the answer must not decide whether the work happens.
+		await SettleAfterForeignWindowAsync();
 		if (picked != DialogResult.OK) { SpeakWithBearings(Loc.T("common.changesCancelled")); return; }
 
 		var ini = Mo2ReadIni(Path.Combine(baseDir, "ModOrganizer.ini"));

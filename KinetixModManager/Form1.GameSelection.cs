@@ -514,7 +514,9 @@ public partial class Form1
 			// already no, the session is already being left alone, and this is purely telling the user why.
 			BeginInvoke(new Action(async () =>
 			{
-				if (!await SettleAfterForeignWindowAsync()) return;
+				// Settled for the timing alone. Bailing out here would lose the only explanation the user gets
+				// for why the folder they picked was refused, which is worse than speaking over something.
+				await SettleAfterForeignWindowAsync();
 				SpeakBox(
 					Loc.T("session.locateInvalidBox", targetName),
 					Loc.T("session.notInstalledTitle"),

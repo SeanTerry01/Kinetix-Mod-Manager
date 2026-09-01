@@ -1,5 +1,25 @@
 # Version 1.5.2
 
+## 🐛 Fixed: a file you saved was sometimes never written at all
+
+*   Export your suggested mods, name the file, pick a folder, press Save — and the file is not there. No error, no sound, nothing in the log. It looked like a problem with saving files and was never anything of the kind.
+*   ⚠️ **The export was being abandoned before it began, to protect an announcement.** When a file dialog closes, the screen reader starts re-reading the main window, and the manager waits about half a second for that to pass so its next sentence is not talked over. That wait reports back whether it still has the floor — and **the answer was being used to decide whether to carry on at all**. So if anything else happened to speak during that half second — a refresh finishing, a status line, an update check — the export stopped dead, between the dialog closing and the file being written.
+*   That is why it worked on one machine and not another: it is a race, and it is lost more often on a busy one.
+*   **The wait still happens; it no longer decides whether your work does.** **Seven** places had it: exporting and importing suggested mods, exporting and importing a collection, exporting and importing a load order, and the Mod Organizer 2 import. An eighth had quietly dropped the explanation of why a chosen game folder was rejected.
+*   A test now fails the build if a file dialog's work is ever again made to depend on the screen reader settling.
+
+---
+
+## ✨ New: saving a file now tells you it saved, and proves it first
+
+*   Saving is the one thing where "it seemed to work" is worth nothing: the file is either there when you go looking or it is not, and you find out much later.
+*   **A box now confirms the save**, giving the file name **and the full path** — the folder being the half that was actually in doubt. A box rather than a spoken line, because a sentence can be missed and a box is still there when you come back to it.
+*   **The manager checks before it says so.** After writing, it goes and looks: the file has to exist and have something in it. A save can be redirected or undone underneath you by folder virtualisation, a sync client or security software, and every one of those lets the write itself finish perfectly happily.
+*   **A failed save now says so plainly**, names where it was trying to write, says what went wrong, points at the log, and suggests somewhere you are always allowed to write. Before this, a failure that happened after the file dialog was invisible.
+*   Both outcomes go to the log — the successful one with the number of bytes written and the full path, so a report about a missing file can be answered from the log alone.
+
+---
+
 ## 🐛 Fixed: the manager searched for things Nexus has never heard of
 
 *   Ask it to find a missing dependency and it searched for **`Digus.ProducerFrameworkMod`**. That is the mod's identifier — the name its author gives it in code — and it appears nowhere on Nexus. The search came back empty and you were told the mod could not be found, while its page sat there under the name **Producer Framework Mod**.

@@ -257,7 +257,8 @@ public partial class Form1
 
 		// Before anything is said or shown: the picker closing sets the reader off re-reading the main window,
 		// which otherwise lands on top of the next sentence or swallows a prompt's question.
-		if (!await SettleAfterForeignWindowAsync()) return;
+		// Settled for the timing alone — the answer must not decide whether the work happens.
+		await SettleAfterForeignWindowAsync();
 
 		if (picked != DialogResult.OK)
 		{
@@ -302,7 +303,8 @@ public partial class Form1
 		DialogResult picked = dlg.ShowDialog();
 
 		// Before anything is said or shown — everything below either speaks or opens a prompt that speaks.
-		if (!await SettleAfterForeignWindowAsync()) return;
+		// Settled for the timing alone — the answer must not decide whether the work happens.
+		await SettleAfterForeignWindowAsync();
 
 		if (picked != DialogResult.OK)
 		{

@@ -127,12 +127,17 @@ public partial class Form1
 
 		// Before anything is said or shown: the picker closing sets the reader off re-reading the main window,
 		// which otherwise lands on top of the next sentence or swallows a prompt's question.
-		if (!await SettleAfterForeignWindowAsync()) return;
+		// Settled for the timing alone — the answer must not decide whether the work happens.
+		await SettleAfterForeignWindowAsync();
 		if (picked != DialogResult.OK) return;
 
 		try
 		{
 			collection.Save(dialog.FileName);
+			var written = new FileInfo(dialog.FileName);
+			if (!written.Exists || written.Length == 0)
+				throw new IOException(Loc.T("share.saveVanished", dialog.FileName));
+			DiagnosticLog.Write("Collection", $"saved {written.Length} bytes to {dialog.FileName}");
 		}
 		catch (Exception ex)
 		{
@@ -166,7 +171,8 @@ public partial class Form1
 
 		// Before anything is said or shown: the picker closing sets the reader off re-reading the main window,
 		// which otherwise lands on top of the next sentence or swallows a prompt's question.
-		if (!await SettleAfterForeignWindowAsync()) return;
+		// Settled for the timing alone — the answer must not decide whether the work happens.
+		await SettleAfterForeignWindowAsync();
 		if (picked != DialogResult.OK) return;
 
 		Collection? collection = Collection.Load(dialog.FileName);

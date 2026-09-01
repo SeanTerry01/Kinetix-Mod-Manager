@@ -293,3 +293,64 @@ public class SilentFailureGuardTests
 		return Path.Combine(dir!.FullName, "KinetixModManager");
 	}
 }
+
+/// <summary>
+/// Guards the rule behind "I pressed Save and the file was never there".
+///
+/// <c>SettleAfterForeignWindowAsync</c> waits out the screen reader's re-reading of the main window after a
+/// file dialog closes, and reports whether this announcement still owns the floor. Seven callers had written
+/// that answer as <c>if (!await Settle()) return;</c> and placed it <em>between</em> the dialog and the work the
+/// dialog was for. So anything else that happened to speak during the half second it waits — a refresh
+/// finishing, a status line, an update check — abandoned the whole operation. The user named a file, chose a
+/// folder, pressed Save, and nothing was written: no file, no error, no sound, nothing in the log.
+///
+/// It looked like a file-system problem and was never anything of the kind, which is why it survived so long
+/// and why it only showed up on some machines: it is a race, and it is lost more often on a busy one.
+///
+/// Waiting is fine. Letting the wait decide whether the user's work happens is not.
+/// </summary>
+public class ForeignWindowGuardTests
+{
+	/// <summary>How far from a file dialog a settle-gate still counts as sitting between it and the work.</summary>
+	private const int NearbyLines = 30;
+
+	[Fact]
+	public void NoFileDialogHasItsWorkGatedOnSpeechSettling()
+	{
+		var gate = new Regex(@"if\s*\(\s*!\s*await\s+SettleAfterForeignWindowAsync", RegexOptions.Compiled);
+		var offenders = new List<string>();
+
+		foreach (string file in Directory.EnumerateFiles(SourceFolder(), "*.cs"))
+		{
+			string[] lines = File.ReadAllLines(file);
+			for (int i = 0; i < lines.Length; i++)
+			{
+				if (!gate.IsMatch(lines[i])) continue;
+
+				// Only dangerous next to a dialog: on its own, in a method that exists purely to say something,
+				// bailing out is exactly right — there is no work to lose.
+				int from = Math.Max(0, i - NearbyLines);
+				string around = string.Join(" ", lines.Skip(from).Take(NearbyLines * 2));
+				if (!around.Contains("ShowDialog(")) continue;
+
+				offenders.Add($"{Path.GetFileName(file)}:{i + 1}  {lines[i].Trim()}");
+			}
+		}
+
+		Assert.True(offenders.Count == 0,
+			"A file dialog's work must not depend on whether the screen reader settled. Await the settle for its "
+			+ "timing, do the work, then announce the result:"
+			+ Environment.NewLine + string.Join(Environment.NewLine, offenders));
+	}
+
+	/// <summary>The app's source folder, found from the test binary rather than hard-coded.</summary>
+	private static string SourceFolder()
+	{
+		var dir = new DirectoryInfo(AppContext.BaseDirectory);
+		while (dir != null && !Directory.Exists(Path.Combine(dir.FullName, "KinetixModManager")))
+			dir = dir.Parent;
+
+		Assert.NotNull(dir);
+		return Path.Combine(dir!.FullName, "KinetixModManager");
+	}
+}

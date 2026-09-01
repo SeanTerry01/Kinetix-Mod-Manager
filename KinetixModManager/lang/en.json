@@ -1623,8 +1623,9 @@
   "share.nameEmpty": "A list needs a name. Nothing exported.",
   "share.authorTitle": "Who Made This List? - Escape to Cancel",
   "share.authorPrompt": "What name should this list be credited to? Leave it empty to stay anonymous.",
-  "share.exported": "Exported {0} suggestions to {1}.",
-  "share.exportFailed": "Could not write the file. {0}",
+  "share.exportedBox": "Saved {0} suggestions.\n\nFile name: {1}\nFull path: {2}\n\nThe file is on disk and has been checked - it is there.",
+  "share.saveFailedBox": "The file was NOT saved.\n\nWhere it was going: {0}\n\nWhat went wrong: {1}\n\nThe details are in the log - press Control plus Shift plus L to open it. Try a folder inside your Documents or Desktop, which is somewhere you are always allowed to write.",
+  "share.saveVanished": "The file was written but is not there afterwards ({0}). Something outside the manager - a sync client, security software, or Windows folder protection - removed or redirected it.",
 
   "share.importTitle": "Import a Suggested Mods List",
   "share.fromAuthor": "{0}, by {1}",
