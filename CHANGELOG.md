@@ -1,5 +1,15 @@
 # Version 1.5.2
 
+## ✨ New: every log opens inside the manager, read only
+
+*   Not just the manager's own — the game's too. **Notepad is gone from the manager entirely.** Reading a log no longer means leaving the program you are already in, and no log can be edited or deleted by accident while you read it.
+*   **The game's logs now list themselves.** A script extender's folder holds the extender's own log and one for every plugin that writes anything — fifteen of them on a well-modded Skyrim — and which of those has the answer depends entirely on what went wrong. Opening the game's log now shows that list, **the one most likely to matter first**, then the rest by how recently they were written. Enter reads one; Escape goes back.
+*   That list used to be **Explorer**, opened when the main log did not exist yet: somebody else's file browser, to be navigated by a person who cannot see it, to find a file they then had to open in a third program.
+*   Each log opens **at its newest entry**, since a log is read backwards from the thing that just happened. A very long one shows its most recent part and says where it was cut, so nobody concludes the earlier sessions never happened.
+*   The keys are the ones every other screen uses: arrows to move, **Ctrl + End** for the very end, Escape to close. An empty log says so rather than opening a blank box.
+
+---
+
 ## 🐛 Fixed: a prompt read out its question and then said nothing about the button under your finger
 
 *   The other half of the announcement fix, reported from testing. The question was read — and then the focused **Yes** was not, so the only way to hear it was to Tab away and Shift+Tab back.

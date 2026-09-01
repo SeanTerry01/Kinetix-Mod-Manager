@@ -1015,19 +1015,38 @@ public partial class Form1 : Form, IMessageFilter
 			return;
 		}
 
+		ShowLogFile(Loc.T("log.title"), errorLogPath);
+	}
+
+	/// <summary>
+	/// Shows a log file inside the window, read only.
+	///
+	/// Every log the manager can point at goes through here — its own, the script extender's, SMAPI's, whatever
+	/// a mod wrote beside them. They used to open in Notepad, which meant leaving the manager to read them and
+	/// left a file that can be edited or deleted by accident sitting open in an editor. Nothing here can be
+	/// changed, and the keys are the ones every other screen uses.
+	/// </summary>
+	private void ShowLogFile(string title, string path)
+	{
 		string text;
 		try
 		{
-			text = ReadLogTail(errorLogPath);
+			text = ReadLogTail(path);
 		}
 		catch (Exception ex)
 		{
-			LogFailure("Log", $"reading {errorLogPath}", ex);
-			SpeakBox(Loc.T("log.unreadable", errorLogPath, FriendlyError(ex)), Loc.T("log.title"));
+			LogFailure("Log", $"reading {path}", ex);
+			SpeakBox(Loc.T("log.unreadable", path, FriendlyError(ex)), title);
 			return;
 		}
 
-		ShowInlineView(Loc.T("log.title"), (container, closeView) =>
+		if (text.Trim().Length == 0)
+		{
+			SpeakBox(Loc.T("log.empty", path), title);
+			return;
+		}
+
+		ShowInlineView(title, (container, closeView) =>
 		{
 			var view = new TextBox
 			{
@@ -1047,7 +1066,7 @@ public partial class Form1 : Form, IMessageFilter
 			container.Controls.Add(view);
 
 			// At the end, where the newest entry is. A log is read backwards from what just happened, and
-			// opening at the top of a two-megabyte file means paging through months to reach it.
+			// opening at the top of a large file means paging through months to reach it.
 			view.SelectionStart = view.TextLength;
 			view.ScrollToCaret();
 			view.SelectionStart = 0;
@@ -1055,7 +1074,52 @@ public partial class Form1 : Form, IMessageFilter
 
 			return view;
 		},
-		hint: Loc.T("log.hint", errorLogPath));
+		hint: Loc.T("log.hint", path));
+	}
+
+	/// <summary>
+	/// Lists the logs in a folder and shows whichever one is chosen, all without leaving the window.
+	///
+	/// A script extender's folder holds a dozen of them — the extender's own, and one per plugin that writes
+	/// anything. Which of those matters depends entirely on what went wrong, and answering "open the folder in
+	/// Explorer" leaves somebody who cannot see it to find their way around a file list in another program.
+	///
+	/// <paramref name="preferred"/> is the one listed first, being the one that usually has the answer.
+	/// </summary>
+	private void ShowLogFolder(string title, string folder, string preferred)
+	{
+		List<FileInfo> logs;
+		try
+		{
+			logs = new DirectoryInfo(folder)
+				.EnumerateFiles("*", SearchOption.TopDirectoryOnly)
+				.Where(f => f.Extension.Equals(".log", StringComparison.OrdinalIgnoreCase) ||
+							f.Extension.Equals(".txt", StringComparison.OrdinalIgnoreCase) ||
+							f.Extension.StartsWith(".log", StringComparison.OrdinalIgnoreCase))
+				.OrderByDescending(f => string.Equals(f.Name, preferred, StringComparison.OrdinalIgnoreCase))
+				.ThenByDescending(f => f.LastWriteTime)
+				.ToList();
+		}
+		catch (Exception ex)
+		{
+			LogFailure("Log", $"listing the logs in {folder}", ex);
+			SpeakBox(Loc.T("log.unreadable", folder, FriendlyError(ex)), title);
+			return;
+		}
+
+		if (logs.Count == 0) { SpeakBox(Loc.T("log.noneInFolder", folder), title); return; }
+		if (logs.Count == 1) { ShowLogFile(title, logs[0].FullName); return; }
+
+		var rows = logs
+			.Select(f => new ReportRow
+			{
+				Text = Loc.T("log.fileRow", f.Name, FormatBytes(f.Length), f.LastWriteTime.ToString("g")),
+				OnEnter = () => { ShowLogFile(title, f.FullName); return Task.CompletedTask; }
+			})
+			.ToList();
+
+		ShowReportDialog(title, Loc.T("log.pickerHeader", logs.Count, folder), Loc.T("log.noneInFolder", folder),
+			rows, Loc.T("log.pickerHint"), listName: Loc.T("log.pickerListName"));
 	}
 
 	/// <summary>

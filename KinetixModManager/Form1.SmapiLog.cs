@@ -29,9 +29,12 @@ namespace KinetixModManager;
 public partial class Form1
 {
 	/// <summary>
-	/// Opens the active game's primary log in Notepad: SMAPI-latest.txt for Stardew Valley, or the script
-	/// extender log (<c>f4se.log</c> / <c>skse64.log</c>) for Fallout 4 / Skyrim SE. If the primary log has
-	/// not been written yet, opens its folder so the user can browse the other logs that may be there.
+	/// Shows the active game's logs, inside the window and read only.
+	///
+	/// Where there is more than one it lists them and lets the user pick — a script extender's folder holds the
+	/// extender's own log and one for every plugin that writes anything, and which of those matters depends on
+	/// what went wrong. That list used to be Explorer, which meant leaving the manager to find your way around
+	/// somebody else's file browser.
 	/// </summary>
 	private void OpenGameLog()
 	{
@@ -39,13 +42,9 @@ public partial class Form1
 		if (!GameHasLogTab(_settings.ActiveGame)) { SpeakBox(Loc.T("log.notFound")); return; }
 
 		string folder = GameLogFolder();
-		string primary = Path.Combine(folder, PrimaryGameLogName());
-		if (File.Exists(primary))
-			Process.Start(new ProcessStartInfo("notepad.exe", primary) { UseShellExecute = true });
-		else if (Directory.Exists(folder))
-			Process.Start("explorer.exe", folder);
-		else
-			SpeakBox(Loc.T("log.notFound"));
+		if (!Directory.Exists(folder)) { SpeakBox(Loc.T("log.notFound")); return; }
+
+		ShowLogFolder(Loc.T("log.gameTitle", GameDisplayName()), folder, PrimaryGameLogName());
 	}
 
 	/// <summary>
@@ -115,21 +114,19 @@ public partial class Form1
 		_                => ""
 	};
 
-	/// <summary>Opens the SMAPI log file in Notepad for manual inspection.</summary>
+	/// <summary>Shows SMAPI's own log, unparsed, inside the window and read only.</summary>
 	private void OpenRawSmapiLog()
 	{
-		string text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StardewValley", "ErrorLogs", "SMAPI-latest.txt");
-		if (File.Exists(text))
-		{
-			Process.Start(new ProcessStartInfo("notepad.exe", text)
-			{
-				UseShellExecute = true
-			});
-		}
+		string folder = Path.Combine(
+			Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StardewValley", "ErrorLogs");
+		string latest = Path.Combine(folder, "SMAPI-latest.txt");
+
+		if (File.Exists(latest))
+			ShowLogFile(Loc.T("log.gameTitle", GameDisplayName()), latest);
+		else if (Directory.Exists(folder))
+			ShowLogFolder(Loc.T("log.gameTitle", GameDisplayName()), folder, "SMAPI-latest.txt");
 		else
-		{
 			SpeakBox(Loc.T("smapi.logNotFound"));
-		}
 	}
 
 	/// <summary>

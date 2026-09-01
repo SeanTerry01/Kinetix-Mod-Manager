@@ -210,6 +210,8 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Ctrl + D**: Open your `downloads` folder.
 *   **Ctrl + B**: Open your `backups` folder.
 *   **Ctrl + Shift + L**: **Open the log** - the manager's record of anything that failed or crashed, including what it was doing at the time. This is the file to send when reporting a problem. It records failures the manager recovers from as well as ones you see, so a problem that left no visible trace is still in there. It opens inside the manager as a read-only view, at the newest entry - **Ctrl + End** for the very end, Escape to close. Nothing in it can be changed by accident, and the full path to the file is given when it opens.
+
+**The game's logs open the same way.** Where the game has more than one - a script extender's folder holds the extender's own log and one for every plugin that writes anything - you get a list of them, the one most likely to have the answer first and the rest by how recently they were written. Press **Enter** on one to read it and **Escape** to go back to the list. Nothing opens in Notepad any more, and no log can be changed while you are reading it.
 *   **Ctrl + H**: Open the **Accessibility Controls** viewer for the active game (a navigable drill-down of every control — see "Accessibility Controls Viewer" below).
 *   **Ctrl + Shift + H**: Open your **Search History** for the active game (see "Searching for Mods" below).
 *   **Ctrl + Shift + F7**: Turn **Curation Mode** on or off — the switch that reveals the commands for building your own Suggested Mods list. Works either way round, since turning it on is what it is for (see "Suggested Mods" below).
