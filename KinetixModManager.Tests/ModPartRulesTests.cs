@@ -316,11 +316,75 @@ public class ModPartRulesTests
         ModPart plugin    = PartOf(GameProfiles.SkyrimSE, "17230", 0);
         ModPart preloader = PartOf(GameProfiles.SkyrimSE, "17230", 1);
 
-        Assert.True(ModPartRules.PartSuperseded(preloader, "1.7.104"));
-        Assert.False(ModPartRules.PartSuperseded(preloader, SkyrimSteamBuild));
+        // The game has moved past the handover build AND the installed mod is the release that stopped calling
+        // the preloader. Both, because either alone is not the situation.
+        Assert.True(ModPartRules.PartSuperseded(preloader, "1.7.104", "7.0.21"));
+        Assert.False(ModPartRules.PartSuperseded(preloader, SkyrimSteamBuild, "7.0.21"));
 
         // A part with no handover build is never a leftover, whatever the game is running.
-        Assert.False(ModPartRules.PartSuperseded(plugin, "1.7.104"));
+        Assert.False(ModPartRules.PartSuperseded(plugin, "1.7.104", "7.0.21"));
+    }
+
+    [Fact]
+    public void AnOlderCopyOfTheModIsStillUsingThePreloaderEvenOnANewGame()
+    {
+        // The machine that showed this up: Skyrim updated to 1.7.104, but the Engine Fixes installed was still
+        // 7.0.20 from February — the build that calls the preloader's entry point. The game build alone says the
+        // file is obsolete; the mod actually installed says it is still being called. Offering to delete it there
+        // is advice pointing the wrong way, and what that player needs is the newer mod.
+        ModPart preloader = PartOf(GameProfiles.SkyrimSE, "17230", 1);
+
+        Assert.False(ModPartRules.PartSuperseded(preloader, "1.7.104", "7.0.20"));
+        Assert.False(ModPartRules.PartSuperseded(preloader, "1.7.104", "6.2"));
+
+        // Unknown counts as too old for the same reason: never tell somebody to delete a file on a guess.
+        Assert.False(ModPartRules.PartSuperseded(preloader, "1.7.104", null));
+        Assert.False(ModPartRules.PartSuperseded(preloader, "1.7.104", ""));
+
+        // And a version past the handover is past it.
+        Assert.True(ModPartRules.PartSuperseded(preloader, "1.7.104", "7.1"));
+    }
+
+    // -------------------------------------------------------------------------
+    // A page whose own version number is behind its own Files tab
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public void TheFilesTabIsReadForAReleaseThePagesVersionNumberNeverMentioned()
+    {
+        // Recorded from the live page on 2026-08-31, the day this was reported. The page's version field read
+        // 7.0.20 while a MAIN file of 7.0.21 had been up for a week — so an update check that believes the page
+        // told a Skyrim 1.7.104 player their mods were all current, on the one release their game will not start
+        // without.
+        var files = Fixture("nexus-enginefixes-17230-files-2026-08.json");
+
+        List<string> versions = ModPartRules.MainFileVersions(files);
+
+        Assert.Contains("7.0.21", versions);
+
+        // Only what the page is actually offering. The All-In-One bundles are OPTIONAL and the mod's whole
+        // history sits there ARCHIVED or OLD_VERSION; reading versions off those would invent updates.
+        Assert.DoesNotContain(versions, v => v.EndsWith("AIO", StringComparison.OrdinalIgnoreCase));
+        foreach (string v in versions)
+            Assert.Contains(files, f => f.Version == v && f.CategoryName == "MAIN");
+    }
+
+    [Fact]
+    public void MainFileVersionsIgnoresRetiredAndUnversionedFiles()
+    {
+        var files = Fixture("nexus-skse64-30379-files.json");
+
+        List<string> versions = ModPartRules.MainFileVersions(files);
+
+        Assert.NotEmpty(versions);
+        foreach (string v in versions)
+            Assert.False(string.IsNullOrWhiteSpace(v));
+
+        // The page really does carry archived files with versions on them; none may appear here.
+        Assert.Contains(files, f => string.Equals(f.CategoryName, "ARCHIVED", StringComparison.OrdinalIgnoreCase));
+        foreach (NexusFileInfo archived in files.Where(f =>
+                     string.Equals(f.CategoryName, "ARCHIVED", StringComparison.OrdinalIgnoreCase)))
+            Assert.DoesNotContain(files.Where(f => f.CategoryName == "MAIN"), f => f.FileId == archived.FileId);
     }
 
     [Fact]

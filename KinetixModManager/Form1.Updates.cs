@@ -175,6 +175,21 @@ public partial class Form1
 	/// installed (recorded at install time), falling back to the newest manifest version in the group, and list
 	/// one row for the download rather than one per mod inside it.
 	/// </summary>
+	/// <summary>
+	/// The newest version among the files a mod page offers as its main download, or <c>null</c> when there are
+	/// none to compare. Only ever used as a second opinion when the page's own version said the mod was current.
+	/// </summary>
+	private async Task<string?> NewestMainFileVersion(string nexusId)
+	{
+		List<string> versions = await _nexusService.GetMainFileVersionsAsync(nexusId);
+		if (versions.Count == 0) return null;
+
+		// Highest rather than most recently uploaded. A page whose mod ships in parts has a MAIN file per part
+		// with a version of its own — Engine Fixes' preloader is version "7" beside a plugin at "7.0.21" — and
+		// the one that answers "is there anything newer than what I have" is the highest of them.
+		return versions.Aggregate((best, v) => IsNewerVersion(best, v) ? v : best);
+	}
+
 	private async Task CheckForUpdates(List<StardewMod> group)
 	{
 		try
@@ -191,17 +206,28 @@ public partial class Form1
 
 			if (latestVersion == null) return;
 
-			if (_settings.IgnoredVersions.TryGetValue(group[0].UniqueId, out string? ignored) && ignored == latestVersion)
-				return;
-
-			foreach (StardewMod mod in group) RecordLatestVersion(mod, latestVersion);
-
 			string key = DownloadKey(group[0]);
 			// What's installed from this download: what we recorded when we installed it, or — for a mod that
 			// arrived by hand — the newest version any of its mods claims, since the main mod usually carries
 			// the release's number while the extras bundled with it keep their own.
 			string installedVersion = InstalledDownloadVersion(key)
 				?? group.Select(m => m.Version).Aggregate((best, v) => IsNewerVersion(best, v) ? v : best);
+
+			// A mod page's version number is maintained by hand, separately from uploading the file, so a page
+			// can sit on an old number while its own Files tab already offers a newer release. Believing the page
+			// alone is how SSE Engine Fixes 7.0.21 went unreported for a week — the release that Skyrim 1.7.104
+			// will not start without. So when the page claims there is nothing new, the files are asked as well.
+			if (!IsNewerVersion(installedVersion, latestVersion) && !string.IsNullOrEmpty(group[0].NexusID))
+			{
+				string? fromFiles = await NewestMainFileVersion(group[0].NexusID!);
+				if (IsNewerVersion(installedVersion, fromFiles)) latestVersion = fromFiles!;
+			}
+
+			if (_settings.IgnoredVersions.TryGetValue(group[0].UniqueId, out string? ignored) && ignored == latestVersion)
+				return;
+
+			foreach (StardewMod mod in group) RecordLatestVersion(mod, latestVersion);
+
 			if (!IsNewerVersion(installedVersion, latestVersion)) return;
 
 			// One row per download, named after the mod that best stands for it — the main mod rather than a

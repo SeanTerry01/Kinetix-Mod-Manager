@@ -1,5 +1,24 @@
 # Version 1.5.2
 
+## 🐛 Fixed: an update was missed because the mod page's own version number was out of date
+
+*   The update check said **all mods are up to date** while SSE Engine Fixes **7.0.21** had been sitting on its Files tab for a week — on a Skyrim that had just updated and would not launch without it.
+*   **The page was both lying and telling the truth.** A Nexus mod page carries a version number of its own, and the author maintains it **by hand, separately from uploading the file**. Upload and forget, and the page reads 7.0.20 while its own Files tab offers 7.0.21. The manager read the page and believed it, because that number was the only thing it had ever asked for.
+*   **When the page says there is nothing new, the files are now asked as well.** The check takes the highest version among the files the page currently offers as its **main** download, and reports an update when that beats what you have installed. An author who forgets to bump the number no longer hides a release from you.
+*   Only what the page is actually offering counts. The bundles filed as **optional**, and the mod's whole history sitting under **old version** or **archived**, are ignored — reading versions off those would invent updates out of files nobody is being offered.
+*   ⚠️ **It costs a second look-up, so it is only taken when the first answer was "up to date"**, and it is skipped when your Nexus allowance is running low — a thorough check is worth an extra call, and running you out of them is not. When it is skipped the check answers exactly as it did before.
+
+---
+
+## 🐛 Fixed: the preloader was called a leftover while the installed mod was still using it
+
+*   The new **"No longer used"** finding went by your game's version alone. Update Skyrim to 1.7.99 or newer and it offered to clear the preloader out — even when the **SSE Engine Fixes actually installed** was an older release, the kind that still calls the preloader's entry point.
+*   That is advice pointing the wrong way. The file is not left over; it is a file that copy of the mod is still trying to use, and what that setup needs is the newer mod, not a deletion.
+*   **Both halves now have to be true**: the game past the version where the script extender took over the preloading, *and* the installed mod at the release that stopped doing it itself (7.0.21). An installed version the manager cannot read counts as too old — nobody should be told to delete a file on a guess.
+*   The clean-up now takes the preloader's own log file (`d3dx9_42.log`) too, rather than leaving one file of four behind.
+
+---
+
 ## 🐛 Fixed: a prompt raised from a browser download read out its buttons and not its question
 
 *   Click **Mod Manager Download** on Nexus and the manager asks *"Downloaded Such-and-such. Install now?"*. What was actually spoken was **"Yes. No."** — the choices, without the question they answer.

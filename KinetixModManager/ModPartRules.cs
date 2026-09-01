@@ -125,6 +125,18 @@ public sealed class ModPart
 	public string? SupersededFromGameBuild { get; init; }
 
 	/// <summary>
+	/// The version of the mod itself from which it stopped needing this part, or <c>null</c> when the game build
+	/// alone settles it.
+	///
+	/// Both halves have to be true, and it took a real machine to show why. Skyrim updates to 1.7.104; the game
+	/// build now says the preloader is obsolete. But the Engine Fixes actually installed is still 7.0.20, which
+	/// is the build that calls the preloader — so the file is not a leftover at all, it is a file that copy of the
+	/// mod is still trying to use, and offering to delete it is advice pointing the wrong way. What that player
+	/// needs is the newer mod, which is a different finding.
+	/// </summary>
+	public string? SupersededFromModVersion { get; init; }
+
+	/// <summary>
 	/// Every file this part puts in the game folder, relative to it. Only parts that land in the game folder have
 	/// this, and it is what lets a part that has been superseded be cleared out again — the mod list has never
 	/// heard of these files, so nothing else could name them.
@@ -174,7 +186,8 @@ public static class ModPartRules
 	/// libraries it loads the allocator from. All three are the preloader, and all three are what is left behind
 	/// once it is no longer used.
 	/// </summary>
-	private static readonly string[] EngineFixesPreloaderFiles = { EngineFixesPreloaderDll, "tbb.dll", "tbbmalloc.dll" };
+	private static readonly string[] EngineFixesPreloaderFiles =
+		{ EngineFixesPreloaderDll, "tbb.dll", "tbbmalloc.dll", "d3dx9_42.log" };
 
 	/// <summary>
 	/// The Skyrim build from which SSE Engine Fixes stopped needing its own preloader.
@@ -293,6 +306,9 @@ public static class ModPartRules
 					// part is neither fetched nor wanted there. Below that build it is still mandatory: the plugin
 					// puts up an error box and terminates the game when it finds it did not preload.
 					SupersededFromGameBuild = EngineFixesPreloaderSupersededAt,
+					// 7.0.21 is the release that carries the self-preloading build; 7.0.20 and earlier still call
+					// the proxy DLL's entry point whatever the game underneath them is.
+					SupersededFromModVersion = "7.0.21",
 					Files       = EngineFixesPreloaderFiles,
 					Category    = "MAIN",
 					// "Part 2" is how it was named for years and how people still refer to it; the current file
@@ -335,8 +351,41 @@ public static class ModPartRules
 	/// longer uses. The mirror of <see cref="PartNeeded"/>, and separate from it because "not needed" and "sitting
 	/// in the game folder doing nothing" are different findings with different wording.
 	/// </summary>
-	public static bool PartSuperseded(ModPart part, string? gameBuild) =>
-		!string.IsNullOrEmpty(part.SupersededFromGameBuild) && !PartNeeded(part, gameBuild);
+	/// <param name="installedModVersion">
+	/// The version of the mod as installed, where it is known. A part with a
+	/// <see cref="ModPart.SupersededFromModVersion"/> is only a leftover once the installed copy has reached it —
+	/// an older copy is still using the file. An unknown version is treated as too old, because the alternative is
+	/// telling somebody to delete a file their mod still calls.
+	/// </param>
+	public static bool PartSuperseded(ModPart part, string? gameBuild, string? installedModVersion = null)
+	{
+		if (string.IsNullOrEmpty(part.SupersededFromGameBuild)) return false;
+		if (PartNeeded(part, gameBuild)) return false;
+
+		if (string.IsNullOrEmpty(part.SupersededFromModVersion)) return true;
+		if (string.IsNullOrEmpty(installedModVersion)) return false;
+
+		return CompareVersions(installedModVersion, part.SupersededFromModVersion) >= 0;
+	}
+
+	/// <summary>
+	/// Compares two dot-separated version strings part by part, missing and unparsable parts counting as zero.
+	/// Negative when <paramref name="a"/> is older, 0 when they are level, positive when it is newer.
+	/// </summary>
+	private static int CompareVersions(string a, string b)
+	{
+		string[] left = a.Split('.');
+		string[] right = b.Split('.');
+
+		for (int i = 0; i < Math.Max(left.Length, right.Length); i++)
+		{
+			int l = i < left.Length && int.TryParse(left[i], out int lv) ? lv : 0;
+			int r = i < right.Length && int.TryParse(right[i], out int rv) ? rv : 0;
+			if (l != r) return l < r ? -1 : 1;
+		}
+
+		return 0;
+	}
 
 	/// <summary>Every known mod for a game, in table order.</summary>
 	public static IReadOnlyList<KnownMod> For(string? gameId)
@@ -482,6 +531,26 @@ public static class ModPartRules
 
 		return result;
 	}
+
+	/// <summary>
+	/// The version strings of the files a page currently offers as its main download.
+	///
+	/// The reason this is needed at all: a mod page carries a version of its own, and it is the author who keeps
+	/// it up to date — by hand, separately from uploading the file. When they upload and forget, the page says
+	/// one thing and its own Files tab says another, and an update check that only ever read the page believes
+	/// the mod is current. SSE Engine Fixes did exactly that: 7.0.21 went up as a MAIN file on 24 August 2026
+	/// while the page still read 7.0.20, so nobody was told, on the very release that was needed to launch Skyrim
+	/// 1.7.104 at all.
+	///
+	/// MAIN only, and only files Nexus would serve. An OPTIONAL bundle or a retired file is not what the page is
+	/// offering, and reading versions off those would invent updates out of a mod's own history.
+	/// </summary>
+	public static List<string> MainFileVersions(IEnumerable<NexusFileInfo> files) =>
+		files.Where(f => Servable(f) &&
+				string.Equals(f.CategoryName, "MAIN", StringComparison.OrdinalIgnoreCase) &&
+				!string.IsNullOrWhiteSpace(f.Version))
+			.Select(f => f.Version.Trim())
+			.ToList();
 
 	/// <summary>
 	/// The page on Nexus showing exactly one file, for a user whose account cannot be handed a download link

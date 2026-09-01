@@ -326,9 +326,12 @@ public partial class Form1
 		string? build = ActiveGameBuild();
 
 		foreach (KnownMod known in ModPartRules.For(_settings.ActiveGame))
+		{
+			string? modVersion = InstalledVersionOf(known);
+
 			foreach (ModPart part in known.Parts)
 			{
-				if (!ModPartRules.PartSuperseded(part, build)) continue;
+				if (!ModPartRules.PartSuperseded(part, build, modVersion)) continue;
 				if (part.Files.Count == 0 || !IsPartInstalled(part, gameFolder)) continue;
 
 				ModPart leftover = part;
@@ -339,8 +342,33 @@ public partial class Form1
 					OnEnter = () => RemoveSupersededPartAsync(known, leftover, gameFolder)
 				});
 			}
+		}
 
 		return rows;
+	}
+
+	/// <summary>
+	/// The version of <paramref name="known"/> as it is installed, or <c>null</c> when no part of it is in the mod
+	/// list to ask. Found through the same name match the parts are detected by, so a mod that arrived any way at
+	/// all — by hand, in a Collection, through an MO2 import — answers as readily as one the manager installed.
+	/// </summary>
+	private string? InstalledVersionOf(KnownMod known)
+	{
+		foreach (ModPart part in known.Parts)
+		{
+			if (string.IsNullOrEmpty(part.DetectModName)) continue;
+
+			GameMod? mod = _allInstalledMods.FirstOrDefault(m =>
+				(m.Name.Contains(part.DetectModName, StringComparison.OrdinalIgnoreCase) ||
+				 m.UniqueId.Contains(part.DetectModName, StringComparison.OrdinalIgnoreCase)) &&
+				(string.IsNullOrEmpty(part.DetectModNameExcluding) ||
+				 !(m.Name.Contains(part.DetectModNameExcluding, StringComparison.OrdinalIgnoreCase) ||
+				   m.UniqueId.Contains(part.DetectModNameExcluding, StringComparison.OrdinalIgnoreCase))));
+
+			if (!string.IsNullOrWhiteSpace(mod?.Version)) return mod!.Version;
+		}
+
+		return null;
 	}
 
 	/// <summary>

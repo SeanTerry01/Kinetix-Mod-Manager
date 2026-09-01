@@ -161,6 +161,36 @@ public class NexusService
 	}
 
 	/// <summary>
+	/// The versions of the files a mod page currently offers as its main download, for a check that the page's
+	/// own version number has already said nothing about.
+	///
+	/// Costs a second request, so it is asked only when the first answer was "up to date" — see
+	/// <c>Form1.CheckForUpdates</c> — and only while there is room in the quota to spend. A thorough check is
+	/// worth an extra call; running the user out of API calls and failing every later check is not, so a low
+	/// remaining allowance answers with nothing and the check falls back to what the page said.
+	/// </summary>
+	public async Task<List<string>> GetMainFileVersionsAsync(string nexusId)
+	{
+		if (!HasQuotaToSpare) return new List<string>();
+
+		await _apiSemaphore.WaitAsync();
+		try
+		{
+			await Task.Delay(Random.Shared.Next(100, 1000));
+			return ModPartRules.MainFileVersions(await GetModFilesAsync(nexusId));
+		}
+		catch { return new List<string>(); }
+		finally { _apiSemaphore.Release(); }
+	}
+
+	/// <summary>
+	/// Whether there is enough of the Nexus quota left to spend a request on a thoroughness check rather than on
+	/// something the user asked for. Unknown counts as yes: the headers are only absent before the first call.
+	/// </summary>
+	private bool HasQuotaToSpare =>
+		(DailyRemaining < 0 || DailyRemaining > 100) && (HourlyRemaining < 0 || HourlyRemaining > 20);
+
+	/// <summary>
 	/// What the SMAPI web API knows about one installed mod: the suggested update (when one is offered) and
 	/// the mod-database entry it was matched to. <see cref="Known"/> is <c>true</c> when smapi.io recognised
 	/// the mod's UniqueID at all — that mod has been version-checked even if its manifest carries no update
@@ -865,6 +895,7 @@ public class NexusService
 			using var req = BuildRequest(HttpMethod.Get,
 				$"https://api.nexusmods.com/v1/games/{CurrentGameDomain}/mods/{modId}/files.json");
 			using var resp = await HttpClient.SendAsync(req);
+			CaptureRateLimit(resp);
 			if (!resp.IsSuccessStatusCode) return new List<NexusFileInfo>();
 
 			return ModPartRules.ParseFilesJson(await resp.Content.ReadAsStringAsync());
