@@ -113,6 +113,11 @@ public partial class Form1
 			return MessageBox.Show(text, caption, buttons);
 		}
 
+		// Before the prompt exists at all. See WaitOutReaderReaction: once the buttons are on screen and one of
+		// them has focus, the reader is already talking about it, and no amount of delaying our own sentence puts
+		// it back in front.
+		WaitOutReaderReaction();
+
 		PromptChoice[] choices = ChoicesFor(buttons);
 		DialogResult? answer = null;
 
@@ -121,16 +126,15 @@ public partial class Form1
 		RunOverlay(host, overlay, firstButton,
 			finished: () => answer != null,
 			onEscape: () => answer = EscapeResult(choices),
-			// The question first. The buttons are unnamed at this point so nothing from the screen reader
-			// competes with it; restoring their names a moment later is what makes the reader announce the
-			// focused choice — "Yes, Alt Y" — immediately after.
-			//
-			// The two are chained rather than started together, because the gap BETWEEN them is what does the
-			// work. Waiting for the reader to settle delayed only the question, leaving the names to come back
-			// while it was still being spoken — and a name change made mid-utterance is not one the reader
-			// reports, so the prompt read out its question and then said nothing about the button under the
-			// user's finger. They had to Tab away and back to hear it.
-			afterShown: () => SpeakPromptQuestion(text, andThen: () => RestoreChoiceNames(overlay, choices)));
+			// The question, at once and interrupting. Focus has just landed on the first choice and the reader
+			// has begun saying so; cutting that off is exactly what puts the question first. Restoring the
+			// buttons' real names a moment later is then what makes the reader announce the focused choice —
+			// "Yes, button, Alt+Y" — after the question rather than in front of it.
+			afterShown: () =>
+			{
+				SpeakPromptQuestion(text);
+				RestoreChoiceNames(overlay, choices);
+			});
 
 		return answer ?? EscapeResult(choices);
 	}
@@ -361,11 +365,17 @@ public partial class Form1
 
 		foreach (PromptChoice choice in choices)
 		{
-			// Deliberately unnamed for now. Focus landing on a named button makes the screen reader start saying
-			// "Yes" of its own accord, and the question — spoken a moment later — then cut it off part-way, which
-			// is heard as a stray "ye" in front of every prompt. A blank name gives the reader nothing to say, so
-			// the question is the first thing heard; the real names are restored a moment later (see
-			// RestoreChoiceNames) so Tab still announces each choice properly.
+			// Named blank for now, and it is worth being honest about what that does and does not achieve.
+			//
+			// It does NOT silence the button. A screen reader with no accessible name to read falls back to the
+			// control's visible text, so focus landing here still produces "Yes, button, Alt+Y" — proved by a
+			// user's own NVDA speech history, which showed exactly that line arriving ahead of the question.
+			// What the blank name buys is a SHORTER announcement to interrupt, and a name change a moment later
+			// (see RestoreChoiceNames) that the reader reports — which is what puts the choice AFTER the question
+			// instead of in front of it.
+			//
+			// The thing that actually orders these is the interrupt in SpeakPromptQuestion, fired the instant
+			// focus lands. Anything that delays it puts the button first again.
 			var button = new Button
 			{
 				Text = choice.Label,
@@ -431,14 +441,7 @@ public partial class Form1
 	/// itself a change the screen reader reports, so it announces "Yes, Alt Y" on its own straight afterwards;
 	/// saying it here as well had it read out twice.
 	/// </summary>
-	private void SpeakPromptQuestion(string text, Action andThen)
-	{
-		WhenReaderHasSettled(() =>
-		{
-			Speak(text, interrupt: true);
-			andThen();
-		});
-	}
+	private void SpeakPromptQuestion(string text) => Speak(text, interrupt: true);
 
 	/// <summary>
 	/// Gives the choice buttons their real accessible names back, shortly after the prompt has been announced.

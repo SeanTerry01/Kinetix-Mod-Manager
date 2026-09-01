@@ -52,25 +52,30 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Runs <paramref name="speak"/> once the screen reader has stopped reacting to a foreground grab, or
-	/// immediately when nothing grabbed the foreground.
+	/// Holds here until the screen reader has finished reacting to a foreground grab, pumping messages while it
+	/// waits. Returns at once when nothing grabbed the foreground.
 	///
-	/// The timer ticks on the UI message loop, which an overlay's own nested loop keeps pumping, so this lands
-	/// while a prompt is up exactly as it does anywhere else.
+	/// ⚠️ Called BEFORE anything is put on screen, and that placement is the whole point. Waiting afterwards
+	/// looks equivalent and is not: by then focus has already landed on the new screen, and the reader has
+	/// already started announcing whatever it landed on. Delaying only the app's own sentence therefore does not
+	/// protect it, it merely moves it behind the reader's — a prompt read out "Yes, button, Alt+Y" and then, a
+	/// beat later, the question it was answering. Waiting first means focus arrives into a settled room, and the
+	/// app's sentence can interrupt the reader's reaction to that focus, which is what always made the question
+	/// come first.
+	///
+	/// Pumped rather than slept through: the window has to keep answering Windows for the whole wait, and this
+	/// runs on the UI thread. DoEvents on every pass services the queue; the short rest between passes stops it
+	/// spinning a core for nothing.
 	/// </summary>
-	private void WhenReaderHasSettled(Action speak)
+	private void WaitOutReaderReaction()
 	{
-		int wait = RemainingReaderReaction();
-		if (wait <= 0) { speak(); return; }
-
-		var timer = new System.Windows.Forms.Timer { Interval = wait };
-		timer.Tick += (s, e) =>
+		long until = Environment.TickCount64 + RemainingReaderReaction();
+		while (Environment.TickCount64 < until)
 		{
-			timer.Stop();
-			timer.Dispose();
-			speak();
-		};
-		timer.Start();
+			if (_shuttingDown || IsDisposed) return;
+			Application.DoEvents();
+			System.Threading.Thread.Sleep(15);
+		}
 	}
 
 	/// <summary>

@@ -39,6 +39,10 @@ public partial class Form1
 	private void ShowInlineView(string title, Func<Panel, Action, Control> build, Action? onClosed = null,
 		string? hint = null)
 	{
+		// Before the view is built, for the same reason a prompt waits before its buttons appear: once focus has
+		// landed inside the view the reader is already describing what it landed on.
+		WaitOutReaderReaction();
+
 		Form host = this;
 		bool closed = false;
 		void Close() => closed = true;
@@ -101,7 +105,7 @@ public partial class Form1
 			// heading on every focus change, which is what made the title such noise before. Queued rather than
 			// interrupting, so it follows whatever was being said as the view opened instead of cutting it off.
 			RunOverlay(host, view, focusFirst, finished: () => closed, onEscape: Close,
-				afterShown: () => WhenReaderHasSettled(() =>
+				afterShown: () =>
 				{
 					Speak(title);
 					// SpeakLong, not Speak: a hint is usually a sentence, but a view whose opening IS its content
@@ -109,7 +113,7 @@ public partial class Form1
 					// single very long utterance. Chunked and queued it reads whole, and a short hint is one chunk,
 					// so nothing changes for the ordinary case.
 					if (!string.IsNullOrEmpty(hint)) SpeakLong(hint, interrupt: false);
-				}));
+				});
 		}
 		finally
 		{

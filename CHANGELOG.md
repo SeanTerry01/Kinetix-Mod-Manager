@@ -1,5 +1,22 @@
 # Version 1.5.2
 
+## 🐛 Fixed: the prompt read out the button before the question
+
+*   From a tester's NVDA speech history, which is the only thing that could have settled it:
+
+    ```
+    Yes  button  Alt+ y
+    Downloaded Project Fluent. Install now?
+    ```
+
+    The right way round is the question first, then the choice.
+*   ⚠️ **The wait was in the wrong place, and "later" is not the same as "first".** The question was being held back until the screen reader had finished reacting to the window being pulled to the front. But by the time it was held back, focus had already landed on the **Yes** button and the reader had already begun saying so — so delaying our sentence did not protect it, it just moved it behind the reader's.
+*   **The manager now waits before the prompt appears at all**, rather than after. Focus then arrives into a settled room, and the question interrupts the reader's reaction to that focus — which is what always put it first. The choice follows a moment later, as it should.
+*   ⚠️ **A correction worth recording: a blank accessible name does not silence a button.** The reader falls back to the button's visible text, so "Yes, button, Alt+Y" is announced either way — the speech history proves it. The comment in the code claiming otherwise has been fixed, because that belief is what made the wrong fix look right.
+*   In-window views raised the same way (the "which copy of the game is this for?" question, and the cross-game download question) get the same treatment.
+
+---
+
 ## ✨ New: every log opens inside the manager, read only
 
 *   Not just the manager's own — the game's too. **Notepad is gone from the manager entirely.** Reading a log no longer means leaving the program you are already in, and no log can be edited or deleted by accident while you read it.
