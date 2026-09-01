@@ -1,5 +1,23 @@
 # Version 1.5.2
 
+## 🐛 Fixed: the window's title read itself out between a prompt and its answer
+
+*   From the speech history again, one step further on:
+
+    ```
+    Downloaded Project Fluent. Install now?
+    Stardew Valley Kinetix Mod Manager - Status: Downloading Project Fluent... 100%  window
+    Yes  button  Alt+ y
+    ```
+
+    The question is in the right place now. The title bar in the middle of it is not.
+*   **Two things were wrong, and both are worth fixing on their own.**
+*   ⚠️ **The title was stale.** Finishing a download played its completion tone but never put the title back, so the window went on reading *"Status: Downloading Project Fluent... 100%"* long after the download had finished. Untidy on its own — a whole wrong sentence once anything makes the screen reader read the window out. Finishing any operation now restores the title.
+*   ⚠️ **A prompt did not silence the window, though an in-window view always had.** With no accessible name of its own, a window falls back to its caption — which here carries the game and the live status. Anything over the window now blanks its name for as long as it is up, prompts included, and puts it back exactly as found. One place does this for both, rather than views having their own copy of it.
+*   Together: the question, then the choice, and nothing in between.
+
+---
+
 ## 🐛 Fixed: the prompt read out the button before the question
 
 *   From a tester's NVDA speech history, which is the only thing that could have settled it:

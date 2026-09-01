@@ -228,6 +228,12 @@ public partial class Form1
 			if (_done) return;
 			_done = true;
 			if (TonesOn) _form._soundEngine.PlayTone(100);
+
+			// And put the title back. It was left reading "Downloading Project Fluent... 100%" long after the
+			// download had finished — which is only untidy until something makes the screen reader read the
+			// window out, and then it is a whole stale sentence in the middle of what the user is doing. That is
+			// exactly what landed between a prompt's question and its answer.
+			Ui(() => _form.ResetStatus());
 		}
 
 		/// <summary>Runs a UI action on the form's thread without blocking the background download/extract loop.</summary>

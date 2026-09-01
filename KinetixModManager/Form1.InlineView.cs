@@ -94,31 +94,24 @@ public partial class Form1
 		// A view that moves focus itself — the drill-downs bounce it through the window to force the reader to
 		// re-read a rebuilt list — leaves focus on the form for an instant, and the reader announces the form by
 		// name when that happens. Unnamed, it would fall back to the window's caption, so drilling in would say
-		// "Kinetix Mod Manager" every time. Blank while the view is up, put back exactly as found afterwards.
-		string? hostNameBefore = host.AccessibleName;
-		host.AccessibleName = " ";
-		try
-		{
-			// The view says its name once, on the way in — "Settings", then the reader's own announcement of
-			// whatever focus landed on. This is the one announcement the title is worth: it tells the user which
-			// screen opened. It is said deliberately, once, rather than left for the reader to borrow from a
-			// heading on every focus change, which is what made the title such noise before. Queued rather than
-			// interrupting, so it follows whatever was being said as the view opened instead of cutting it off.
-			RunOverlay(host, view, focusFirst, finished: () => closed, onEscape: Close,
-				afterShown: () =>
-				{
-					Speak(title);
-					// SpeakLong, not Speak: a hint is usually a sentence, but a view whose opening IS its content
-					// (a mod's description, an AI answer) passes a passage, and a screen reader silently truncates a
-					// single very long utterance. Chunked and queued it reads whole, and a short hint is one chunk,
-					// so nothing changes for the ordinary case.
-					if (!string.IsNullOrEmpty(hint)) SpeakLong(hint, interrupt: false);
-				});
-		}
-		finally
-		{
-			host.AccessibleName = hostNameBefore;
-		}
+		// "Kinetix Mod Manager" every time. RunOverlay blanks it for the whole time anything is over the window,
+		// prompts included, and puts it back exactly as found.
+		//
+		// The view says its name once, on the way in — "Settings", then the reader's own announcement of
+		// whatever focus landed on. This is the one announcement the title is worth: it tells the user which
+		// screen opened. It is said deliberately, once, rather than left for the reader to borrow from a
+		// heading on every focus change, which is what made the title such noise before. Queued rather than
+		// interrupting, so it follows whatever was being said as the view opened instead of cutting it off.
+		RunOverlay(host, view, focusFirst, finished: () => closed, onEscape: Close,
+			afterShown: () =>
+			{
+				Speak(title);
+				// SpeakLong, not Speak: a hint is usually a sentence, but a view whose opening IS its content
+				// (a mod's description, an AI answer) passes a passage, and a screen reader silently truncates a
+				// single very long utterance. Chunked and queued it reads whole, and a short hint is one chunk,
+				// so nothing changes for the ordinary case.
+				if (!string.IsNullOrEmpty(hint)) SpeakLong(hint, interrupt: false);
+			});
 
 		onClosed?.Invoke();
 	}

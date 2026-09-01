@@ -154,12 +154,13 @@ public partial class Form1
 	private void RunOverlay(Form host, Panel overlay, Control focusFirst,
 		Func<bool> finished, Action onEscape, Action? afterShown = null)
 	{
-		// Remember what to put back: the overlay borrows the window's focus, its Enter/Escape handling and the
-		// enabled state of everything already in it.
+		// Remember what to put back: the overlay borrows the window's focus, its Enter/Escape handling, its
+		// name and the enabled state of everything already in it.
 		Control? focusBefore = host.ActiveControl;
 		bool keyPreviewBefore = host.KeyPreview;
 		IButtonControl? acceptBefore = host.AcceptButton;
 		IButtonControl? cancelBefore = host.CancelButton;
+		string? hostNameBefore = host.AccessibleName;
 		var disabled = new List<Control>();
 
 		_overlayDepth++;
@@ -171,6 +172,13 @@ public partial class Form1
 			host.KeyPreview = false;
 			host.AcceptButton = null;
 			host.CancelButton = null;
+
+			// The window answers to nothing while something is over it. A screen reader that is made to describe
+			// the window — by focus touching the form, or by the window being pulled to the front — reads its
+			// accessible name, and with none it falls back to the caption. That caption is the title bar, which
+			// carries the game and the live status, so the reader announced a whole sentence of it between a
+			// prompt's question and its answer. An in-window view has done this for a while; a prompt had not.
+			host.AccessibleName = " ";
 
 			host.Controls.Add(overlay);
 			overlay.BringToFront();
@@ -284,6 +292,7 @@ public partial class Form1
 				}
 			}
 			catch (Exception ex) { DiagnosticLog.WriteException("UI", "putting the window back after a prompt closed", ex); }
+			if (!host.IsDisposed) host.AccessibleName = hostNameBefore;
 			overlay.Dispose();
 		}
 	}
