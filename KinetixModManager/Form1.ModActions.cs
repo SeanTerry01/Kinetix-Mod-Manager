@@ -462,7 +462,10 @@ public partial class Form1
 				if (SpeakBox(Loc.T("modactions.searchDepConfirm", text), Loc.T("modactions.quickFixLogTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 				{
 					SelectTab(AppTab.Discovery);
-					txtSearch.Text = text;
+					// The log names the mod by its identifier, and the prompt above quotes it back because that is
+					// what the user can see in the log. The SEARCH has to be the mod's actual name: Nexus has never
+					// heard of "Digus.ProducerFrameworkMod", only of "Producer Framework Mod".
+					txtSearch.Text = ModNameMatch.SearchTermForIdentifier(text);
 					Fire(RunDiscovery(), "RunDiscovery");
 				}
 				return;

@@ -131,7 +131,12 @@ public partial class Form1
 				{
 					string depKey = $"dep|{mod.Name}|{dep.UniqueId}";
 					if (!dep.IsPresent)
-						rows.Add(new ReportRow { Text = Loc.T("reports.depMissing", mod.Name, dep.UniqueId), SearchTerm = dep.UniqueId, IgnoreKey = depKey });
+						rows.Add(new ReportRow
+						{
+							Text = Loc.T("reports.depMissing", mod.Name, dep.UniqueId),
+							SearchTerm = ModNameMatch.SearchTermForIdentifier(dep.UniqueId),
+							IgnoreKey = depKey
+						});
 					else if (!dep.IsEnabled)
 						rows.Add(new ReportRow { Text = Loc.T("reports.depDisabled", mod.Name, dep.UniqueId), IgnoreKey = depKey });
 					else if (!dep.IsNewEnough)
@@ -483,7 +488,7 @@ public partial class Form1
 			{
 				Text = Loc.T(stillUp ? "reports.pluginStuckGame" : "reports.pluginStoppedGame",
 					stuckOn, GameProfiles.DisplayNameFor(_settings.ActiveGame)),
-				SearchTerm = stuckOn,
+				SearchTerm = ModNameMatch.SearchTermForIdentifier(stuckOn),
 				IgnoreKey = $"stuck|{stuckOn}"
 			});
 
@@ -515,7 +520,7 @@ public partial class Form1
 			rows.Add(new ReportRow
 			{
 				Text = Loc.T(key, fail.Name, se.GameVersion, fail.Reason),
-				SearchTerm = fail.Name,
+				SearchTerm = ModNameMatch.SearchTermForIdentifier(fail.Name),
 				IgnoreKey = $"plugin|{fail.PluginFile}"
 			});
 		}

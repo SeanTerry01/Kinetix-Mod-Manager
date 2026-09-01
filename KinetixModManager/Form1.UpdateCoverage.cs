@@ -165,18 +165,36 @@ public partial class Form1
 	/// </summary>
 	private async Task ShowLinkCandidatesAsync(StardewMod mod)
 	{
-		string term = ModNameMatch.StripTypeTag(mod.Name);
-		Speak(Loc.T("coverage.searching", term));
+		// Every name the mod goes by, best first, rather than only the one it calls itself.
+		//
+		// The single-name search was the same bug from the other end: a mod the manager could not identify is
+		// very often one with no manifest to read, and its name is then whatever its FOLDER is called — which for
+		// anything installed from Nexus is the download's name with the mod id and datestamp still attached.
+		// Searching for that finds nothing, and the user is told "no results" for a mod that is plainly on the
+		// site. The same aliases the automatic matcher already uses are tried here, in the same order.
+		List<string> terms = ModNameMatch.SearchAliases(mod);
+		if (terms.Count == 0) terms.Add(ModNameMatch.StripTypeTag(mod.Name));
 
-		List<GameMod> results;
-		try
+		Speak(Loc.T("coverage.searching", terms[0]));
+
+		var results = new List<GameMod>();
+		foreach (string term in terms)
 		{
-			(results, _) = await _nexusService.SearchModsAsync("Search", term, 1, 10);
-		}
-		catch (Exception ex)
-		{
-			LogFailure("LinkCandidates", "Nexus search failed", ex);
-			results = new List<GameMod>();
+			try
+			{
+				(List<GameMod> found, _) = await _nexusService.SearchModsAsync("Search", term, 1, 10);
+				results = found;
+			}
+			catch (Exception ex)
+			{
+				LogFailure("LinkCandidates", $"searching Nexus for \"{term}\"", ex);
+				results = new List<GameMod>();
+			}
+
+			// Stop at the first alias that turns anything up. A later alias is a broader, less certain guess —
+			// the folder's parts, the GUID's segments — and running it over results we already have would bury
+			// the good answer under worse ones.
+			if (results.Any(r => !string.IsNullOrEmpty(r.NexusID))) break;
 		}
 
 		var rows = new List<ReportRow>();

@@ -64,7 +64,10 @@ public partial class Form1
 				rows.Add(new ReportRow
 				{
 					Text = Loc.T("deps.requiresRow", dep.UniqueId, status, kind),
-					SearchTerm = (!dep.IsPresent && dep.IsRequired) ? dep.UniqueId : null
+					// The identifier is what the manifest declares, and it is not a name Nexus has ever heard of.
+					SearchTerm = (!dep.IsPresent && dep.IsRequired)
+						? ModNameMatch.SearchTermForIdentifier(dep.UniqueId)
+						: null
 				});
 			}
 		}
@@ -191,7 +194,13 @@ public partial class Form1
 			var missing = mod.Dependencies.Where(d => d.IsRequired && !d.IsPresent).Select(d => d.UniqueId).Distinct().ToList();
 			if (missing.Count == 0) { Speak(Loc.T("deps.resolveNoneMissing")); return; }
 
-			var rows = missing.Select(uid => new ReportRow { Text = Loc.T("deps.resolveMissingStardew", uid), SearchTerm = uid }).ToList();
+			// The row still NAMES the identifier, because that is what the mod's manifest asks for and what the
+			// user will see written elsewhere. What it SEARCHES for is the mod's actual name.
+			var rows = missing.Select(uid => new ReportRow
+			{
+				Text = Loc.T("deps.resolveMissingStardew", uid),
+				SearchTerm = ModNameMatch.SearchTermForIdentifier(uid)
+			}).ToList();
 			ShowReportDialog(Loc.T("deps.resolveTitle"), Loc.T("deps.resolveHeaderStardew", mod.Name, missing.Count),
 				Loc.T("deps.resolveNoneMissing"), rows, Loc.T("deps.resolveHintStardew"));
 			return;

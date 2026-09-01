@@ -108,7 +108,11 @@ public static class ModNameMatch
 
 		void Add(string? value)
 		{
-			string text = (value ?? "").Trim();
+			// Through the download-name cleaner first. A mod the manager installed is in a folder named after the
+			// archive Nexus served, tail and all — "DbMiscFunctions 65410 10.4 2026-08-27T05-37Z L5WQbqhzr" — and
+			// searching for a mod id and a datestamp finds nothing at all.
+			string text = ModDisplayName.Clean(value, installed.NexusID).Trim();
+			if (text.Length == 0) text = (value ?? "").Trim();
 			if (text.Length < 3) return;
 			// Compare on the normalized form so "BiggerStacks" and "Bigger Stacks" count as one alias.
 			string key = Normalize(text);
@@ -130,7 +134,13 @@ public static class ModNameMatch
 
 		// The folder, whole and in parts. A folder named "MoonlightPeaks.ModMenu" carries the game's name and
 		// the mod's; only the second identifies it, and only once split back into words.
-		string folder = FolderName(installed);
+		//
+		// Cleaned FIRST, before anything splits it up. The download-tail patterns are anchored to the end of the
+		// name, so splitting "DbMiscFunctions 65410 10.4 2026-08-27T05-37Z L5WQbqhzr" on its dots first leaves
+		// fragments that no longer look like a tail — and each fragment then became a search term of its own.
+		string folder = ModDisplayName.Clean(FolderName(installed), installed.NexusID);
+		if (folder.Length == 0) folder = FolderName(installed);
+
 		Add(folder);
 		Add(Humanize(folder));
 		foreach (string part in IdentifierParts(folder))
@@ -148,6 +158,68 @@ public static class ModNameMatch
 		}
 
 		return aliases;
+	}
+
+	/// <summary>
+	/// What to search Nexus for when all that is known is an identifier — a SMAPI <c>UniqueID</c> such as
+	/// <c>Digus.ProducerFrameworkMod</c>, a BepInEx GUID, or a DLL plugin's file name. Best first.
+	///
+	/// The identifier is never the answer by itself, and handing it to a search is how "it searched for
+	/// authorname dot modname" happened: Nexus has never heard of <c>Pathoschild.Automate</c>, and a search for
+	/// it returns nothing while the page called "Automate" sits there. What identifies the mod is the LAST
+	/// meaningful segment — the earlier ones are the author and the reverse-domain scaffolding — and it has to be
+	/// split back into words, because Nexus matches names by word and the identifier has none.
+	///
+	/// The whole identifier is still offered, last, for the rare page whose title really is one.
+	/// </summary>
+	public static List<string> SearchAliasesForIdentifier(string? identifier)
+	{
+		var aliases = new List<string>();
+
+		void Add(string? value)
+		{
+			string text = (value ?? "").Trim();
+			if (text.Length < 3) return;
+			if (aliases.Any(a => Normalize(a) == Normalize(text))) return;
+			aliases.Add(text);
+		}
+
+		List<string> parts = IdentifierParts(identifier);
+
+		// The last segment first: by convention that is the mod, and everything before it is the author and the
+		// reverse-domain scaffolding.
+		if (parts.Count > 0)
+		{
+			Add(Humanize(parts[^1]));
+			Add(parts[^1]);
+		}
+
+		// Then everything after the author, as one phrase. An id like
+		// "CocumiT.TQP.crystal.lighting.fixtures" has its name spread across several segments, and the last one
+		// alone ("fixtures") is far too general to find the page called "Antique crystal lighting fixtures".
+		if (parts.Count > 2)
+			Add(string.Join(" ", parts.Skip(1).Select(Humanize)));
+
+		for (int i = parts.Count - 2; i >= 0; i--)
+		{
+			Add(Humanize(parts[i]));
+			Add(parts[i]);
+		}
+
+		Add(Humanize(identifier));
+		Add(identifier);
+
+		return aliases;
+	}
+
+	/// <summary>
+	/// The single best thing to search for given only an identifier — <c>Digus.ProducerFrameworkMod</c> becomes
+	/// "Producer Framework Mod". Falls back to the identifier itself when there is nothing better in it.
+	/// </summary>
+	public static string SearchTermForIdentifier(string? identifier)
+	{
+		List<string> aliases = SearchAliasesForIdentifier(identifier);
+		return aliases.Count > 0 ? aliases[0] : (identifier ?? "").Trim();
 	}
 
 	/// <summary>

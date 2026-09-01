@@ -1,5 +1,25 @@
 # Version 1.5.2
 
+## 🐛 Fixed: the manager searched for things Nexus has never heard of
+
+*   Ask it to find a missing dependency and it searched for **`Digus.ProducerFrameworkMod`**. That is the mod's identifier — the name its author gives it in code — and it appears nowhere on Nexus. The search came back empty and you were told the mod could not be found, while its page sat there under the name **Producer Framework Mod**.
+*   **An identifier is not a name, and it is now never searched for as though it were.** What identifies the mod is the part after the author, split back into words: `Pathoschild.Automate` searches for **Automate**, `Sandman53.AbilitiesExperienceBars` for **Abilities Experience Bars**. Where the name is spread across several parts — `CocumiT.TQP.crystal.lighting.fixtures` — everything after the author is searched for together, because the last part alone ("fixtures") would find half the site.
+*   **The rows still say the identifier.** It is what the mod's manifest asks for and what you will see written in a log, so it stays on screen. It is only what gets *searched for* that changed.
+*   **Four separate places were doing this** and all four are fixed: resolving a mod's requirements, the missing-dependency lines in Check My Setup and the requirements report, the quick fix on a log line that names a missing mod, and the row for a DLL plugin the script extender refused.
+
+---
+
+## 🐛 Fixed: a mod was searched for by the name of the folder it was downloaded into
+
+*   The other half of the same complaint. When the manager cannot identify a mod it falls back to searching for what the mod's folder is called — and for anything installed from Nexus, that folder is named after the download.
+*   ⚠️ **Nexus changed how it names downloads, and the manager could no longer see the difference.** It used to end a file name with the mod id and a run of numbers; it now writes something like `DbMiscFunctions 65410 10.4 2026-08-27T05-37Z L5WQbqhzr` — spaces instead of hyphens, and a date instead of a count of seconds. The old trimming could not match that at all, so **every mod installed since the change kept the mod id, the version and the timestamp in its folder name**, and that whole string is what got searched for.
+*   The new shape is now trimmed too, so that folder searches for **Db Misc Functions**. Where the mod's Nexus id is known it is used to make the split exact, which also handles a tail that ends in a version rather than a date — `Carry Weight Modifiers-2176-1-1-3` searches for **Carry Weight Modifiers**.
+*   ⚠️ **The trimming now happens before the name is taken apart, not after.** Splitting first left fragments that no longer looked like a tail — so `65410 10` and `4 2026-08-27T05-37Z L5WQbqhzr` each became search terms of their own.
+*   **What the mod calls itself still leads.** The folder is the fallback for a mod with nothing to read, never a replacement for a name that is already right.
+*   **"Find this mod on Nexus" now tries every name the mod goes by**, in the same order the automatic matcher already used, stopping at the first that finds anything. It had been trying one name and giving up.
+
+---
+
 ## ✨ New: nothing fails quietly any more
 
 *   **93 places in the manager caught a failure and then threw it away.** Most had a good reason to carry on — an unreadable folder really does read the same as an empty one — but *carrying on* and *saying nothing at all* are two different decisions, and only the first of them was ever meant. Carrying on is still what happens. Doing it in silence is not.

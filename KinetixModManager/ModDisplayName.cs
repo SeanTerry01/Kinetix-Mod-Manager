@@ -31,6 +31,20 @@ public static class ModDisplayName
 	private static readonly Regex NexusTail = new(
 		@"-\d{3,9}(?:-[0-9A-Za-z]+)*?-\d{9,11}$", RegexOptions.Compiled);
 
+	/// <summary>
+	/// The newer Nexus tail, which is separated by spaces and dates itself rather than counting seconds:
+	/// <c>Address Library All in One (1.7.104.0) v13 32444 13 2026-08-27T15-29Z Ae46W7Fw2</c> is the mod id
+	/// 32444, the version 13, when it was uploaded, and a per-download hash.
+	///
+	/// Worth its own pattern because the old one cannot see it at all — no hyphens, no unix timestamp — so every
+	/// mod downloaded since Nexus changed the format kept the whole tail in its folder name. That folder name is
+	/// what the manager falls back to searching by when it cannot identify a mod, and searching for a mod id and
+	/// a datestamp finds nothing, which is exactly how "it looks for the folder name" was reported.
+	/// </summary>
+	private static readonly Regex NexusTailDated = new(
+		@"\s+\d{3,9}\s+\S+\s+\d{4}-\d{2}-\d{2}T\d{2}-\d{2}Z(?:\s+\S+)?$",
+		RegexOptions.Compiled);
+
 	/// <summary>A name with no name in it: an id the content server made up, carrying nothing a person can read.</summary>
 	public static bool IsOpaque(string? name)
 	{
@@ -76,6 +90,7 @@ public static class ModDisplayName
 		}
 
 		name = NexusTail.Replace(name, "");
+		name = NexusTailDated.Replace(name, "");
 
 		// Nexus turns spaces into hyphens or underscores in some file names; a run of them left behind by the trim
 		// above reads as a stutter to a screen reader.
