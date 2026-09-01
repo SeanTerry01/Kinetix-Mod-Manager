@@ -52,7 +52,7 @@ public partial class Form1
 				}
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Downloads", $"asking GitHub for the latest release of {repo}", ex); }
 		return null;
 	}
 
@@ -88,7 +88,7 @@ public partial class Form1
 			}
 			return fallback;
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Downloads", "asking GitHub for the latest SMAPI release", ex); }
 		return null;
 	}
 

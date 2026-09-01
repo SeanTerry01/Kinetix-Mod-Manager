@@ -128,7 +128,7 @@ public partial class Form1
 				Consider(steamKey?.GetValue("InstallLocation")?.ToString(), GamePlatform.Steam);
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Detect", "reading Steam's uninstall entries", ex); }
 
 		// The per-game uninstall key above is often missing or stale (reinstalls, manual library
 		// moves, installs that never write InstallLocation). Steam's own libraryfolders.vdf lists
@@ -170,7 +170,7 @@ public partial class Form1
 					profile.GameExeName), GamePlatform.Gog);
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Detect", "looking for a GOG copy of the game", ex); }
 
 		// The well-known Steam path, tried only when nothing else turned the game up — it is a guess, not a
 		// record, so it must never displace a copy something actually reported.
@@ -199,7 +199,7 @@ public partial class Form1
 			string legacy = Path.Combine(dataBasePath, profile.StagingFolderName);
 			if (Directory.Exists(legacy) && Directory.EnumerateFileSystemEntries(legacy).Any()) return false;
 		}
-		catch { /* unreadable is not a reason to move anyone's mods; fall through to the safe answer */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("Detect", $"checking the old staging folder for {profile.Id}", ex); }
 
 		return true;
 	}
@@ -280,7 +280,7 @@ public partial class Form1
 			if (string.IsNullOrEmpty(steamPath)) return "";
 			return SteamLibraryLocator.FindGameFolder(steamPath, steamAppId) ?? "";
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Detect", "reading Steam's library folders", ex); }
 		return "";
 	}
 
@@ -307,7 +307,7 @@ public partial class Form1
 					string? path = key?.GetValue("client")?.ToString();
 					if (!string.IsNullOrEmpty(path) && Directory.Exists(path)) return path;
 				}
-				catch { }
+				catch (Exception ex) { DiagnosticLog.WriteException("Detect", "reading GOG Galaxy's install path", ex); }
 			}
 		}
 
@@ -323,7 +323,7 @@ public partial class Form1
 			string? p = userKey?.GetValue("SteamPath")?.ToString();
 			if (!string.IsNullOrEmpty(p) && Directory.Exists(p)) return p;
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Detect", "reading Steam's install path for the current user", ex); }
 
 		try
 		{
@@ -332,7 +332,7 @@ public partial class Form1
 			string? p = machineKey?.GetValue("InstallPath")?.ToString();
 			if (!string.IsNullOrEmpty(p) && Directory.Exists(p)) return p;
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Detect", "reading Steam's install path for the machine", ex); }
 
 		return "";
 	}
@@ -882,7 +882,7 @@ public partial class Form1
 				// unaffected: BepInEx loads through a DLL beside the exe, whoever starts it.
 				if (TryLaunchViaSteam(profile, gamePath))
 				{
-					_ = TrackGameSessionAsync(null, profile, exePath);
+					Fire(TrackGameSessionAsync(null, profile, exePath), "TrackGameSessionAsync");
 				}
 				else
 				{
@@ -892,7 +892,7 @@ public partial class Form1
 						WorkingDirectory = Path.GetDirectoryName(exePath)
 					};
 					p.Start();
-					_ = TrackGameSessionAsync(p, profile, exePath);
+					Fire(TrackGameSessionAsync(p, profile, exePath), "TrackGameSessionAsync");
 				}
 			}
 			else
@@ -951,7 +951,7 @@ public partial class Form1
 		catch (Exception ex)
 		{
 			// Steam refused or isn't reachable — fall back to starting the executable directly.
-			LogError("LaunchGame", "Could not launch through Steam: " + ex.Message);
+			LogFailure("LaunchGame", "Could not launch through Steam", ex);
 			return false;
 		}
 	}
@@ -1043,13 +1043,15 @@ public partial class Form1
 			// since a handoff to Steam's copy may already have happened.
 			await Task.Delay(3000);
 			bool ourProcessAlive = false;
-			try { ourProcessAlive = launched != null && !launched.HasExited; } catch { }
+			try { ourProcessAlive = launched != null && !launched.HasExited; }
+			catch (Exception ex) { DiagnosticLog.WriteException("LaunchGame", "checking whether the game we started is still running", ex); }
 			if (ourProcessAlive || IsGameProcessRunning(gameExeName)) AnnounceRunningOnce();
 
 			TimeSpan ourProcessLived = TimeSpan.Zero;
 			if (launched != null)
 			{
-				try { await launched.WaitForExitAsync(); } catch { }
+				try { await launched.WaitForExitAsync(); }
+				catch (Exception ex) { DiagnosticLog.WriteException("LaunchGame", "waiting for the game to exit", ex); }
 				ourProcessLived = DateTime.UtcNow - launchedAt;
 			}
 
@@ -1093,11 +1095,12 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("LaunchGame", "Could not follow the game process: " + ex.Message);
+			LogFailure("LaunchGame", "Could not follow the game process", ex);
 		}
 		finally
 		{
-			try { launched?.Dispose(); } catch { }
+			try { launched?.Dispose(); }
+			catch (Exception ex) { DiagnosticLog.WriteException("LaunchGame", "releasing the game process", ex); }
 		}
 
 		SetStatus(Loc.T("launch.gameClosed"));

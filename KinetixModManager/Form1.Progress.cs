@@ -221,7 +221,13 @@ public partial class Form1
 				if (_form.InvokeRequired) _form.BeginInvoke(action);
 				else action();
 			}
-			catch { /* the form may be closing mid-operation */ }
+			catch (Exception ex)
+			{
+				// The form may be closing mid-operation, which is ordinary. Recorded anyway: this swallows every
+				// exception the reporting action itself raises, so without it a bug in progress reporting is
+				// invisible rather than merely harmless.
+				DiagnosticLog.WriteException("Progress", "reporting progress to the window", ex);
+			}
 		}
 	}
 }

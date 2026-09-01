@@ -221,7 +221,7 @@ public static class ModFileSystem
 									manifest["NexusID"] = nexusId;
 									File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
 								}
-								catch {}
+								catch (Exception ex) { DiagnosticLog.WriteException("ScanMods", $"recording the Nexus id in {manifestPath}", ex); }
 							}
 						}
 
@@ -410,7 +410,8 @@ public static class ModFileSystem
 		// When the log was written, so a log predating a mod's files is not believed about them. The log only
 		// changes when the game runs, and mods are usually updated between sessions rather than during one.
 		DateTime? logWrittenUtc = null;
-		try { if (File.Exists(logPath)) logWrittenUtc = File.GetLastWriteTimeUtc(logPath); } catch { }
+		try { if (File.Exists(logPath)) logWrittenUtc = File.GetLastWriteTimeUtc(logPath); }
+		catch (Exception ex) { DiagnosticLog.WriteException("Mods", $"reading the age of {logPath}", ex); }
 
 		string disabledPath = BepInExDisabledFolder(pluginsPath);
 
@@ -513,10 +514,11 @@ public static class ModFileSystem
 
 			File.WriteAllText(manifestPath, updated);
 		}
-		catch
+		catch (Exception ex)
 		{
 			// A read-only or locked mod folder is not a reason to fail the scan; the mod still lists correctly,
 			// it just re-derives its metadata next time.
+			DiagnosticLog.WriteException("Mods", $"saving the mod details to {manifestPath}", ex);
 		}
 	}
 
@@ -733,7 +735,8 @@ public static class ModFileSystem
 		long total = 0;
 		foreach (string file in files)
 		{
-			try { total += new FileInfo(file).Length; } catch { }
+			try { total += new FileInfo(file).Length; }
+			catch (Exception ex) { DiagnosticLog.WriteException("Backup", $"measuring {file}", ex); }
 		}
 		if (total <= 0) total = 1;
 
@@ -746,7 +749,8 @@ public static class ModFileSystem
 			{
 				string relative = Path.GetFullPath(file).Substring(root.Length);
 				zip.CreateEntryFromFile(file, relative);
-				try { done += new FileInfo(file).Length; } catch { }
+				try { done += new FileInfo(file).Length; }
+				catch (Exception ex) { DiagnosticLog.WriteException("Backup", $"measuring {file}", ex); }
 				progress.Report(Math.Min(100.0, done * 100.0 / total));
 			}
 
@@ -776,7 +780,8 @@ public static class ModFileSystem
 
 		for (int i = maxCount; i < files.Count; i++)
 		{
-			try { files[i].Delete(); } catch { }
+			try { files[i].Delete(); }
+			catch (Exception ex) { DiagnosticLog.WriteException("Backup", $"deleting the old backup {files[i].FullName}", ex); }
 		}
 	}
 
@@ -993,7 +998,7 @@ public static class ModFileSystem
 				files.Add((label, path));
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("BepInEx", "listing the BepInEx config files", ex); }
 
 		files.Sort((a, b) => string.Compare(a.Label, b.Label, StringComparison.CurrentCultureIgnoreCase));
 		return files;
@@ -1370,7 +1375,7 @@ public static class ModFileSystem
 				dir = Path.GetDirectoryName(dir);
 			}
 		}
-		catch { /* best-effort tidy-up; leftover empty dirs are harmless */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("Deploy", $"tidying up empty folders under {limitRoot}", ex); }
 	}
 
 	// -------------------------------------------------------------------------
@@ -1441,7 +1446,9 @@ public static class ModFileSystem
 				return (master, light);
 			}
 		}
-		catch { /* unreadable header: fall back to the extension classification below */ }
+		// An unreadable header falls back to the extension classification below, but a plugin whose header
+		// cannot be read is worth knowing about: it is how a corrupt download presents.
+		catch (Exception ex) { DiagnosticLog.WriteException("Plugins", $"reading the header of {filePath}", ex); }
 		return (extMaster, extLight);
 	}
 
@@ -1491,7 +1498,7 @@ public static class ModFileSystem
 				pos += size;
 			}
 		}
-		catch { /* unreadable/odd header: treat as no declared masters */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("Plugins", $"reading the masters of {filePath}", ex); }
 		return masters;
 	}
 
@@ -1510,7 +1517,7 @@ public static class ModFileSystem
 					result.Add(line.Substring(1).Trim());
 			}
 		}
-		catch { /* unreadable plugins.txt: treat as no external entries */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("Plugins", $"reading {path}", ex); }
 		return result;
 	}
 
@@ -1644,7 +1651,14 @@ public static class ModFileSystem
 				Directory.CreateDirectory(Path.GetDirectoryName(dst)!);
 				if (File.Exists(src)) File.Move(src, dst, overwrite: true);
 			}
-			catch { try { RobustCopy(src, dst); } catch { } }
+			catch
+			{
+				// Moving failed, so copy instead — across volumes, or with the source still open, a move cannot
+				// work where a copy can. If the copy fails too the file simply is not deployed, and the mod is
+				// quietly incomplete in the game folder, which is exactly the failure nobody can see.
+				try { RobustCopy(src, dst); }
+				catch (Exception ex) { DiagnosticLog.WriteException("Deploy", $"putting {src} into place at {dst}", ex); }
+			}
 		}
 		return stage;
 	}
@@ -1686,7 +1700,7 @@ public static class ModFileSystem
 				}
 			}
 		}
-		catch { /* unresolved/unwritable mods drive: fall back to system temp below */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("Install", "choosing a temporary folder on the mods drive", ex); }
 		return Path.GetTempPath();
 	}
 
@@ -1951,7 +1965,8 @@ public static class ModFileSystem
 		}
 		finally
 		{
-			try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, recursive: true); } catch { }
+			try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, recursive: true); }
+			catch (Exception ex) { DiagnosticLog.WriteException("Install", $"clearing the temporary folder {tempDir}", ex); }
 		}
 	}
 
@@ -2004,7 +2019,7 @@ public static class ModFileSystem
 				total += info.Length;
 			}
 		}
-		catch { /* documentation capture is best-effort; it must never fail the install */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("ModDocs", $"capturing the documentation shipped with {destModFolder}", ex); }
 	}
 
 	/// <summary>
@@ -2129,7 +2144,7 @@ public static class ModFileSystem
 					mDesc = details["summary"]?.ToString() ?? mDesc;
 				}
 			}
-			catch { }
+			catch (Exception ex) { DiagnosticLog.WriteException("Nexus", $"looking up the details of mod {nexusId}", ex); }
 		}
 
 		var manifest = new JObject
@@ -2189,10 +2204,11 @@ public static class ModFileSystem
 					Record(snapshot, gameFolder, file);
 			}
 		}
-		catch
+		catch (Exception ex)
 		{
 			// A partial snapshot is still worth having: it can only make the recorded footprint smaller, never
 			// make it claim files that aren't the mod's.
+			DiagnosticLog.WriteException("Witcher3", $"recording what {gameFolder} held before the install", ex);
 		}
 
 		return snapshot;
@@ -2205,7 +2221,7 @@ public static class ModFileSystem
 				into[file.Substring(root.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)]
 					= info.Length + "|" + info.LastWriteTimeUtc.Ticks;
 			}
-			catch { }
+			catch (Exception ex) { DiagnosticLog.WriteException("Witcher3", $"recording {file} in the game-folder snapshot", ex); }
 		}
 	}
 
@@ -2370,7 +2386,7 @@ public static class ModFileSystem
 					mDesc = details["summary"]?.ToString() ?? mDesc;
 				}
 			}
-			catch { }
+			catch (Exception ex) { DiagnosticLog.WriteException("Nexus", $"looking up the details of mod {nexusId}", ex); }
 		}
 
 		var manifest = new JObject
@@ -2507,7 +2523,7 @@ public static class ModFileSystem
 				result.Add(dir);
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Install", $"listing the folders inside {root}", ex); }
 		return result;
 	}
 
@@ -2642,7 +2658,7 @@ public static class ModFileSystem
 				if (Directory.Exists(parked) && !Directory.EnumerateFiles(parked, "*", SearchOption.AllDirectories).Any())
 					Directory.Delete(parked, recursive: true);
 			}
-			catch { }
+			catch (Exception ex) { DiagnosticLog.WriteException("Witcher3", $"removing the emptied folder {parked}", ex); }
 		}
 
 		return moved;
@@ -2704,10 +2720,10 @@ public static class ModFileSystem
 							command,
 							place.Path + "\\" + subKeyName));
 					}
-					catch { }
+					catch (Exception ex) { DiagnosticLog.WriteException("Uninstall", $"reading the uninstall entry {subKeyName}", ex); }
 				}
 			}
-			catch { }
+			catch (Exception ex) { DiagnosticLog.WriteException("Uninstall", $"reading the uninstall entries under {place.Path}", ex); }
 		}
 
 		if (candidates.Count == 0) return null;
@@ -2738,7 +2754,7 @@ public static class ModFileSystem
 				using var key = hive.OpenSubKey(uninstaller.RegistryKeyPath);
 				if (key?.GetValue("UninstallString") != null) return true;
 			}
-			catch { }
+			catch (Exception ex) { DiagnosticLog.WriteException("Uninstall", $"checking whether {uninstaller.RegistryKeyPath} is still registered", ex); }
 		}
 		return false;
 	}
@@ -2760,7 +2776,7 @@ public static class ModFileSystem
 				if (!string.IsNullOrEmpty(relative)) paths.Add(relative);
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Witcher3", "reading the extra paths the mod recorded", ex); }
 		return paths;
 	}
 
@@ -2866,7 +2882,7 @@ public static class ModFileSystem
 					if (identity.Name.Length == 0) mName = details["name"]?.ToString() ?? mName;
 				}
 			}
-			catch { }
+			catch (Exception ex) { DiagnosticLog.WriteException("Nexus", $"looking up the details of mod {nexusId}", ex); }
 		}
 
 		var manifest = new JObject
@@ -2962,7 +2978,7 @@ public static class ModFileSystem
 					if (Directory.EnumerateFiles(m.FolderPath, file, SearchOption.AllDirectories).Any())
 						return m.IsEnabled ? FomodFileState.Active : FomodFileState.Inactive;
 				}
-				catch { }
+				catch (Exception ex) { DiagnosticLog.WriteException("FOMOD", $"looking for {file} in {m.FolderPath}", ex); }
 			}
 			return FomodFileState.Missing;
 		};
@@ -3019,10 +3035,10 @@ public static class ModFileSystem
 					string? id = ManifestString(manifest, "UniqueID");
 					if (!string.IsNullOrWhiteSpace(id)) ids.Add(id!.Trim());
 				}
-				catch { /* one unreadable manifest shouldn't lose the rest of the archive */ }
+				catch (Exception ex) { DiagnosticLog.WriteException("Install", $"reading a manifest inside {archivePath}", ex); }
 			}
 		}
-		catch { /* not a readable zip: nothing to recover from it */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("Install", $"reading {archivePath} as a zip", ex); }
 		return ids;
 	}
 
@@ -3100,7 +3116,8 @@ public static class ModFileSystem
 			}
 		}
 
-		try { File.Delete(zipPath); } catch {}
+		try { File.Delete(zipPath); }
+		catch (Exception ex) { DiagnosticLog.WriteException("Install", $"deleting the downloaded {zipPath}", ex); }
 
 		return exePath;
 	}
@@ -3196,7 +3213,7 @@ public static class ModFileSystem
 					ExtractZipWithProgress(archive, outDir, null);
 				}
 			}
-			catch { /* an unreadable nested archive just means this fallback didn't help */ }
+			catch (Exception ex) { DiagnosticLog.WriteException("Install", $"unpacking the nested archive {archive}", ex); }
 		}
 	}
 
@@ -3227,7 +3244,7 @@ public static class ModFileSystem
 				((head[2] == 0x03 && head[3] == 0x04) || (head[2] == 0x05 && head[3] == 0x06) || (head[2] == 0x07 && head[3] == 0x08)))
 				return ArchiveFormat.Zip;
 		}
-		catch { /* fall back to the extension below */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("Install", $"reading the first bytes of {path} to identify it", ex); }
 		return ArchiveFormat.Unknown;
 	}
 
@@ -3359,7 +3376,8 @@ public static class ModFileSystem
 			long sum = 0;
 			foreach (string f in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
 			{
-				try { sum += new FileInfo(f).Length; } catch { }
+				try { sum += new FileInfo(f).Length; }
+				catch (Exception ex) { DiagnosticLog.WriteException("Disk", $"measuring {f}", ex); }
 			}
 			return sum;
 		}
@@ -3403,7 +3421,8 @@ public static class ModFileSystem
 		}
 		finally
 		{
-			try { Directory.Delete(tempDir, true); } catch {}
+			try { Directory.Delete(tempDir, true); }
+			catch (Exception ex) { DiagnosticLog.WriteException("Install", $"clearing the temporary folder {tempDir}", ex); }
 		}
 	}
 
@@ -3449,7 +3468,7 @@ public static class ModFileSystem
 			var manifest = new ScriptExtenderManifest { GamePath = gamePath, Files = files };
 			File.WriteAllText(path, JsonConvert.SerializeObject(manifest, Formatting.Indented));
 		}
-		catch { /* manifest is best-effort; never fail the install over it */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("Script Extender", "recording which files were installed, for a later uninstall", ex); }
 	}
 
 	/// <summary>
@@ -3487,7 +3506,8 @@ public static class ModFileSystem
 				// Prune directories we emptied, deepest first, but never the game root itself.
 				foreach (string dir in dirs.OrderByDescending(d => d.Length))
 					PruneEmptyDir(dir, gamePath);
-				try { File.Delete(manifestPath); } catch { }
+				try { File.Delete(manifestPath); }
+				catch (Exception ex) { DiagnosticLog.WriteException("Script Extender", $"deleting the install record {manifestPath}", ex); }
 				return (removed, true);
 			}
 			catch (Exception ex) { logError("Script Extender", $"Could not read uninstall manifest: {ex.Message}"); }
@@ -3523,7 +3543,7 @@ public static class ModFileSystem
 				cur = Path.GetDirectoryName(cur)?.TrimEnd(Path.DirectorySeparatorChar) ?? "";
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Deploy", $"removing emptied folders under {root}", ex); }
 	}
 
 	/// <summary>
@@ -3560,7 +3580,8 @@ public static class ModFileSystem
 		}
 		finally
 		{
-			try { Directory.Delete(tempDir, true); } catch {}
+			try { Directory.Delete(tempDir, true); }
+			catch (Exception ex) { DiagnosticLog.WriteException("Install", $"clearing the temporary folder {tempDir}", ex); }
 		}
 	}
 
@@ -3628,7 +3649,7 @@ public static class ModFileSystem
 			foreach (DirectoryInfo dir in di.GetDirectories("*", SearchOption.AllDirectories))
 				if ((dir.Attributes & FileAttributes.ReadOnly) != 0) dir.Attributes &= ~FileAttributes.ReadOnly;
 		}
-		catch { /* best effort — the delete/copy below will surface any real problem */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("Files", $"clearing read-only flags under {path}", ex); }
 	}
 
 	/// <summary>Deletes a directory tree robustly: clears read-only attributes first (the common cause of an

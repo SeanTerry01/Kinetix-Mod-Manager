@@ -96,7 +96,7 @@ public static class Witcher3UserConfig
 				return Directory.EnumerateFiles(modFolderPath, "*.xml", SearchOption.AllDirectories)
 					.FirstOrDefault(IsUserConfigFile);
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Witcher3", $"looking for a menu file under {modFolderPath}", ex); }
 		return null;
 	}
 

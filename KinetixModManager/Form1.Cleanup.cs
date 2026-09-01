@@ -37,7 +37,7 @@ public partial class Form1
 					freed += TryDeleteDir(dir);
 				}
 		}
-		catch (Exception ex) { LogError("Cleanup", $"Scanning temp folder failed: {ex.Message}"); }
+		catch (Exception ex) { LogFailure("Cleanup", $"Scanning temp folder failed", ex); }
 
 		_soundEngine.Play(freed > 0 ? "load_complete" : "disable");
 		Speak(freed > 0 ? Loc.T("cleanup.freed", FormatBytes(freed)) : Loc.T("cleanup.nothing"));
@@ -53,7 +53,7 @@ public partial class Form1
 			Directory.Delete(dir, recursive: true);
 			return size;
 		}
-		catch (Exception ex) { LogError("Cleanup", $"Deleting {dir} failed: {ex.Message}"); return 0; }
+		catch (Exception ex) { LogFailure("Cleanup", $"Deleting {dir} failed", ex); return 0; }
 	}
 
 	/// <summary>Best-effort recursive byte size of a directory; unreadable entries are skipped.</summary>
@@ -64,10 +64,11 @@ public partial class Form1
 		{
 			foreach (string f in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
 			{
-				try { total += new FileInfo(f).Length; } catch { }
+				try { total += new FileInfo(f).Length; }
+				catch (Exception ex) { DiagnosticLog.WriteException("Cleanup", $"measuring {f}", ex); }
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Cleanup", $"measuring the folder {dir}", ex); }
 		return total;
 	}
 }

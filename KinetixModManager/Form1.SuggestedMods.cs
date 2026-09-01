@@ -332,7 +332,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError(entry.Name, "Suggested mod install failed: " + ex.Message);
+			LogFailure(entry.Name, "Suggested mod install failed", ex);
 			Speak(Loc.T("suggested.installFailed", entry.Name, ex.Message));
 		}
 	}

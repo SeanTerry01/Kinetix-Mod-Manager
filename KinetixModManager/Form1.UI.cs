@@ -51,7 +51,16 @@ public partial class Form1
 		// raising GotFocus, because the menu uses a special input mode that never takes the list's
 		// focus. Re-announce the focused list when the menu deactivates so the user still hears their
 		// position. BeginInvoke defers until focus has actually been restored.
-		menuStrip.MenuDeactivate += (s, e) => BeginInvoke(new Action(AnnounceFocusRestored));
+		//
+		// Guarded, because closing the window raises this event on the way out: disposing the form disposes the
+		// menu strip, which takes Windows out of menu mode and fires MenuDeactivate one last time — by which
+		// point the window has no handle left to post to, and BeginInvoke throws. That crashed the manager on
+		// exit, and the only record of it was a crash log nothing in the app ever opened.
+		menuStrip.MenuDeactivate += (s, e) =>
+		{
+			if (IsDisposed || Disposing || !IsHandleCreated) return;
+			BeginInvoke(new Action(AnnounceFocusRestored));
+		};
 		_menuFile = new ToolStripMenuItem(Loc.T("menu.file")) { Name = "menuFile" };
 		_menuFile.DropDownItems.Add(Loc.T("menu.refreshAll", GetShortcutString("RefreshAll")), null, delegate
 		{
@@ -916,7 +925,7 @@ public partial class Form1
 			{
 				e.SuppressKeyPress = true;
 				if (res.IsCategory) await LoadWikiCategory(res.Title);
-				else _ = LoadWikiPage(res.Title);
+				else Fire(LoadWikiPage(res.Title), "LoadWikiPage");
 			}
 			else if (e.KeyCode == Keys.Back)
 			{
@@ -929,7 +938,7 @@ public partial class Form1
 			Dock = DockStyle.Fill,
 			AccessibleName = Loc.T("ui.wikiContent")
 		};
-		_ = InitializeAndLoadInitialPagesAsync();
+		Fire(InitializeAndLoadInitialPagesAsync(), "InitializeAndLoadInitialPagesAsync");
 		
 		splitWiki.Panel1.Controls.Add(listWikiResults);
 		splitWiki.Panel2.Controls.Add(webViewWiki);
@@ -939,7 +948,7 @@ public partial class Form1
 
 		// Now that splitWiki exists, load the default (main game) wiki's live categories. PopulateModWikis above
 		// deliberately doesn't do this, since it runs before splitWiki is created.
-		_ = RefreshCategoriesForActiveWikiAsync();
+		Fire(RefreshCategoriesForActiveWikiAsync(), "RefreshCategoriesForActiveWikiAsync");
 
 		// Walkthroughs Tab Setup
 		string initialWalkthroughTitle = GameProfiles.BaseId(_settings.ActiveGame) switch
@@ -1080,7 +1089,7 @@ public partial class Form1
 			if (listWikiResults.SelectedItem is WikiResult res)
 			{
 				if (res.IsCategory) await LoadWikiCategory(res.Title);
-				else _ = LoadWikiPage(res.Title);
+				else Fire(LoadWikiPage(res.Title), "LoadWikiPage");
 			}
 		};
 

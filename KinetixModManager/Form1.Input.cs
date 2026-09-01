@@ -127,7 +127,7 @@ public partial class Form1
 			e.SuppressKeyPress = true;
 			if (mainTabs.SelectedTab == tabInstalled && listInstalled.Focused && listInstalled.SelectedItem is StardewMod)
 			{
-				_ = LinkModUpdateSource();
+				Fire(LinkModUpdateSource(), "LinkModUpdateSource");
 			}
 			else
 			{
@@ -172,7 +172,7 @@ public partial class Form1
 		if (IsShortcut(e, "ManualID"))
 		{
 			e.SuppressKeyPress = true;
-			_ = LinkModUpdateSource();
+			Fire(LinkModUpdateSource(), "LinkModUpdateSource");
 		}
 		if (IsShortcut(e, "ChangeCategory"))
 		{
@@ -219,12 +219,12 @@ public partial class Form1
 		if (IsShortcut(e, "CheckBrokenMods"))
 		{
 			e.SuppressKeyPress = true;
-			_ = ShowBrokenModsReport();
+			Fire(ShowBrokenModsReport(), "ShowBrokenModsReport");
 		}
 		if (IsShortcut(e, "HealthCheck"))
 		{
 			e.SuppressKeyPress = true;
-			_ = RunHealthCheck();
+			Fire(RunHealthCheck(), "RunHealthCheck");
 		}
 		if (IsShortcut(e, "PluginSlots"))
 		{
@@ -234,7 +234,7 @@ public partial class Form1
 		if (IsShortcut(e, "SaveManager"))
 		{
 			e.SuppressKeyPress = true;
-			_ = ShowSaveManager();
+			Fire(ShowSaveManager(), "ShowSaveManager");
 		}
 		if (IsShortcut(e, "DownloadsHistory"))
 		{
@@ -244,7 +244,7 @@ public partial class Form1
 		if (IsShortcut(e, "TrackedMods"))
 		{
 			e.SuppressKeyPress = true;
-			_ = ShowTrackedMods();
+			Fire(ShowTrackedMods(), "ShowTrackedMods");
 		}
 		if (IsShortcut(e, "EditNote"))
 		{
@@ -254,12 +254,12 @@ public partial class Form1
 		if (IsShortcut(e, "ExportCollection"))
 		{
 			e.SuppressKeyPress = true;
-			_ = ExportCollection();
+			Fire(ExportCollection(), "ExportCollection");
 		}
 		if (IsShortcut(e, "InstallCollection"))
 		{
 			e.SuppressKeyPress = true;
-			_ = InstallCollectionAsync();
+			Fire(InstallCollectionAsync(), "InstallCollectionAsync");
 		}
 		if (IsShortcut(e, "ApiCredits"))
 		{
@@ -279,7 +279,7 @@ public partial class Form1
 		if (IsShortcut(e, "CheckRequirements"))
 		{
 			e.SuppressKeyPress = true;
-			_ = ShowRequirementsReport();
+			Fire(ShowRequirementsReport(), "ShowRequirementsReport");
 		}
 		if (IsShortcut(e, "Search"))
 		{
@@ -296,7 +296,7 @@ public partial class Form1
 		if (IsShortcut(e, "UpdateAll"))
 		{
 			e.SuppressKeyPress = true;
-			_ = UpdateAllMods();
+			Fire(UpdateAllMods(), "UpdateAllMods");
 		}
 		if (IsShortcut(e, "SaveProfile"))
 		{
@@ -331,7 +331,7 @@ public partial class Form1
 		if (IsShortcut(e, "AutoSort"))
 		{
 			e.SuppressKeyPress = true;
-			_ = AutoSortPluginsAsync();
+			Fire(AutoSortPluginsAsync(), "AutoSortPluginsAsync");
 		}
 		if (IsShortcut(e, "OpenErrorLog"))
 		{
@@ -594,7 +594,7 @@ public partial class Form1
 			}
 			if (e.KeyCode == Keys.L && e.Control)
 			{
-				_ = LinkModUpdateSource();
+				Fire(LinkModUpdateSource(), "LinkModUpdateSource");
 				e.Handled = true;
 				e.SuppressKeyPress = true;
 			}
@@ -625,7 +625,7 @@ public partial class Form1
 			{
 				if (SpeakBox(Loc.T("modlist.restoreConfirm", backupItem.Name), Loc.T("modlist.restoreTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 				{
-					_ = InstallFromZip(backupItem.FullPath);
+					Fire(InstallFromZip(backupItem.FullPath), "InstallFromZip");
 				}
 				e.Handled = true;
 			}
@@ -743,7 +743,7 @@ public partial class Form1
 			// on any real result it opens the Nexus page as usual.
 			if (list.Name == "listDiscovery" && list.SelectedItem is DiscoveryLoadMoreRow)
 			{
-				_ = RunDiscovery(loadMore: true);
+				Fire(RunDiscovery(loadMore: true), "RunDiscovery");
 			}
 			else
 			{

@@ -580,7 +580,7 @@ public class NexusService
 				if (name.Length > 0) categories.Add((name, count));
 			}
 		}
-		catch { /* fall through to whatever was collected (possibly empty) */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("Nexus", "asking Nexus for the category list", ex); }
 		return categories;
 	}
 
@@ -626,7 +626,7 @@ public class NexusService
 				if (name.Length > 0) languages.Add((name, count));
 			}
 		}
-		catch { /* fall through to whatever was collected (possibly empty) */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("Nexus", "asking Nexus for the language list", ex); }
 		return languages;
 	}
 
@@ -683,9 +683,11 @@ public class NexusService
 				Uri dlParsed = new Uri(dlUri);
 				realName = Path.GetFileName(dlParsed.LocalPath);
 			}
-			catch
+			catch (Exception ex)
 			{
-				// Ignore
+				// The name is only a nicety here — the download itself is unaffected, and the caller falls back to
+				// naming the file after the mod.
+				DiagnosticLog.WriteException("Nexus", $"reading the file name out of the download address {dlUri}", ex);
 			}
 		}
 
@@ -788,7 +790,8 @@ public class NexusService
 		catch
 		{
 			// Don't leave a half-written file behind for a later install to pick up as if it were complete.
-			try { if (File.Exists(destinationPath)) File.Delete(destinationPath); } catch { }
+			try { if (File.Exists(destinationPath)) File.Delete(destinationPath); }
+			catch (Exception ex) { DiagnosticLog.WriteException("Nexus", $"removing the partial download {destinationPath}", ex); }
 			throw;
 		}
 	}
@@ -1085,7 +1088,7 @@ public class NexusService
 				});
 			}
 		}
-		catch { /* best-effort: a failed requirements lookup just yields no rows */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("Nexus", "asking Nexus for a mod's requirements", ex); }
 		finally { _apiSemaphore.Release(); }
 		return result;
 	}
@@ -1209,7 +1212,8 @@ public class NexusService
 
 			// A refusal comes back as { "message": "CODE" }; map the documented codes to outcomes.
 			string code = "";
-			try { code = JObject.Parse(body)["message"]?.ToString() ?? ""; } catch { /* non-JSON body */ }
+			try { code = JObject.Parse(body)["message"]?.ToString() ?? ""; }
+			catch (Exception ex) { DiagnosticLog.WriteException("Nexus", "reading the endorsement response", ex); }
 			return code.ToUpperInvariant() switch
 			{
 				"TOO_SOON_AFTER_DOWNLOAD" => EndorseOutcome.TooSoon,

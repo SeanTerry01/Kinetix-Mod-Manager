@@ -68,7 +68,7 @@ public partial class Form1
 
 			PruneSafetyBackups();
 		}
-		catch (Exception ex) { LogError("Safety", $"Creating safety snapshot failed: {ex.Message}"); }
+		catch (Exception ex) { LogFailure("Safety", $"Creating safety snapshot failed", ex); }
 	}
 
 	/// <summary>Keeps only the newest <see cref="MaxSafetyBackups"/> snapshots for the active game.</summary>
@@ -81,9 +81,10 @@ public partial class Form1
 				.OrderByDescending(d => d.Name, StringComparer.Ordinal)
 				.Skip(MaxSafetyBackups);
 			foreach (DirectoryInfo d in dirs)
-				try { d.Delete(recursive: true); } catch { }
+				try { d.Delete(recursive: true); }
+				catch (Exception ex) { DiagnosticLog.WriteException("Safety", $"deleting the old snapshot {d.FullName}", ex); }
 		}
-		catch { /* pruning is best-effort */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("Safety", "pruning old safety snapshots", ex); }
 	}
 
 	/// <summary>One restorable snapshot in the restore list.</summary>
@@ -181,7 +182,7 @@ public partial class Form1
 				});
 			}
 		}
-		catch (Exception ex) { LogError("Safety", $"Reading safety snapshots failed: {ex.Message}"); }
+		catch (Exception ex) { LogFailure("Safety", $"Reading safety snapshots failed", ex); }
 		items.Sort((a, b) => b.Meta.CreatedUtc.CompareTo(a.Meta.CreatedUtc));
 		return items;
 	}
@@ -217,7 +218,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("Safety", $"Restoring safety snapshot failed: {ex.Message}");
+			LogFailure("Safety", $"Restoring safety snapshot failed", ex);
 			_soundEngine.Play("error");
 			Speak(Loc.T("safety.restoreFailed", FriendlyError(ex)));
 		}

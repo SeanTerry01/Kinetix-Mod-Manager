@@ -88,7 +88,7 @@ public static class StardewModConfig
 			Dictionary<string, (string Label, string Description)> labels = ReadLabels(modFolder);
 			Collect(config, "", settings, labels);
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Settings", $"reading the settings of the mod in {modFolder}", ex); }
 
 		return settings;
 	}
@@ -279,7 +279,7 @@ public static class StardewModConfig
 				};
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Settings", $"reading the setting labels of the mod in {modFolder}", ex); }
 
 		return labels;
 	}

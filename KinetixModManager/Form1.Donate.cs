@@ -142,7 +142,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("Donate", $"Could not open {url}: {ex.Message}");
+			LogFailure("Donate", $"Could not open {url}", ex);
 
 			if (TryCopy(url)) SpeakBox(Loc.T("donate.openFailedCopied", serviceName, url), Loc.T("donate.viewTitle"));
 			else SpeakBox(Loc.T("donate.openFailed", serviceName, url), Loc.T("donate.viewTitle"));
@@ -163,7 +163,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("Donate", $"Could not write to the clipboard: {ex.Message}");
+			LogFailure("Donate", $"Could not write to the clipboard", ex);
 			return false;
 		}
 	}

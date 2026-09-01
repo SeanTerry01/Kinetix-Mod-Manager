@@ -175,7 +175,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("LinkCandidates", "Nexus search failed: " + ex.Message);
+			LogFailure("LinkCandidates", "Nexus search failed", ex);
 			results = new List<GameMod>();
 		}
 
@@ -356,7 +356,7 @@ public partial class Form1
 			if (ModFileSystem.ExtractVersionFromFileName(archiveName, nexusId) is string version)
 				RecordInstalledDownloadVersion("Nexus:" + nexusId, version);
 		}
-		catch (Exception ex) { LogError("ModIdMap", "Could not record the download's Nexus ID: " + ex.Message); }
+		catch (Exception ex) { LogFailure("ModIdMap", "Could not record the download's Nexus ID", ex); }
 	}
 
 	/// <summary>The mod's folder relative to the Mods directory, falling back to the full path if it sits elsewhere.</summary>

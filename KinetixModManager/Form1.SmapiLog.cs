@@ -218,7 +218,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("SmapiLog", "Failed to parse SMAPI log: " + ex.Message);
+			LogFailure("SmapiLog", "Failed to parse SMAPI log", ex);
 		}
 		listLog.BeginUpdate();
 		listLog.Items.Clear();
@@ -302,7 +302,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("SmapiLog", "Could not open log link: " + ex.Message);
+			LogFailure("SmapiLog", "Could not open log link", ex);
 			Speak(Loc.T("smapi.couldNotOpenLink"));
 		}
 	}

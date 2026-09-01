@@ -421,12 +421,13 @@ public partial class Form1
 						closeView();
 						SelectTab(AppTab.Discovery);
 						txtSearch.Text = row.SearchTerm;
-						_ = RunDiscovery();
+						Fire(RunDiscovery(), "RunDiscovery");
 					}
 				}
 				else if (!string.IsNullOrEmpty(row.OpenUrl))
 				{
-					try { Process.Start(new ProcessStartInfo(row.OpenUrl) { UseShellExecute = true }); } catch { }
+					try { Process.Start(new ProcessStartInfo(row.OpenUrl) { UseShellExecute = true }); }
+					catch (Exception ex) { DiagnosticLog.WriteException("Reports", $"opening {row.OpenUrl}", ex); }
 				}
 			};
 
@@ -568,7 +569,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("Reports", "Could not read the script extender log: " + ex.Message);
+			LogFailure("Reports", "Could not read the script extender log", ex);
 			return (null, false);
 		}
 	}
@@ -586,7 +587,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("Reports", "Could not read the script extender log: " + ex.Message);
+			LogFailure("Reports", "Could not read the script extender log", ex);
 			return new List<PluginLoadFailure>();
 		}
 	}

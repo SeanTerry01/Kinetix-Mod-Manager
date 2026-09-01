@@ -106,7 +106,7 @@ public partial class Form1
 		{
 			ResetStatus();
 			_soundEngine.Play("error");
-			LogError("AI", "Request failed: " + ex.Message);
+			LogFailure("AI", "Request failed", ex);
 			SpeakBox(Loc.T("ai.failed", ex.Message), Loc.T("ai.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
 		}
 	}

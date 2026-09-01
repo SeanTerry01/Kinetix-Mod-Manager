@@ -184,7 +184,7 @@ public static class BepInExConfigSchema
 				Forget();
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("BepInEx", $"reading the settings in {configPath}", ex); }
 
 		return settings;
 	}

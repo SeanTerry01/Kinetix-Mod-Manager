@@ -1163,7 +1163,7 @@ public partial class Form1
 				{
 					Invoke(delegate
 					{
-						_ = RefreshModList(checkUpdates: false);
+						Fire(RefreshModList(checkUpdates: false), "RefreshModList");
 					});
 				});
 				Speak(langChanged

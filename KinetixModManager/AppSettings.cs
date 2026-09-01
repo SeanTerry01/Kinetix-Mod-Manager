@@ -483,15 +483,7 @@ public class AppSettings
 	/// Appends a timestamped line to the shared log in the app data folder. Used so settings
 	/// failures are recorded rather than silently swallowed. Never throws.
 	/// </summary>
-	private static void Log(string msg)
-	{
-		try
-		{
-			File.AppendAllText(Path.Combine(AppDataFolder, "mod_manager_log.txt"),
-				$"[{DateTime.Now:HH:mm:ss}] Settings: {msg}\n");
-		}
-		catch { /* logging must never throw */ }
-	}
+	private static void Log(string msg) => DiagnosticLog.Write("Settings", msg);
 
 	public static AppSettings Load()
 	{
@@ -504,8 +496,9 @@ public class AppSettings
 				{
 					File.Copy(text, SettingsPath, overwrite: true);
 				}
-				catch
+				catch (Exception ex)
 				{
+					DiagnosticLog.WriteException("Settings", $"copying the settings file from {text}", ex);
 				}
 			}
 			if (File.Exists(SettingsPath))
@@ -530,7 +523,10 @@ public class AppSettings
 						var raw = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(SettingsPath));
 						legacyKey = raw["ApiKey"]?.ToString();
 					}
-					catch { }
+					catch (Exception ex)
+					{
+						DiagnosticLog.WriteException("Settings", "reading the stored API key", ex);
+					}
 
 					if (!string.IsNullOrEmpty(legacyKey))
 					{

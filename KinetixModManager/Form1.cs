@@ -130,7 +130,8 @@ public partial class Form1 : Form, IMessageFilter
 		string path = Path.Combine(dataBasePath, "downloads", installKey);
 		if (!Directory.Exists(path))
 		{
-			try { Directory.CreateDirectory(path); } catch { }
+			try { Directory.CreateDirectory(path); }
+			catch (Exception ex) { DiagnosticLog.WriteException("Startup", $"creating the folder {path}", ex); }
 		}
 		return path;
 	}
@@ -142,7 +143,8 @@ public partial class Form1 : Form, IMessageFilter
 			string path = Path.Combine(dataBasePath, "backups", _settings.ActiveGame);
 			if (!Directory.Exists(path))
 			{
-				try { Directory.CreateDirectory(path); } catch { }
+				try { Directory.CreateDirectory(path); }
+				catch (Exception ex) { DiagnosticLog.WriteException("Startup", $"creating the folder {path}", ex); }
 			}
 			return path;
 		}
@@ -230,11 +232,12 @@ public partial class Form1 : Form, IMessageFilter
 		catch (Exception ex)
 		{
 			// Nothing here is worth trapping the user in a window they asked to close.
-			LogError("Shutdown", "Shutdown sequence failed: " + ex.Message);
+			LogFailure("Shutdown", "Shutdown sequence failed", ex);
 		}
 		finally
 		{
-			try { if (Tolk.IsLoaded()) Tolk.Unload(); } catch { }
+			try { if (Tolk.IsLoaded()) Tolk.Unload(); }
+			catch (Exception ex) { DiagnosticLog.WriteException("Speech", "unloading the screen-reader bridge", ex); }
 			_readyToClose = true;
 		}
 	}
@@ -467,7 +470,8 @@ public partial class Form1 : Form, IMessageFilter
 			bool createNow = profile.IsBethesda || profile.IsWitcher3;
 			if (createNow && !Directory.Exists(modsFolder))
 			{
-				try { Directory.CreateDirectory(modsFolder); } catch { }
+				try { Directory.CreateDirectory(modsFolder); }
+				catch (Exception ex) { DiagnosticLog.WriteException("Startup", $"creating the mods folder {modsFolder}", ex); }
 			}
 		}
 
@@ -617,7 +621,7 @@ public partial class Form1 : Form, IMessageFilter
 				}
 			}
 		}
-		catch (Exception ex) { LogError("Migration", "Failed to migrate backups/downloads folders: " + ex.Message); }
+		catch (Exception ex) { LogFailure("Migration", "Failed to migrate backups/downloads folders", ex); }
 
 		SetupAccessibleUI();
 		// Add the "name, pause, then value/state" reading to the main window's combos, checkboxes, and lists so a
@@ -643,7 +647,7 @@ public partial class Form1 : Form, IMessageFilter
 			Directory.CreateDirectory(themesPath);
 		}
 		RegisterNxmProtocol();
-		_ = StartNamedPipeServer(_pipeCts.Token);
+		Fire(StartNamedPipeServer(_pipeCts.Token), "StartNamedPipeServer");
 		base.FormClosing += async (object? _, FormClosingEventArgs e) =>
 		{
 			// The sequence has already run; this is the close it asked for.
@@ -974,7 +978,7 @@ public partial class Form1 : Form, IMessageFilter
 		}
 		catch (Exception ex)
 		{
-			LogError("System", "Protocol Registration Error: " + ex.Message);
+			LogFailure("System", "Protocol Registration Error", ex);
 		}
 	}
 
@@ -989,7 +993,13 @@ public partial class Form1 : Form, IMessageFilter
 
 
 
-	private string errorLogPath => Path.Combine(dataBasePath, "mod_manager_log.txt");
+	/// <summary>
+	/// The one log the whole app writes to. Asked of <see cref="DiagnosticLog"/> rather than rebuilt here, so
+	/// the file the menu opens cannot drift from the file the writing goes to — which is exactly what went wrong
+	/// before: crashes were written to a second file that nothing ever opened.
+	/// </summary>
+	private string errorLogPath =>
+		DiagnosticLog.Path.Length > 0 ? DiagnosticLog.Path : Path.Combine(dataBasePath, "mod_manager_log.txt");
 
 	/// <summary>
 	/// Opens the manager's own error log in Notepad, and says so when there is nothing to open — a keypress that
@@ -1007,15 +1017,46 @@ public partial class Form1 : Form, IMessageFilter
 		Process.Start(new ProcessStartInfo("notepad.exe", errorLogPath) { UseShellExecute = true });
 	}
 
-	/// <summary>Appends a timestamped error line to <c>mod_manager_log.txt</c> in the app data directory.</summary>
-	private void LogError(string mod, string msg)
+	/// <summary>
+	/// Records that something went wrong, in the one log the whole app writes to. <paramref name="mod"/> is the
+	/// part of the app it happened in — a mod's name, "Updates", "Nexus".
+	/// </summary>
+	private void LogError(string mod, string msg) => DiagnosticLog.Write(mod, msg);
+
+	/// <summary>
+	/// Records a failure together with the exception that caused it, written out in full.
+	///
+	/// Worth preferring to <see cref="LogError"/> wherever an exception is in hand. A caught exception reduced to
+	/// its <c>Message</c> loses the type, the stack and every inner exception — and the outermost message is
+	/// routinely the least useful part of the chain, so what reaches the log is a sentence nobody can act on.
+	/// </summary>
+	private void LogFailure(string area, string what, Exception ex) => DiagnosticLog.WriteException(area, what, ex);
+
+	/// <summary>
+	/// Starts work that the caller deliberately does not wait for, and makes sure a failure in it is recorded.
+	///
+	/// The manager does this a lot: a keypress starts an update check or an install and returns immediately, so
+	/// the window stays responsive. The cost is that there is no caller left to receive an exception — the task
+	/// fails, nothing is thrown anywhere anybody is looking, and the operation just never finishes. That is the
+	/// shape of "I pressed update mods and it stopped": no error, no dialog, nothing in the log.
+	///
+	/// <paramref name="what"/> is what the user asked for, in their terms, because that is the part a stack trace
+	/// cannot supply and the part that makes a report reproducible.
+	/// </summary>
+	private void Fire(Task work, string what)
 	{
-		try
+		_ = Observe(work, what);
+
+		async Task Observe(Task task, string description)
 		{
-			File.AppendAllText(errorLogPath, $"[{DateTime.Now:HH:mm:ss}] {mod}: {msg}\n");
-		}
-		catch
-		{
+			try
+			{
+				await task;
+			}
+			catch (Exception ex)
+			{
+				LogFailure("Background", description, ex);
+			}
 		}
 	}
 

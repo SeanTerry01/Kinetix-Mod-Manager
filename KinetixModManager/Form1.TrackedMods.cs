@@ -149,7 +149,7 @@ public partial class Form1
 					string url = $"https://www.nexusmods.com/{domain}/mods/{row.ModId}?tab=files";
 					Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 				}
-				catch { }
+				catch (Exception ex) { DiagnosticLog.WriteException("Tracked", "reading the tracked-mods list from Nexus", ex); }
 			};
 
 			return list;

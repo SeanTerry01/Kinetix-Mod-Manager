@@ -103,7 +103,7 @@ public static class Loc
 				JObject obj = JObject.Parse(File.ReadAllText(path));
 				name = obj["_name"]?.ToString() ?? code;
 			}
-			catch { /* unparseable file: fall back to showing the bare code */ }
+			catch (Exception ex) { DiagnosticLog.WriteException("Language", $"reading the language name out of {path}", ex); }
 			yield return new LanguageChoice { Code = code, Display = name };
 		}
 	}
@@ -125,7 +125,7 @@ public static class Loc
 				result[prop.Name] = prop.Value.ToString();
 			}
 		}
-		catch { /* a broken file leaves the dict empty; the caller falls back to English */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("Language", $"reading the language file for {code}", ex); }
 		return result;
 	}
 }

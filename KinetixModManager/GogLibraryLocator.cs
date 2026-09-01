@@ -37,13 +37,13 @@ public static class GogLibraryLocator
 		foreach (string drive in driveRoots)
 		{
 			try { roots.Add(Path.Combine(drive, ClassicFolderName)); }
-			catch { }
+			catch (Exception ex) { DiagnosticLog.WriteException("Detect", $"building a GOG search path under {drive}", ex); }
 		}
 
 		if (!string.IsNullOrEmpty(galaxyClientPath))
 		{
 			try { roots.Add(Path.Combine(galaxyClientPath, GalaxyGamesFolderName)); }
-			catch { }
+			catch (Exception ex) { DiagnosticLog.WriteException("Detect", "building a GOG search path under the Galaxy client folder", ex); }
 		}
 
 		return roots;
@@ -123,9 +123,10 @@ public static class GogLibraryLocator
 					if (File.Exists(Path.Combine(folder, exeName)))
 						return folder;
 			}
-			catch
+			catch (Exception ex)
 			{
 				// An unreadable drive or a folder we have no rights to is not a reason to stop looking in the rest.
+				DiagnosticLog.WriteException("Detect", $"searching {root} for the game", ex);
 			}
 		}
 

@@ -54,7 +54,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("Downloads", $"Listing downloads failed: {ex.Message}");
+			LogFailure("Downloads", $"Listing downloads failed", ex);
 			items = new List<DownloadItem>();
 		}
 
@@ -95,7 +95,7 @@ public partial class Form1
 					string path = item.FullPath;
 					closeView();
 					// Same route as picking an archive by hand; it runs its own progress and overwrite prompt.
-					_ = InstallFromZip(path, confirmReinstall: true);
+					Fire(InstallFromZip(path, confirmReinstall: true), "InstallFromZip");
 				}
 				else if (e.KeyCode == Keys.Delete)
 				{
@@ -127,7 +127,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("Downloads", $"Deleting a download failed: {ex.Message}");
+			LogFailure("Downloads", $"Deleting a download failed", ex);
 			_soundEngine.Play("error");
 			Speak(Loc.T("downloads.deleteFailed", FriendlyError(ex)));
 			return;

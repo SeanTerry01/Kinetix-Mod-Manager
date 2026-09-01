@@ -21,7 +21,8 @@ public partial class Form1
 	private string CollectionsDir()
 	{
 		string dir = Path.Combine(dataBasePath, "collections");
-		try { if (!Directory.Exists(dir)) Directory.CreateDirectory(dir); } catch { /* dialog still opens elsewhere */ }
+		try { if (!Directory.Exists(dir)) Directory.CreateDirectory(dir); }
+		catch (Exception ex) { DiagnosticLog.WriteException("Collection", $"creating the collections folder {dir}", ex); }
 		return dir;
 	}
 
@@ -244,7 +245,7 @@ public partial class Form1
 			catch (Exception ex)
 			{
 				failed.Add((cm, ex.Message));
-				LogError("Collection", $"Failed to install {cm.Name}: {ex.Message}");
+				LogFailure("Collection", $"Failed to install {cm.Name}", ex);
 			}
 		}
 

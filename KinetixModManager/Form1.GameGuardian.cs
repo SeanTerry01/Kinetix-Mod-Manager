@@ -59,7 +59,8 @@ public partial class Form1
 			{
 				string seId = GameProfiles.IsGame(game, GameProfiles.SkyrimSE) ? "30379" : "42147"; // SKSE64 / F4SE Nexus ids
 				string url = $"https://www.nexusmods.com/{_nexusService.CurrentGameDomain}/mods/{seId}";
-				try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
+				try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
+				catch (Exception ex) { DiagnosticLog.WriteException("Guardian", $"opening {url}", ex); }
 			}
 		}
 		else

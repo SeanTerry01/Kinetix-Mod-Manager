@@ -222,7 +222,7 @@ public partial class Form1
 			cmbDiscoveryType.SelectedItem = "Search";
 			txtSearch.Text = chosenTerm;
 			txtSearch.Focus();
-			_ = RunDiscovery();
+			Fire(RunDiscovery(), "RunDiscovery");
 		}
 	}
 

@@ -127,7 +127,7 @@ public partial class Form1
 			return;
 		}
 
-		_ = SpeakAfterReaderNamesTheChangeAsync(counts);
+		Fire(SpeakAfterReaderNamesTheChangeAsync(counts), "SpeakAfterReaderNamesTheChangeAsync");
 	}
 
 	/// <summary>
@@ -489,7 +489,8 @@ public partial class Form1
 	private static void SilenceSpeech()
 	{
 		if (!Tolk.IsLoaded()) return;
-		try { Tolk.Silence(); } catch { }
+		try { Tolk.Silence(); }
+		catch (Exception ex) { DiagnosticLog.WriteException("Speech", "silencing the screen reader", ex); }
 	}
 
 	[System.Runtime.InteropServices.DllImport("user32.dll")]
@@ -1171,7 +1172,14 @@ public partial class Form1
 		// attempt a silent reload before speaking so users don't lose announcements.
 		if (!Tolk.IsLoaded())
 		{
-			try { Tolk.Load(); Tolk.TrySAPI(trySAPI: true); } catch { }
+			try { Tolk.Load(); Tolk.TrySAPI(trySAPI: true); }
+			catch (Exception ex)
+			{
+				// Worth recording above almost anything else here: a screen-reader bridge that will not load
+				// means the app says nothing at all from this point on, and for the person relying on it the
+				// entire symptom is silence — with no error to see, by definition.
+				DiagnosticLog.WriteException("Speech", "reloading the screen-reader bridge", ex);
+			}
 		}
 		if (Tolk.IsLoaded())
 		{

@@ -96,7 +96,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("Mods folder", $"Could not move '{source}' to '{destination}': {ex.Message}");
+			LogFailure("Mods folder", $"Could not move '{source}' to '{destination}'", ex);
 			ResetStatus();
 			Speak(Loc.T("modsfolder.failedSpeak"));
 			SpeakBox(Loc.T("modsfolder.failedBox", source, FriendlyError(ex)), Loc.T("modsfolder.title"),

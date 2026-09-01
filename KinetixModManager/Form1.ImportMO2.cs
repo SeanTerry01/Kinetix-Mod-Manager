@@ -264,7 +264,7 @@ public partial class Form1
 				map[$"{section}/{key}"] = value;
 			}
 		}
-		catch { /* unreadable ini: callers fall back to defaults */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("MO2 import", $"reading {path}", ex); }
 		return map;
 	}
 

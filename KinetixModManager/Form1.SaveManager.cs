@@ -51,7 +51,7 @@ public partial class Form1
 
 		string[] files;
 		try { files = Directory.GetFiles(folder, "*" + ext); }
-		catch (Exception ex) { LogError("Saves", $"Enumerating saves failed: {ex.Message}"); files = Array.Empty<string>(); }
+		catch (Exception ex) { LogFailure("Saves", $"Enumerating saves failed", ex); files = Array.Empty<string>(); }
 		if (files.Length == 0)
 		{
 			Speak(Loc.T("saves.none", GameDisplayName(game)));
@@ -189,7 +189,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("Saves", $"Save backup failed: {ex.Message}");
+			LogFailure("Saves", $"Save backup failed", ex);
 			_soundEngine.Play("error");
 			Speak(Loc.T("saves.backupFailed", FriendlyError(ex)));
 		}
@@ -212,7 +212,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("Saves", $"Save delete failed: {ex.Message}");
+			LogFailure("Saves", $"Save delete failed", ex);
 			_soundEngine.Play("error");
 			Speak(Loc.T("saves.deleteFailed", FriendlyError(ex)));
 			return;

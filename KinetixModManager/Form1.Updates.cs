@@ -440,7 +440,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("SmapiUpdate", "SMAPI update check failed: " + ex.Message);
+			LogFailure("SmapiUpdate", "SMAPI update check failed", ex);
 		}
 		finally
 		{
@@ -492,7 +492,7 @@ public partial class Form1
 				}
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Updates", "reading the record of installed download versions", ex); }
 
 		if (string.IsNullOrEmpty(smapi))
 		{
@@ -507,7 +507,7 @@ public partial class Form1
 						smapi = fv.FileVersion!.Split('+', ' ')[0];
 				}
 			}
-			catch { }
+			catch (Exception ex) { DiagnosticLog.WriteException("Updates", "saving the record of installed download versions", ex); }
 		}
 
 		if (string.IsNullOrEmpty(smapi)) smapi = "4.0.0";
@@ -601,7 +601,7 @@ public partial class Form1
             catch (Exception ex)
             {
                 _soundEngine.Play("error");
-                LogError(mod.Name, "GitHub Download/Install Failure: " + ex.Message);
+                LogFailure(mod.Name, "GitHub Download/Install Failure", ex);
                 SpeakBox(Loc.T("updates.githubFailBox", mod.Name, FriendlyError(ex)));
                 return;
             }
@@ -659,7 +659,7 @@ public partial class Form1
         catch (Exception ex)
         {
             _soundEngine.Play("error");
-            LogError(mod.Name, "Download/Install Failure: " + ex.Message);
+            LogFailure(mod.Name, "Download/Install Failure", ex);
             Invoke(delegate { SpeakBox(Loc.T("updates.failBox", mod.Name, FriendlyError(ex))); });
         }
     }
@@ -727,7 +727,7 @@ public partial class Form1
 			// Re-scan so the installed list reads the new version and the Updates tab drops the stale row.
 			await RefreshModList(checkUpdates: false);
 		}
-		catch (Exception ex) { LogError(original.Name, "Could not update the manifest version: " + ex.Message); }
+		catch (Exception ex) { LogFailure(original.Name, "Could not update the manifest version", ex); }
 	}
 
 	/// <summary>
@@ -753,7 +753,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError(original.Name, "Could not re-disable after update: " + ex.Message);
+			LogFailure(original.Name, "Could not re-disable after update", ex);
 		}
 	}
 
@@ -789,7 +789,7 @@ public partial class Form1
 			foreach (var kv in links) map[kv.Key] = kv.Value;
 			File.WriteAllText(mapPath, map.ToString(Formatting.Indented));
 		}
-		catch (Exception ex) { LogError("ModIdMap", "Failed to persist Nexus ID mappings: " + ex.Message); }
+		catch (Exception ex) { LogFailure("ModIdMap", "Failed to persist Nexus ID mappings", ex); }
 	}
 
 	/// <summary>
@@ -884,7 +884,7 @@ public partial class Form1
 		int matchCount = 0;
 		int totalMods = 0;
 		_isLoading = true;
-		_ = RunLoadingLoop();
+		Fire(RunLoadingLoop(), "RunLoadingLoop");
 		Speak(Loc.T("updates.autoMatchStart"));
 
 		try
@@ -994,7 +994,7 @@ public partial class Form1
 		{
 			_isLoading = false;
 			_soundEngine.Play("error");
-			LogError("AutoMatch", "Auto-match failed: " + ex.Message);
+			LogFailure("AutoMatch", "Auto-match failed", ex);
 			SpeakBox(Loc.T("updates.autoMatchFailBox", FriendlyError(ex)), Loc.T("common.error"));
 			Speak(Loc.T("updates.autoMatchFailed"));
 		}
@@ -1050,7 +1050,7 @@ public partial class Form1
 		try
 		{
 			_isLoading = true;
-			_ = RunLoadingLoop();
+			Fire(RunLoadingLoop(), "RunLoadingLoop");
 			Speak(Loc.T("updates.downloadingUpdate"));
 
 			if (!Directory.Exists(downloadsPath))
@@ -1108,7 +1108,7 @@ public partial class Form1
 		{
 			_isLoading = false;
 			Text = originalTitle;
-			LogError("AppUpdate", "Self-update failed: " + ex.Message);
+			LogFailure("AppUpdate", "Self-update failed", ex);
 			SpeakBox(Loc.T("updates.selfUpdateFailBox", FriendlyError(ex)), Loc.T("updates.updateErrorTitle"));
 			Speak(Loc.T("updates.failed"));
 		}

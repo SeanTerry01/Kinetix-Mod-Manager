@@ -273,7 +273,7 @@ public partial class Form1
 				catch (Exception ex)
 				{
 					failed.Add((req, FriendlyError(ex)));
-					LogError("Resolve", $"Failed to install requirement {req.ModName}: {ex.Message}");
+					LogFailure("Resolve", $"Failed to install requirement {req.ModName}", ex);
 				}
 			}
 		}

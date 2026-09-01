@@ -62,9 +62,10 @@ public static class Witcher3ModSettings
 					int.TryParse(priority, out int p) ? p : null));
 			}
 		}
-		catch
+		catch (Exception ex)
 		{
 			// A malformed or unreadable mods.settings is the game's business, not a reason to fail a mod scan.
+			DiagnosticLog.WriteException("Witcher3", $"reading {modsSettingsPath}", ex);
 		}
 
 		return result;
@@ -95,10 +96,11 @@ public static class Witcher3ModSettings
 			doc.SetValue(BareName(modFolderName), EnabledKey, enabled ? "1" : "0");
 			doc.Save(modsSettingsPath);
 		}
-		catch
+		catch (Exception ex)
 		{
 			// The rename is what actually enables or disables the mod; this file only keeps the game's own menu
 			// in step, so failing to write it must not fail the operation the user asked for.
+			DiagnosticLog.WriteException("Witcher3", $"recording the enabled state in {modsSettingsPath}", ex);
 		}
 	}
 
@@ -116,7 +118,7 @@ public static class Witcher3ModSettings
 			doc.SetValue(BareName(modFolderName), PriorityKey, priority.ToString());
 			doc.Save(modsSettingsPath);
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Witcher3", $"writing the load order into {modsSettingsPath}", ex); }
 	}
 
 	/// <summary>
@@ -145,7 +147,7 @@ public static class Witcher3ModSettings
 
 			File.WriteAllLines(modsSettingsPath, kept);
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Witcher3", $"removing {modFolderName} from {modsSettingsPath}", ex); }
 	}
 
 	/// <summary>

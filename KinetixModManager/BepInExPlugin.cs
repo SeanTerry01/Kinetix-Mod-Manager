@@ -68,10 +68,12 @@ public static class BepInExPlugin
 				if (info != null) return info;
 			}
 		}
-		catch
+		catch (Exception ex)
 		{
 			// A corrupt, packed or native DLL is a normal thing to meet in a mods folder — the callers fall
-			// back to the log and the config file, and finally to the folder name.
+			// back to the log and the config file, and finally to the folder name. Still recorded, because it is
+			// also what a half-written download looks like.
+			DiagnosticLog.WriteException("BepInEx", $"reading the plugin details out of {dllPath}", ex);
 		}
 
 		return null;
@@ -170,7 +172,7 @@ public static class BepInExPlugin
 				if (name.Length > 0) found[name] = version;
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("BepInEx", $"reading the BepInEx log at {logPath}", ex); }
 		return found;
 	}
 
@@ -255,13 +257,13 @@ public static class BepInExPlugin
 					DateTime written = File.GetLastWriteTimeUtc(dll);
 					if (written > newestDll) newestDll = written;
 				}
-				catch { }
+				catch (Exception ex) { DiagnosticLog.WriteException("BepInEx", $"reading the age of {dll}", ex); }
 
 				BepInExPluginInfo? info = ReadFromAssembly(dll);
 				if (info != null) candidates.Add(info);
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("BepInEx", $"identifying the plugin in {modFolder}", ex); }
 
 		// The log describes a past run; the DLLs describe what is installed now. Once a mod has been updated the
 		// log is talking about files that no longer exist, so it must not be allowed to answer for them.

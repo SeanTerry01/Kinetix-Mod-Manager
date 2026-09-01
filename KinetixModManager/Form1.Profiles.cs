@@ -92,7 +92,7 @@ public partial class Form1
 				}
 				catch (Exception ex)
 				{
-					LogError("Profiles", $"Failed to load profile '{Path.GetFileName(path)}': {ex.Message}");
+					LogFailure("Profiles", $"Failed to load profile '{Path.GetFileName(path)}'", ex);
 				}
 			}
 		}

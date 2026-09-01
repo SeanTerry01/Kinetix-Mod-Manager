@@ -95,6 +95,8 @@
     <Compile Include="..\KinetixModManager\KeyRepeatFilter.cs" />
     <!-- Self-contained "where am I in a list divided by headings?" counting (BCL only). -->
     <Compile Include="..\KinetixModManager\ListSections.cs" />
+    <!-- The one diagnostic log everything writes to; BCL only, so its formatting is testable directly. -->
+    <Compile Include="..\KinetixModManager\DiagnosticLog.cs" />
   </ItemGroup>
 
   <!-- Real files.json bodies, recorded from the Nexus API rather than written by hand. The picking rules exist

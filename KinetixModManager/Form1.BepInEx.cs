@@ -71,7 +71,7 @@ public partial class Form1
 					return info.FileVersion.Trim();
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("BepInEx", $"reading the BepInEx version under {gameRoot}", ex); }
 
 		try
 		{
@@ -89,7 +89,7 @@ public partial class Form1
 				}
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("BepInEx", $"reading the BepInEx version out of the log under {gameRoot}", ex); }
 
 		return null;
 	}
@@ -217,7 +217,7 @@ public partial class Form1
 					.FirstOrDefault();
 				if (found != null) return found;
 			}
-			catch { }
+			catch (Exception ex) { DiagnosticLog.WriteException("BepInEx", $"looking for the keybind reader under {root}", ex); }
 		}
 		return null;
 	}
@@ -235,7 +235,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError(installedDll, "Keybind reader install failed: " + ex.Message);
+			LogFailure(installedDll, "Keybind reader install failed", ex);
 			return false;
 		}
 	}
@@ -321,7 +321,7 @@ public partial class Form1
 		catch (Exception ex)
 		{
 			_isLoading = false;
-			LogError("BepInEx", "Install failed: " + ex.Message);
+			LogFailure("BepInEx", "Install failed", ex);
 			SpeakBox(
 				Loc.T("bepinex.installFailedBox", FriendlyError(ex)),
 				Loc.T("bepinex.installFailedTitle"),
@@ -331,7 +331,8 @@ public partial class Form1
 		}
 		finally
 		{
-			try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, recursive: true); } catch { }
+			try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, recursive: true); }
+			catch (Exception ex) { DiagnosticLog.WriteException("BepInEx", $"clearing the temporary folder {tempDir}", ex); }
 		}
 	}
 

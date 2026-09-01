@@ -41,7 +41,7 @@ public class DeploymentManifest
 				}
 			}
 		}
-		catch { /* a corrupt manifest falls back to empty; the next sync rebuilds it from disk */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("Deploy", "reading the record of which files are deployed", ex); }
 		return new DeploymentManifest();
 	}
 
@@ -55,7 +55,7 @@ public class DeploymentManifest
 			if (dir != null && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
 			File.WriteAllText(path, JsonConvert.SerializeObject(this, Formatting.Indented));
 		}
-		catch { /* persistence is best-effort; an unsaved manifest is rebuilt on the next sync */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("Deploy", "saving the record of which files are deployed", ex); }
 	}
 }
 

@@ -81,7 +81,7 @@ public partial class Form1
 			}
 			catch (Exception ex)
 			{
-				LogError("Updates", "Update All failed: " + ex.Message);
+				LogFailure("Updates", "Update All failed", ex);
 				Speak(Loc.T("updateAll.failed", FriendlyError(ex)));
 			}
 			finally
@@ -90,7 +90,7 @@ public partial class Form1
 				// A final re-scan reflects the new versions and leaves the updates list as the batch left it
 				// (successful mods already removed, any failures still shown). No online re-check: the user just
 				// checked and updated, so re-querying Nexus here is redundant and only adds delay and speech.
-				_ = RefreshModList(checkUpdates: false);
+				Fire(RefreshModList(checkUpdates: false), "RefreshModList");
 			}
 		}
 	}
@@ -163,7 +163,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError(modName, "Backup Error: " + ex.Message);
+			LogFailure(modName, "Backup Error", ex);
 		}
 	}
 
@@ -188,7 +188,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError(modName, "Backup Error: " + ex.Message);
+			LogFailure(modName, "Backup Error", ex);
 		}
 	}
 
@@ -466,7 +466,7 @@ public partial class Form1
 					var details = await _nexusService.GetModDetailsAsync(nexusId, link.GameDomain);
 					isUpgrade = IsNewerVersion(installed.Version, details?["version"]?.ToString());
 				}
-				catch { /* version lookup is best-effort; fall back to prompting */ }
+				catch (Exception ex) { DiagnosticLog.WriteException("Nexus", $"looking up the current version of mod {nexusId}", ex); }
 			}
 		}
 
@@ -483,7 +483,7 @@ public partial class Form1
 		// Started on the UI thread: a nxm link can arrive on the named-pipe thread, and the install reports itself
 		// through the window as it goes. The name is carried across so the install talks about the same mod the
 		// download did, even where the file name it arrived under says nothing.
-		if (install) OnUi(() => { _ = InstallFromZip(path, nexusId, confirmReinstall: !isUpgrade, displayName: modName); });
+		if (install) OnUi(() => { Fire(InstallFromZip(path, nexusId, confirmReinstall: !isUpgrade, displayName: modName), "InstallFromZip"); });
 	}
 
 	[System.Runtime.InteropServices.DllImport("user32.dll")]
@@ -553,7 +553,7 @@ public partial class Form1
 			}
 			Focus();
 		}
-		catch { /* foreground hint is best-effort */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("UI", "bringing the manager to the front", ex); }
 	}
 
 	/// <summary>Opens a file dialog to select a .zip file and installs it via <see cref="InstallFromZip"/>.</summary>
@@ -571,8 +571,8 @@ public partial class Form1
 			// against Nexus to guess it back. Installing by hand used to throw it away, so a mod installed this
 			// way could not be checked for updates until the user ran Auto-match. Read straight from the name,
 			// it also records which release is installed, so the mod compares against what it actually has.
-			_ = InstallFromZip(openFileDialog.FileName,
-				ModManifest.NexusIdFromDownloadName(openFileDialog.FileName), confirmReinstall: true);
+			Fire(InstallFromZip(openFileDialog.FileName,
+				ModManifest.NexusIdFromDownloadName(openFileDialog.FileName), confirmReinstall: true), "InstallFromZip");
 		}
 	}
 
@@ -678,7 +678,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("Install", "Could not run the mod's installer: " + ex.Message);
+			LogFailure("Install", "Could not run the mod's installer", ex);
 			_soundEngine.Play("error");
 			SpeakBox(Loc.T("install.installerFailedBox", FriendlyError(ex)));
 			return false;

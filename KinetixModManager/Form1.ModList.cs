@@ -38,7 +38,7 @@ public partial class Form1
 		// Catch a Steam/GOG game update before the user tries to launch: warns once if the exe version changed
 		// since we last loaded this game. Harmless on Stardew and cheap enough to run on every refresh.
 		CheckGameUpdateGuardian();
-		_ = RefreshModList(checkUpdates);
+		Fire(RefreshModList(checkUpdates), "RefreshModList");
 		RefreshBackupsList();
 		RefreshProfilesList();
 		RefreshSmapiLog();
@@ -46,7 +46,7 @@ public partial class Form1
 		// Startup comes through here rather than SwitchActiveGame, so without this the Discovery category list
 		// would stay empty until the user switched games. Guarded to fetch once per game, so the repeat calls
 		// from every other refresh cost nothing.
-		_ = PopulateDiscoveryCategoriesAsync();
+		Fire(PopulateDiscoveryCategoriesAsync(), "PopulateDiscoveryCategoriesAsync");
 	}
 
 	/// <summary>
@@ -155,7 +155,7 @@ public partial class Form1
 			{
 				File.Copy(legacyIdMapPath, idMapPath, overwrite: true);
 			}
-			catch {}
+			catch (Exception ex) { DiagnosticLog.WriteException("ModIdMap", "copying the old Nexus id map into place", ex); }
 		}
 		JObject nexusIdMap = (File.Exists(idMapPath) ? JObject.Parse(File.ReadAllText(idMapPath)) : new JObject()) ?? new JObject();
 		List<StardewMod> scanned = ModFileSystem.ScanMods(_settings.CurrentModsPath, nexusIdMap, _settings, refreshingGame, LogError);
@@ -336,16 +336,16 @@ public partial class Form1
 		_isLoading = true;
 		Interlocked.Exchange(ref _activeChecks, unitCount);
 		Speak(Loc.T("modlist.checkingUpdates"));
-		_ = RunLoadingLoop();
+		Fire(RunLoadingLoop(), "RunLoadingLoop");
 		launchedChecks = true;
 		if (runSmapi)
 		{
 			var (smapiVer, gameVer) = DetectStardewVersions();
-			_ = CheckUpdatesViaSmapiApi(_allInstalledMods.Where(m => !m.IsGroup).ToList(), smapiVer, gameVer);
+			Fire(CheckUpdatesViaSmapiApi(_allInstalledMods.Where(m => !m.IsGroup).ToList(), smapiVer, gameVer), "CheckUpdatesViaSmapiApi");
 		}
 		foreach (IGrouping<string, StardewMod> item3 in list)
 		{
-			_ = CheckForUpdates(item3.ToList());
+			Fire(CheckForUpdates(item3.ToList()), "CheckForUpdates");
 		}
 		}
 		finally
@@ -719,7 +719,7 @@ public partial class Form1
 
 		_settings.ApiKey = text;
 		_settings.Save();
-		_ = RefreshModList(checkUpdates: true);
+		Fire(RefreshModList(checkUpdates: true), "RefreshModList");
 	}
 
 	/// <summary>
@@ -786,7 +786,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError(mod.Name, "Could not save mod details: " + ex.Message);
+			LogFailure(mod.Name, "Could not save mod details", ex);
 		}
 	}
 
@@ -867,7 +867,7 @@ public partial class Form1
 						mapObj[stardewMod3.UniqueId] = val;
 						File.WriteAllText(mapPath, mapObj.ToString());
 					}
-					catch (Exception ex) { LogError("ModIdMap", "Failed to persist Nexus ID mapping: " + ex.Message); }
+					catch (Exception ex) { LogFailure("ModIdMap", "Failed to persist Nexus ID mapping", ex); }
 
 					if (!string.IsNullOrEmpty(val))
 					{
@@ -900,7 +900,7 @@ public partial class Form1
 					}
 
 					Speak(Loc.T("link.success"));
-					_ = RefreshModList(checkUpdates: false);
+					Fire(RefreshModList(checkUpdates: false), "RefreshModList");
 				}
 				catch (Exception ex)
 				{

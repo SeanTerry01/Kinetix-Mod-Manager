@@ -173,7 +173,7 @@ public static class ScriptExtenderInfo
 				dllByBuild[build] = dll;
 			}
 		}
-		catch { /* unreadable folder — same as none found */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("Script Extender", $"listing the extender files in {gamePath}", ex); }
 
 		// Installed means the script extender's own files are here, which the runtime DLLs are and the loader
 		// exe merely helps with. Judging by the loader alone reported a perfectly good SKSE as missing for
@@ -192,7 +192,7 @@ public static class ScriptExtenderInfo
 					gameVersion = $"{vi.FileMajorPart}.{vi.FileMinorPart}.{vi.FileBuildPart}";
 			}
 		}
-		catch { /* unreadable exe (e.g. under Wine) — leave the comparison unmade */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("Script Extender", $"reading the game version in {gamePath}", ex); }
 
 		(string target, bool match) = ChooseBuild(gameVersion, builds);
 
@@ -216,7 +216,7 @@ public static class ScriptExtenderInfo
 				FileVersionInfo vi = FileVersionInfo.GetVersionInfo(candidate);
 				productVersion = FormatProductVersion(vi.FileMajorPart, vi.FileMinorPart, vi.FileBuildPart, vi.FilePrivatePart);
 			}
-			catch { /* the version block is a bonus; the install is still detected without it */ }
+			catch (Exception ex) { DiagnosticLog.WriteException("Script Extender", $"reading the version of {candidate}", ex); }
 			if (productVersion.Length > 0) break;
 		}
 

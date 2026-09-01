@@ -53,14 +53,14 @@ public partial class Form1
 				return;
 			}
 			_settings.Save();
-			_ = RefreshModList(checkUpdates: false);
+			Fire(RefreshModList(checkUpdates: false), "RefreshModList");
 			Speak(Loc.T("modactions.categoryCleared", stardewMod.Name));
 			return;
 		}
 
 		_settings.ModCategories[stardewMod.UniqueId] = text;
 		_settings.Save();
-		_ = RefreshModList(checkUpdates: false);
+		Fire(RefreshModList(checkUpdates: false), "RefreshModList");
 		Speak(Loc.T("modactions.categorySet", stardewMod.Name, text));
 	}
 
@@ -100,7 +100,7 @@ public partial class Form1
 			{
 				_settings.ModNotes.Remove(mod.UniqueId);
 				_settings.Save();
-				_ = RefreshModList(checkUpdates: false);
+				Fire(RefreshModList(checkUpdates: false), "RefreshModList");
 				Speak(Loc.T("modactions.noteCleared", mod.Name));
 			}
 			else
@@ -112,7 +112,7 @@ public partial class Form1
 
 		_settings.ModNotes[mod.UniqueId] = text;
 		_settings.Save();
-		_ = RefreshModList(checkUpdates: false);
+		Fire(RefreshModList(checkUpdates: false), "RefreshModList");
 		Speak(Loc.T("modactions.noteSet", mod.Name));
 	}
 
@@ -151,7 +151,7 @@ public partial class Form1
 			// Re-scan so a corrected version is re-read; the refresh's prune pass also drops the mod
 			// from the updates list when its version now matches the latest. checkUpdates:false avoids
 			// re-running the full Nexus/GitHub update query.
-			_ = RefreshModList(checkUpdates: false);
+			Fire(RefreshModList(checkUpdates: false), "RefreshModList");
 		}, Loc.T("config.labelManifest")));
 	}
 
@@ -231,7 +231,7 @@ public partial class Form1
 		{
 			// The file may have changed a version or a name the list shows, so re-read it — the same reason the
 			// manifest editor refreshes.
-			_ = RefreshModList(checkUpdates: false);
+			Fire(RefreshModList(checkUpdates: false), "RefreshModList");
 		}, Loc.T("config.labelConfiguration"),
 		// A BepInEx .cfg is not JSON, and checking it as JSON would refuse to save a perfectly good file.
 		validateJson: bepInExConfig == null));
@@ -307,7 +307,7 @@ public partial class Form1
 				}
 			}
 		}
-		catch (Exception ex) { LogError(path, "Could not check user.settings: " + ex.Message); }
+		catch (Exception ex) { LogFailure(path, "Could not check user.settings", ex); }
 
 		return true;
 	}
@@ -446,7 +446,7 @@ public partial class Form1
 	{
 		if (CurrentTab() == AppTab.Installed && listInstalled.SelectedItem is StardewMod)
 		{
-			_ = ResolveDependenciesAsync();
+			Fire(ResolveDependenciesAsync(), "ResolveDependenciesAsync");
 		}
 		else
 		{
@@ -463,7 +463,7 @@ public partial class Form1
 				{
 					SelectTab(AppTab.Discovery);
 					txtSearch.Text = text;
-					_ = RunDiscovery();
+					Fire(RunDiscovery(), "RunDiscovery");
 				}
 				return;
 			}
@@ -633,7 +633,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("Delete", "Could not run the mod's uninstaller: " + ex.Message);
+			LogFailure("Delete", "Could not run the mod's uninstaller", ex);
 			SpeakBox(Loc.T("modactions.uninstallerFailedBox", FriendlyError(ex)));
 		}
 	}

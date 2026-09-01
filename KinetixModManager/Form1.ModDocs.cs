@@ -305,7 +305,7 @@ public partial class Form1
 			string cache = DocCachePath(src);
 			if (File.Exists(cache)) return File.ReadAllText(cache);
 		}
-		catch (Exception ex) { LogError("ModDocs", $"Cache read failed for {src.Title}: {ex.Message}"); }
+		catch (Exception ex) { LogFailure("ModDocs", $"Cache read failed for {src.Title}", ex); }
 
 		try
 		{
@@ -313,7 +313,7 @@ public partial class Form1
 				src.BundledFile.Replace('/', Path.DirectorySeparatorChar));
 			if (File.Exists(bundled)) return File.ReadAllText(bundled);
 		}
-		catch (Exception ex) { LogError("ModDocs", $"Bundled read failed for {src.Title}: {ex.Message}"); }
+		catch (Exception ex) { LogFailure("ModDocs", $"Bundled read failed for {src.Title}", ex); }
 
 		return "";
 	}
@@ -341,13 +341,13 @@ public partial class Form1
 					Directory.CreateDirectory(Path.GetDirectoryName(cache)!);
 					File.WriteAllText(cache, fresh);
 				}
-				catch (Exception ex) { LogError("ModDocs", $"Cache write failed for {src.Title}: {ex.Message}"); }
+				catch (Exception ex) { LogFailure("ModDocs", $"Cache write failed for {src.Title}", ex); }
 				return fresh;
 			}
 		}
 		catch (Exception ex)
 		{
-			LogError("ModDocs", $"Online fetch failed for {src.Title}: {ex.Message}");
+			LogFailure("ModDocs", $"Online fetch failed for {src.Title}", ex);
 		}
 
 		return ReadCachedOrBundledDoc(src);
@@ -364,7 +364,7 @@ public partial class Form1
 			string[] parts = await Task.WhenAll(src.GitHubRawUrls.Select(async url =>
 			{
 				try { return await NexusService.HttpClient.GetStringAsync(url); }
-				catch (Exception ex) { LogError("ModDocs", $"Doc part failed ({url}): {ex.Message}"); return ""; }
+				catch (Exception ex) { LogFailure("ModDocs", $"Doc part failed ({url})", ex); return ""; }
 			}));
 
 			var sb = new StringBuilder();

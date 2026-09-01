@@ -328,7 +328,7 @@ public class AiService
 		{
 			string apiMsg = "";
 			try { apiMsg = (string?)JObject.Parse(text)["error"]?["message"] ?? ""; }
-			catch { /* non-JSON error body */ }
+			catch (Exception ex) { DiagnosticLog.WriteException("AI", "reading the error the AI service returned", ex); }
 			throw new HttpRequestException($"Request failed (HTTP {(int)resp.StatusCode}). {apiMsg}".Trim());
 		}
 		return JObject.Parse(text);

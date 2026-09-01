@@ -151,7 +151,7 @@ public partial class Form1
 		catch (Exception ex)
 		{
 			ResetStatus();
-			LogError(known.DisplayName, $"{part.Name} failed: {ex.Message}");
+			LogFailure(known.DisplayName, $"{part.Name} failed", ex);
 			Speak(Loc.T("modparts.failedSpeak", what));
 			SpeakBox(Loc.T("modparts.failedBox", what, FriendlyError(ex)), Loc.T("modparts.manualTitle"),
 				MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -198,7 +198,7 @@ public partial class Form1
 			{
 				if (File.Exists(Path.Combine(gameFolder, part.DetectFile))) return true;
 			}
-			catch { }
+			catch (Exception ex) { DiagnosticLog.WriteException("ModParts", $"checking for {part.DetectFile} in the game folder", ex); }
 		}
 
 		if (string.IsNullOrEmpty(part.DetectModName)) return false;
@@ -414,7 +414,7 @@ public partial class Form1
 			catch (Exception ex)
 			{
 				failed.Add(Path.GetFileName(file));
-				LogError(known.DisplayName, $"Could not remove {file}: {ex.Message}");
+				LogFailure(known.DisplayName, $"Could not remove {file}", ex);
 			}
 		}
 

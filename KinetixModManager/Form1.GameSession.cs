@@ -271,11 +271,11 @@ public partial class Form1
 		PopulateWalkthroughs();
 		PopulateModWikis();
 		// Load the (now reset) active wiki's live categories; splitWiki already exists on a game switch.
-		_ = RefreshCategoriesForActiveWikiAsync();
+		Fire(RefreshCategoriesForActiveWikiAsync(), "RefreshCategoriesForActiveWikiAsync");
 		// Refresh the Discovery language and category lists for the new game (both, and their counts, are
 		// game-specific — Skyrim's categories are nothing like Stardew Valley's).
-		_ = PopulateDiscoveryLanguagesAsync();
-		_ = PopulateDiscoveryCategoriesAsync();
+		Fire(PopulateDiscoveryLanguagesAsync(), "PopulateDiscoveryLanguagesAsync");
+		Fire(PopulateDiscoveryCategoriesAsync(), "PopulateDiscoveryCategoriesAsync");
 
 		if (webViewWiki.CoreWebView2 != null)
 		{
@@ -313,7 +313,7 @@ public partial class Form1
 		// the session says so here instead. Checked once per loaded session, after the data refresh so the mod
 		// list is already on screen.
 		_bepInExCheckedThisSession = false;
-		_ = CheckBepInExForSessionAsync();
+		Fire(CheckBepInExForSessionAsync(), "CheckBepInExForSessionAsync");
 	}
 
 	private void CloseGameSession()

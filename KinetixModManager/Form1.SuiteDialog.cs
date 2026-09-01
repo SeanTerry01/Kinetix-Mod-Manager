@@ -261,7 +261,7 @@ public partial class Form1
 				? Loc.T("suite.openInstalledPage", item.Name)
 				: Loc.T("suite.openDownloadPage", item.Name));
 			try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
-			catch (Exception ex) { LogError(item.Name, "Failed to open download page: " + ex.Message); }
+			catch (Exception ex) { LogFailure(item.Name, "Failed to open download page", ex); }
 		};
 
 		layout.Controls.Add(lstStatus, 0, 1);
@@ -355,7 +355,7 @@ public partial class Form1
 							}
 							catch (Exception ex)
 							{
-								LogError(item.Name, $"Nexus download failed: {ex.Message}");
+								LogFailure(item.Name, $"Nexus download failed", ex);
 							}
 						}
 						
@@ -393,7 +393,7 @@ public partial class Form1
 								}
 								catch (Exception ex)
 								{
-									LogError(item.Name, $"Nexus download failed: {ex.Message}");
+									LogFailure(item.Name, $"Nexus download failed", ex);
 								}
 							}
 							
@@ -423,7 +423,7 @@ public partial class Form1
 						}
 						catch (Exception ex)
 						{
-							LogError(item.Name, $"Download or extraction failed: {ex.Message}");
+							LogFailure(item.Name, $"Download or extraction failed", ex);
 							Speak(Loc.T("suite.failedInstallItem", item.Name));
 						}
 					}
@@ -581,14 +581,15 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("SMAPI", "Automatic SMAPI install failed: " + ex.Message);
+			LogFailure("SMAPI", "Automatic SMAPI install failed", ex);
 			Speak(Loc.T("suite.smapiAutoFailed"));
 			Process.Start(new ProcessStartInfo("https://smapi.io") { UseShellExecute = true });
 			return false;
 		}
 		finally
 		{
-			try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { }
+			try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); }
+			catch (Exception ex) { DiagnosticLog.WriteException("Suite", $"clearing the temporary folder {tempDir}", ex); }
 		}
 	}
 

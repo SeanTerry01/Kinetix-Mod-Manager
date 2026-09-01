@@ -63,7 +63,7 @@ public static class SearchHistoryStore
 			Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 			File.WriteAllText(path, JsonConvert.SerializeObject(entries, Formatting.Indented));
 		}
-		catch { /* history is a convenience; never fail a search over it */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("History", "saving a search to the history", ex); }
 	}
 
 	/// <summary>
@@ -109,7 +109,7 @@ public static class SearchHistoryStore
 			string path = HistoryPath(game);
 			if (File.Exists(path)) File.Delete(path);
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("History", "clearing the search history", ex); }
 	}
 
 	private static List<SearchHistoryEntry> LoadRaw(string game)

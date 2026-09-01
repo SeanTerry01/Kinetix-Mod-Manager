@@ -71,7 +71,7 @@ public static class FomodParser
 				info.Version = ElValue(root, "Version");
 			}
 		}
-		catch { /* info.xml is optional metadata; absence is not fatal */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("FOMOD", $"reading {infoXmlPath}", ex); }
 		return info;
 	}
 

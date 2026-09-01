@@ -107,7 +107,7 @@ public static class ContentPatcherConfig
 				});
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Content Patcher", "reading a mod's config schema", ex); }
 
 		return options;
 	}
@@ -129,7 +129,7 @@ public static class ContentPatcherConfig
 			foreach (JProperty property in config.Properties())
 				values[property.Name] = TokenAsText(property.Value);
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Content Patcher", $"reading the settings in {configJsonPath}", ex); }
 
 		return values;
 	}

@@ -268,7 +268,7 @@ public partial class Form1
 					}
 				}
 			}
-			catch { }
+			catch (Exception ex) { DiagnosticLog.WriteException("UI", "putting the window back after a prompt closed", ex); }
 			overlay.Dispose();
 		}
 	}
@@ -447,7 +447,7 @@ public partial class Form1
 				for (int i = 0; i < buttons.Count && i < choices.Length; i++)
 					buttons[i].AccessibleName = choices[i].Label.Replace("&", "");
 			}
-			catch { }
+			catch (Exception ex) { DiagnosticLog.WriteException("UI", "restoring the names of a prompt's buttons", ex); }
 		};
 		timer.Start();
 	}

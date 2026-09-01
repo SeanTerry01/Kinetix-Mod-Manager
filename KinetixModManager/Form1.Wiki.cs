@@ -303,7 +303,7 @@ public partial class Form1
         catch (Exception ex)
         {
             _webViewInitTask = null; // allow a later navigation to retry initialisation
-            LogError("Wiki", "WebView2 Init Error: " + ex.Message);
+            LogFailure("Wiki", "WebView2 Init Error", ex);
         }
     }
 
@@ -544,7 +544,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("Wiki", "Category list error: " + ex.Message);
+			LogFailure("Wiki", "Category list error", ex);
 		}
 		cmbWikiCategories.SelectedIndex = 0;
 	}
@@ -601,7 +601,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("Wiki", "Search Error: " + ex.Message);
+			LogFailure("Wiki", "Search Error", ex);
 			Speak(Loc.T("wiki.searchFailed"));
 		}
 		return true;
@@ -650,7 +650,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogError("Wiki", "Category Error: " + ex.Message);
+			LogFailure("Wiki", "Category Error", ex);
 			Speak(Loc.T("wiki.categoryFailed"));
 		}
 		return true;

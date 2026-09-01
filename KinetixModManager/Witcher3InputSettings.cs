@@ -89,7 +89,7 @@ public static class Witcher3InputSettings
 				byPrefix[prefix] = byPrefix.ContainsKey(prefix) ? "" : spaced;
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Witcher3", $"listing the mods in {modsFolder}", ex); }
 
 		return byPrefix;
 	}

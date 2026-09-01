@@ -92,7 +92,8 @@ public sealed class GameKeybindExport
 			// The game rewrites the file whenever a key is remapped, so its timestamp genuinely is "when these
 			// bindings were last set" — which is what the controls list says above them.
 			DateTime? written = null;
-			try { if (File.Exists(inputSettings)) written = File.GetLastWriteTimeUtc(inputSettings); } catch { }
+			try { if (File.Exists(inputSettings)) written = File.GetLastWriteTimeUtc(inputSettings); }
+			catch (Exception ex) { DiagnosticLog.WriteException("Controls", $"reading the age of {inputSettings}", ex); }
 
 			return new GameKeybindExport { IsLive = true, Bindings = witcherBindings, GeneratedUtc = written };
 		}
@@ -144,7 +145,7 @@ public sealed class GameKeybindExport
 				return Path.IsPathRooted(value) ? value : Path.Combine(gameFolder, "BepInEx", value);
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Controls", "reading where the keybind reader exports to", ex); }
 		return "";
 	}
 

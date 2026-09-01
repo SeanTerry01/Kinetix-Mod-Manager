@@ -192,7 +192,7 @@ public partial class Form1
 		if (SpeakBox(Loc.T("modinfo.openLinkConfirm", urls[0]), Loc.T("modinfo.openLinkTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 		{
 			try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(urls[0]) { UseShellExecute = true }); }
-			catch (Exception ex) { LogError("OpenLink", "Could not open link: " + ex.Message); Speak(Loc.T("smapi.couldNotOpenLink")); }
+			catch (Exception ex) { LogFailure("OpenLink", "Could not open link", ex); Speak(Loc.T("smapi.couldNotOpenLink")); }
 		}
 		return true;
 	}

@@ -137,7 +137,7 @@ public static class McmConfigSchema
 				if (menu != null && menu.Controls.Count > 0) menus.Add(menu);
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Settings", $"reading the MCM menus of the mod in {modFolder}", ex); }
 
 		return menus;
 	}
@@ -326,6 +326,6 @@ public sealed class McmSettings
 				_values[section + "|" + line.Substring(0, equals).Trim()] = line.Substring(equals + 1).Trim();
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Settings", $"reading the MCM settings file {path}", ex); }
 	}
 }

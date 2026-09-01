@@ -53,7 +53,25 @@ public class SoundEngine
 	/// <param name="themeOverride">
 	/// Optional theme name to use instead of <see cref="AppSettings.CurrentTheme"/>.
 	/// </param>
-	public void Play(string name, string? themeOverride = null) => _ = PlayAsync(name, themeOverride);
+	public void Play(string name, string? themeOverride = null)
+	{
+		// Started and not waited for, so nothing would ever receive a failure here — a sound theme with a
+		// malformed file would simply go quiet, which on an app whose feedback IS sound is a confusing thing to
+		// have happen silently. Cheap to observe, so it is observed.
+		_ = Observe();
+
+		async Task Observe()
+		{
+			try
+			{
+				await PlayAsync(name, themeOverride);
+			}
+			catch (Exception ex)
+			{
+				DiagnosticLog.WriteException("Sound", $"playing the \"{name}\" sound", ex);
+			}
+		}
+	}
 
 	/// <summary>
 	/// The same playback, as a task that completes when the sound has actually finished.
@@ -92,7 +110,7 @@ public class SoundEngine
 				while (output.PlaybackState == PlaybackState.Playing)
 					Thread.Sleep(100);
 			}
-			catch { /* audio failures are non-fatal */ }
+			catch (Exception ex) { DiagnosticLog.WriteException("Sound", $"playing the \"{name}\" sound", ex); }
 		});
 	}
 
@@ -144,7 +162,7 @@ public class SoundEngine
 				while (output.PlaybackState == PlaybackState.Playing)
 					Thread.Sleep(10);
 			}
-			catch { /* audio failures are non-fatal */ }
+			catch (Exception ex) { DiagnosticLog.WriteException("Sound", "playing a progress tone", ex); }
 		});
 	}
 
@@ -183,7 +201,7 @@ public class SoundEngine
 				while (output.PlaybackState == PlaybackState.Playing)
 					Thread.Sleep(50);
 			}
-			catch { /* audio failures are non-fatal */ }
+			catch (Exception ex) { DiagnosticLog.WriteException("Sound", "playing the logo sound", ex); }
 			finally
 			{
 				// Only clear the shared reference if it is still this preview's — a newer one may already own it.
@@ -191,7 +209,8 @@ public class SoundEngine
 				{
 					if (ReferenceEquals(_logoOutput, output)) _logoOutput = null;
 				}
-				try { output?.Dispose(); } catch { }
+				try { output?.Dispose(); }
+				catch (Exception ex) { DiagnosticLog.WriteException("Sound", "releasing the logo sound", ex); }
 			}
 		});
 	}
@@ -205,6 +224,7 @@ public class SoundEngine
 	{
 		WaveOutEvent? playing;
 		lock (_logoLock) { playing = _logoOutput; _logoOutput = null; }
-		try { playing?.Stop(); } catch { /* already finished or disposed */ }
+		try { playing?.Stop(); }
+		catch (Exception ex) { DiagnosticLog.WriteException("Sound", "stopping the logo sound", ex); }
 	}
 }

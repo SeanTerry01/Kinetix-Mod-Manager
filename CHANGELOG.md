@@ -1,5 +1,50 @@
 # Version 1.5.2
 
+## ✨ New: nothing fails quietly any more
+
+*   **93 places in the manager caught a failure and then threw it away.** Most had a good reason to carry on — an unreadable folder really does read the same as an empty one — but *carrying on* and *saying nothing at all* are two different decisions, and only the first of them was ever meant. Carrying on is still what happens. Doing it in silence is not.
+*   **91 of them now record what happened**, with what was being attempted at the time. The two left are a user cancelling a wizard and a shutdown signal, which are not failures.
+*   Some of what this reaches had been genuinely invisible:
+    *   **a file that did not get deployed into the game folder** — the mod looks installed and is quietly incomplete;
+    *   **a mod's details failing to save**, so it re-derives them every scan and its Nexus link keeps going missing;
+    *   **the record of what the script extender installed** failing to write, which is what a later clean uninstall depends on;
+    *   **an old backup that would not delete** after you asked for it to be pruned;
+    *   **the screen-reader bridge failing to reload** after NVDA restarts — for the person relying on it, the entire symptom is silence, with no error to see by definition.
+*   ⚠️ **One kind of failure is recorded 20 times and then summarised**, because some of these sit inside a loop over every file of every mod. One unreadable folder there is worth knowing about; ten thousand is a log nobody can read and a report nobody can send, with the one failure that mattered buried in the middle of it.
+*   A test fails the build if a new silent catch appears. The exception is the log itself, which has to swallow: it is called from the crash handler, and a logger that throws while recording a crash destroys the very record it was writing.
+
+---
+
+## 🐛 Fixed: the manager could crash as it closed
+
+*   Found by reading the crash log that nobody had been able to read — the first thing the new one-file log turned up, from a crash recorded on 8 August.
+*   Closing the window disposes the menu bar, and disposing a menu bar takes Windows out of menu mode, which raises **one last "menu deactivated" event on the way out**. The manager listens for that event because leaving the Alt menu restores focus to the list underneath without announcing it — so it re-announces where you are. On the way out there is no window left to post that announcement to, and the attempt threw.
+*   The announcement is now skipped when the window is already going away. There was never anything to announce at that point.
+
+---
+
+## ✨ New: one log, and everything that goes wrong is now in it
+
+*   ⚠️ **There were two logs, and the one you were asked for was the wrong one.** Ordinary failures went to `mod_manager_log.txt`, which the File menu and **Control + Shift + L** open. Crashes went to a separate `crash_log.txt` that nothing in the manager ever opened, named, or mentioned — so someone reporting a crash sent a file with no crash in it, while the file holding the answer sat unread beside it. Two real crashes had been recorded there since June and never seen.
+*   **There is now one file, everything goes in it, and it is the one Control + Shift + L already opens.** When a crash dialog appears it says so, and gives the path, so there is no guessing about what to send.
+*   **Every session starts with a header saying what produced it** — the manager's exact version and where it is installed, the Windows and .NET versions, the language and culture, and the game that was loaded. A log that does not say which build wrote it can be actively misleading, since the problem being described may already be fixed.
+*   **Failures are written out in full**: the exception's type, its stack, and *every* inner exception — not just the outermost message, which is routinely the least informative part of the chain ("One or more errors occurred"). Each entry also says **what the manager was trying to do at the time**, which is the half a stack trace cannot supply and the half that makes a report reproducible. 64 places that had been logging a bare message now log the whole thing.
+*   Timestamps are full dates in a fixed format, not the bare `14:07:02` they were. A log arrives days later and often spans several sessions, and a bare time cannot be placed against "it broke on Tuesday".
+*   The log rolls over at 2 MB, keeping one previous generation as `mod_manager_log.1.txt`. The cause of a visible break is often in the session before it, so the older file is moved aside rather than thrown away.
+
+---
+
+## 🐛 Fixed: work started in the background could fail without a trace
+
+*   *"I pressed update mods and it stopped"* had nothing behind it — no error, no dialog, nothing in the log — and this is why.
+*   **About fifty things the manager does are started and deliberately not waited for**, so the window stays responsive while an update check or an install runs. The cost of writing it that way is that there is no longer anyone to receive a failure: the work throws, nothing is thrown anywhere the app is looking, and the operation simply never finishes. Silently. Which is precisely what was reported.
+*   **Every one of those now reports its own failure into the log**, naming the operation that failed. There is a third safety net behind them for anything missed, alongside the two that already caught crashes.
+*   A test now fails the build if new background work is started the old way, because the old way is the one that comes naturally and a single new one puts a silent hole back in the log.
+*   The same gap existed for **sounds** — a malformed file in a sound theme would make the manager go quiet with no explanation, which on an app whose feedback is sound is a confusing thing to have happen silently.
+*   ⚠️ **Logging now starts before the settings file is read**, rather than after. A startup that failed before its own logging was switched on was the one failure nobody could report at all: the manager never appeared, and nothing anywhere said why.
+
+---
+
 ## ✨ New: when the game will not start, the manager names the mod that stopped it
 
 *   A game that launches and then closes, or hangs on a window that says nothing useful, has been the one failure the manager could not explain. Every other broken plugin is **refused**: the script extender writes a line saying which one and why, and Check My Setup reads those out. A plugin that instead hangs, crashes, or puts up its own error box and kills the game writes no such line — it stops the log mid-sentence and takes the game with it.

@@ -551,7 +551,7 @@ public partial class Form1
 				}
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Controls", $"reading the key bindings out of {filePath}", ex); }
 		return results;
 	}
 
@@ -614,7 +614,7 @@ public partial class Form1
 			}
 			Push();
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Controls", "reading a mod's key-binding documentation", ex); }
 		return sections;
 	}
 
@@ -662,7 +662,7 @@ public partial class Form1
 			if (Directory.Exists(docs))
 				files.AddRange(Directory.EnumerateFiles(docs, "*.md", SearchOption.AllDirectories));
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("ModDocs", $"listing the documentation in {modDir}", ex); }
 		return files;
 	}
 
@@ -1071,7 +1071,7 @@ public partial class Form1
 				if (mod.HasContent) sources.Add(mod);
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Controls", "building the controls list for a mod", ex); }
 
 		// A BepInEx plugin keeps its settings outside its own folder — BepInEx writes one .cfg per plugin into
 		// BepInEx\config — so nothing above can find them. They fold into the source of the same name where
@@ -1312,7 +1312,7 @@ public partial class Form1
 				}
 				Push();
 			}
-			catch { }
+			catch (Exception ex) { DiagnosticLog.WriteException("Controls", "reading the key bindings out of an MCM config", ex); }
 		}
 		return sections;
 	}
@@ -1339,7 +1339,7 @@ public partial class Form1
 				values[section + "|" + line.Substring(0, eq).Trim()] = line.Substring(eq + 1).Trim();
 			}
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Settings", $"reading the INI file {path}", ex); }
 	}
 
 	/// <summary>Resolves an MCM keyinput's "settingName:iniSection" id to a readable key combo by looking the
@@ -1480,7 +1480,7 @@ public partial class Form1
 			string path = profile == null ? "" : Witcher3InputSettings.PathFor(profile, _settings.CurrentGamePath);
 			if (path.Length > 0 && File.Exists(path)) written = File.GetLastWriteTime(path);
 		}
-		catch { }
+		catch (Exception ex) { DiagnosticLog.WriteException("Controls", "reading The Witcher 3's own key bindings", ex); }
 
 		// Which bindings these are, said before them: the game rewrites this file whenever a key is remapped, so
 		// its date is honestly "when these bindings were last changed".
@@ -1616,7 +1616,7 @@ public partial class Form1
 			{
 				string? htmlFile = null;
 				try { htmlFile = Directory.EnumerateFiles(docsPath, htmlName, SearchOption.AllDirectories).FirstOrDefault(); }
-				catch { }
+				catch (Exception ex) { DiagnosticLog.WriteException("Controls", $"looking for {htmlName} under {docsPath}", ex); }
 				if (htmlFile != null) { keys.AddRange(ParseKeybindsHtml(htmlFile)); break; }
 			}
 		}
@@ -1636,7 +1636,7 @@ public partial class Form1
 						if (!keys.Contains(jk)) keys.Add(jk);
 				}
 			}
-			catch { }
+			catch (Exception ex) { DiagnosticLog.WriteException("Controls", $"reading the key bindings out of {cfg}", ex); }
 		}
 		return keys;
 	}

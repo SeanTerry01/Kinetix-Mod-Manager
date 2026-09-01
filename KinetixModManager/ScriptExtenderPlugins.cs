@@ -123,7 +123,7 @@ public static class ScriptExtenderPlugins
 				if (build != null && !builds.Contains(build)) builds.Add(build);
 			}
 		}
-		catch { /* unreadable folder reads the same as nothing installed */ }
+		catch (Exception ex) { DiagnosticLog.WriteException("Script Extender", $"listing the Address Library files in {pluginsFolder}", ex); }
 
 		return ScriptExtenderInfo.SortNewestFirst(builds);
 	}
