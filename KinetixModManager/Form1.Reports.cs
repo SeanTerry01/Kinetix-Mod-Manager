@@ -351,6 +351,14 @@ public partial class Form1
 	private void ShowReportDialog(string title, string header, string emptyMessage, List<ReportRow> rows, string? actionHint,
 			Action<ReportRow>? onIgnore = null, string? listName = null, string? openingNote = null)
 		{
+			// What a chosen row asks for, run once the report is off the screen rather than while it is still
+			// up. closeView() only raises a flag — the panel is taken down by the loop that follows — so
+			// anything done straight after it is done UNDER a view that is still there and still holds the
+			// keyboard. Switching tabs from that position moved focus into a control inside a panel about to be
+			// removed, and WinForms parked the handle on its hidden holding window: the screen reader announced
+			// "WindowsFormsParkingWindow" and the user was left nowhere.
+			Func<Task>? afterClose = null;
+
 			// Shown inside the main window rather than as one of its own — see Form1.InlineView.
 			ShowInlineView(title, (container, closeView) =>
 			{
@@ -412,10 +420,11 @@ public partial class Form1
 				if (e.KeyCode != Keys.Enter) return;
 				if (row.OnEnter != null)
 				{
-					// Close first: the action opens its own dialog (and may refresh the lists behind this one).
+					// The action opens its own dialog and may rebuild the lists behind this one, so it waits
+					// until this view has actually been taken down.
 					e.Handled = e.SuppressKeyPress = true;
+					afterClose = row.OnEnter;
 					closeView();
-					_ = row.OnEnter();
 					return;
 				}
 				if (!string.IsNullOrEmpty(row.SearchTerm))
@@ -423,10 +432,14 @@ public partial class Form1
 					if (SpeakBox(Loc.T("reports.searchConfirm", row.SearchTerm), Loc.T("reports.searchTitle"),
 							MessageBoxButtons.YesNo) == DialogResult.Yes)
 					{
+						string term = row.SearchTerm;
+						afterClose = () =>
+						{
+							SelectTab(AppTab.Discovery);
+							txtSearch.Text = term;
+							return RunDiscovery();
+						};
 						closeView();
-						SelectTab(AppTab.Discovery);
-						txtSearch.Text = row.SearchTerm;
-						Fire(RunDiscovery(), "RunDiscovery");
 					}
 				}
 				else if (!string.IsNullOrEmpty(row.OpenUrl))
@@ -438,6 +451,8 @@ public partial class Form1
 
 			return list;
 			},
+			// Whatever the chosen row asked for, now that the view is really gone and focus has been put back.
+			onClosed: () => { if (afterClose != null) Fire(afterClose(), "report row action"); },
 			// Through the hint, so it follows the title rather than arriving ahead of it. A report's header
 			// describes its findings rather than repeating its title, so unlike the other views it is kept whole.
 			hint: ReportOpening(header, emptyMessage, rows, actionHint, openingNote));

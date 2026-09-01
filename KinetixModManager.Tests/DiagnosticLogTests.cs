@@ -201,7 +201,10 @@ public class BackgroundWorkGuardTests
 		var offenders = new List<string>();
 		// The discard has to be the whole target, not the tail of a name: "int unchecked_ = UncheckedModCount()"
 		// is an ordinary assignment and matching it would make this fail on innocent code.
-		var discard = new Regex(@"(?<![A-Za-z0-9_])_ = ([A-Za-z_][A-Za-z0-9_]*)\(");
+		// The target can be reached through a member or a property, not only named outright: "_ = row.OnEnter()"
+		// is as much fire-and-forget as "_ = RunDiscovery()", and the first form slipped past a pattern that
+		// only looked for a bare identifier.
+		var discard = new Regex(@"(?<![A-Za-z0-9_])_ = ([A-Za-z_][A-Za-z0-9_.?]*)\(");
 
 		foreach (string file in Directory.EnumerateFiles(SourceFolder(), "*.cs"))
 			foreach (string line in File.ReadAllLines(file))

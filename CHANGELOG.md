@@ -1,5 +1,46 @@
 # Version 1.5.2
 
+## 🐛 Fixed: a prompt read out its question and then said nothing about the button under your finger
+
+*   The other half of the announcement fix, reported from testing. The question was read — and then the focused **Yes** was not, so the only way to hear it was to Tab away and Shift+Tab back.
+*   **Only half the timing had moved.** The choices deliberately start out unnamed so nothing competes with the question, and giving them their names back a moment later is itself the change that makes the screen reader announce the focused one. Making the question wait for the reader to settle delayed the question but not the naming, so the names came back **while the question was still being spoken** — and a name change made mid-sentence is not one the reader reports.
+*   The two are now chained rather than started together, so the gap between them is the same as it always was, wherever the question starts.
+
+---
+
+## 🐛 Fixed: deleting a mod announced that it was installing one
+
+*   Delete a mod and it says it is backing it up first — then immediately *"Installing Content Patcher, 0 percent"*, which is the opposite of what is happening.
+*   Progress announcements only ever had two phrasings, downloading and installing, so everything that reported progress had to pick one of them. Backing up picked "installing". There is now a third, and the title bar matches it.
+
+---
+
+## 🐛 Fixed: answering a report could leave you in a window called WindowsFormsParkingWindow
+
+*   Say yes to "search for this mod" in Check My Setup and you could land somewhere with that name — a piece of internal Windows Forms scaffolding that should never be seen, let alone focused.
+*   **Closing a report only raises a flag; the panel comes down a moment later.** So the tab switch and the search were being done *underneath a report that was still there and still held the keyboard*. Removing a panel while something inside it has focus makes Windows Forms park that control on a hidden holding window, and the focus goes with it.
+*   Whatever a chosen row asks for now runs **after** the report has actually gone and focus has been put back. As a second guard, focus is moved out of any overlay before it is taken down, so this cannot happen from any other prompt or view either.
+
+---
+
+## ✨ New: the log opens inside the manager, read only (Ctrl + Shift + L)
+
+*   It used to open in Notepad, where the file can be edited or deleted by accident — and where a screen reader user has left the manager entirely to read it.
+*   It now opens as an in-window view like every other screen: a read-only box, arrow keys to move through it, **Ctrl + End** for the newest entry, Escape to close. Nothing in it can be changed.
+*   It opens **at the end**, where whatever just went wrong is. A log is read backwards from the thing that happened, and starting at the top of a two-megabyte file means paging through months to reach it.
+*   Very long logs show the most recent part rather than the whole file, and say so where they are cut, so nobody concludes the earlier sessions never happened. The full path is given in the opening announcement for anyone who wants the file itself.
+*   The **game's** log (SMAPI, SKSE) still opens in Notepad — that one is not the manager's to own.
+
+---
+
+## 🐛 Fixed: a slow wiki stalled the manager for thirty seconds at a time
+
+*   Found in a tester's log, which is the first time anything like this has been visible at all: the wiki category list timing out, repeatedly.
+*   Loading a wiki's categories is a heavy request — five hundred categories with their page counts — and it was using the shared thirty-second timeout. A wiki having a slow day therefore cost half a minute on **every game switch and every wiki change**, silently.
+*   It now gives up after ten seconds, and says so: the dropdown reads **"Categories could not be loaded - search the wiki instead"** rather than sitting empty, which is indistinguishable from a wiki that genuinely has no categories.
+
+---
+
 ## 🐛 Fixed: a file you saved was sometimes never written at all
 
 *   Export your suggested mods, name the file, pick a folder, press Save — and the file is not there. No error, no sound, nothing in the log. It looked like a problem with saving files and was never anything of the kind.

@@ -179,7 +179,7 @@ public partial class Form1
 	{
 		try
 		{
-			ProgressAnnouncer progress = NewProgress(displayName, installing: true);
+			ProgressAnnouncer progress = NewProgress(displayName, "progress.backingUpName");
 			await Task.Run(() => ModFileSystem.CreateBackup(folderPath, modName, backupsPath, progress));
 			progress.Complete();
 

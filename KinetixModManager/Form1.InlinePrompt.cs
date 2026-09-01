@@ -121,14 +121,16 @@ public partial class Form1
 		RunOverlay(host, overlay, firstButton,
 			finished: () => answer != null,
 			onEscape: () => answer = EscapeResult(choices),
-			afterShown: () =>
-			{
-				// The question first. The buttons are unnamed at this point so nothing from the screen reader
-				// competes with it; restoring their names a moment later is what makes the reader announce the
-				// focused choice — "Yes, Alt Y" — immediately after.
-				SpeakPromptQuestion(text);
-				RestoreChoiceNames(overlay, choices);
-			});
+			// The question first. The buttons are unnamed at this point so nothing from the screen reader
+			// competes with it; restoring their names a moment later is what makes the reader announce the
+			// focused choice — "Yes, Alt Y" — immediately after.
+			//
+			// The two are chained rather than started together, because the gap BETWEEN them is what does the
+			// work. Waiting for the reader to settle delayed only the question, leaving the names to come back
+			// while it was still being spoken — and a name change made mid-utterance is not one the reader
+			// reports, so the prompt read out its question and then said nothing about the button under the
+			// user's finger. They had to Tab away and back to hear it.
+			afterShown: () => SpeakPromptQuestion(text, andThen: () => RestoreChoiceNames(overlay, choices)));
 
 		return answer ?? EscapeResult(choices);
 	}
@@ -211,6 +213,15 @@ public partial class Form1
 			{
 				if (!host.IsDisposed)
 				{
+					// Focus has to leave the overlay BEFORE the overlay leaves the window. Removing a container
+					// while something inside it still has focus makes WinForms park that control's handle on its
+					// hidden holding window — and the focus goes with it, so the screen reader dutifully
+					// announced "WindowsFormsParkingWindow". Clearing the active control moves focus to the form
+					// without focusing anything in particular, which raises no GotFocus and so leaves the
+					// carefully ordered announcements below exactly as they were.
+					if (host.ActiveControl != null && overlay.Contains(host.ActiveControl))
+						host.ActiveControl = null;
+
 					host.Controls.Remove(overlay);
 					foreach (Control restore in disabled)
 						if (!restore.IsDisposed) restore.Enabled = true;
@@ -420,9 +431,13 @@ public partial class Form1
 	/// itself a change the screen reader reports, so it announces "Yes, Alt Y" on its own straight afterwards;
 	/// saying it here as well had it read out twice.
 	/// </summary>
-	private void SpeakPromptQuestion(string text)
+	private void SpeakPromptQuestion(string text, Action andThen)
 	{
-		WhenReaderHasSettled(() => Speak(text, interrupt: true));
+		WhenReaderHasSettled(() =>
+		{
+			Speak(text, interrupt: true);
+			andThen();
+		});
 	}
 
 	/// <summary>

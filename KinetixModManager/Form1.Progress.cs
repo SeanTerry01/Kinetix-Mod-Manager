@@ -24,7 +24,18 @@ internal sealed class ProgressFeedbackChoice
 public partial class Form1
 {
 	/// <summary>Creates a progress reporter for a download (<paramref name="installing"/> false) or install (true).</summary>
-	private ProgressAnnouncer NewProgress(string name, bool installing) => new ProgressAnnouncer(this, name, installing);
+	private ProgressAnnouncer NewProgress(string name, bool installing) =>
+		new ProgressAnnouncer(this, name, installing ? "progress.installingName" : "progress.downloadingName");
+
+	/// <summary>
+	/// A progress announcer that says something other than downloading or installing — backing a mod up, say.
+	///
+	/// There were only ever two phrasings, and everything that reported progress had to pick one of them. So
+	/// deleting a mod, which backs it up first, announced "Installing Content Patcher, 0 percent" while it was
+	/// doing the opposite.
+	/// </summary>
+	private ProgressAnnouncer NewProgress(string name, string phraseKey) =>
+		new ProgressAnnouncer(this, name, phraseKey);
 
 	private string? _cachedGameDisplayName;
 	private string? _cachedGameDisplayKey;
@@ -106,13 +117,20 @@ public partial class Form1
 		catch { return null; }
 	}
 
-	/// <summary>"Downloading X" / "Installing X" — the once-only opening line spoken at the start of an operation.</summary>
-	private string OpeningPhrase(string name, bool installing) =>
-		Loc.T(installing ? "progress.installingName" : "progress.downloadingName", name);
+	/// <summary>"Downloading X" / "Installing X" / "Backing up X" — the opening line, spoken once.</summary>
+	private string OpeningPhrase(string name, string phraseKey) => Loc.T(phraseKey, name);
 
 	/// <summary>Updates the title bar with the live percentage for an in-progress download or install.</summary>
-	private void SetProgressTitle(string name, bool installing, int pct) =>
-		Text = Loc.T(installing ? "progress.titleInstalling" : "progress.titleDownloading", GameDisplayName(), name, pct);
+	private void SetProgressTitle(string name, string phraseKey, int pct) =>
+		Text = Loc.T(TitleKeyFor(phraseKey), GameDisplayName(), name, pct);
+
+	/// <summary>The title-bar wording that goes with an opening phrase.</summary>
+	private static string TitleKeyFor(string phraseKey) => phraseKey switch
+	{
+		"progress.installingName" => "progress.titleInstalling",
+		"progress.backingUpName"  => "progress.titleBackingUp",
+		_                         => "progress.titleDownloading"
+	};
 
 	/// <summary>
 	/// One place that turns a stream of percentage updates into the feedback the user actually hears and sees.
@@ -131,7 +149,7 @@ public partial class Form1
 
 		private readonly Form1 _form;
 		private readonly string _name;
-		private readonly bool _installing;
+		private readonly string _phraseKey;
 
 		private bool _opened;
 		private bool _done;
@@ -140,11 +158,11 @@ public partial class Form1
 		private int _lastTitlePct = -1;
 		private long _lastToneTicks;
 
-		public ProgressAnnouncer(Form1 form, string name, bool installing)
+		public ProgressAnnouncer(Form1 form, string name, string phraseKey)
 		{
 			_form = form;
 			_name = name;
-			_installing = installing;
+			_phraseKey = phraseKey;
 		}
 
 		private ProgressFeedback Mode => _form._settings.ProgressFeedback;
@@ -169,8 +187,8 @@ public partial class Form1
 				Ui(() =>
 				{
 					if (SpeechOn)
-						_form.Speak(_form.OpeningPhrase(_name, _installing) + ", " + Loc.T("progress.percentSpoken", 0));
-					_form.SetProgressTitle(_name, _installing, pct);
+						_form.Speak(_form.OpeningPhrase(_name, _phraseKey) + ", " + Loc.T("progress.percentSpoken", 0));
+					_form.SetProgressTitle(_name, _phraseKey, pct);
 				});
 				return;
 			}
@@ -197,7 +215,7 @@ public partial class Form1
 			Ui(() =>
 			{
 				if (speakNow) _form.Speak(Loc.T("progress.percentSpoken", decile));
-				if (titleChanged) _form.SetProgressTitle(_name, _installing, pct);
+				if (titleChanged) _form.SetProgressTitle(_name, _phraseKey, pct);
 			});
 		}
 

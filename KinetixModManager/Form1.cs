@@ -1014,7 +1014,84 @@ public partial class Form1 : Form, IMessageFilter
 			Speak(Loc.T("menu.errorLogEmpty"));
 			return;
 		}
-		Process.Start(new ProcessStartInfo("notepad.exe", errorLogPath) { UseShellExecute = true });
+
+		string text;
+		try
+		{
+			text = ReadLogTail(errorLogPath);
+		}
+		catch (Exception ex)
+		{
+			LogFailure("Log", $"reading {errorLogPath}", ex);
+			SpeakBox(Loc.T("log.unreadable", errorLogPath, FriendlyError(ex)), Loc.T("log.title"));
+			return;
+		}
+
+		ShowInlineView(Loc.T("log.title"), (container, closeView) =>
+		{
+			var view = new TextBox
+			{
+				Multiline = true,
+				ReadOnly = true,
+				WordWrap = false,
+				ScrollBars = ScrollBars.Both,
+				Dock = DockStyle.Fill,
+				Font = new Font("Consolas", 10f),
+				// Named, because an unnamed read-only box does not stay unnamed: the reader goes looking and
+				// borrows a name from the window behind it, which is how one of these came to announce itself
+				// as "Search".
+				AccessibleName = Loc.T("log.listName"),
+				Text = text
+			};
+
+			container.Controls.Add(view);
+
+			// At the end, where the newest entry is. A log is read backwards from what just happened, and
+			// opening at the top of a two-megabyte file means paging through months to reach it.
+			view.SelectionStart = view.TextLength;
+			view.ScrollToCaret();
+			view.SelectionStart = 0;
+			view.SelectionLength = 0;
+
+			return view;
+		},
+		hint: Loc.T("log.hint", errorLogPath));
+	}
+
+	/// <summary>
+	/// How much of the log the viewer shows. The whole file would be correct and unusable: it runs to two
+	/// megabytes, and a text box that large is slow to open and slower to move around in with a screen reader.
+	/// </summary>
+	private const int LogTailBytes = 512 * 1024;
+
+	/// <summary>
+	/// The end of the log — the part that describes what just went wrong.
+	///
+	/// Read with sharing, because the log is open for writing the whole time the app is running and anything
+	/// exclusive would fail every time. Cut at a line boundary so the view never opens mid-sentence, and the cut
+	/// is announced rather than silent: a reader who does not know they are looking at an extract will conclude
+	/// the earlier sessions never happened.
+	/// </summary>
+	private static string ReadLogTail(string path)
+	{
+		using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+
+		bool truncated = stream.Length > LogTailBytes;
+		if (truncated) stream.Seek(-LogTailBytes, SeekOrigin.End);
+
+		using var reader = new StreamReader(stream);
+		string text = reader.ReadToEnd();
+
+		if (truncated)
+		{
+			int firstBreak = text.IndexOf('\n');
+			if (firstBreak >= 0 && firstBreak + 1 < text.Length) text = text.Substring(firstBreak + 1);
+			text = Loc.T("log.olderOmitted") + Environment.NewLine + Environment.NewLine + text;
+		}
+
+		// A multiline TextBox breaks only on CRLF, so a log written with bare newlines would arrive as one
+		// enormous line — every entry running into the next.
+		return NormalizeNewlines(text);
 	}
 
 	/// <summary>

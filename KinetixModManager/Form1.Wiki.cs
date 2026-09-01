@@ -529,7 +529,13 @@ public partial class Form1
 			string prefix = _activeWiki?.CategoryPrefix ?? "";
 			string prefixParam = prefix.Length > 0 ? $"&acprefix={Uri.EscapeDataString(prefix)}" : "";
 			string url = $"{CurrentWikiApiUrl}?action=query&list=allcategories&aclimit=500&acprop=size{prefixParam}&format=json&formatversion=2";
-			string json = await NexusService.HttpClient.GetStringAsync(url);
+
+			// Its own deadline, well short of the shared client's thirty seconds. This is a heavy query — five
+			// hundred categories with their page counts — and a wiki having a slow day made every game switch and
+			// every wiki change sit on it for the full half minute before giving up. Nothing here is worth that:
+			// the categories are a convenience, and the wiki is perfectly usable by search without them.
+			using var deadline = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(10));
+			string json = await NexusService.HttpClient.GetStringAsync(url, deadline.Token);
 			JArray cats = (JObject.Parse(json)["query"]?["allcategories"] as JArray) ?? new JArray();
 
 			object[] top = cats
@@ -544,7 +550,10 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			LogFailure("Wiki", "Category list error", ex);
+			LogFailure("Wiki", $"reading the category list from {CurrentWikiApiUrl}", ex);
+			// Said, not only logged. An empty dropdown is indistinguishable from a wiki that has no categories,
+			// and leaves someone waiting for a list that is never coming.
+			cmbWikiCategories.Items.Add(Loc.T("wiki.categoriesUnavailable"));
 		}
 		cmbWikiCategories.SelectedIndex = 0;
 	}
