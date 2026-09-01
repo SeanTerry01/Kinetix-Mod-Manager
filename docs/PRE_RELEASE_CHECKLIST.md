@@ -1,8 +1,10 @@
 # Pre-release checklist
 
-Written 2026-08-08, for the release that follows v1.4.5. At that point the branch
-`feature/moonlight-peaks-and-inline-windows` was **51 commits ahead of origin/master**, unpushed, with the
-version still reading 1.4.5 in both places.
+Written 2026-08-08 for the release that followed v1.4.5, and kept up since. **Now for v1.5.2**, on branch
+`fix/disabled-bepinex-grouping`, **13 commits ahead of `origin/master`, unpushed**, version 1.5.2 in both places.
+
+⚠️ Sections 1.1 to 1.7 are the v1.5.0/v1.5.1 list. They all shipped and are kept because they describe how to
+test those areas, not because they are outstanding. **§1.0 is the live list for v1.5.2.**
 
 This is what has **not** been confirmed by ear, what is known to be unverified, and what is deliberately not in
 this release. Everything here builds clean, passes 365 tests, and publishes a complete Release folder — none of
@@ -13,6 +15,47 @@ it is unfinished work. It is untested work, which is a different thing.
 ## 1. What needs testing by ear
 
 Ordered by how likely a problem is and how much it would cost. Work down the list.
+
+### 1.0 v1.5.2 — the live list
+
+Everything in 1.5.2 is a fix or a diagnostic. **Nothing in it moves your mods.** Two rounds of testing have been
+done on a portable build; results are recorded here.
+
+#### Confirmed by the tester
+*   **Import and export** of suggestion lists. This was the original report — the export was being abandoned
+    between the file dialog and the write, to protect an announcement. Collections and load order shared the
+    same bug and the same fix.
+*   The **download prompt** reads its question before its choices.
+
+#### Not yet confirmed — work down this list
+*   **The install prompt, in full.** Expect exactly two lines, in this order, with nothing between them:
+    *"Downloaded <mod>. Install now?"*, then *"Yes, button, Alt+Y"*. **Three separate faults were fixed here in
+    turn and every one was found only from the NVDA speech history.** If it is wrong again, send the speech
+    history rather than a description — that is what settled each of them.
+*   **The title bar after any download or install.** It should go back to its resting form rather than staying
+    on "Downloading X... 100%". It never used to reset at all, and the change reaches every operation that
+    reports progress, so this is where over-eager clearing would show.
+*   **In-window views** — Settings, the reports, the log. They should sound exactly as in 1.5.1. The code that
+    stops a view announcing the window title moved into shared machinery; if a view has started saying
+    "Kinetix Mod Manager" on the way in, that is this change.
+*   **Deleting a mod** should say *"Backing up <mod>"*, not *"Installing <mod>"*.
+*   **Answering "search for this mod"** in Check My Setup should land in Discovery with the search already run,
+    never in a window called `WindowsFormsParkingWindow`.
+*   **Ctrl+Shift+L**, and the game's log from the Log tab. Both open inside the manager now, read only, at the
+    newest entry; where a game has several logs you get a list first, most useful first. Notepad is gone.
+*   **A missing dependency** should be searched for by name — "Producer Framework Mod" — not by its identifier,
+    "Digus.ProducerFrameworkMod".
+*   **The wiki Categories dropdown** gives up after 10 seconds instead of 30 and says so rather than sitting
+    empty.
+
+#### Needs a machine we do not have
+*   **A GOG copy of Skyrim getting the GOG script extender.** Fixed twice over — the folder lookup now asks the
+    copy's own recorded store, and the wrong store's file is disqualified rather than merely outscored. Needs
+    somebody who owns the game on both stores.
+*   **SSE Engine Fixes on Skyrim 1.7.99+**, where the preloader is no longer part of the mod. Blocked on the
+    mod's author: at the time of writing no released Engine Fixes runs on 1.7.104 at all.
+
+---
 
 ### 1.1 Mods stored inside the game folder — HIGHEST RISK
 
