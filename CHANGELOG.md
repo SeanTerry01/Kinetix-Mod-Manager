@@ -1,5 +1,17 @@
 # Version 1.5.2
 
+## ✨ New: when the game will not start, the manager names the mod that stopped it
+
+*   A game that launches and then closes, or hangs on a window that says nothing useful, has been the one failure the manager could not explain. Every other broken plugin is **refused**: the script extender writes a line saying which one and why, and Check My Setup reads those out. A plugin that instead hangs, crashes, or puts up its own error box and kills the game writes no such line — it stops the log mid-sentence and takes the game with it.
+*   **That silence is itself the evidence.** The script extender writes `loading plugin "X"` before it hands over, and the matching verdict afterwards. A log whose last plugin has no verdict, and which never reached `init complete`, ended inside that plugin. It is the last thing anyone knew before the game went.
+*   **Check My Setup** (**Ctrl + Shift + K**) now says so in as many words, at the top of the list because it outranks everything under it — the rest of that report describes a game that runs and does less than it should, this one describes a game that does not run: *"Skyrim Special Edition stopped while loading the mod plugin EngineFixes, and did not finish starting."* **Enter** finds that mod in your list.
+*   Recorded from the machine that prompted it: Skyrim updated to 1.7.104, and the SSE Engine Fixes installed was still February's 7.0.20 — a build that puts up an error box and terminates the game the moment it finds it did not preload. The log ends on the bare line `loading plugin "EngineFixes"` and nothing anywhere else names it.
+*   **A game that hangs instead of closing is covered too, and it is the worse of the two.** A plugin that never returns leaves a live game process with no window, using no processor time — so the manager reports the game as running, which is true and no use at all, while nothing is on screen. It now says what is actually happening: *"Skyrim Special Edition is running but has not finished starting: it is stuck loading the mod plugin SkyrimAccess, and has written nothing since."*
+*   ⚠️ **What tells a stuck launch from a healthy one is the log going quiet, not the process.** A launch in progress writes continuously, a line per plugin, and loading one takes moments — so a log with a plugin still outstanding and nothing written for a minute is not a load in progress, whatever the process list says. Without that test the check would have to stay silent whenever the game was up, which is exactly when a stuck launch needs explaining.
+*   `preinit complete` is written before any plugin is loaded and ends with the same words as the line that says the load finished. It is matched as a whole line, not as text found somewhere, or every stalled launch would be called healthy.
+
+---
+
 ## 🐛 Fixed: an update was missed because the mod page's own version number was out of date
 
 *   The update check said **all mods are up to date** while SSE Engine Fixes **7.0.21** had been sitting on its Files tab for a week — on a Skyrim that had just updated and would not launch without it.

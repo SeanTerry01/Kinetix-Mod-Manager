@@ -473,6 +473,19 @@ public partial class Form1
 		var rows = new List<ReportRow>();
 		if (se == null) return rows;   // no script extender at all is already reported above
 
+		// 0. The game did not finish starting. First because it outranks everything below it by a distance: the
+		// rest of this method describes a game that runs and does less than it should, and this one describes a
+		// game that does not run.
+		(string? stuckOn, bool stillUp) = PluginThatStoppedTheGame();
+		if (stuckOn != null)
+			rows.Add(new ReportRow
+			{
+				Text = Loc.T(stillUp ? "reports.pluginStuckGame" : "reports.pluginStoppedGame",
+					stuckOn, GameProfiles.DisplayNameFor(_settings.ActiveGame)),
+				SearchTerm = stuckOn,
+				IgnoreKey = $"stuck|{stuckOn}"
+			});
+
 		// 1. Address Library coverage. Only when it is installed: a missing one is a missing requirement, which
 		// the suite check already reports, and saying both would be two rows for one thing.
 		var lib = ScriptExtenderPlugins.ReadAddressLibrary(_settings.ActiveGame, gamePath, se.GameVersion);
@@ -507,6 +520,57 @@ public partial class Form1
 		}
 
 		return rows;
+	}
+
+	/// <summary>
+	/// How long the script extender's log has to have been untouched before a half-finished load counts as
+	/// finished-with rather than still going. Loading a plugin is the work of moments, so a log that has not been
+	/// written to in a minute is not a load in progress.
+	/// </summary>
+	private const int LogGoneQuietSeconds = 60;
+
+	/// <summary>
+	/// The plugin the game was loading when it got no further, and whether the game is still up.
+	///
+	/// Both answers matter, because the failure has two faces and a player meets both. The game can die outright —
+	/// a plugin puts up an error box and terminates it — and the game can simply <em>stay</em> there, a process
+	/// with no window, using no processor time, blocked inside a plugin that never returned. That second one is
+	/// the worse of the two to be told nothing about: the manager sees a live game process and says the game is
+	/// running, which is true and useless, while nothing at all is on screen.
+	///
+	/// What separates a stuck launch from a healthy one is not the process but the <b>log going quiet</b>. A
+	/// launch in progress writes continuously, a line per plugin; loading a plugin takes moments. So a log with a
+	/// plugin still outstanding that has not been written to for <see cref="LogGoneQuietSeconds"/> is not a load
+	/// in progress, whatever the process list says. Without that test the check would have to stay silent
+	/// whenever the game was up — which is precisely when a stuck launch needs explaining.
+	/// </summary>
+	private (string? Plugin, bool GameStillRunning) PluginThatStoppedTheGame()
+	{
+		try
+		{
+			GameProfile? profile = GameProfiles.Find(_settings.ActiveGame);
+			if (profile == null) return (null, false);
+
+			string path = Path.Combine(GameLogFolder(), PrimaryGameLogName());
+			if (!File.Exists(path)) return (null, false);
+
+			// Shared read: a stuck game still holds its log open.
+			string? plugin = ScriptExtenderPlugins.PluginLeftLoading(ReadAllLinesShared(path));
+			if (plugin == null) return (null, false);
+
+			bool running = IsGameProcessRunning(profile.GameExeName);
+			if (!running) return (plugin, false);
+
+			// The game is up. Only a log that has stopped being written proves it is stuck rather than starting.
+			DateTime lastWrite = File.GetLastWriteTimeUtc(path);
+			bool quiet = (DateTime.UtcNow - lastWrite).TotalSeconds >= LogGoneQuietSeconds;
+			return quiet ? (plugin, true) : (null, false);
+		}
+		catch (Exception ex)
+		{
+			LogError("Reports", "Could not read the script extender log: " + ex.Message);
+			return (null, false);
+		}
 	}
 
 	/// <summary>Reads the script extender's log for the plugins it refused, or an empty list if there is no log

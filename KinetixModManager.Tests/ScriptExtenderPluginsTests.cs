@@ -22,6 +22,110 @@ namespace KinetixModManager.Tests;
 public class ScriptExtenderPluginsTests
 {
 	/// <summary>f4se.log as it stood after the 1.11.240 update, verbatim.</summary>
+	/// <summary>skse64.log from the launch that never finished, verbatim: Skyrim 1.7.104 with February's Engine Fixes 7.0.20, which puts up its own error box and terminates the game. The log simply stops.</summary>
+	private static string[] SkyrimStoppedLog() => new[]
+	{
+		"SKSE64 runtime: initialize (version = 2.3.1 01070680 01DD39B0D264A24C, os = 6.2 (9200))",
+		"plugin directory = D:\\SteamLibrary\\steamapps\\common\\Skyrim Special Edition\\Data\\SKSE\\Plugins\\",
+		"scanning plugin directory D:\\SteamLibrary\\steamapps\\common\\Skyrim Special Edition\\Data\\SKSE\\Plugins\\",
+		"checking plugin AchievementsModsEnablerLoader.dll",
+		"checking plugin DbSkseFunctions.dll",
+		"checking plugin EngineFixes.dll",
+		"checking plugin ExtendedHotkeySystem.dll",
+		"plugin ExtendedHotkeySystem.dll (00000001 ExtendedHotkeySystem 02010000) must be recompiled for new address library 0 (handle 0)",
+		"checking plugin SkyrimAccess.dll",
+		"preinit complete",
+		"config path = D:\\SteamLibrary\\steamapps\\common\\Skyrim Special Edition\\Data\\SKSE\\skse.ini",
+		"loading plugin \"Achievements Mods Enabler Loader (SKSE64, AE)\"",
+		"loading plugin \"DbSkseFunctions\"",
+		"registering plugin listener for SKSE at 2 of 11",
+		"loading plugin \"EngineFixes\""
+	};
+
+	/// <summary>skse64.log from a launch that got all the way in, verbatim — the same plugins, ending in <c>init complete</c>.</summary>
+	private static string[] SkyrimFinishedLog() => new[]
+	{
+		"SKSE64 runtime: initialize (version = 2.3.1 01070680 01DD39B0D264A24C, os = 6.2 (9200))",
+		"preinit complete",
+		"loading plugin \"SkyrimAccess\"",
+		"plugin SkyrimAccess.dll (00000001 SkyrimAccess 01060000) loaded correctly (handle 7)",
+		"loading plugin \"SoundRecordDistributor\"",
+		"registering plugin listener for SKSE at 8 of 11",
+		"plugin SoundRecordDistributor.dll (00000001 SoundRecordDistributor 01050030) loaded correctly (handle 8)",
+		"loading plugin \"StayAtSystemPageSE\"",
+		"plugin StayAtSystemPageSE.dll (00000001 StayAtSystemPageSE 01060000) loaded correctly (handle 9)",
+		"dispatch message (0) to plugin listeners",
+		"dispatched message.",
+		"init complete"
+	};
+
+	/// <summary>A plugin that registers its listener and only then hangs, so the last line is not the <c>loading plugin</c> line itself.</summary>
+	private static string[] SkyrimStoppedAfterListenerLog() => new[]
+	{
+		"preinit complete",
+		"loading plugin \"SkyrimAccess\"",
+		"plugin SkyrimAccess.dll (00000001 SkyrimAccess 01060000) loaded correctly (handle 7)",
+		"loading plugin \"EngineFixes\"",
+		"registering plugin listener for SKSE at 3 of 11"
+	};
+
+	// -------------------------------------------------------------------------
+	// The game that does not start at all
+	// -------------------------------------------------------------------------
+
+	[Fact]
+	public void TheLogNamesThePluginTheGameStoppedOn()
+	{
+		// The one failure nothing else can see. A refused plugin is written down and skipped; a plugin that puts
+		// up a message box and terminates the process writes no verdict at all, and the whole symptom from
+		// outside is a game that will not start.
+		Assert.Equal("EngineFixes", ScriptExtenderPlugins.PluginLeftLoading(SkyrimStoppedLog()));
+	}
+
+	[Fact]
+	public void ALaunchThatFinishedNamesNothing()
+	{
+		Assert.Null(ScriptExtenderPlugins.PluginLeftLoading(SkyrimFinishedLog()));
+		Assert.Null(ScriptExtenderPlugins.PluginLeftLoading(TheWorkingFalloutLog()));
+	}
+
+	[Fact]
+	public void APluginThatHangsAfterRegisteringIsStillTheOneNamed()
+	{
+		// The last line of the log is not always the "loading plugin" line — a plugin gets as far as registering
+		// its listener and hangs there. What matters is that no verdict and no "init complete" followed.
+		Assert.Equal("EngineFixes", ScriptExtenderPlugins.PluginLeftLoading(SkyrimStoppedAfterListenerLog()));
+	}
+
+	[Fact]
+	public void PreinitCompleteIsNotMistakenForInitComplete()
+	{
+		// "preinit complete" ends with the exact text that says the load finished, and it is written BEFORE any
+		// plugin is loaded. Matching it as a substring would call every stalled launch healthy.
+		Assert.Contains(SkyrimStoppedLog(), l => l.Trim() == "preinit complete");
+		Assert.DoesNotContain(SkyrimStoppedLog(), l => l.Trim() == "init complete");
+		Assert.Equal("EngineFixes", ScriptExtenderPlugins.PluginLeftLoading(SkyrimStoppedLog()));
+	}
+
+	[Fact]
+	public void ALogWithNoPluginsAtAllNamesNothing()
+	{
+		// Stopping before any plugin was reached is a different problem, and blaming a plugin for it would be a
+		// guess pointed at an innocent mod.
+		Assert.Null(ScriptExtenderPlugins.PluginLeftLoading(new[] { "preinit complete", "config path = x" }));
+		Assert.Null(ScriptExtenderPlugins.PluginLeftLoading(new string[0]));
+		Assert.Null(ScriptExtenderPlugins.PluginLeftLoading(null!));
+	}
+
+	[Fact]
+	public void APluginNameWithBracketsAndSpacesSurvives()
+	{
+		// The name is whatever is inside the quotes, brackets and commas included.
+		string[] log = { "loading plugin \"Achievements Mods Enabler Loader (SKSE64, AE)\"" };
+
+		Assert.Equal("Achievements Mods Enabler Loader (SKSE64, AE)", ScriptExtenderPlugins.PluginLeftLoading(log));
+	}
+
 	private static string[] TheBrokenFalloutLog() => new[]
 	{
 		"F4SE runtime: initialize (version = 0.7.9 010B0F00 01DD30B888264059, os = 6.2 (9200))",

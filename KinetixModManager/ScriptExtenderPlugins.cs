@@ -187,6 +187,58 @@ public static class ScriptExtenderPlugins
 		return failures;
 	}
 
+	/// <summary>
+	/// The line the script extender writes once every plugin has been through it. Matched whole, never as a
+	/// substring, because the line before it is <c>preinit complete</c> and that one ends the same way.
+	/// </summary>
+	private const string InitComplete = "init complete";
+
+	/// <summary>
+	/// The plugin the script extender was still loading when its log stopped, or <c>null</c> when the log ran to
+	/// the end like it should.
+	///
+	/// This is the failure no other check can see. Every other kind of broken plugin is <em>refused</em> — the
+	/// script extender writes a line saying so and carries on, and <see cref="ParseLoadFailures"/> reads it. A
+	/// plugin that instead hangs, crashes, or puts up a message box and kills the process writes no verdict at
+	/// all: it stops the log mid-sentence and takes the game with it. From the outside the whole symptom is that
+	/// the game does not start, with nothing anywhere naming what stopped it.
+	///
+	/// The rule is exactly that: the last <c>loading plugin "X"</c> with no verdict and no <c>init complete</c>
+	/// after it. Recorded from the machine that prompted this — Skyrim updated to 1.7.104 while the SSE Engine
+	/// Fixes installed was still February's 7.0.20, which puts up its own error box and terminates the game, and
+	/// the log ends on the bare line <c>loading plugin "EngineFixes"</c>.
+	///
+	/// ⚠️ A log being written right now looks identical, so the caller must not ask this while the game is
+	/// running.
+	/// </summary>
+	public static string? PluginLeftLoading(IEnumerable<string> logLines)
+	{
+		List<string> lines = logLines?.Select(l => l?.Trim() ?? "").ToList() ?? new List<string>();
+
+		int last = -1;
+		string? name = null;
+		for (int i = 0; i < lines.Count; i++)
+		{
+			Match m = Regex.Match(lines[i], @"^loading plugin\s+""(.+)""\s*$", RegexOptions.IgnoreCase);
+			if (!m.Success) continue;
+			last = i;
+			name = m.Groups[1].Value.Trim();
+		}
+
+		if (last < 0 || string.IsNullOrEmpty(name)) return null;
+
+		// Anything after it that shows the extender was still going means it did not stop there. A verdict line
+		// ("plugin X.dll (…) loaded correctly") is one; finishing the whole load is the other.
+		for (int i = last + 1; i < lines.Count; i++)
+		{
+			if (string.Equals(lines[i], InitComplete, StringComparison.OrdinalIgnoreCase)) return null;
+			if (lines[i].StartsWith("plugin ", StringComparison.OrdinalIgnoreCase) &&
+				lines[i].IndexOf(".dll", StringComparison.OrdinalIgnoreCase) > 0) return null;
+		}
+
+		return name;
+	}
+
 	/// <summary>Sorts a refusal into the two that have a known cause and a cure, and everything else.</summary>
 	public static PluginFailureKind ClassifyReason(string reason)
 	{

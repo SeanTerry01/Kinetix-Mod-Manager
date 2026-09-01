@@ -858,6 +858,8 @@
   "reports.pluginAddrLib": "{0} did not load the last time you played: it needs an Address Library for game version {1}.",
   "reports.pluginGameVersion": "{0} did not load the last time you played: it is built for a different version of the game. Check its mod page for a build matching {1}.",
   "reports.pluginOther": "{0} did not load the last time you played. The script extender said: {2}.",
+  "reports.pluginStoppedGame": "{1} stopped while loading the mod plugin {0}, and did not finish starting. That is the last thing the script extender wrote before the game closed, so {0} is what to look at first - usually it needs an update for your version of the game. Press Enter to find it in your mod list.",
+  "reports.pluginStuckGame": "{1} is running but has not finished starting: it is stuck loading the mod plugin {0}, and has written nothing since. There will be no window. Close the game from Task Manager, then look at {0} - usually it needs an update for your version of the game. Press Enter to find it in your mod list.",
   "reports.nexusReqMissing": "{0} lists \"{1}\" as a Nexus requirement that isn't installed (some are optional or have alternatives — check the mod page).{2}",
   "reports.nexusReqNote": " Author note: {0}",
   "reports.checkingReqs": "Checking requirements ({0}/{1})...",
