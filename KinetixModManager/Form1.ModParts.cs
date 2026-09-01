@@ -37,7 +37,13 @@ public partial class Form1
 			return;
 		}
 
-		var missing = known.Parts.Where(p => !IsPartInstalled(p, gameFolder)).ToList();
+		// A part the running build no longer uses is not fetched at all. Skyrim 1.7.99 took SSE Engine Fixes'
+		// preloader out of the picture, and downloading it there would put a file in the game folder that nothing
+		// loads — while on 1.5.97, where it is still mandatory, this changes nothing.
+		string? build = ActiveGameBuild();
+		var needed = known.Parts.Where(p => ModPartRules.PartNeeded(p, build)).ToList();
+
+		var missing = needed.Where(p => !IsPartInstalled(p, gameFolder)).ToList();
 		if (missing.Count == 0)
 		{
 			Speak(Loc.T("modparts.alreadyComplete", known.DisplayName));
@@ -56,8 +62,7 @@ public partial class Form1
 			return;
 		}
 
-		string? build = ActiveGameBuild();
-		GamePlatform platform = _settings.InstallFor(_settings.ActiveGame)?.Platform ?? GamePlatform.Unknown;
+		GamePlatform platform = ActiveGamePlatform();
 
 		foreach (ModPart part in missing)
 		{
@@ -72,6 +77,17 @@ public partial class Form1
 			await FetchAndInstallPartAsync(known, part, file, gameFolder);
 		}
 	}
+
+	/// <summary>
+	/// Which store the loaded copy came from.
+	///
+	/// Read from the copy's own record, not from its install key: a game's first copy keeps the bare game id
+	/// whichever store it came from, so the key says nothing about the store for the very users this matters most
+	/// to — someone who had GOG Skyrim before they had the Steam one.
+	/// </summary>
+	private GamePlatform ActiveGamePlatform() =>
+		_settings.InstallFor(_settings.ActiveGame)?.Platform
+			?? GameProfiles.PlatformOf(_settings.ActiveGame);
 
 	/// <summary>
 	/// Downloads one part and puts it where it belongs — or, for an account that cannot be handed a download
@@ -195,6 +211,22 @@ public partial class Form1
 			   m.UniqueId.Contains(part.DetectModNameExcluding, StringComparison.OrdinalIgnoreCase))));
 	}
 
+	/// <summary>
+	/// Whether every part of a known mod that this copy's build still calls for is on disk. A part the build has
+	/// left behind does not count against it — that is the difference between "half installed" and "installed,
+	/// and the game has moved on since".
+	/// </summary>
+	private bool AllNeededPartsInstalled(string nexusModId, string gameFolder)
+	{
+		KnownMod? known = ModPartRules.Find(_settings.ActiveGame, nexusModId);
+		if (known == null) return true;
+
+		string? build = ActiveGameBuild();
+		return known.Parts
+			.Where(p => ModPartRules.PartNeeded(p, build))
+			.All(p => IsPartInstalled(p, gameFolder));
+	}
+
 	/// <summary>The active copy's game folder, detected if it hasn't been recorded yet.</summary>
 	private string ActiveGameFolder()
 	{
@@ -230,6 +262,9 @@ public partial class Form1
 	/// A mod none of whose parts are present is not reported. That is not an incomplete install, it is a mod the
 	/// user has not chosen to have, and the requirements report already speaks for the ones that are genuinely
 	/// required.
+	///
+	/// Neither is a part the running build has outgrown: what a mod is made of depends on the game version, and a
+	/// part no longer called for cannot be missing. <see cref="GatherSupersededPartFindings"/> has that one.
 	/// </summary>
 	private List<ReportRow> GatherMissingPartFindings()
 	{
@@ -238,14 +273,20 @@ public partial class Form1
 		string gameFolder = ActiveGameFolder();
 		if (string.IsNullOrEmpty(gameFolder)) return rows;
 
+		string? build = ActiveGameBuild();
+
 		foreach (KnownMod known in ModPartRules.For(_settings.ActiveGame))
 		{
-			if (known.Parts.Count < 2) continue;
+			// What the running build actually calls for. A superseded part is out of the count entirely: with the
+			// preloader no longer wanted, Engine Fixes on Skyrim 1.7.99 is a one-part mod, and a one-part mod is
+			// never "incomplete".
+			var needed = known.Parts.Where(p => ModPartRules.PartNeeded(p, build)).ToList();
+			if (needed.Count < 2) continue;
 
-			var present = known.Parts.Where(p => IsPartInstalled(p, gameFolder)).ToList();
-			if (present.Count == 0 || present.Count == known.Parts.Count) continue;
+			var present = needed.Where(p => IsPartInstalled(p, gameFolder)).ToList();
+			if (present.Count == 0 || present.Count == needed.Count) continue;
 
-			foreach (ModPart part in known.Parts.Where(p => !IsPartInstalled(p, gameFolder)))
+			foreach (ModPart part in needed.Where(p => !IsPartInstalled(p, gameFolder)))
 			{
 				rows.Add(new ReportRow
 				{
@@ -261,5 +302,100 @@ public partial class Form1
 		}
 
 		return rows;
+	}
+
+	/// <summary>
+	/// Reports any part sitting in the game folder that this copy's build has stopped using.
+	///
+	/// The opposite finding to <see cref="GatherMissingPartFindings"/> and kept apart from it, because the two say
+	/// opposite things: one is a mod that cannot work until something arrives, the other is a mod that works
+	/// perfectly well with a file left over beside it. Rolled together they would be counted and announced as
+	/// "incomplete mods", which is precisely backwards.
+	///
+	/// It arrives on its own, without the user doing anything: the game updates, and a file that was mandatory
+	/// last week is now inert. Nothing else would ever mention it — a loose DLL beside the exe is invisible to the
+	/// mod list, which is how it came to be missed in the first place.
+	/// </summary>
+	private List<ReportRow> GatherSupersededPartFindings()
+	{
+		var rows = new List<ReportRow>();
+
+		string gameFolder = ActiveGameFolder();
+		if (string.IsNullOrEmpty(gameFolder)) return rows;
+
+		string? build = ActiveGameBuild();
+
+		foreach (KnownMod known in ModPartRules.For(_settings.ActiveGame))
+			foreach (ModPart part in known.Parts)
+			{
+				if (!ModPartRules.PartSuperseded(part, build)) continue;
+				if (part.Files.Count == 0 || !IsPartInstalled(part, gameFolder)) continue;
+
+				ModPart leftover = part;
+				rows.Add(new ReportRow
+				{
+					Text = Loc.T("modparts.rowSuperseded", known.DisplayName, leftover.Name,
+						leftover.SupersededFromGameBuild ?? ""),
+					OnEnter = () => RemoveSupersededPartAsync(known, leftover, gameFolder)
+				});
+			}
+
+		return rows;
+	}
+
+	/// <summary>
+	/// Clears out a part the running game no longer uses, after asking.
+	///
+	/// To the Recycle Bin, never straight out: these are files somebody was told to put in their game folder by
+	/// hand, the manager did not necessarily put them there, and a player who rolls their game back to an older
+	/// build needs them again. Asking also means the finding can simply be read and ignored, which is the right
+	/// answer for anyone who is not sure.
+	/// </summary>
+	private Task RemoveSupersededPartAsync(KnownMod known, ModPart part, string gameFolder)
+	{
+		string what = Loc.T("modparts.partOf", part.Name, known.DisplayName);
+
+		var present = part.Files
+			.Select(f => Path.Combine(gameFolder, f))
+			.Where(File.Exists)
+			.ToList();
+
+		if (present.Count == 0)
+		{
+			Speak(Loc.T("modparts.supersededGone", what));
+			return Task.CompletedTask;
+		}
+
+		string names = string.Join(", ", present.Select(Path.GetFileName));
+		if (SpeakBox(Loc.T("modparts.supersededConfirm", what, part.SupersededFromGameBuild ?? "", names),
+				Loc.T("modparts.supersededTitle"), MessageBoxButtons.YesNo) != DialogResult.Yes)
+		{
+			SpeakAfterPrompt(Loc.T("modparts.supersededKept", what));
+			return Task.CompletedTask;
+		}
+
+		var failed = new List<string>();
+		foreach (string file in present)
+		{
+			try
+			{
+				Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(file,
+					Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+					Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+			}
+			catch (Exception ex)
+			{
+				failed.Add(Path.GetFileName(file));
+				LogError(known.DisplayName, $"Could not remove {file}: {ex.Message}");
+			}
+		}
+
+		SpeakAfterPrompt(failed.Count == 0
+			? Loc.T("modparts.supersededRemoved", what)
+			: Loc.T("modparts.supersededPartly", what, string.Join(", ", failed)));
+
+		// Three files off a disk, with a prompt in the middle: nothing here is worth a thread. The Task is only
+		// the shape a report row's Enter action has to be.
+		return Task.CompletedTask;
 	}
 }

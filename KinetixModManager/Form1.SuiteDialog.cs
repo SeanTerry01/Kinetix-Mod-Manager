@@ -125,13 +125,16 @@ public partial class Form1
 			suiteItems.Add(new SuiteItem("powerofthree's Papyrus Extender", HasModNameContains("Papyrus Extender") || HasModNameContains("PapyrusExtender"), "Nexus", "22854"));
 			suiteItems.Add(new SuiteItem("powerofthree's Tweaks", HasModNameContains("powerofthree's Tweaks") || HasModNameContains("powerofthree'sTweaks") || HasModNameContains("po3's Tweaks"), "Nexus", "51073"));
 			suiteItems.Add(new SuiteItem("Dylbills Papyrus Functions", HasModNameContains("Dylbills Papyrus Functions") || HasModNameContains("DylbillsPapyrusFunctions") || HasModNameContains("DbMiscFunctions"), "Nexus", "65410"));
-			// SSE Engine Fixes ships as two files on the same Nexus page: the main SKSE plugin
-			// (installs like a normal mod) and a "Preloader" whose d3dx9_42.dll must sit in the
-			// game root. Treat them as one entry that is only "installed" when BOTH are present;
-			// ModPartRules describes both parts and InstallKnownModPartsAsync fetches whichever is missing.
+			// SSE Engine Fixes has historically shipped as two files on the same Nexus page: the main SKSE plugin
+			// (installs like a normal mod) and a "Preloader" whose d3dx9_42.dll must sit in the game root. It is
+			// one entry here, installed only when every part this copy's build still calls for is present.
+			//
+			// Which parts those are is asked of ModPartRules rather than spelled out: from Skyrim 1.7.99 SKSE
+			// preloads the plugin itself and the preloader is not part of the mod any more, so hard-coding the
+			// d3dx9_42.dll check reported a perfectly complete install as missing on every updated game.
 			suiteItems.Add(new SuiteItem("SSE Engine Fixes",
 				(HasModNameContains("SSE Engine Fixes") || HasModNameContains("EngineFixes"))
-					&& File.Exists(Path.Combine(gameFolder, "d3dx9_42.dll")),
+					&& AllNeededPartsInstalled("17230", gameFolder),
 				"Nexus", "17230"));
 			suiteItems.Add(new SuiteItem("Media Keys Fix", HasModNameContains("Media Keys Fix") || HasModNameContains("MediaKeysFix"), "Nexus", "92948"));
 			suiteItems.Add(new SuiteItem("Stay At The System Page - AE", HasModNameContains("Stay At The System Page") || HasModNameContains("StayAtTheSystemPage"), "Nexus", "67883"));

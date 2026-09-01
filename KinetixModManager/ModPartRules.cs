@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
 
 namespace KinetixModManager;
@@ -93,6 +94,43 @@ public sealed class ModPart
 	/// </summary>
 	public bool MatchGameBuild { get; init; }
 
+	/// <summary>
+	/// The file must be the one built for this copy's <em>store</em>, where the page tells them apart.
+	///
+	/// Stronger than <see cref="MatchGameBuild"/> and deliberately so: a build number can be read wrong — off a
+	/// second copy of the game, or off an exe that will not answer — and when it is, the build match is worth a
+	/// thousand points to entirely the wrong file. A GOG copy handed the Steam script extender is the exact
+	/// failure that keeps being reported, and no amount of scoring prevents it while the store is only a
+	/// tie-breaker. So the store disqualifies instead: the Steam build is never an answer for a GOG copy, whatever
+	/// else it scores, and vice versa.
+	///
+	/// It applies only when the page actually distinguishes — some file on it names GOG. A page that offers one
+	/// build for everybody (F4SE's does) is unaffected, so this can never turn a working download into "no file
+	/// found" on a page that has nothing to choose between.
+	/// </summary>
+	public bool PlatformSpecific { get; init; }
+
+	/// <summary>
+	/// The game build from which this part stopped being needed, or <c>null</c> for a part that is always needed.
+	///
+	/// Mods outlive the reasons they were split up. SSE Engine Fixes needed its preloader for as long as SKSE had
+	/// no way to load a plugin early; from Skyrim 1.7.99 SKSE does that itself, and the preloader is neither
+	/// downloaded nor wanted. Stated as the build it changed at rather than as a flag, because both answers are
+	/// live at once — the same page still serves 1.5.97 players, for whom the preloader is not optional at all:
+	/// without it the plugin puts up an error box and closes the game.
+	///
+	/// An unreadable build counts as "still needed", which is the safe way to be wrong: the worst case is a
+	/// finding about a file the player does not need, rather than a game that will not start.
+	/// </summary>
+	public string? SupersededFromGameBuild { get; init; }
+
+	/// <summary>
+	/// Every file this part puts in the game folder, relative to it. Only parts that land in the game folder have
+	/// this, and it is what lets a part that has been superseded be cleared out again — the mod list has never
+	/// heard of these files, so nothing else could name them.
+	/// </summary>
+	public IReadOnlyList<string> Files { get; init; } = Array.Empty<string>();
+
 	/// <summary>Text that must appear somewhere in a file's name, filename or description for it to qualify.</summary>
 	public IReadOnlyList<string> Include { get; init; } = Array.Empty<string>();
 
@@ -132,6 +170,23 @@ public static class ModPartRules
 	private const string EngineFixesPreloaderDll = "d3dx9_42.dll";
 
 	/// <summary>
+	/// Everything the preloader archive drops beside the game's exe: the proxy DLL itself and the two Intel TBB
+	/// libraries it loads the allocator from. All three are the preloader, and all three are what is left behind
+	/// once it is no longer used.
+	/// </summary>
+	private static readonly string[] EngineFixesPreloaderFiles = { EngineFixesPreloaderDll, "tbb.dll", "tbbmalloc.dll" };
+
+	/// <summary>
+	/// The Skyrim build from which SSE Engine Fixes stopped needing its own preloader.
+	///
+	/// This is the build the author's own installer switches on: below it the plugin still exports the old
+	/// <c>Initialize()</c> entry point that the proxy DLL calls, at and above it the plugin is preloaded by SKSE
+	/// directly. It is stated once, here, because both the "you are missing a part" check and the "this file is
+	/// no longer used" one have to agree about where the line is.
+	/// </summary>
+	public const string EngineFixesPreloaderSupersededAt = "1.7.99";
+
+	/// <summary>
 	/// The <c>category_name</c> Nexus gives a retired file. The API refuses to generate a download link for one,
 	/// so it can never be the answer however well it matches.
 	///
@@ -165,6 +220,11 @@ public static class ModPartRules
 					// owner an SKSE built for a game they are not running. It installs without complaint and
 					// then simply never loads.
 					MatchGameBuild = true,
+					// And the store settles it outright. The build match alone was not enough: it is only as good
+					// as the exe it was read from, and reading it from the wrong copy of a game somebody owns twice
+					// is precisely how the Steam build kept arriving in GOG folders. See ModPart.PlatformSpecific.
+					PlatformSpecific = true,
+					Files          = new[] { "skse64_loader.exe" },
 					// Skyrim VR is a different game whose files live on this page's family of pages; excluded so
 					// a keyword tie can never land on one.
 					Exclude        = new[] { "vr" }
@@ -186,6 +246,10 @@ public static class ModPartRules
 					// Same shape, different words: "Game version 1.11.221 required." F4SE has no GOG build, so
 					// here the build match is doing the whole job of keeping an updated game off an old F4SE.
 					MatchGameBuild = true,
+					// Harmless on a page that has never offered a GOG build — the rule only bites where some file
+					// on the page names a store — and correct the day one appears.
+					PlatformSpecific = true,
+					Files          = new[] { "f4se_loader.exe" },
 					Exclude        = new[] { "vr" }
 				}
 			}
@@ -224,6 +288,12 @@ public static class ModPartRules
 					// and a newcomer who never scrolls that far ends up with a plugin that cannot load.
 					Destination = PartDestination.GameRoot,
 					DetectFile  = EngineFixesPreloaderDll,
+					// From Skyrim 1.7.99 the plugin is loaded early by SKSE itself (its 1.7 build exports SKSE's
+					// own preload interface instead of the Initialize() entry point the proxy DLL called), so this
+					// part is neither fetched nor wanted there. Below that build it is still mandatory: the plugin
+					// puts up an error box and terminates the game when it finds it did not preload.
+					SupersededFromGameBuild = EngineFixesPreloaderSupersededAt,
+					Files       = EngineFixesPreloaderFiles,
 					Category    = "MAIN",
 					// "Part 2" is how it was named for years and how people still refer to it; the current file
 					// is called "Engine Fixes - SKSE64 Preloader" with no "Part 2" anywhere in it. Matching on
@@ -242,6 +312,31 @@ public static class ModPartRules
 		string id = GameProfiles.BaseId(gameId);
 		return All.FirstOrDefault(m => m.GameId == id && m.NexusModId == nexusModId);
 	}
+
+	/// <summary>
+	/// Whether <paramref name="part"/> is still needed on a copy running <paramref name="gameBuild"/>.
+	///
+	/// An unreadable build ("" or null) answers <c>true</c>. That is the conservative direction on purpose: a part
+	/// wrongly called for costs a line in a report, while a part wrongly called obsolete costs a game that will
+	/// not start.
+	/// </summary>
+	public static bool PartNeeded(ModPart part, string? gameBuild)
+	{
+		if (string.IsNullOrEmpty(part.SupersededFromGameBuild)) return true;
+		if (string.IsNullOrEmpty(gameBuild)) return true;
+		if (!Version.TryParse(gameBuild, out Version? game)) return true;
+		if (!Version.TryParse(part.SupersededFromGameBuild, out Version? from)) return true;
+
+		return game < from;
+	}
+
+	/// <summary>
+	/// Whether <paramref name="part"/> has been left behind: it is a game-folder part that this copy's build no
+	/// longer uses. The mirror of <see cref="PartNeeded"/>, and separate from it because "not needed" and "sitting
+	/// in the game folder doing nothing" are different findings with different wording.
+	/// </summary>
+	public static bool PartSuperseded(ModPart part, string? gameBuild) =>
+		!string.IsNullOrEmpty(part.SupersededFromGameBuild) && !PartNeeded(part, gameBuild);
 
 	/// <summary>Every known mod for a game, in table order.</summary>
 	public static IReadOnlyList<KnownMod> For(string? gameId)
@@ -264,17 +359,19 @@ public static class ModPartRules
 		string? gameBuild = null,
 		GamePlatform platform = GamePlatform.Unknown)
 	{
+		List<NexusFileInfo> usable = files.Where(Servable).ToList();
+
+		// Does this page tell the stores apart at all? Only if some usable file names GOG, and only then can the
+		// store be a requirement — otherwise a page with one build for everyone (F4SE's) would answer "no file
+		// found" for a GOG owner, which is worse than the single build it has always correctly handed them.
+		bool platformKnown = part.PlatformSpecific && platform != GamePlatform.Unknown;
+		bool pageSplitsByPlatform = platformKnown && usable.Any(f => NamesGogBuild(f.FullHaystack));
+
 		NexusFileInfo? best = null;
 		int bestScore = int.MinValue;
 
-		foreach (NexusFileInfo file in files)
+		foreach (NexusFileInfo file in usable)
 		{
-			// The API refuses to generate a download link for a retired file — the usual cause of "Nexus denied
-			// the download link". Both spellings of retired: no category at all (SKSE's page has a stray
-			// "Placeholder" like that) and the explicit "ARCHIVED".
-			if (string.IsNullOrEmpty(file.CategoryName)) continue;
-			if (string.Equals(file.CategoryName, ArchivedCategory, StringComparison.OrdinalIgnoreCase)) continue;
-
 			// Keywords read what the file calls itself; the build reads everything, because it lives in the prose.
 			string named = file.NameHaystack;
 			string full  = file.FullHaystack;
@@ -282,6 +379,11 @@ public static class ModPartRules
 			if (part.Exclude.Any(x => named.Contains(x.ToLowerInvariant(), StringComparison.Ordinal))) continue;
 			if (part.Include.Count > 0 &&
 				!part.Include.Any(x => named.Contains(x.ToLowerInvariant(), StringComparison.Ordinal))) continue;
+
+			// The wrong store's build is not a worse answer, it is not an answer: it is compiled against an exe
+			// this copy does not have and will silently refuse to load. So it is dropped rather than scored, which
+			// is what stops a build number read off the OTHER copy of a game from carrying it to the top.
+			if (pageSplitsByPlatform && (platform == GamePlatform.Gog) != NamesGogBuild(full)) continue;
 
 			int score = 0;
 
@@ -294,14 +396,10 @@ public static class ModPartRules
 					score += 1000;
 			}
 
-			if (part.MatchGameBuild && platform != GamePlatform.Unknown)
-			{
-				// Only a tie-breaker, and only when the build didn't settle it — which is the case that matters,
-				// because it is what happens the week the game updates and no file names the new build yet.
-				// "from GOG.com" is in the description, so this reads the full text too.
-				bool mentionsGog = full.Contains("gog", StringComparison.Ordinal);
-				if (platform == GamePlatform.Gog == mentionsGog) score += 100;
-			}
+			// Where the page does not split by store the match is still worth something, as the tie-breaker it has
+			// always been — it is what decides the week the game updates and no file names the new build yet.
+			if (platformKnown && !pageSplitsByPlatform && (platform == GamePlatform.Gog) == NamesGogBuild(full))
+				score += 100;
 
 			if (!string.IsNullOrEmpty(part.Category) &&
 				string.Equals(file.CategoryName, part.Category, StringComparison.OrdinalIgnoreCase))
@@ -324,6 +422,26 @@ public static class ModPartRules
 
 		return best;
 	}
+
+	/// <summary>
+	/// Whether Nexus would actually serve this file. The API refuses to generate a download link for a retired
+	/// one — the usual cause of "Nexus denied the download link" — so it can never be the answer however well it
+	/// matches. Both spellings of retired: no category at all (SKSE's page has a stray "Placeholder" like that)
+	/// and the explicit "ARCHIVED".
+	/// </summary>
+	private static bool Servable(NexusFileInfo file) =>
+		!string.IsNullOrEmpty(file.CategoryName) &&
+		!string.Equals(file.CategoryName, ArchivedCategory, StringComparison.OrdinalIgnoreCase);
+
+	/// <summary>
+	/// Whether a piece of a mod page's text says the file it describes is the GOG build.
+	///
+	/// A whole word, not a substring: "gog" inside another word means nothing, and this decides whether a file is
+	/// disqualified outright. Public because the update path has to ask the same question of the same pages — a
+	/// mod that ships one file per store must not be updated across stores either.
+	/// </summary>
+	public static bool NamesGogBuild(string text) =>
+		!string.IsNullOrEmpty(text) && Regex.IsMatch(text, "\\bgog\\b", RegexOptions.IgnoreCase);
 
 	/// <summary>
 	/// Reads a Nexus <c>files.json</c> body into <see cref="NexusFileInfo"/>s.

@@ -42,6 +42,7 @@ public partial class Form1
 		(List<ReportRow> reqRows, _) = await GatherRequirementFindings();
 		ReportRow? limitRow = GatherPluginLimitFinding();
 		List<ReportRow> partRows = GatherMissingPartFindings();
+		List<ReportRow> leftoverRows = GatherSupersededPartFindings();
 		BrokenModFindings broken = await GatherBrokenModFindings();
 		List<ReportRow> conflictRows = GatherFileConflictFindings();
 
@@ -59,6 +60,9 @@ public partial class Form1
 		// With the missing requirements, because a half-installed mod is the same kind of problem: the mod is
 		// there, it looks installed, and it cannot load. Engine Fixes without its preloader is the usual one.
 		foreach (ReportRow r in partRows) { r.Text = Loc.T("health.rowParts", r.Text); rows.Add(r); }
+		// Last of the mod-shape findings and deliberately so: nothing here is broken. A leftover file is tidying,
+		// worth saying once and worth nobody's alarm.
+		foreach (ReportRow r in leftoverRows) { r.Text = Loc.T("health.rowLeftover", r.Text); rows.Add(r); }
 		foreach (ReportRow r in broken.Rows) { r.Text = Loc.T("health.rowBroken", r.Text); rows.Add(r); }
 		foreach (ReportRow r in conflictRows) { r.Text = Loc.T("health.rowConflict", r.Text); rows.Add(r); }
 
@@ -84,6 +88,8 @@ public partial class Form1
 			parts.Add(Loc.T("health.sumLimit"));
 		if (partRows.Count > 0)
 			parts.Add(Loc.T(partRows.Count == 1 ? "health.sumPartsOne" : "health.sumPartsMany", partRows.Count));
+		if (leftoverRows.Count > 0)
+			parts.Add(Loc.T(leftoverRows.Count == 1 ? "health.sumLeftoverOne" : "health.sumLeftoverMany", leftoverRows.Count));
 		if (broken.Rows.Count > 0)
 			parts.Add(Loc.T(broken.Rows.Count == 1 ? "health.sumBrokenOne" : "health.sumBrokenMany", broken.Rows.Count));
 		if (conflictRows.Count > 0)

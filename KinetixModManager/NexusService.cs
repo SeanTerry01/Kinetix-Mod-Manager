@@ -1218,6 +1218,39 @@ public class NexusService
 	}
 
 	/// <summary>
+	/// Narrows a mod page's files to the ones built for the store this copy of the game came from, where the page
+	/// tells them apart at all.
+	///
+	/// A page that ships one file per store is a trap for every "just take the main download" rule: the file the
+	/// author flags as primary is the Steam one, so a GOG copy is handed a build compiled against an exe it does
+	/// not have, which installs without complaint and then never loads. The updater walks into that as readily as
+	/// the first install did.
+	///
+	/// Only where the page actually splits, and only where the store is known — otherwise the list is returned
+	/// untouched, so a page with one build for everybody behaves exactly as it always has.
+	/// </summary>
+	private List<JToken> KeepThisCopysStore(List<JToken> candidates)
+	{
+		GamePlatform platform = _settings.InstallFor(_settings.ActiveGame)?.Platform
+			?? GameProfiles.PlatformOf(_settings.ActiveGame);
+		if (platform == GamePlatform.Unknown) return candidates;
+
+		static string TextOf(JToken f) =>
+			$"{f["name"]} {f["file_name"]} {f["description"]}";
+
+		if (!candidates.Any(f => ModPartRules.NamesGogBuild(TextOf(f)))) return candidates;
+
+		var mine = candidates
+			.Where(f => (platform == GamePlatform.Gog) == ModPartRules.NamesGogBuild(TextOf(f)))
+			.ToList();
+
+		// A page that splits by store but has nothing at all for this one is not a reason to download nothing —
+		// that would turn an update into an error. Better to fall through to the old behaviour and let the rest of
+		// the rules choose.
+		return mine.Count > 0 ? mine : candidates;
+	}
+
+	/// <summary>
 	/// Chooses which file of a mod's Nexus file list to download for an update. The Nexus API refuses to generate
 	/// a download link for <b>archived</b> files (their <c>category_name</c> is null/empty), which is the usual
 	/// cause of "Nexus denied the download link" — so those are excluded first. Among the rest it prefers, in
@@ -1225,13 +1258,19 @@ public class NexusService
 	/// one page); the author-flagged primary file; a MAIN file matching the known latest version, then the newest
 	/// MAIN file; and finally the newest remaining file. This replaces a naive "take files[0]", which could land
 	/// on an old or archived file and get denied.
+	///
+	/// Before any of that, the list is narrowed to this copy's store where the page splits by one — see
+	/// <see cref="KeepThisCopysStore"/>. It has to come first, because the author-flagged primary file is the
+	/// Steam one and every rule below would otherwise reach it before the store was ever considered.
 	/// </summary>
-	private static JToken? SelectUpdateFile(JArray files, GameMod mod)
+	private JToken? SelectUpdateFile(JArray files, GameMod mod)
 	{
 		var candidates = files
 			.Where(f => !string.IsNullOrEmpty(f["category_name"]?.ToString()))
 			.ToList();
 		if (candidates.Count == 0) candidates = files.ToList(); // nothing categorised: fall back to the raw list
+
+		candidates = KeepThisCopysStore(candidates);
 
 		// Honour the Part 1 / Part 2 naming convention for mods that genuinely ship two separate downloads.
 		if (mod.Name.Contains("Part 2", StringComparison.OrdinalIgnoreCase))

@@ -1,5 +1,32 @@
 # Version 1.5.2
 
+## 🐛 Fixed: a GOG copy of Skyrim was handed the Steam script extender
+
+*   Install SKSE while you are in the **GOG** copy of Skyrim and you could get the **Steam** build. It installs without complaint and then never loads — the two are compiled against different program files, and the wrong one simply does nothing.
+*   **Two things had to go wrong together, and both did.** The manager picked the file by reading the version number off your game's own program file, which is normally the best possible evidence. But on a machine with both copies of Skyrim installed, it could read that number off the **other** copy: a session keyed to the game's first copy carries no note of which store that copy came from, and the search for "where is Skyrim?" is ordered Steam-first, so a GOG session that had to go looking got the Steam folder back. The Steam build then matched the version exactly and won on the strength of it.
+*   **Both halves are fixed.** The folder question now asks the copy's own recorded store before anything else, so a GOG session is answered with the GOG folder even where its key says nothing about stores. And the store is no longer a hint that a version match can overrule: on a page that offers a separate GOG file, **the Steam build is not a worse answer for a GOG copy, it is not an answer at all**, and is dropped before anything is scored. Get the version number wrong now and the worst that happens is a different build of the right one.
+*   **The same rule now applies to updates.** Checking a mod for updates used its own file-picking, which took the author's flagged main download — and on a page that splits by store, the flagged one is the Steam file. A GOG copy could therefore be *updated* onto the wrong store's build even after being installed correctly.
+*   Pages that offer one build for everybody are untouched. Fallout 4's script extender has never had a GOG-specific file, and requiring one would have sent GOG owners to the Files tab to pick by hand — so the store only ever disqualifies a file where the page actually tells the stores apart.
+
+---
+
+## ✨ New: SSE Engine Fixes no longer asks for a preloader your game has outgrown
+
+*   SSE Engine Fixes has always needed **two** downloads: the main plugin, and a **preloader** (`d3dx9_42.dll`) that goes loose in the Skyrim folder. **From Skyrim 1.7.99 it does not.** The script extender learned to load the plugin early by itself, and the mod's own installer stopped shipping the preloader for that version.
+*   The manager was still insisting on it. On an updated game it reported a perfectly complete install as *"installed but incomplete"*, and the Accessibility Suite would go and fetch a file with nothing to load it.
+*   **It now reads your game's version and asks only where it is still needed.** On **1.5.97 and the 1.6 line the preloader is still mandatory** — without it the plugin puts up an error box and closes the game — and nothing changes there. On **1.7.99 and newer** Engine Fixes is a one-part mod, and a one-part mod is never incomplete.
+*   ⚠️ **A version the manager cannot read counts as still needing it.** That is the safe way to be wrong: the worst case is a line in a report about a file you do not need, rather than being told to delete the file without which your game will not start.
+
+---
+
+## ✨ New: Check My Setup offers to clear out a preloader your game has stopped using
+
+*   Migrating is the other half of the above, and it arrives without you doing anything: your game updates, and a file that was mandatory last week is sitting in your game folder loaded by nothing. Nothing would ever have mentioned it — a loose DLL beside the game's program file is invisible to the mod list, which is exactly why it was easy to miss on the way in.
+*   **Check My Setup** (**Ctrl + Shift + K**) now reports it under its own heading, **"No longer used"** — separate from incomplete mods, and counted separately in the spoken summary, because nothing here is broken. *"No longer used: SSE Engine Fixes: Part 2 — the preloader is still in your game folder but is no longer used."*
+*   **Enter** on that line names the files it would remove — `d3dx9_42.dll`, `tbb.dll` and `tbbmalloc.dll` — and asks before touching any of them. They go to the **Recycle Bin**, never straight out, so going back to an older version of the game is still possible. Leaving them alone is a perfectly good answer: they do no harm.
+
+---
+
 ## ✨ New: a mod you install from a zip yourself is checked for updates like any other (Ctrl + I)
 
 *   A mod installed with **Ctrl + I** arrived with no Nexus page recorded, so the update check could not cover it until you ran **Auto-match Nexus IDs** and hoped the name search found it. With a lot of mods installed that way, keeping up meant visiting each mod's page by hand.

@@ -110,6 +110,52 @@ public class ModPartRulesTests
         }
     }
 
+    [Fact]
+    public void SkseNeverHandsAGogCopyTheSteamBuildEvenWhenTheBuildNumberSaysSo()
+    {
+        // The reported bug, reproduced. A build number is read off an exe, and on a machine with both copies of
+        // Skyrim it can be read off the wrong one — which is what happens to a GOG session whose install key is
+        // the bare game id. The Steam build then matches the build exactly and outscores everything.
+        //
+        // The store is why that no longer decides it: the Steam file is compiled against an exe this copy does
+        // not have, so it is not a worse answer, it is not an answer.
+        var files = Fixture("nexus-skse64-30379-files.json");
+        ModPart part = PartOf(GameProfiles.SkyrimSE, "30379", 0);
+
+        NexusFileInfo? picked = ModPartRules.PickFile(files, part, SkyrimSteamBuild, GamePlatform.Gog);
+
+        Assert.NotNull(picked);
+        Assert.Contains("GOG", picked!.Description, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void SkseNeverHandsASteamCopyTheGogBuildEitherWayRound()
+    {
+        var files = Fixture("nexus-skse64-30379-files.json");
+        ModPart part = PartOf(GameProfiles.SkyrimSE, "30379", 0);
+
+        // Same mistake mirrored: the GOG build number against a Steam copy.
+        NexusFileInfo? picked = ModPartRules.PickFile(files, part, SkyrimGogBuild, GamePlatform.Steam);
+
+        Assert.NotNull(picked);
+        Assert.DoesNotContain("GOG", picked!.Name, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("GOG.com", picked.Description, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void SkseWithNoStoreRecordedStillPicksSomethingUsable()
+    {
+        // A copy carried over from a settings file written before stores were recorded. Nothing to filter on, so
+        // the build match does the work it always did — it must not come back empty-handed.
+        var files = Fixture("nexus-skse64-30379-files.json");
+        ModPart part = PartOf(GameProfiles.SkyrimSE, "30379", 0);
+
+        NexusFileInfo? picked = ModPartRules.PickFile(files, part, SkyrimSteamBuild, GamePlatform.Unknown);
+
+        Assert.NotNull(picked);
+        Assert.Contains(SkyrimSteamBuild, picked!.Description);
+    }
+
     // -------------------------------------------------------------------------
     // SSE Engine Fixes — the two-part install newcomers fall through
     // -------------------------------------------------------------------------
@@ -195,6 +241,23 @@ public class ModPartRulesTests
     }
 
     [Fact]
+    public void AGogCopyOfAGameWhosePageOffersOneBuildStillGetsThatBuild()
+    {
+        // Fallout 4 is sold on GOG, and F4SE's page has never offered a GOG-specific file. Requiring one would
+        // answer "no file found" and send the user to the Files tab — worse than the single build that has always
+        // been correct for them. The store only disqualifies where the page actually splits by it.
+        var files = Fixture("nexus-f4se-42147-files.json");
+        Assert.DoesNotContain(files, f =>
+            (f.Name + " " + f.FileName).Contains("gog", StringComparison.OrdinalIgnoreCase));
+
+        ModPart part = PartOf(GameProfiles.Fallout4, "42147", 0);
+        NexusFileInfo? picked = ModPartRules.PickFile(files, part, "1.11.221", GamePlatform.Gog);
+
+        Assert.NotNull(picked);
+        Assert.Contains("1.11.221", picked!.Description);
+    }
+
+    [Fact]
     public void AnUnreadableGameVersionStillYieldsACurrentFile()
     {
         // The exe can't always be read (a copy on a drive that isn't mounted, a locked file). Falling back to
@@ -206,6 +269,71 @@ public class ModPartRulesTests
 
         Assert.NotNull(picked);
         Assert.Equal("MAIN", picked!.CategoryName);
+    }
+
+    // -------------------------------------------------------------------------
+    // Parts the game has outgrown
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public void TheEngineFixesPreloaderIsNeededBelowTheSkseHandoverBuildAndNotAboveIt()
+    {
+        ModPart plugin    = PartOf(GameProfiles.SkyrimSE, "17230", 0);
+        ModPart preloader = PartOf(GameProfiles.SkyrimSE, "17230", 1);
+
+        // 1.5.97 and the whole 1.6 line still call the plugin through the proxy DLL's Initialize() entry point,
+        // and the plugin closes the game outright when it finds it did not preload.
+        Assert.True(ModPartRules.PartNeeded(preloader, "1.5.97"));
+        Assert.True(ModPartRules.PartNeeded(preloader, SkyrimSteamBuild));
+        Assert.True(ModPartRules.PartNeeded(preloader, SkyrimGogBuild));
+
+        // From 1.7.99 SKSE preloads the plugin itself.
+        Assert.False(ModPartRules.PartNeeded(preloader, "1.7.99"));
+        Assert.False(ModPartRules.PartNeeded(preloader, "1.7.104"));
+
+        // The plugin itself is needed on every build there has ever been.
+        foreach (string build in new[] { "1.5.97", SkyrimSteamBuild, SkyrimGogBuild, "1.7.104" })
+            Assert.True(ModPartRules.PartNeeded(plugin, build));
+    }
+
+    [Fact]
+    public void AnUnreadableGameBuildLeavesEveryPartNeeded()
+    {
+        // Being wrong here has two very different prices. A part wrongly called for is a line in a report; a part
+        // wrongly called obsolete is a player told to delete the file without which their game will not start.
+        ModPart preloader = PartOf(GameProfiles.SkyrimSE, "17230", 1);
+
+        foreach (string? build in new[] { null, "", "not a version" })
+        {
+            Assert.True(ModPartRules.PartNeeded(preloader, build));
+            Assert.False(ModPartRules.PartSuperseded(preloader, build));
+        }
+    }
+
+    [Fact]
+    public void OnlyAPartThatHasBeenOutgrownCountsAsLeftOver()
+    {
+        ModPart plugin    = PartOf(GameProfiles.SkyrimSE, "17230", 0);
+        ModPart preloader = PartOf(GameProfiles.SkyrimSE, "17230", 1);
+
+        Assert.True(ModPartRules.PartSuperseded(preloader, "1.7.104"));
+        Assert.False(ModPartRules.PartSuperseded(preloader, SkyrimSteamBuild));
+
+        // A part with no handover build is never a leftover, whatever the game is running.
+        Assert.False(ModPartRules.PartSuperseded(plugin, "1.7.104"));
+    }
+
+    [Fact]
+    public void EveryPartThatCanBeOutgrownNamesTheFilesItLeavesBehind()
+    {
+        // Without them the finding could say a file is no longer used and then be unable to name, or remove, it.
+        foreach (KnownMod mod in ModPartRules.All)
+            foreach (ModPart part in mod.Parts.Where(p => !string.IsNullOrEmpty(p.SupersededFromGameBuild)))
+            {
+                Assert.Equal(PartDestination.GameRoot, part.Destination);
+                Assert.NotEmpty(part.Files);
+                Assert.Contains(part.Files, f => string.Equals(f, part.DetectFile, StringComparison.OrdinalIgnoreCase));
+            }
     }
 
     // -------------------------------------------------------------------------

@@ -38,20 +38,39 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// The first copy of <paramref name="game"/> detection finds, or <c>""</c>. Kept as the answer to "where is
-	/// this game?" for the many callers that only need one folder; <see cref="DetectInstalledGameCopies"/> is what
-	/// to ask when it matters that there may be two.
+	/// The folder of the copy of <paramref name="game"/> the caller is asking about, or <c>""</c>. Kept as the
+	/// answer to "where is this game?" for the many callers that only need one folder;
+	/// <see cref="DetectInstalledGameCopies"/> is what to ask when it matters that there may be two.
 	/// </summary>
 	private string DetectInstalledGameFolder(string game)
 	{
 		var copies = DetectInstalledGameCopies(game);
 		if (copies.Count == 0) return "";
 
-		// An install key that names a store is asking about THAT copy, and the probes are ordered Steam-first —
-		// so on a machine with both, answering with copies[0] handed the GOG session the Steam folder. Every
-		// question that follows (is the script extender installed, which build is this, where do the mods go)
-		// would then be answered about a copy the user is not in.
-		GamePlatform wanted = GameProfiles.PlatformOf(game);
+		// Which copy is being asked about, and the answer has to be right on a machine that has both, because the
+		// probes are ordered Steam-first: answering with copies[0] handed the GOG session the Steam folder, and
+		// every question that follows — is the script extender installed, which build is this, which file off the
+		// mod page — would then be answered about a copy the user is not in.
+		//
+		// The copy's OWN recorded store is asked first, and the store named in the key only after it. That order
+		// is the fix: a game's first copy keeps the bare game id whatever store it came from, so the key is silent
+		// about the store for exactly the person this goes wrong for — someone who had GOG Skyrim before they had
+		// the Steam one, whose GOG session is keyed "SkyrimSE" and was being sent to the Steam folder.
+		// The folder this copy is already recorded at, where detection found it too. Strongest of the three and so
+		// asked first: it is the only thing that tells two copies from the SAME store apart, which the store
+		// cannot and the key cannot either.
+		string recorded = _settings.GamePathOf(game);
+		if (!string.IsNullOrEmpty(recorded))
+		{
+			foreach (var copy in copies)
+				if (string.Equals(copy.Folder.TrimEnd(Path.DirectorySeparatorChar),
+						recorded.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+					return copy.Folder;
+		}
+
+		GamePlatform wanted = _settings.InstallFor(game)?.Platform ?? GamePlatform.Unknown;
+		if (wanted == GamePlatform.Unknown) wanted = GameProfiles.PlatformOf(game);
+
 		if (wanted != GamePlatform.Unknown)
 		{
 			foreach (var copy in copies)
