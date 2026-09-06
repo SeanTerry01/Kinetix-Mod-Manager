@@ -97,6 +97,16 @@ public class AnnouncementTests
 	}
 
 	[Fact]
+	public void SpaceInFrontOfAListsNameIsNotReadAsAPause()
+	{
+		// A name with real content in it, deliberately: the all-whitespace case above cannot test the leading
+		// trim, because the trailing trim inside the helper flattens "   " to empty on its own. A re-measurement
+		// removed the leading trim and every case here stayed green.
+		Assert.Equal("Installed Mods List. Stardew Access",
+			Announcements.ListNameThenRest("  Installed Mods List  ", "Stardew Access", Join));
+	}
+
+	[Fact]
 	public void ANamedListWithNothingElseToSayStillSaysItsName()
 	{
 		Assert.Equal("Installed Mods List", Announcements.ListNameThenRest("Installed Mods List.", "", Join));

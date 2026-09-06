@@ -77,8 +77,17 @@ public class AiModelCatalogTests
 	[InlineData("gpt-4o-realtime-preview")]
 	[InlineData("omni-moderation-latest")]
 	[InlineData("davinci-002")]
+	[InlineData("gpt-image-1")]
+	[InlineData("gpt-4o-transcribe")]
+	[InlineData("gpt-4o-search-preview")]
+	[InlineData("babbage-002")]
+	[InlineData("codex-mini-latest")]
 	public void NonChatModelsAreNotOffered(string id)
 	{
+		// One id per entry in the exclusion list, and each chosen to match exactly one of them, so corrupting any
+		// single entry fails a case. Five of the thirteen were unasserted until a re-measurement damaged "codex"
+		// and nothing noticed. The ids are written out rather than read from the list itself: iterating the
+		// production array would only assert that the code agrees with itself.
 		Assert.False(AiModelCatalog.IsOpenAiChatModel(id));
 	}
 
