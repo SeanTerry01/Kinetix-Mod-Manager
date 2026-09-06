@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -151,7 +151,7 @@ public class AiService
 	{
 		if (string.IsNullOrWhiteSpace(apiKey)) throw new InvalidOperationException("No API key is set for this provider.");
 		if (string.IsNullOrWhiteSpace(model)) throw new InvalidOperationException("No model is selected for this provider.");
-		if (turns == null || turns.Count == 0) throw new InvalidOperationException("No message to send.");
+		if (AiModelCatalog.NothingToSend(turns)) throw new InvalidOperationException("No message to send.");
 		return provider switch
 		{
 			"Anthropic"        => await AskAnthropicAsync(model, apiKey, system, turns, maxTokens),
@@ -280,8 +280,8 @@ public class AiService
 				string id = (string?)m["id"] ?? "";
 				// api.openai.com returns non-chat models too, so filter there; a custom endpoint's catalog is
 				// assumed to be chat models already, so take everything it lists.
-				bool officialOpenAi = apiBase.Contains("api.openai.com", StringComparison.OrdinalIgnoreCase);
-				if (id.Length > 0 && (!officialOpenAi || IsOpenAiChatModel(id))) result.Add(new AiModelOption(id, id));
+				bool officialOpenAi = AiModelCatalog.IsOfficialOpenAi(apiBase);
+				if (AiModelCatalog.ShouldOffer(id, officialOpenAi)) result.Add(new AiModelOption(id, id));
 			}
 		return result.OrderBy(m => m.Id, StringComparer.OrdinalIgnoreCase).ToList();
 	}
@@ -300,7 +300,7 @@ public class AiService
 				bool canGenerate = methods != null && methods.Any(x => (string?)x == "generateContent");
 				if (!canGenerate) continue;
 				string name = (string?)m["name"] ?? ""; // e.g. "models/gemini-2.0-flash"
-				string id = name.StartsWith("models/", StringComparison.OrdinalIgnoreCase) ? name.Substring(7) : name;
+				string id = AiModelCatalog.GeminiModelId(name);
 				if (string.IsNullOrEmpty(id)) continue;
 				result.Add(new AiModelOption(id, (string?)m["displayName"] ?? id));
 			}
@@ -341,13 +341,4 @@ public class AiService
 		return t;
 	}
 
-	/// <summary>True for OpenAI ids that are usable chat/completions models (excludes embeddings, audio, images, etc.).</summary>
-	private static bool IsOpenAiChatModel(string idRaw)
-	{
-		string id = idRaw.ToLowerInvariant();
-		string[] bad = { "embedding", "whisper", "tts", "dall-e", "audio", "realtime", "image", "moderation", "transcribe", "search", "davinci", "babbage", "codex" };
-		foreach (string b in bad) if (id.Contains(b)) return false;
-		if (id.StartsWith("gpt") || id.StartsWith("chatgpt")) return true;
-		return id.Length >= 2 && id[0] == 'o' && char.IsDigit(id[1]); // o1 / o3 / o4 reasoning models
-	}
 }

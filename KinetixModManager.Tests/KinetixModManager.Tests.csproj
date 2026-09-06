@@ -110,6 +110,9 @@
          BCL + Newtonsoft + GameProfiles. -->
     <Compile Include="..\KinetixModManager\GameInstall.cs" />
     <Compile Include="..\KinetixModManager\GameInstallRules.cs" />
+    <!-- Which AI models a provider's catalog is allowed to offer and what their ids are once tidied up. The
+         HTTP that fetches a catalog stays in AiService; these are the decisions made about one. BCL only. -->
+    <Compile Include="..\KinetixModManager\AiModelCatalog.cs" />
   </ItemGroup>
 
   <!-- Real files.json bodies, recorded from the Nexus API rather than written by hand. The picking rules exist
