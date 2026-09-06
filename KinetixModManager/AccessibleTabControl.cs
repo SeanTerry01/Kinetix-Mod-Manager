@@ -46,7 +46,8 @@ internal class AccessibleTabControl : TabControl
 
 		public override AccessibleRole Role => AccessibleRole.PageTabList;
 
-		public override int GetChildCount() => _tabs.TabCount + (_tabs.SelectedTab is null ? 0 : 1);
+		public override int GetChildCount() =>
+			TabStripAccessibility.ChildCount(_tabs.TabCount, _tabs.SelectedTab is not null);
 
 		// One object per position, kept for the strip's lifetime. A reader compares the object it is handed against
 		// the one it already has to decide whether anything moved; handing out a fresh object each time makes every
@@ -56,16 +57,21 @@ internal class AccessibleTabControl : TabControl
 
 		public override AccessibleObject? GetChild(int index)
 		{
-			if (index >= 0 && index < _tabs.TabCount)
+			switch (TabStripAccessibility.ChildAt(index, _tabs.TabCount, _tabs.SelectedTab is not null))
 			{
-				if (!_tabObjects.TryGetValue(index, out TabAccessibleObject? tab))
-					_tabObjects[index] = tab = new TabAccessibleObject(this, _tabs, index);
-				return tab;
-			}
+				case TabStripChild.Tab:
+					if (!_tabObjects.TryGetValue(index, out TabAccessibleObject? tab))
+						_tabObjects[index] = tab = new TabAccessibleObject(this, _tabs, index);
+					return tab;
 
-			// One past the last tab is the selected page's content, kept reachable but out of the tabs' numbering.
-			if (index == _tabs.TabCount) return _tabs.SelectedTab?.AccessibilityObject;
-			return null;
+				// One past the last tab is the selected page's content, kept reachable but out of the tabs'
+				// numbering.
+				case TabStripChild.PageContent:
+					return _tabs.SelectedTab?.AccessibilityObject;
+
+				default:
+					return null;
+			}
 		}
 
 		/// <summary>
@@ -75,16 +81,18 @@ internal class AccessibleTabControl : TabControl
 		/// </summary>
 		public override AccessibleObject? GetFocused() => _tabs.Focused ? GetSelected() : null;
 
-		public override AccessibleObject? GetSelected() =>
-			_tabs.SelectedIndex >= 0 ? GetChild(_tabs.SelectedIndex) : null;
+		public override AccessibleObject? GetSelected()
+		{
+			int child = TabStripAccessibility.SelectedChildIndex(_tabs.SelectedIndex);
+			return child == TabStripAccessibility.NoTab ? null : GetChild(child);
+		}
 
 		public override AccessibleObject? HitTest(int x, int y)
 		{
 			Point client = _tabs.PointToClient(new Point(x, y));
-			for (int i = 0; i < _tabs.TabCount; i++)
-				if (_tabs.GetTabRect(i).Contains(client)) return GetChild(i);
+			int hit = TabStripAccessibility.TabAt(client, _tabs.TabCount, _tabs.GetTabRect);
 
-			return base.HitTest(x, y);
+			return hit == TabStripAccessibility.NoTab ? base.HitTest(x, y) : GetChild(hit);
 		}
 	}
 
@@ -103,7 +111,8 @@ internal class AccessibleTabControl : TabControl
 		}
 
 		// Tabs are added and removed as the game changes, so nothing here caches the page.
-		private TabPage? Page => _index >= 0 && _index < _tabs.TabCount ? _tabs.TabPages[_index] : null;
+		private TabPage? Page =>
+			TabStripAccessibility.IsTab(_index, _tabs.TabCount) ? _tabs.TabPages[_index] : null;
 
 		public override AccessibleObject Parent => _strip;
 

@@ -101,6 +101,10 @@
          wording as a delegate rather than calling Loc, so it depends on the BCL alone. The guards prove the
          announcements are WIRED; these are the rules for what they SAY. -->
     <Compile Include="..\KinetixModManager\Announcements.cs" />
+    <!-- The child numbering behind AccessibleTabControl: which position is a tab, which is the page's content,
+         and which tab a point lands on. BCL only (System.Drawing.Primitives for Rectangle/Point), so the
+         arithmetic that stops a reader announcing the wrong tab is testable without WinForms. -->
+    <Compile Include="..\KinetixModManager\TabStripAccessibility.cs" />
   </ItemGroup>
 
   <!-- Real files.json bodies, recorded from the Nexus API rather than written by hand. The picking rules exist
