@@ -105,6 +105,11 @@
          and which tab a point lands on. BCL only (System.Drawing.Primitives for Rectangle/Point), so the
          arithmetic that stops a reader announcing the wrong tab is testable without WinForms. -->
     <Compile Include="..\KinetixModManager\TabStripAccessibility.cs" />
+    <!-- One installed copy of a game, and the rules for finding and ordering them. The install key selects the
+         mods folder, the deployment manifest and every backup, so which copy these answer with is load-bearing.
+         BCL + Newtonsoft + GameProfiles. -->
+    <Compile Include="..\KinetixModManager\GameInstall.cs" />
+    <Compile Include="..\KinetixModManager\GameInstallRules.cs" />
   </ItemGroup>
 
   <!-- Real files.json bodies, recorded from the Nexus API rather than written by hand. The picking rules exist

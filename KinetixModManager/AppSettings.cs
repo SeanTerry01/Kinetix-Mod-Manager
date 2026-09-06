@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -71,53 +71,6 @@ public class AiModelChoice
 	public string Display { get; set; } = "";
 }
 
-/// <summary>
-/// One installed copy of a game. Someone can own the same game twice — the Steam copy and the GOG one, side by
-/// side — and the two are genuinely different installs: different folders, different builds, different per-player
-/// data folders, and mods deployed into one are simply not in the other.
-///
-/// <see cref="Key"/> is what makes them separable. Every per-game dictionary in this class, and every folder the
-/// manager keeps under <c>%AppData%</c> (the deployment manifest, downloads, backups, safety snapshots, save
-/// backups, search history), is keyed by that string — so keying it by the copy rather than by the game is what
-/// makes all of them per-copy at once. A game's first copy keeps the bare game id as its key, which is why none
-/// of this disturbs the settings file of someone who owns one copy of each game.
-/// </summary>
-public class GameInstall
-{
-	/// <summary>The install key: the bare game id for a game's first copy, else <c>"&lt;gameId&gt;@&lt;platform&gt;"</c>.</summary>
-	public string Key { get; set; } = "";
-
-	/// <summary>Which game this is a copy of — always a bare id from <see cref="GameProfiles"/>.</summary>
-	public string GameId { get; set; } = "";
-
-	/// <summary>The store this copy came from, as far as detection could establish.</summary>
-	[JsonConverter(typeof(StringEnumConverter))]
-	public GamePlatform Platform { get; set; } = GamePlatform.Unknown;
-
-	/// <summary>Where this copy is installed.</summary>
-	public string Folder { get; set; } = "";
-
-	/// <summary>
-	/// Whether this copy's mods are staged inside its own game folder rather than under <c>%AppData%</c>.
-	///
-	/// Only meaningful for the games that stage (Skyrim SE, Fallout 4); the rest keep their mods in the game
-	/// folder regardless, because that is where their loader looks. Off for copies the manager already knew
-	/// about, so nobody's mods move without being asked.
-	/// </summary>
-	public bool ModsInGameFolder { get; set; }
-
-	/// <summary>
-	/// How this copy is named to the user — "Skyrim Special Edition (GOG)". The suffix is the caller's decision,
-	/// because a platform is only worth saying when there is another copy to tell it apart from.
-	/// </summary>
-	public string DisplayName(bool withPlatform)
-	{
-		string name = GameProfiles.DisplayNameFor(GameId);
-		string platform = GameProfiles.PlatformDisplayName(Platform);
-		return withPlatform && platform.Length > 0 ? $"{name} ({platform})" : name;
-	}
-}
-
 public class AppSettings
 {
 	public string ModsPath { get; set; } = "";
@@ -137,26 +90,17 @@ public class AppSettings
 	public List<GameInstall> GameInstalls { get; set; } = new List<GameInstall>();
 
 	/// <summary>The recorded copies of <paramref name="gameId"/>, primary (bare-keyed) copy first.</summary>
-	public List<GameInstall> InstallsOf(string gameId)
-	{
-		string id = GameProfiles.BaseId(gameId);
-		return GameInstalls
-			.Where(i => i.GameId == id)
-			.OrderBy(i => i.Key.IndexOf(GameProfiles.InstallKeySeparator) >= 0 ? 1 : 0)
-			.ThenBy(i => i.Key, StringComparer.Ordinal)
-			.ToList();
-	}
+	public List<GameInstall> InstallsOf(string gameId) => GameInstallRules.Of(GameInstalls, gameId);
 
 	/// <summary>The copy identified by <paramref name="installKey"/>, or <c>null</c> if none is recorded.</summary>
-	public GameInstall? InstallFor(string? installKey) =>
-		string.IsNullOrEmpty(installKey) ? null : GameInstalls.FirstOrDefault(i => i.Key == installKey);
+	public GameInstall? InstallFor(string? installKey) => GameInstallRules.WithKey(GameInstalls, installKey);
 
 	/// <summary>
 	/// True when <paramref name="gameId"/> has more than one copy recorded — the one condition under which a
 	/// platform is worth saying out loud. With a single copy the games menu, the title bar and every report read
 	/// exactly as they did before any of this existed.
 	/// </summary>
-	public bool HasMultipleCopies(string gameId) => InstallsOf(gameId).Count > 1;
+	public bool HasMultipleCopies(string gameId) => GameInstallRules.HasMultipleCopies(GameInstalls, gameId);
 
 	public Dictionary<string, string> GameModsPaths { get; set; } = new Dictionary<string, string>();
 
