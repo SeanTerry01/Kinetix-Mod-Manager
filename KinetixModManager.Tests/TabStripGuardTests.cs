@@ -51,8 +51,13 @@ public class TabStripGuardTests
             }
         }
 
-        // A guard that has stopped finding anything to guard passes for the wrong reason.
-        Assert.True(strips > 0, "No tab strips found at all — has the way they are built changed?");
+        // A guard that has stopped finding anything to guard passes for the wrong reason. "> 0" was too weak to
+        // say that: there are two strips, so it would still pass with one of them silently gone from the scan.
+        // Pinned to the number that was true when this was written.
+        Assert.True(strips >= 2,
+            $"Only found {strips} tab strip(s) — expected at least 2. Either a strip has stopped being built as " +
+            "an AccessibleTabControl, or the scan no longer recognises how they are built. Either way this guard " +
+            "is not guarding what it claims to.");
         Assert.True(stock.Count == 0, string.Join("\n", stock));
     }
 

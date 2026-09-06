@@ -40,6 +40,7 @@ public class SpokenStringGuardTests
     {
         HashSet<string> known = EnglishKeys();
         var missing = new List<string>();
+        int found = 0;
 
         foreach (string file in AppSourceFiles())
         {
@@ -48,6 +49,7 @@ public class SpokenStringGuardTests
             {
                 foreach (Match match in Regex.Matches(lines[i], @"Loc\.T\(""([^""]+)"""))
                 {
+                    found++;
                     string key = match.Groups[1].Value;
                     if (known.Contains(key)) continue;
                     if (BuiltAtRuntimePrefixes.Contains(key)) continue;
@@ -56,6 +58,17 @@ public class SpokenStringGuardTests
                 }
             }
         }
+
+        // A sweep that has stopped finding anything to sweep passes for the wrong reason. This test reads the app's
+        // source looking for Loc.T("key") and checks each key against lang/en.json — so if AppSourceFiles() ever
+        // comes back empty (a moved repository root, a different build layout) or the call sites stop matching the
+        // pattern (a switch to interpolation, a wrapper helper), it would check nothing at all and still pass,
+        // silently, forever. 1872 call sites were found when this floor was written; it is set below that so
+        // ordinary churn does not trip it, but a collapse in discovery does.
+        Assert.True(found >= 1800,
+            $"Only found {found} Loc.T call sites to check — expected at least 1800. The scan has stopped seeing " +
+            "the app's phrases, so this guard is no longer guarding anything. Fix the discovery before trusting " +
+            "a green run here.");
 
         Assert.True(missing.Count == 0,
             "These keys are asked for in the code but are not in lang/en.json, so the screen reader will read the " +
