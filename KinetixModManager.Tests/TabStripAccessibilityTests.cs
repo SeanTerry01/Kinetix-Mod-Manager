@@ -112,7 +112,24 @@ public class TabStripAccessibilityTests
 	[Fact]
 	public void NothingSelectedIsReportedAsNoTab()
 	{
-		Assert.Equal(TabStripAccessibility.NoTab, TabStripAccessibility.SelectedChildIndex(-1));
+		// The literal, not the constant. Asserting against TabStripAccessibility.NoTab compares the sentinel with
+		// itself: change the constant and the expectation follows it, so the test cannot tell -1 from 0. A
+		// mutation campaign set NoTab to 0 and this file did not notice.
+		Assert.Equal(-1, TabStripAccessibility.SelectedChildIndex(-1));
+	}
+
+	[Fact]
+	public void NoTabIsNotAnIndexAnyTabCouldHave()
+	{
+		// The property that makes the sentinel a sentinel. "No tab" and "tab zero" have to be different answers,
+		// because callers act on one by returning null and on the other by handing back a real tab.
+		Assert.Equal(-1, TabStripAccessibility.NoTab);
+
+		foreach (int tabCount in new[] { 0, 1, 4, 99 })
+			Assert.False(TabStripAccessibility.IsTab(TabStripAccessibility.NoTab, tabCount));
+
+		Assert.Equal(TabStripChild.None,
+			TabStripAccessibility.ChildAt(TabStripAccessibility.NoTab, tabCount: 4, hasSelectedTab: true));
 	}
 
 	// ------------------------------------------------------------------------------ hit testing ----
@@ -137,14 +154,15 @@ public class TabStripAccessibilityTests
 	[InlineData(-5, 10)]    // left of the first header
 	public void APointOffTheHeadersFindsNoTab(int x, int y)
 	{
-		Assert.Equal(TabStripAccessibility.NoTab,
-			TabStripAccessibility.TabAt(new Point(x, y), 4, Header));
+		// Literal, for the reason given on NoTabIsNotAnIndexAnyTabCouldHave: a miss must not be reportable as a
+		// hit on the first tab.
+		Assert.Equal(-1, TabStripAccessibility.TabAt(new Point(x, y), 4, Header));
 	}
 
 	[Fact]
 	public void AStripWithNoTabsNeverInspectsARectangle()
 	{
-		Assert.Equal(TabStripAccessibility.NoTab,
+		Assert.Equal(-1,
 			TabStripAccessibility.TabAt(new Point(5, 10), 0,
 				_ => throw new InvalidOperationException("there are no headers to measure")));
 	}
