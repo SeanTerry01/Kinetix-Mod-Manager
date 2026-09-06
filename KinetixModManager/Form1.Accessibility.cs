@@ -122,12 +122,10 @@ public partial class Form1
 		// "x of y" for the selected item. An item that opens into sub-topics says so and says which keys move in
 		// and back out — the same hint a mod group carries in the installed list, for the same reason: the item
 		// is a door, and nothing else about it says that it is one.
-		string PositionText(int i)
-		{
-			if (i < 0 || i >= currentNodes.Count) return "";
-			bool hasChildren = currentNodes[i].Children.Count > 0;
-			return Loc.T(hasChildren ? "doc.posGroup" : "common.position", i + 1, currentNodes.Count);
-		}
+		string PositionText(int i) =>
+			Announcements.OutlinePosition(i, currentNodes.Count,
+				n => currentNodes[n].Children.Count > 0,
+				(key, position, total) => Loc.T(key, position, total));
 
 		// Mirror the selected heading's own text into the content pane (silently — the pane isn't focused).
 		// DocOutline.ContentText normalises the line endings: parsing Markdown leaves bare line feeds behind, and a

@@ -280,15 +280,8 @@ public partial class Form1
 	/// follows — so joining with another produced "Enabled. . 129 of 149", heard as a stumble. The row's own stop
 	/// is dropped and the join puts one back, leaving exactly one pause where the pause was wanted.
 	/// </summary>
-	private static string RowThenPosition(object? row, string position)
-	{
-		string text = (row?.ToString() ?? "").TrimEnd();
-		if (text.EndsWith(".", StringComparison.Ordinal)) text = text.Substring(0, text.Length - 1).TrimEnd();
-		// A heading has no position, so the row is all there is to say — joining it to nothing would leave a
-		// dangling separator hanging off the end of the sentence.
-		if (position.Length == 0) return text;
-		return text.Length == 0 ? position : Loc.T("common.rowThenPosition", text, position);
-	}
+	private static string RowThenPosition(object? row, string position) =>
+		Announcements.RowThenPosition(row, position, (a, b) => Loc.T("common.rowThenPosition", a, b));
 
 	/// <summary>
 	/// The "X of Y" a list should say for the row it is on, or <c>""</c> when it should say none.
@@ -325,14 +318,9 @@ public partial class Form1
 	/// two can never drift apart. A container deliberately silenced with <see cref="SilentAccessibleName"/> stays
 	/// silent, and a list with no name of its own adds nothing rather than an empty pause.
 	/// </summary>
-	private static string ListNameThenRest(ListBox list, string rest)
-	{
-		string name = (list.AccessibleName ?? "").Trim();
-		if (name.Length == 0) return rest;
-		if (name.EndsWith(".", StringComparison.Ordinal)) name = name.Substring(0, name.Length - 1).TrimEnd();
-		if (name.Length == 0) return rest;
-		return rest.Length == 0 ? name : Loc.T("common.listNameThenRest", name, rest);
-	}
+	private static string ListNameThenRest(ListBox list, string rest) =>
+		Announcements.ListNameThenRest(list.AccessibleName, rest,
+			(a, b) => Loc.T("common.listNameThenRest", a, b));
 
 	private ListBox? _lastPosList;
 	private int _lastPosIndex = -1;

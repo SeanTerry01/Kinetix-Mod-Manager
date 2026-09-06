@@ -97,6 +97,10 @@
     <Compile Include="..\KinetixModManager\ListSections.cs" />
     <!-- The one diagnostic log everything writes to; BCL only, so its formatting is testable directly. -->
     <Compile Include="..\KinetixModManager\DiagnosticLog.cs" />
+    <!-- How the screen reader's sentences are composed: ordering, trimming and one-based counting. Takes its
+         wording as a delegate rather than calling Loc, so it depends on the BCL alone. The guards prove the
+         announcements are WIRED; these are the rules for what they SAY. -->
+    <Compile Include="..\KinetixModManager\Announcements.cs" />
   </ItemGroup>
 
   <!-- Real files.json bodies, recorded from the Nexus API rather than written by hand. The picking rules exist
