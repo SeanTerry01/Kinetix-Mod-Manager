@@ -80,14 +80,40 @@ public class AiModelCatalogTests
 	[InlineData("gpt-image-1")]
 	[InlineData("gpt-4o-transcribe")]
 	[InlineData("gpt-4o-search-preview")]
+	[InlineData("gpt-5-codex")]
 	[InlineData("babbage-002")]
 	[InlineData("codex-mini-latest")]
 	public void NonChatModelsAreNotOffered(string id)
 	{
-		// One id per entry in the exclusion list, and each chosen to match exactly one of them, so corrupting any
-		// single entry fails a case. Five of the thirteen were unasserted until a re-measurement damaged "codex"
-		// and nothing noticed. The ids are written out rather than read from the list itself: iterating the
-		// production array would only assert that the code agrees with itself.
+		// Real ids OpenAI has listed. Note that only some of these reach the exclusion list at all: an id like
+		// "babbage-002" is already refused by the closing rule, which accepts nothing but the gpt family and the
+		// o-series. EveryExcludedFamilyIsRefusedEvenWhenItLooksLikeAGptModel is what actually pins the list.
+		Assert.False(AiModelCatalog.IsOpenAiChatModel(id));
+	}
+
+	[Theory]
+	[InlineData("gpt-4o-embedding-preview")]
+	[InlineData("gpt-4o-whisper-preview")]
+	[InlineData("gpt-4o-tts-preview")]
+	[InlineData("gpt-4o-dall-e-preview")]
+	[InlineData("gpt-4o-audio-preview")]
+	[InlineData("gpt-4o-realtime-preview")]
+	[InlineData("gpt-4o-image-preview")]
+	[InlineData("gpt-4o-moderation-preview")]
+	[InlineData("gpt-4o-transcribe-preview")]
+	[InlineData("gpt-4o-search-preview")]
+	[InlineData("gpt-4o-davinci-preview")]
+	[InlineData("gpt-4o-babbage-preview")]
+	[InlineData("gpt-4o-codex-preview")]
+	public void EveryExcludedFamilyIsRefusedEvenWhenItLooksLikeAGptModel(string id)
+	{
+		// One synthetic id per entry in the exclusion list, each carrying the gpt prefix so that WITHOUT the list
+		// it would be accepted. That is the only way an entry can be shown to matter: an id the closing rule
+		// already refuses passes whether its entry is there or not, which is why damaging "codex" and "babbage"
+		// went unnoticed even after the first attempt at this test.
+		//
+		// The ids are written out rather than generated from NotChatModels. Reading the production array would
+		// assert only that the code agrees with itself, and would keep passing if an entry were deleted outright.
 		Assert.False(AiModelCatalog.IsOpenAiChatModel(id));
 	}
 
