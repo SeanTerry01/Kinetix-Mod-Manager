@@ -205,6 +205,22 @@ public partial class Form1
 				Loc.T("mc.suite.fabric"), loaderInstalled, "Loader", "https://fabricmc.net",
 				loaderInstalled ? FabricStatusLine(root) : ""));
 
+			// Adopt whichever accessibility mod is already installed, the same way the Fabric version above is
+			// adopted. Without this the suite quietly assumes the default, so somebody already running
+			// Minecraft Access would be shown United Minecraft and Fabric API as missing and offered the pair
+			// — installing a second, rival accessibility mod over a working setup.
+			if (string.IsNullOrEmpty(_settings.MinecraftAccessModId))
+			{
+				MinecraftSuiteMod? present = MinecraftSuite.AccessMods
+					.FirstOrDefault(m => HasModUniqueId(m.FabricModId));
+
+				if (present != null)
+				{
+					_settings.MinecraftAccessModId = present.Id;
+					_settings.Save();
+				}
+			}
+
 			// Only the CHOSEN accessibility mod is listed, along with whatever it needs. The user is never asked
 			// about Fabric API: whether it is required is a consequence of which mod they picked, and both
 			// answers are read from the mods themselves rather than assumed.

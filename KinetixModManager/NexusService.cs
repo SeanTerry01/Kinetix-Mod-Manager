@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -107,6 +107,21 @@ public class NexusService
 	public string CurrentGameId =>
 		GameProfiles.Find(_settings.ActiveGame)?.NexusGameId ?? "1303";
 
+	/// <summary>
+	/// Whether the loaded game gets its mods from Nexus at all.
+	///
+	/// ⚠️ False for Minecraft, and every game-scoped call has to check it. The fallbacks above only fire for an
+	/// UNKNOWN game; Minecraft is perfectly well known and simply has no Nexus domain, so
+	/// <see cref="CurrentGameDomain"/> answers <c>""</c> and a URL built from it reads
+	/// <c>api.nexusmods.com/v1/games//mods/123.json</c> — a malformed request for no game in particular. The
+	/// per-game bulk update check is the one that would fire it unprompted.
+	///
+	/// A game with no game loaded still counts as a Nexus game: parts of the UI read these before a session
+	/// exists, and that has always resolved to Stardew Valley.
+	/// </summary>
+	public bool UsesNexus =>
+		(GameProfiles.Find(_settings.ActiveGame)?.ModSource ?? ModSource.Nexus) == ModSource.Nexus;
+
 	// -------------------------------------------------------------------------
 	// Authentication
 	// -------------------------------------------------------------------------
@@ -146,6 +161,8 @@ public class NexusService
 	/// <returns>The latest version string, or <c>null</c> on failure or non-success status.</returns>
 	public async Task<string?> GetLatestVersionAsync(string nexusId)
 	{
+		// Minecraft's mods come from Modrinth; a Nexus call for it would name no game at all.
+		if (!UsesNexus) return null;
 		await _apiSemaphore.WaitAsync();
 		try
 		{
@@ -918,6 +935,8 @@ public class NexusService
 	/// </summary>
 	public async Task<List<NexusFileInfo>> GetModFilesAsync(string modId)
 	{
+		// Minecraft's mods come from Modrinth; a Nexus call for it would name no game at all.
+		if (!UsesNexus) return new List<NexusFileInfo>();
 		try
 		{
 			using var req = BuildRequest(HttpMethod.Get,
@@ -973,6 +992,8 @@ public class NexusService
 	/// </param>
 	public async Task<JObject?> GetModDetailsAsync(string nexusId, string? gameDomain = null)
 	{
+		// Minecraft's mods come from Modrinth; a Nexus call for it would name no game at all.
+		if (!UsesNexus) return null;
 		await _apiSemaphore.WaitAsync();
 		try
 		{
@@ -1021,6 +1042,8 @@ public class NexusService
 	/// </summary>
 	public async Task<HashSet<int>> GetRecentlyUpdatedModIdsAsync(string period)
 	{
+		// Minecraft's mods come from Modrinth; a Nexus call for it would name no game at all.
+		if (!UsesNexus) return new HashSet<int>();
 		await _apiSemaphore.WaitAsync();
 		try
 		{
@@ -1045,6 +1068,8 @@ public class NexusService
 	/// </summary>
 	public async Task<JObject?> GetChangelogsAsync(string nexusId)
 	{
+		// Minecraft's mods come from Modrinth; a Nexus call for it would name no game at all.
+		if (!UsesNexus) return null;
 		await _apiSemaphore.WaitAsync();
 		try
 		{
@@ -1081,6 +1106,8 @@ public class NexusService
 	/// </summary>
 	public async Task<List<ModRequirementInfo>> GetModRequirementsAsync(string nexusId)
 	{
+		// Minecraft's mods come from Modrinth; a Nexus call for it would name no game at all.
+		if (!UsesNexus) return new List<ModRequirementInfo>();
 		var result = new List<ModRequirementInfo>();
 		if (string.IsNullOrEmpty(nexusId) || string.IsNullOrEmpty(_settings.ApiKey)) return result;
 		if (!int.TryParse(nexusId, out int modIdNum) || !int.TryParse(CurrentGameId, out int gameIdNum)) return result;
