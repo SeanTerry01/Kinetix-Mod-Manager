@@ -635,6 +635,11 @@ public partial class Form1
 	/// (installing, rebuilding, downloading, …) reset to it when they finish so the title never shows a stale
 	/// message long after the work is done.</summary>
 	private string RestingStatus() =>
+		// A Nexus account is worth resting on only in a session that uses Nexus. Announcing "Connected as
+		// Sean" while managing Minecraft states a fact about a service this game has nothing to do with, and
+		// it is the line the user sees most often — it is what the title says whenever nothing else is
+		// happening. The account is still signed in; it is simply not what this session is about.
+		_nexusService.UsesNexus &&
 		!string.IsNullOrEmpty(_nexusService.NexusUser) && _nexusService.NexusUser != "Unknown User"
 			? Loc.T("status.connectedAs", _nexusService.NexusUser)
 			: Loc.T("status.ready");

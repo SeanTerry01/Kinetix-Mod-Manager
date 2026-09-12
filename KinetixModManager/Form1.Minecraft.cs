@@ -299,7 +299,8 @@ public partial class Form1
 			};
 			foreach (string argument in plan.Arguments) start.ArgumentList.Add(argument);
 
-			System.Diagnostics.Process.Start(start);
+			System.Diagnostics.Process? started = System.Diagnostics.Process.Start(start);
+			if (started != null) Fire(TrackMinecraftSessionAsync(started), "TrackMinecraftSessionAsync");
 		}
 		catch (Exception ex)
 		{
@@ -307,6 +308,56 @@ public partial class Form1
 			SpeakBox(Loc.T("mc.launch.failedBox", FriendlyError(ex)), Loc.T("mc.launch.failedTitle"),
 				MessageBoxButtons.OK, MessageBoxIcon.Error);
 		}
+	}
+
+	/// <summary>
+	/// Follows the running game until it exits, so the status bar says the same things it says for every other
+	/// game: running while it runs, closed when it closes, and back to rest after that.
+	///
+	/// Much simpler than the general tracker, and deliberately separate from it. That one exists to cope with a
+	/// launcher that hands off to another process and a Steam game that restarts itself, so it follows the game
+	/// by executable NAME — which cannot work here, because Minecraft's process is <c>javaw.exe</c> and its
+	/// profile has no executable name at all. What the manager starts here IS the game, from first frame to
+	/// last, so waiting on the handle is both sufficient and exact.
+	/// </summary>
+	private async Task TrackMinecraftSessionAsync(System.Diagnostics.Process game)
+	{
+		try
+		{
+			// Long enough to be past the point where a bad command line would have thrown it straight out, so
+			// "running" is not announced over a game that has already died.
+			await Task.Delay(3000);
+
+			bool alive = false;
+			try { alive = !game.HasExited; }
+			catch (Exception ex)
+			{
+				DiagnosticLog.WriteException("Minecraft", "checking whether the game we started is still running", ex);
+			}
+
+			if (alive) SetStatus(Loc.T("launch.gameRunning"));
+
+			await game.WaitForExitAsync();
+		}
+		catch (Exception ex)
+		{
+			LogFailure("Minecraft", "Could not follow the game process", ex);
+		}
+		finally
+		{
+			try { game.Dispose(); }
+			catch (Exception ex)
+			{
+				DiagnosticLog.WriteException("Minecraft", "releasing the game process", ex);
+			}
+		}
+
+		SetStatus(Loc.T("launch.gameClosed"));
+
+		// Returned to rest silently: "game closed" has just been spoken, and speaking the resting title over
+		// the top of it sounds like a second thing happened.
+		await Task.Delay(5000);
+		ResetStatus();
 	}
 
 	/// <summary>

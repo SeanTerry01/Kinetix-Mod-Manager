@@ -97,7 +97,17 @@ public partial class Form1
 		// Nexus's API is stateless, so once the key is validated for this session there's nothing to reconnect —
 		// re-checking on every refresh just cost a round-trip and a "connecting… connected" chime each time.
 		// Validate only the first time (or after the key changes); afterwards reflect the status quietly.
-		if (!_nexusService.IsValidated)
+		// A game whose mods do not come from Nexus never contacts it. Two reasons, and the second is the
+		// serious one: connecting costs a round trip and a "connecting… connected as" announcement that means
+		// nothing in a Minecraft session — and a FAILED validation returns out of this method entirely, so a
+		// player who has no Nexus key (having never needed one) would open the manager to an empty mod list
+		// with the real explanation nowhere on screen.
+		if (!_nexusService.UsesNexus)
+		{
+			// No status set here on purpose. There is no connection to report, and the refresh below puts the
+			// title where it belongs.
+		}
+		else if (!_nexusService.IsValidated)
 		{
 			SetStatus(Loc.T("status.connecting"));
 			if (!(await ValidateNexusConnection()))
