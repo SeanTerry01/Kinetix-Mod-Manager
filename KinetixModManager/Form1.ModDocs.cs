@@ -37,6 +37,8 @@ public partial class Form1
 	private List<ModDocSource> DocSourcesForActiveGame()
 	{
 		const string sdaBase = "https://raw.githubusercontent.com/stardew-access/stardew-access/development/docs/";
+		const string mcAccessBase =
+			"https://raw.githubusercontent.com/khanshoaib3/minecraft-access/dev/docs/content/";
 		return GameProfiles.BaseId(_settings.ActiveGame) switch
 		{
 			"SkyrimSE" => new List<ModDocSource>
@@ -59,6 +61,30 @@ public partial class Form1
 					sdaBase + "keybindings.md",
 					sdaBase + "commands.md",
 					sdaBase + "config.md",
+				}, null),
+			},
+			"Minecraft" => new List<ModDocSource>
+			{
+				// United Minecraft keeps everything in one README, so there is one file to fetch.
+				new ModDocSource("United Minecraft", "docs/united-minecraft.md", new[]
+				{
+					"https://raw.githubusercontent.com/blindgoofball/united-Minecraft/main/README.md",
+				}, null),
+				// Minecraft Access publishes docs.mcaccess.org from Hugo sources in its own repo, so the
+				// Markdown behind the site can be read directly — the same trick as Stardew Access, and it
+				// gives the drill-down real depth with each page becoming a top section.
+				//
+				// Note the branch: this repo's default is "dev", not "main". A raw URL on the wrong branch
+				// 404s silently and the viewer would fall back to the bundled copy for ever.
+				new ModDocSource("Minecraft Access", "docs/minecraft-access.md", new[]
+				{
+					mcAccessBase + "_index.md",
+					mcAccessBase + "setup/basic.md",
+					mcAccessBase + "setup/advanced.md",
+					mcAccessBase + "features.md",
+					mcAccessBase + "keybindings.md",
+					mcAccessBase + "config.md",
+					mcAccessBase + "good-resources.md",
 				}, null),
 			},
 			_ => new List<ModDocSource>(),

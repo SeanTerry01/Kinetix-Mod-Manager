@@ -1032,7 +1032,8 @@ public partial class Form1
 		// game's. (Moonlight Peaks used to fall through to Stardew Valley's.)
 		if (witcherBindings.Count == 0)
 		{
-			ModKeybinds? gameControls = BuildExportedGameControls() ?? BuildHardcodedGameControls();
+			ModKeybinds? gameControls =
+				BuildMinecraftGameControls() ?? BuildExportedGameControls() ?? BuildHardcodedGameControls();
 			if (gameControls != null) sources.Add(gameControls);
 		}
 
@@ -1140,6 +1141,65 @@ public partial class Form1
 	///
 	/// <c>null</c> when the game has no export of either kind, leaving the hardcoded list to answer.
 	/// </summary>
+	/// <summary>
+	/// Minecraft's controls, read straight from the files the game itself reads, or <c>null</c> for any other
+	/// game.
+	///
+	/// No keybind-export plugin here, and none needed: Minecraft writes its bindings to <c>options.txt</c> as
+	/// plain text, so these are the player's REAL bindings including everything they have remapped — the case
+	/// the bundled-defaults machinery exists to approximate for games that keep nothing readable.
+	///
+	/// United Minecraft's own keys are listed as a second section rather than mixed in, because they are the
+	/// ones a blind player actually reaches for and burying them among sixty vanilla bindings would be a poor
+	/// way to present them.
+	/// </summary>
+	private ModKeybinds? BuildMinecraftGameControls()
+	{
+		if (!GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.Minecraft)) return null;
+
+		string root = MinecraftRootFolder();
+
+		List<MinecraftBinding> vanilla =
+			MinecraftControls.ReadVanillaBindings(Path.Combine(root, "options.txt"));
+		List<MinecraftBinding> united =
+			MinecraftControls.ReadUnitedMinecraftBindings(
+				Path.Combine(root, MinecraftControls.UnitedMinecraftKeybindsFile));
+
+		if (vanilla.Count == 0 && united.Count == 0) return null;
+
+		var mod = new ModKeybinds(Loc.T("controls.mcTitle"));
+
+		// The accessibility mod first: it is what the player is here for.
+		if (united.Count > 0)
+		{
+			var accessSection = new KbSection { Name = Loc.T("controls.mcUnitedSection") };
+			AddMinecraftBindings(accessSection, united);
+			mod.Sections.Add(accessSection);
+		}
+
+		if (vanilla.Count > 0)
+		{
+			var gameSection = new KbSection { Name = Loc.T("controls.mcVanillaSection") };
+			AddMinecraftBindings(gameSection, vanilla);
+			mod.Sections.Add(gameSection);
+		}
+
+		return mod;
+	}
+
+	/// <summary>
+	/// Adds bindings to a section, bound ones first.
+	///
+	/// Unbound actions are kept rather than hidden — several of United Minecraft's ship with no key, and
+	/// "this exists but you would have to bind it" is worth knowing — but they go last, so the list opens on
+	/// something usable instead of a run of "Not bound".
+	/// </summary>
+	private static void AddMinecraftBindings(KbSection section, List<MinecraftBinding> bindings)
+	{
+		foreach (MinecraftBinding binding in bindings.Where(b => !b.IsUnbound).Concat(bindings.Where(b => b.IsUnbound)))
+			section.Entries.Add(new KbEntry { Key = binding.Key, Text = binding.Action });
+	}
+
 	private ModKeybinds? BuildExportedGameControls()
 	{
 		GameKeybindExport? export = GameKeybindExport.Load(
