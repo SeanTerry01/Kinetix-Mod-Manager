@@ -179,6 +179,34 @@ public partial class Form1
 			// installer and picks the mod up afterwards.
 			suiteItems.Add(new SuiteItem("WitcherAccess", accessInstalled, "Manual", ""));
 		}
+		else if (GameProfiles.IsGame(game, GameProfiles.Minecraft))
+		{
+			string root = MinecraftRootFolder();
+
+			// Fabric is the loader, and it is installed without its exe — see FabricInstaller. Judged by the
+			// version folder rather than a launcher entry, because the entry can be deleted from the launcher
+			// while the install itself is perfectly fine.
+			string mcVersion = _settings.MinecraftGameVersion;
+			loaderInstalled = mcVersion.Length > 0 && FabricInstaller.IsInstalledFor(root, mcVersion);
+
+			suiteItems.Add(new SuiteItem(
+				Loc.T("mc.suite.fabric"), loaderInstalled, "Loader", "https://fabricmc.net",
+				loaderInstalled ? FabricStatusLine(root) : ""));
+
+			// Only the CHOSEN accessibility mod is listed, along with whatever it needs. The user is never asked
+			// about Fabric API: whether it is required is a consequence of which mod they picked, and both
+			// answers are read from the mods themselves rather than assumed.
+			MinecraftSuiteMod chosen = MinecraftSuite.AccessModFor(_settings.MinecraftAccessModId);
+
+			foreach (MinecraftSuiteMod part in MinecraftSuite.InstallPlanFor(chosen))
+			{
+				suiteItems.Add(new SuiteItem(
+					part.DisplayName,
+					HasModUniqueId(part.FabricModId),
+					part.Origin == MinecraftModOrigin.GitHubRelease ? "GitHubJar" : "ModrinthJar",
+					part.Source));
+			}
+		}
 		else
 		{
 			string gameFolder = string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder(game) : _settings.CurrentGamePath;
@@ -225,7 +253,15 @@ public partial class Form1
 			// An entry with no source yet (a mod the manager knows about but that isn't published) has no page
 			// to open, so it falls through to the game's own mod listing rather than a broken link.
 			if (string.IsNullOrEmpty(item.Source) && item.Type != "Loader")
-				return $"https://www.nexusmods.com/{_nexusService.CurrentGameDomain}";
+			{
+				// A game whose mods do not come from Nexus has no Nexus listing to fall back to, and
+				// CurrentGameDomain would answer with some other game's — the exact class of wrong answer the
+				// GameProfiles registry exists to prevent.
+				GameProfile? sourceProfile = GameProfiles.Find(game);
+				return sourceProfile?.ModSource == ModSource.Modrinth
+					? "https://modrinth.com/mods?g=categories:fabric"
+					: $"https://www.nexusmods.com/{_nexusService.CurrentGameDomain}";
+			}
 
 			switch (item.Type)
 			{
@@ -233,7 +269,10 @@ public partial class Form1
 					string domain = _nexusService.CurrentGameDomain;
 					return $"https://www.nexusmods.com/{domain}/mods/{item.Source}?tab=files";
 				case "GitHub":
+				case "GitHubJar":
 					return $"https://github.com/{item.Source}/releases";
+				case "ModrinthJar":
+					return $"https://modrinth.com/mod/{item.Source}";
 				case "Loader":
 					// The Skyrim/Fallout script extenders are on Nexus now; open their Nexus Files page rather
 					// than the legacy Silverlock site. Stardew's loader (SMAPI) keeps its own site URL.
@@ -298,11 +337,33 @@ public partial class Form1
 					loaderInstalled = await InstallBepInExAsync(
 						string.IsNullOrEmpty(_settings.CurrentGamePath) ? DetectGameFolder(game) : _settings.CurrentGamePath);
 				}
+				// Fabric is Minecraft's loader and installs the same way: first, and on its own. It is also the
+				// one loader the manager installs entirely by itself, with no exe and no download beyond a
+				// small JSON file — see FabricInstaller.
+				else if (!loaderInstalled && GameProfiles.IsGame(game, GameProfiles.Minecraft))
+				{
+					MinecraftSuiteMod? forLoader = EnsureAccessModChosen();
+					if (forLoader != null)
+						loaderInstalled = await InstallFabricAsync(MinecraftRootFolder(), forLoader);
+				}
 
 				foreach (var item in suiteItems)
 				{
 					if (item.IsInstalled) continue;
-					if (item.Type == "Loader" && (GameProfiles.IsAnyGame(game, GameProfiles.StardewValley, GameProfiles.MoonlightPeaks))) continue;
+					if (item.Type == "Loader" && (GameProfiles.IsAnyGame(game, GameProfiles.StardewValley, GameProfiles.MoonlightPeaks, GameProfiles.Minecraft))) continue;
+
+					// A Minecraft mod IS its .jar file. It is copied into the mods folder rather than unpacked,
+					// which is what every other path here does with a download — unpacking one would leave a
+					// folder of loose classes that Fabric walks straight past.
+					if (item.Type is "GitHubJar" or "ModrinthJar")
+					{
+						MinecraftSuiteMod? part = MinecraftSuite.AccessMods
+							.Append(MinecraftSuite.FabricApi)
+							.FirstOrDefault(m => m.DisplayName == item.Name);
+
+						if (part != null) await InstallMinecraftModAsync(part, MinecraftRootFolder());
+						continue;
+					}
 
 					// An entry with no source is one the manager knows about but cannot fetch yet (see the
 					// Moonlight Access note at the top of this file). Say so and carry on with the rest rather
@@ -432,6 +493,12 @@ public partial class Form1
 						}
 					}
 				}
+
+				// Said at the end rather than while the list is being built: the two Minecraft accessibility
+				// mods both speak the same screens, so having both installed says everything twice — a symptom
+				// that is baffling and whose cause is not guessable from inside the game.
+				if (GameProfiles.IsGame(game, GameProfiles.Minecraft))
+					WarnAboutRivalAccessMod(MinecraftSuite.AccessModFor(_settings.MinecraftAccessModId));
 
 				Speak(Loc.T("suite.setupComplete"));
 				closeView();

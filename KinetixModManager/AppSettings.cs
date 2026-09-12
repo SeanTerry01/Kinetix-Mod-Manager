@@ -399,6 +399,33 @@ public class AppSettings
 	/// </summary>
 	public static string ThemeForGame(string game) => GameProfiles.Find(game)?.SoundTheme ?? "Default";
 
+	/// <summary>
+	/// Which Minecraft accessibility mod the suite installs and keeps up to date — one of the ids in
+	/// <see cref="MinecraftSuite"/>, or <c>""</c> before the user has been asked.
+	///
+	/// Minecraft is the only supported game with two competing accessibility mods rather than one, and they are
+	/// not interchangeable: United Minecraft needs Fabric API installed alongside it, while Minecraft Access
+	/// ships its dependencies inside its own jar. Both are supported because Minecraft Access is the older of
+	/// the two and blind players have been using it for years — familiarity is an accessibility concern, not a
+	/// preference to be overridden.
+	///
+	/// Stored per install rather than per profile: it is a statement about which mod this player gets on with,
+	/// which does not change from one mod setup to the next.
+	/// </summary>
+	public string MinecraftAccessModId { get; set; } = "";
+
+	/// <summary>
+	/// The Minecraft version the manager is managing mods for, e.g. <c>26.2</c>, or <c>""</c> before Fabric has
+	/// been installed.
+	///
+	/// Pinned rather than followed, and that is the point. Minecraft breaks every mod on every game update, and
+	/// the newest version is routinely one no mod has been rebuilt for yet. Chasing it would produce a working
+	/// Fabric profile and a mods folder where nothing loads — the game starts, plays normally, and says nothing.
+	/// The manager therefore installs for a version it knows the chosen accessibility mod supports, and moves
+	/// only when told to.
+	/// </summary>
+	public string MinecraftGameVersion { get; set; } = "";
+
 	public Dictionary<string, string> IgnoredVersions { get; set; } = new Dictionary<string, string>();
 
 	/// <summary>
