@@ -118,6 +118,16 @@ public partial class Form1
 			found.Add((full, platform));
 		}
 
+		// Minecraft is not a store install and none of the probes below can find it: no Steam app id, no GOG
+		// product, and the launcher — Microsoft Store package or standalone — keeps the game's binaries
+		// somewhere the manager never touches. What matters is .minecraft, so that is what is looked for.
+		if (profile.IsMinecraft)
+		{
+			string mcRoot = MinecraftLayout.FindRootFolder();
+			if (mcRoot.Length > 0) Consider(mcRoot, GamePlatform.Unknown);
+			return found;
+		}
+
 		// A game can be installed under more than one store id — an original release and a later bundle of the
 		// same game each have their own — so every id this game ships under is tried.
 		try
@@ -559,6 +569,11 @@ public partial class Form1
 
 		GameProfile? profile = GameProfiles.Find(game);
 		if (profile == null) return false;
+
+		// Minecraft has no executable to find. The launcher owns the game's binaries — the folder the manager
+		// cares about is .minecraft, which holds the mods, the config and the saves. Judged by what is in it
+		// instead; without this the game reports itself not installed on a machine it is plainly installed on.
+		if (profile.IsMinecraft) return MinecraftLayout.LooksLikeMinecraftRoot(path);
 
 		if (File.Exists(Path.Combine(path, profile.GameExeName))) return true;
 		return !string.IsNullOrEmpty(profile.LoaderExeName) &&
