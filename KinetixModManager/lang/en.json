@@ -1177,6 +1177,8 @@
   "suite.openDownloadPage": "Opening the download page for {0}.",
   "suite.installing": "Installing...",
   "suite.startInstall": "Starting accessibility suite installation.",
+  "settings.apiKeyNotNeeded": "Nexus Mods API key: not needed for {0}, which gets its mods from elsewhere.",
+  "settings.apiKeySkipHint": "Only needed for games whose mods come from Nexus Mods. If you play Minecraft, you can leave this blank.",
   "mc.suite.fabric": "Fabric (Mod Loader)",
   "mc.suite.fabricDetail": ", loader {0} for Minecraft {1}",
   "mc.chooser.title": "Choose your Minecraft accessibility mod",

@@ -255,20 +255,49 @@ public partial class Form1
 			Speak(Loc.T("settings.editingPaths", pathTargets[index].Label));
 		};
 
-		tabPaths.Controls.Add(new Label
+		// The Nexus key is only shown to people it can do something for.
+		//
+		// Not every supported game uses Nexus — Minecraft's mods come from Modrinth — and a key is useless for
+		// those. Worse than useless, before this: an empty key blocked the whole Save, so somebody who only
+		// plays Minecraft could not change their sound volume without first pasting a Nexus key they will never
+		// use. The key is asked for when the loaded game actually needs it, and not before.
+		GameProfile? sessionGame = GameProfiles.Find(_settings.ActiveGame);
+		bool sessionUsesNexus = sessionGame is null || sessionGame.ModSource == ModSource.Nexus;
+		bool keyIsRequired = sessionGame is not null && sessionGame.ModSource == ModSource.Nexus;
+
+		Label lblKey = new Label
 		{
 			Text = Loc.T("settings.apiKey") + ":",
 			AutoSize = true,
-			Padding = new Padding(0, 10, 0, 0)
-		}, 0, pr++);
+			Padding = new Padding(0, 10, 0, 0),
+			Visible = sessionUsesNexus
+		};
+		tabPaths.Controls.Add(lblKey, 0, pr++);
+
 		TextBox tKey = new TextBox
 		{
 			Text = _settings.ApiKey,
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 10f),
-			AccessibleName = Loc.T("settings.apiKey")
+			AccessibleName = Loc.T("settings.apiKey"),
+			Visible = sessionUsesNexus,
+			// Said on the box itself rather than as a label beside it: a label is only found by someone already
+			// browsing for it, and the point is to reassure whoever has just landed on the field and is
+			// wondering whether they have to fill it in.
+			AccessibleDescription = sessionGame is null ? Loc.T("settings.apiKeySkipHint") : ""
 		};
 		tabPaths.Controls.Add(tKey, 0, pr++);
+
+		// A game that does not use Nexus says so once, in place of the field, rather than leaving a gap.
+		if (!sessionUsesNexus)
+		{
+			tabPaths.Controls.Add(new Label
+			{
+				Text = Loc.T("settings.apiKeyNotNeeded", sessionGame!.DisplayName),
+				AutoSize = true,
+				Padding = new Padding(0, 10, 0, 0)
+			}, 0, pr++);
+		}
 
 		FlowLayoutPanel flowLayoutPanel = new FlowLayoutPanel
 		{
@@ -1063,7 +1092,11 @@ public partial class Form1
 			}
 
 			string text2 = tKey.Text.Trim();
-			if (string.IsNullOrEmpty(text2))
+
+			// Required only when the loaded game actually needs it. Everything below is the whole of Save, so
+			// demanding a key unconditionally meant a Minecraft player could not change any setting at all
+			// until they supplied one that would never be used.
+			if (keyIsRequired && string.IsNullOrEmpty(text2))
 			{
 				Speak(Loc.T("settings.errApiKeySpeak"));
 				SpeakBox(Loc.T("settings.errApiKeyBox"));
