@@ -186,8 +186,20 @@ public partial class Form1
 			// Fabric is the loader, and it is installed without its exe — see FabricInstaller. Judged by the
 			// version folder rather than a launcher entry, because the entry can be deleted from the launcher
 			// while the install itself is perfectly fine.
-			string mcVersion = _settings.MinecraftGameVersion;
+			//
+			// The version is the pinned one, falling back to whatever is already installed. Requiring a pinned
+			// version reported a hand-installed Fabric as missing, purely because the manager had not been the
+			// one to put it there.
+			string mcVersion = MinecraftGameVersionInUse(root);
 			loaderInstalled = mcVersion.Length > 0 && FabricInstaller.IsInstalledFor(root, mcVersion);
+
+			// Adopt what was found, so everything downstream — which mod build to fetch, what the update check
+			// compares against — is working from the version actually installed rather than from nothing.
+			if (loaderInstalled && _settings.MinecraftGameVersion != mcVersion)
+			{
+				_settings.MinecraftGameVersion = mcVersion;
+				_settings.Save();
+			}
 
 			suiteItems.Add(new SuiteItem(
 				Loc.T("mc.suite.fabric"), loaderInstalled, "Loader", "https://fabricmc.net",

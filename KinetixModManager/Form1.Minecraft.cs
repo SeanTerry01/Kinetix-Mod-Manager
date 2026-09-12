@@ -45,11 +45,26 @@ public partial class Form1
 		string newest = FabricInstaller.InstalledVersionIds(root).FirstOrDefault() ?? "";
 		if (newest.Length == 0) return "";
 
-		// fabric-loader-<loader>-<game>
-		string[] parts = newest.Split('-');
-		return parts.Length >= 4
-			? Loc.T("mc.suite.fabricDetail", parts[2], string.Join("-", parts.Skip(3)))
+		string loader = FabricInstaller.LoaderVersionOf(newest);
+		string gameVersion = FabricInstaller.GameVersionOf(newest);
+
+		return loader.Length > 0 && gameVersion.Length > 0
+			? Loc.T("mc.suite.fabricDetail", loader, gameVersion)
 			: "";
+	}
+
+	/// <summary>
+	/// The Minecraft version the manager is working with: the pinned one, or — when nothing has been pinned yet
+	/// — whatever an existing Fabric install on disk says.
+	///
+	/// The fallback matters for anyone who installed Fabric before they installed this manager, which is most
+	/// people who already play modded. Without it their working setup reads as "Fabric not installed", because
+	/// the manager was checking against a version it had never been told.
+	/// </summary>
+	private string MinecraftGameVersionInUse(string root)
+	{
+		string pinned = _settings.MinecraftGameVersion;
+		return pinned.Length > 0 ? pinned : FabricInstaller.DetectInstalledGameVersion(root);
 	}
 
 	/// <summary>

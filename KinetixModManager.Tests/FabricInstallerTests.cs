@@ -50,6 +50,40 @@ public class FabricInstallerTests
 			path);
 	}
 
+	[Theory]
+	// The game version is everything after the loader version, not the last hyphenated part - a snapshot or
+	// release candidate carries hyphens of its own, and taking the final segment would answer "2".
+	[InlineData("fabric-loader-0.19.5-26.2", "0.19.5", "26.2")]
+	[InlineData("fabric-loader-0.19.5-26.3-rc-2", "0.19.5", "26.3-rc-2")]
+	[InlineData("fabric-loader-0.16.10-1.21.4", "0.16.10", "1.21.4")]
+	// Not Fabric's, so neither answer is guessed at.
+	[InlineData("26.2", "", "")]
+	[InlineData("", "", "")]
+	public void AVersionIdSplitsBackIntoItsLoaderAndItsGame(string versionId, string loader, string game)
+	{
+		Assert.Equal(loader, FabricInstaller.LoaderVersionOf(versionId));
+		Assert.Equal(game, FabricInstaller.GameVersionOf(versionId));
+	}
+
+	[Fact]
+	public void AHandInstalledFabricIsAdoptedRatherThanReportedMissing()
+	{
+		// The bug this guards: the suite asked "is Fabric installed for the PINNED version?", and nothing was
+		// pinned until the manager had installed it once. Anyone who set Fabric up before installing the
+		// manager - which is most people already playing modded - was told their working install was missing.
+		string dir = NewTempDir();
+		try
+		{
+			Assert.Equal("", FabricInstaller.DetectInstalledGameVersion(dir));
+
+			Directory.CreateDirectory(Path.Combine(dir, "versions", "fabric-loader-0.19.5-26.2"));
+			Directory.CreateDirectory(Path.Combine(dir, "versions", "26.2"));
+
+			Assert.Equal("26.2", FabricInstaller.DetectInstalledGameVersion(dir));
+		}
+		finally { Directory.Delete(dir, recursive: true); }
+	}
+
 	// -------------------------------------------------------------------------
 	// Picking a version
 	// -------------------------------------------------------------------------

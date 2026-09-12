@@ -74,6 +74,58 @@ public static class FabricInstaller
 						 name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
 	}
 
+	/// <summary>
+	/// The Minecraft version a Fabric version id is for — <c>fabric-loader-0.19.5-26.2</c> gives <c>26.2</c> —
+	/// or <c>""</c> when the id is not one of Fabric's.
+	///
+	/// The game version is everything after the loader version, not simply the last segment: a snapshot or
+	/// release candidate carries hyphens of its own, so <c>fabric-loader-0.19.5-26.3-rc-2</c> is Minecraft
+	/// <c>26.3-rc-2</c> and taking the final part would answer <c>2</c>.
+	/// </summary>
+	public static string GameVersionOf(string versionId)
+	{
+		if (string.IsNullOrEmpty(versionId)) return "";
+
+		const string prefix = "fabric-loader-";
+		if (!versionId.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return "";
+
+		string rest = versionId.Substring(prefix.Length);   // "<loader>-<game>"
+		int split = rest.IndexOf('-');
+		return split < 0 ? "" : rest.Substring(split + 1);
+	}
+
+	/// <summary>The loader build a Fabric version id names, or <c>""</c> when the id is not one of Fabric's.</summary>
+	public static string LoaderVersionOf(string versionId)
+	{
+		if (string.IsNullOrEmpty(versionId)) return "";
+
+		const string prefix = "fabric-loader-";
+		if (!versionId.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return "";
+
+		string rest = versionId.Substring(prefix.Length);
+		int split = rest.IndexOf('-');
+		return split < 0 ? "" : rest.Substring(0, split);
+	}
+
+	/// <summary>
+	/// The Minecraft version an existing Fabric install under <paramref name="root"/> is for, or <c>""</c> when
+	/// there is none.
+	///
+	/// This is what lets the manager adopt a Fabric that somebody installed by hand rather than ignoring it.
+	/// Without it, a perfectly good install is reported as missing purely because the manager was not the one
+	/// that put it there — which is a poor answer, and one that invites the user to install it twice.
+	/// </summary>
+	public static string DetectInstalledGameVersion(string root)
+	{
+		foreach (string id in InstalledVersionIds(root))
+		{
+			string game = GameVersionOf(id);
+			if (game.Length > 0) return game;
+		}
+
+		return "";
+	}
+
 	/// <summary>Any installed Fabric version id under <paramref name="root"/>, newest-looking first.</summary>
 	public static IReadOnlyList<string> InstalledVersionIds(string root)
 	{
