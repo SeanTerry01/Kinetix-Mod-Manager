@@ -45,7 +45,16 @@ public static class ModEnableState
 
 		if (folderName.Length == 0) return modFolderPath;
 
-		if (GameProfiles.Find(activeGame)?.IsBepInEx == true)
+		GameProfile? enableProfile = GameProfiles.Find(activeGame);
+
+		// Minecraft's mods are files, not folders, so there is nowhere to put a prefix that wouldn't also change
+		// the name Fabric reports. Fabric accepts a candidate only when it ends in ".jar", so appending to the
+		// end is what takes a mod out of the running — the same trick as The Witcher 3's "~", at the other end
+		// of the name.
+		if (enableProfile?.IsMinecraft == true)
+			return MinecraftLayout.PathWithEnabled(trimmed, enable, enableProfile.DisabledModSuffix);
+
+		if (enableProfile?.IsBepInEx == true)
 		{
 			// plugins and plugins-disabled are siblings under BepInEx, so the destination is simply the other one.
 			string bepInExRoot = Path.GetDirectoryName(parent) ?? "";
@@ -73,8 +82,12 @@ public static class ModEnableState
 		if (string.IsNullOrEmpty(modFolderPath)) return false;
 
 		string trimmed = modFolderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+		GameProfile? profile = GameProfiles.Find(activeGame);
 
-		if (GameProfiles.Find(activeGame)?.IsBepInEx == true)
+		// Judged exactly as Fabric judges it: does the file name end in ".jar"?
+		if (profile?.IsMinecraft == true) return MinecraftLayout.IsEnabledModFile(trimmed);
+
+		if (profile?.IsBepInEx == true)
 		{
 			string parentName = Path.GetFileName(Path.GetDirectoryName(trimmed) ?? "");
 			return !string.Equals(parentName, BepInExDisabledFolderName, StringComparison.OrdinalIgnoreCase);

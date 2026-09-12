@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -167,6 +167,10 @@ public static class ModFileSystem
 		else if (GameProfiles.Find(activeGame)?.IsBepInEx == true)
 		{
 			mods.AddRange(ScanBepInExMods(modsPath, nexusIdMap, settings, logError));
+		}
+		else if (GameProfiles.Find(activeGame)?.IsMinecraft == true)
+		{
+			mods.AddRange(ScanFabricMods(modsPath, settings, activeGame, logError));
 		}
 		else
 		{
@@ -380,6 +384,92 @@ public static class ModFileSystem
 	public const string BepInExDisabledFolderName = ModEnableState.BepInExDisabledFolderName;
 
 	/// <summary>The disabled-mods folder that sits beside the given <c>BepInEx\plugins</c> folder.</summary>
+	/// <summary>
+	/// Every Fabric mod in <paramref name="modsPath"/> — one per <c>.jar</c> file, enabled or not.
+	///
+	/// The scan is flat by nature: Fabric loads the mods folder itself and does not recurse, so a jar in a
+	/// subfolder is not a mod that is installed somewhere odd, it is a mod that is not installed. Listing it
+	/// would say otherwise.
+	/// </summary>
+	private static List<GameMod> ScanFabricMods(
+		string modsPath,
+		AppSettings settings,
+		string activeGame,
+		Action<string, string> logError)
+	{
+		var mods = new List<GameMod>();
+		string? disabledSuffix = GameProfiles.Find(activeGame)?.DisabledModSuffix;
+
+		foreach (string file in Directory.GetFiles(modsPath, "*", SearchOption.TopDirectoryOnly))
+		{
+			if (!MinecraftLayout.IsModFile(file, disabledSuffix)) continue;
+
+			try
+			{
+				FabricModInfo info = MinecraftLayout.ReadModInfo(file);
+				string fileName = Path.GetFileName(file);
+
+				// A jar with no readable fabric.mod.json still gets a row. It is sitting in the mods folder, so
+				// the user put it there and expects to see it — and showing it is the only way they can find out
+				// it is broken and delete it. Keyed by file name, since it gave no id to key on.
+				string uid = info.Id.Length > 0 ? info.Id : fileName;
+
+				var mod = new GameMod
+				{
+					Name        = info.Name.Length > 0 ? info.Name : fileName,
+					Version     = info.Version,
+					Author      = info.Authors.Count > 0 ? string.Join(", ", info.Authors) : "User",
+					UniqueId    = uid,
+					Description = info.Description,
+					FolderPath  = file,
+					IsEnabled   = MinecraftLayout.IsEnabledModFile(file)
+				};
+
+				if (info.IsUnreadable)
+					logError(file, "Not a readable Fabric mod: no " + MinecraftLayout.ManifestEntryName + " inside.");
+
+				mod.Category = settings.ModCategories.TryGetValue(uid, out string? cat) ? cat
+					: DetectCategory(mod.Name, mod.Description);
+				mod.Note = settings.ModNotes.TryGetValue(uid, out string? note) ? note : "";
+
+				// Fabric's depends map mixes real mods in with three pseudo-ids the loader satisfies itself —
+				// fabricloader, minecraft and java. Listing those as dependencies would have the requirements
+				// check hunting the mods folder for a mod called "java" and reporting it missing forever.
+				// Anything the mod carries nested inside its own jar is likewise already satisfied, which is the
+				// whole reason Minecraft Access needs nothing installed alongside it.
+				foreach (KeyValuePair<string, string> dep in info.Depends)
+				{
+					if (IsFabricBuiltInDependency(dep.Key)) continue;
+					if (info.NestedJars.Contains(dep.Key, StringComparer.OrdinalIgnoreCase)) continue;
+
+					mod.Dependencies.Add(new ModDependency
+					{
+						UniqueId       = dep.Key,
+						MinimumVersion = dep.Value,
+						IsRequired     = true
+					});
+				}
+
+				mods.Add(mod);
+			}
+			catch (Exception ex)
+			{
+				logError(file, "Parse Error: " + ex.Message);
+			}
+		}
+
+		return mods;
+	}
+
+	/// <summary>
+	/// True for the pseudo-dependencies Fabric resolves itself rather than from the mods folder: the loader, the
+	/// game, and the Java runtime. A mod declaring these is stating a minimum version, not naming another mod.
+	/// </summary>
+	private static bool IsFabricBuiltInDependency(string id) =>
+		id.Equals("fabricloader", StringComparison.OrdinalIgnoreCase) ||
+		id.Equals("minecraft", StringComparison.OrdinalIgnoreCase) ||
+		id.Equals("java", StringComparison.OrdinalIgnoreCase);
+
 	public static string BepInExDisabledFolder(string pluginsPath)
 	{
 		string parent = Path.GetDirectoryName(pluginsPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)) ?? "";
@@ -606,7 +696,14 @@ public static class ModFileSystem
 		string? targetParent = Path.GetDirectoryName(target);
 		if (!string.IsNullOrEmpty(targetParent)) Directory.CreateDirectory(targetParent);
 
-		Directory.Move(modFolderPath, target);
+		// A Minecraft mod is a single jar, so this is a file rename rather than a folder move. Directory.Move
+		// would throw on it — the one place the "a mod is a folder" assumption is load-bearing rather than
+		// merely conventional.
+		if (GameProfiles.Find(activeGame)?.IsMinecraft == true)
+			File.Move(modFolderPath, target);
+		else
+			Directory.Move(modFolderPath, target);
+
 		return target;
 	}
 

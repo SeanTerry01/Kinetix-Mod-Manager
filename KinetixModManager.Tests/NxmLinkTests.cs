@@ -68,6 +68,16 @@ public class NxmLinkTests
     {
         foreach (GameProfile game in GameProfiles.All)
         {
+            if (game.NexusDomain.Length == 0)
+            {
+                // A game with no Nexus domain must be one that doesn't get its mods from Nexus — Minecraft,
+                // whose Fabric mods live on Modrinth. Asserted rather than merely skipped: a Nexus-sourced game
+                // that lost its domain would otherwise slip through this loop unnoticed, which is precisely the
+                // silent-nothing failure this test exists to catch.
+                Assert.NotEqual(ModSource.Nexus, game.ModSource);
+                continue;
+            }
+
             GameProfile? found = GameProfiles.FindByNexusDomain(game.NexusDomain);
 
             Assert.NotNull(found);
@@ -83,6 +93,13 @@ public class NxmLinkTests
         // code this replaced hardcoded three of the five games and silently did nothing for the other two.
         foreach (GameProfile game in GameProfiles.All)
         {
+            // Minecraft has no Nexus domain, so there is no nxm:// link that should ever arrive at it.
+            if (game.NexusDomain.Length == 0)
+            {
+                Assert.NotEqual(ModSource.Nexus, game.ModSource);
+                continue;
+            }
+
             Assert.True(NxmLink.TryParse($"nxm://{game.NexusDomain}/mods/100/files/200?key=k&expires=1", out NxmLink link));
 
             Assert.Equal(game.Id, GameProfiles.FindByNexusDomain(link.GameDomain)?.Id);

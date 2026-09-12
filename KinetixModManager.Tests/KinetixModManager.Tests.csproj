@@ -80,6 +80,9 @@
     <Compile Include="..\KinetixModManager\ModPartRules.cs" />
     <!-- Self-contained "which folders in this archive are Witcher 3 mods?" rules (depends only on the BCL). -->
     <Compile Include="..\KinetixModManager\Witcher3Layout.cs" />
+    <!-- Minecraft: where .minecraft lives, and reading a mod's fabric.mod.json out of its jar (BCL + Json.NET).
+         GameProfiles.cs references it for the Minecraft entry's default folder, so it has to come along. -->
+    <Compile Include="..\KinetixModManager\MinecraftLayout.cs" />
     <!-- Self-contained Visual C++ runtime consistency check, plus the Wine detection it defers to (BCL only). -->
     <Compile Include="..\KinetixModManager\VcRuntimeCheck.cs" />
     <Compile Include="..\KinetixModManager\PlatformInfo.cs" />

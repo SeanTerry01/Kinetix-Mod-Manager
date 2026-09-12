@@ -112,9 +112,18 @@ public class GameProfilesTests
     {
         foreach (GameProfile profile in GameProfiles.All)
         {
-            Assert.StartsWith("https://store.steampowered.com/", profile.SteamStoreUrl);
-            // A GOG product id and a GOG store page have to travel together: one without the other means the
-            // purchase dialog offers a store the game can't be bought from, or misses one it can.
+            // A store id and that store's page have to travel together, in both directions: an id without a
+            // page means the purchase dialog offers a store the game can't be bought from, and a page without
+            // an id means a store the manager will never detect an install for.
+            //
+            // Tied to the id rather than asserted for everyone, because Minecraft claims neither. Mojang sells
+            // Java Edition directly, so there is no Steam app id, no GOG product and no store page — and the
+            // empty string has to stay empty rather than drifting into a plausible-looking placeholder.
+            if (!string.IsNullOrEmpty(profile.SteamAppId))
+                Assert.StartsWith("https://store.steampowered.com/", profile.SteamStoreUrl);
+            else
+                Assert.Equal("", profile.SteamStoreUrl);
+
             Assert.Equal(string.IsNullOrEmpty(profile.GogProductId), string.IsNullOrEmpty(profile.GogStoreUrl));
         }
     }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -30,7 +30,36 @@ public enum ModLayout
 	/// installed, and one is disabled by prefixing its folder with <c>~</c>, which works for the plainest of
 	/// reasons: <c>~modFoo</c> no longer starts with "mod", so the engine walks straight past it.
 	/// </summary>
-	Witcher3Mods
+	Witcher3Mods,
+
+	/// <summary>
+	/// Minecraft (Java Edition): every mod is a single <c>.jar</c> file sitting directly in the
+	/// <c>mods</c> folder, loaded by Fabric. This is the first layout where a mod is a FILE rather than a
+	/// folder, which is the one assumption every other layout shares — so anything that walks directories
+	/// looking for mods has to be asked about this case explicitly rather than inheriting a default.
+	///
+	/// The jar carries its own metadata in a <c>fabric.mod.json</c> at its root: id, name, version, authors and
+	/// a dependency map with version ranges. That is richer than any other supported game manages, Stardew's
+	/// <c>manifest.json</c> included — it just happens to be inside a zip.
+	///
+	/// A mod is disabled by renaming it to <c>.jar.disabled</c>; see <see cref="GameProfile.DisabledModSuffix"/>.
+	/// </summary>
+	FabricMods
+}
+
+/// <summary>
+/// Where a game's mods are browsed, downloaded and update-checked from.
+///
+/// Nexus was the only answer for the first five games, to the point that the assumption is spread across the
+/// download, search and update-check paths. Minecraft breaks it: Nexus has a Minecraft section, but it is
+/// largely maps and legacy content, and Fabric mods live on Modrinth and CurseForge instead. Modrinth's API is
+/// the better one anyway — no key, and it states the loader and game version each file targets, which is the
+/// very thing the update checker has to guess at everywhere else.
+/// </summary>
+public enum ModSource
+{
+	Nexus,
+	Modrinth
 }
 
 /// <summary>
@@ -51,8 +80,17 @@ public sealed class GameProfile
 	/// <summary>The game's name as the user sees it, e.g. "Moonlight Peaks".</summary>
 	public required string DisplayName { get; init; }
 
-	/// <summary>The game's Steam application id, used for registry and libraryfolders.vdf detection.</summary>
-	public required string SteamAppId { get; init; }
+	/// <summary>
+	/// The game's Steam application id, used for registry and libraryfolders.vdf detection, or <c>""</c> for a
+	/// game Steam does not sell.
+	///
+	/// Optional rather than required, which weakens the "a new game must supply this" guarantee slightly, and
+	/// deliberately: Minecraft (Java Edition) is sold by Mojang directly and installs as a Microsoft Store
+	/// package or a standalone launcher, so it has no Steam id, no GOG id and no install folder under a Steam
+	/// library. Forcing a placeholder would be worse than an empty string — a fake app id is a value detection
+	/// code would go looking for. <see cref="IsSoldThroughAStore"/> is the question to ask.
+	/// </summary>
+	public string SteamAppId { get; init; } = "";
 
 	/// <summary>
 	/// Further Steam app ids the same install can be sold under, tried after <see cref="SteamAppId"/>.
@@ -80,16 +118,16 @@ public sealed class GameProfile
 			.Select(id => id!);
 
 	/// <summary>The Steam store page, shown when the user doesn't own the game yet.</summary>
-	public required string SteamStoreUrl { get; init; }
+	public string SteamStoreUrl { get; init; } = "";
 
 	/// <summary>The GOG store page, or <c>null</c> when it isn't sold on GOG.</summary>
 	public string? GogStoreUrl { get; init; }
 
 	/// <summary>Where the game usually installs, tried last when nothing else finds it.</summary>
-	public required string DefaultInstallFolder { get; init; }
+	public string DefaultInstallFolder { get; init; } = "";
 
 	/// <summary>The game's own executable, e.g. "Moonlight Peaks.exe".</summary>
-	public required string GameExeName { get; init; }
+	public string GameExeName { get; init; } = "";
 
 	/// <summary>
 	/// The mod loader's launcher executable, or <c>""</c> when the loader has none. Stardew and the Bethesda
@@ -130,10 +168,10 @@ public sealed class GameProfile
 	public string? StagingFolderName { get; init; }
 
 	/// <summary>The game's Nexus Mods domain, used for every v1 API call and mod page URL.</summary>
-	public required string NexusDomain { get; init; }
+	public string NexusDomain { get; init; } = "";
 
 	/// <summary>The game's numeric Nexus id, used by the v2 GraphQL search.</summary>
-	public required string NexusGameId { get; init; }
+	public string NexusGameId { get; init; } = "";
 
 	/// <summary>The sound theme folder under <c>sounds/</c> that follows this game.</summary>
 	public required string SoundTheme { get; init; }
@@ -182,6 +220,18 @@ public sealed class GameProfile
 	/// skips anything not starting with "mod", which a leading <c>~</c> arranges.
 	/// </summary>
 	public string? DisabledModPrefix { get; init; }
+
+	/// <summary>
+	/// The suffix appended to a mod's file name to switch it off, or <c>null</c> for a game that disables mods
+	/// some other way.
+	///
+	/// This exists because Minecraft is the first game whose mods are files rather than folders, and a file
+	/// cannot take a disabling prefix without changing the name the loader reports. Fabric's mod discovery
+	/// accepts a candidate only when it ends in <c>.jar</c> — verified by reading the string constants out of
+	/// <c>DirectoryModCandidateFinder</c> — so <c>foo.jar.disabled</c> is walked straight past, exactly the way
+	/// The Witcher 3 walks past a folder not starting with "mod".
+	/// </summary>
+	public string? DisabledModSuffix { get; init; }
 
 	/// <summary>
 	/// The prefix a mod's folder name must carry for the game to load it at all, or <c>null</c> where the name
@@ -251,8 +301,24 @@ public sealed class GameProfile
 	/// <summary>The folder the keybind reader installs into, under the game's mods folder.</summary>
 	public string? KeybindReaderFolderName { get; init; }
 
+	/// <summary>
+	/// Where this game's mods are browsed, downloaded and update-checked from. Nexus for every game the manager
+	/// supported first; Modrinth for Minecraft, whose Fabric mods simply are not on Nexus.
+	/// </summary>
+	public ModSource ModSource { get; init; } = ModSource.Nexus;
+
+	/// <summary>
+	/// True when a shop sells this game, i.e. there is a store page to send someone to and a store install to
+	/// detect. False for Minecraft, which Mojang sells directly and which installs as a Microsoft Store package
+	/// or a standalone launcher under the user's profile.
+	/// </summary>
+	public bool IsSoldThroughAStore => !string.IsNullOrEmpty(SteamAppId) || !string.IsNullOrEmpty(GogProductId);
+
 	/// <summary>True when this game's mods are BepInEx plugins.</summary>
 	public bool IsBepInEx => Layout == ModLayout.BepInExPlugins;
+
+	/// <summary>True when this game's mods are loose Fabric jars (Minecraft).</summary>
+	public bool IsMinecraft => Layout == ModLayout.FabricMods;
 
 	/// <summary>True when this game deploys staged mods into a Data folder (Skyrim SE / Fallout 4).</summary>
 	public bool IsBethesda => Layout == ModLayout.BethesdaStaged;
@@ -299,6 +365,7 @@ public static class GameProfiles
 	public const string StardewValley = "StardewValley";
 	public const string SkyrimSE      = "SkyrimSE";
 	public const string Fallout4      = "Fallout4";
+	public const string Minecraft     = "Minecraft";
 	public const string MoonlightPeaks = "MoonlightPeaks";
 	public const string Witcher3      = "Witcher3";
 
@@ -331,6 +398,39 @@ public static class GameProfiles
 			// Not verified against a GOG copy of Fallout 4 — if one ever proves otherwise, this is the one line
 			// to change, and a wrong value here is caught by the install simply not being detected as GOG.
 			GogUserDataFolderName = "Fallout4 GOG"
+		},
+		new GameProfile
+		{
+			Id                   = Minecraft,
+			DisplayName          = "Minecraft",
+			// No store ids at all: Mojang sells Java Edition directly, and it arrives either as the Microsoft
+			// Store package Microsoft.MinecraftJavaEdition_8wekyb3d8bbwe or as the standalone launcher. Neither
+			// is a Steam or GOG install, so there is nothing here to detect a copy by and no store page to send
+			// anyone to. Detection lives in MinecraftLayout instead.
+			SteamAppId           = "",
+			GogProductId         = null,
+			SteamStoreUrl        = "",
+			GogStoreUrl          = null,
+			// The game "folder" for Minecraft is the .minecraft data folder, not an install directory — that is
+			// where mods, config, saves, logs and the launcher profiles all live, and it is the only path the
+			// manager ever needs. Resolved at startup rather than hard-coded so a relocated or per-profile
+			// gameDir works the same way.
+			DefaultInstallFolder = MinecraftLayout.DefaultRootFolder,
+			// Nothing to launch directly: the game is started by building a java command line, which is what
+			// MinecraftLayout does. There is no exe here to point Steam or Explorer at.
+			GameExeName          = "",
+			LoaderExeName        = "",
+			LoaderDisplayName    = "Fabric",
+			Layout               = ModLayout.FabricMods,
+			ModsFolderRelativeToGame = "mods",
+			// Fabric mods are not on Nexus in any meaningful way; Modrinth is where they live.
+			ModSource            = ModSource.Modrinth,
+			NexusDomain          = "",
+			NexusGameId          = "",
+			SoundTheme           = "Minecraft",
+			// A mod is a file, so it is switched off by a suffix rather than a prefix: Fabric only accepts a
+			// candidate ending in ".jar", so "foo.jar.disabled" is skipped.
+			DisabledModSuffix    = ".disabled"
 		},
 		new GameProfile
 		{
