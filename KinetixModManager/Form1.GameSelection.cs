@@ -808,6 +808,13 @@ public partial class Form1
 		try
 		{
 			string game = _settings.ActiveGame;
+
+			// Minecraft has no executable to start, and starting its launcher would put the player back in
+			// front of the thing this is meant to spare them: choosing an installation and launching a world
+			// are separate pieces of launcher state, the second overrides the first, and nothing says so when
+			// it goes wrong. The manager builds the java command itself instead.
+			if (GameProfiles.IsGame(game, GameProfiles.Minecraft)) { LaunchMinecraft(); return; }
+
 			string gamePath = _settings.CurrentGamePath;
 			if (string.IsNullOrEmpty(gamePath) || !Directory.Exists(gamePath))
 			{

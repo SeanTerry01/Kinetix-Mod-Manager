@@ -253,6 +253,63 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// Starts Minecraft with Fabric and the installed mods, without going near the launcher.
+	///
+	/// This is the feature the whole of Minecraft support exists for. The launcher is where the accessibility
+	/// problem actually lives — selecting a mod loader installation and launching a world are separate pieces
+	/// of state, the second silently overrides the first, and when it goes wrong the game starts, plays
+	/// normally and never speaks.
+	/// </summary>
+	private void LaunchMinecraft()
+	{
+		string root = MinecraftRootFolder();
+
+		string versionId = FabricInstaller.InstalledVersionIds(root).FirstOrDefault() ?? "";
+		if (versionId.Length == 0)
+		{
+			Speak(Loc.T("mc.launch.noFabricSpeak"));
+			SpeakBox(Loc.T("mc.launch.noFabricBox"), Loc.T("mc.launch.noFabricTitle"),
+				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+			return;
+		}
+
+		// Identity comes from the launcher's own accounts file — public profile data, no credential — and
+		// carries the player's REAL uuid. See MinecraftIdentity: a derived offline uuid would walk into their
+		// world as a different person, with the old character orphaned rather than deleted.
+		MinecraftIdentity? identity = MinecraftIdentity.OfflineFromLauncher(root);
+		if (identity is null)
+		{
+			Speak(Loc.T("mc.launch.noAccountSpeak"));
+			SpeakBox(Loc.T("mc.launch.noAccountBox"), Loc.T("mc.launch.noAccountTitle"),
+				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+			return;
+		}
+
+		try
+		{
+			MinecraftLaunchPlan plan = MinecraftLauncher.BuildPlan(root, versionId, identity);
+
+			SetStatus(Loc.T("mc.launch.starting"));
+			Speak(Loc.T("mc.launch.startingSpeak", identity.Username));
+
+			var start = new System.Diagnostics.ProcessStartInfo(plan.JavaPath)
+			{
+				WorkingDirectory = plan.WorkingDirectory,
+				UseShellExecute = false
+			};
+			foreach (string argument in plan.Arguments) start.ArgumentList.Add(argument);
+
+			System.Diagnostics.Process.Start(start);
+		}
+		catch (Exception ex)
+		{
+			LogFailure("Minecraft", "Failed to start the game", ex);
+			SpeakBox(Loc.T("mc.launch.failedBox", FriendlyError(ex)), Loc.T("mc.launch.failedTitle"),
+				MessageBoxButtons.OK, MessageBoxIcon.Error);
+		}
+	}
+
+	/// <summary>
 	/// Warns when the accessibility mod the user did NOT choose is also installed.
 	///
 	/// Both mods hook narration on the same screens, so running the pair is expected to double-speak

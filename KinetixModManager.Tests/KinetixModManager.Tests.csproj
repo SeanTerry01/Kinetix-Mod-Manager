@@ -83,6 +83,9 @@
     <!-- Minecraft: where .minecraft lives, and reading a mod's fabric.mod.json out of its jar (BCL + Json.NET).
          GameProfiles.cs references it for the Minecraft entry's default folder, so it has to come along. -->
     <Compile Include="..\KinetixModManager\MinecraftLayout.cs" />
+    <!-- Builds the java command that starts Minecraft without its launcher: version merging, rule evaluation,
+         classpath and argument expansion (BCL + Json.NET + DiagnosticLog). -->
+    <Compile Include="..\KinetixModManager\MinecraftLauncher.cs" />
     <!-- Which Minecraft accessibility mod the suite installs, and what each one drags in behind it (BCL only). -->
     <Compile Include="..\KinetixModManager\MinecraftSuite.cs" />
     <!-- Installs Fabric without its exe: reads meta.fabricmc.net and writes the launcher's own profile list.
