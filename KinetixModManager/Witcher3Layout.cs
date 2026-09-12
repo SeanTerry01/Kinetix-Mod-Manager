@@ -165,4 +165,59 @@ public static class Witcher3Layout
 
 		return found;
 	}
+
+	/// <summary>
+	/// Whether a program registered in Windows' uninstall list is the uninstaller <b>for this mod</b>.
+	///
+	/// <para>
+	/// A Witcher 3 mod can be installed by running the author's own installer, which puts files in places the
+	/// manager never sees — beside the game exe, in the game's config — so deleting the mod folder alone would
+	/// leave them behind. The installer registers an uninstaller that knows what it wrote, and the manager offers
+	/// to run it. The question is which mod that uninstaller belongs to.
+	/// </para>
+	///
+	/// <para>
+	/// ⚠️ It used to be answered with "the one whose name matches, <em>or else the first one we found</em>", and
+	/// the fallback is the dangerous half. Only one program registers an uninstaller inside a typical Witcher
+	/// folder — the accessibility mod — so deleting any <em>other</em> mod matched nothing and was handed that
+	/// one. Deleting "modRandomEncountersReworked" offered to uninstall WitcherAccess, and a Yes would have done
+	/// it. There is no fallback now: with no positive evidence the uninstaller belongs to the mod being removed,
+	/// the answer is no. Leaving a few of a mod's files behind is a far smaller harm than removing a different
+	/// mod the user still wants — and on the accessibility mod, the one they need to use the game at all.
+	/// </para>
+	/// </summary>
+	/// <param name="modFolderName">The folder being deleted, prefixes and all: "modWitcherAccess", "~modFoo".</param>
+	/// <param name="uninstallerDisplayName">The name Windows lists the program under, e.g. "WitcherAccess v0.3".</param>
+	public static bool UninstallerBelongsToMod(string? modFolderName, string? uninstallerDisplayName)
+	{
+		string mod = ComparableName(modFolderName);
+		string program = ComparableName(uninstallerDisplayName);
+
+		// Too little to go on is not a match. A two- or three-letter mod name would collide with something inside
+		// an unrelated program's name sooner or later, and this decides whether a program gets to uninstall
+		// itself.
+		if (mod.Length < 4 || program.Length < 4) return false;
+
+		// Either way round: the program usually carries a version the folder does not ("WitcherAccess v0.3"
+		// against "modWitcherAccess"), and occasionally the folder is the longer of the two.
+		return program.Contains(mod, StringComparison.Ordinal) || mod.Contains(program, StringComparison.Ordinal);
+	}
+
+	/// <summary>
+	/// A name reduced to what two spellings of the same mod have in common: lower case, letters and digits only,
+	/// and without the <c>mod</c> prefix the engine requires or the <c>~</c> that marks one disabled. It is what
+	/// lets "modWitcherAccess" and "WitcherAccess v0.3" be recognised as the same thing, and "Witcher Access" too.
+	/// </summary>
+	private static string ComparableName(string? name)
+	{
+		if (string.IsNullOrWhiteSpace(name)) return "";
+
+		var kept = new System.Text.StringBuilder(name.Length);
+		foreach (char c in name)
+			if (char.IsLetterOrDigit(c)) kept.Append(char.ToLowerInvariant(c));
+
+		string bare = kept.ToString();
+		if (bare.StartsWith("mod", StringComparison.Ordinal)) bare = bare.Substring(3);
+		return bare;
+	}
 }

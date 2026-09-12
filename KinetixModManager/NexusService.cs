@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -374,6 +375,27 @@ public class NexusService
 		return long.TryParse(token.ToString(), out long value) && value >= 0 ? value : -1;
 	}
 
+	/// <summary>
+	/// Reads a timestamp field from a GraphQL node, or <c>null</c> when it is absent or unparseable.
+	///
+	/// <para>
+	/// Newtonsoft turns an ISO timestamp into a <see cref="JTokenType.Date"/> token while parsing, so the value
+	/// is taken from the token directly rather than round-tripped through its string form, which would be
+	/// rendered in the machine's own locale and then have to be read back in the invariant one.
+	/// </para>
+	/// </summary>
+	private static DateTimeOffset? ReadDate(JToken? token)
+	{
+		if (token == null || token.Type == JTokenType.Null) return null;
+		try
+		{
+			if (token.Type == JTokenType.Date) return token.ToObject<DateTimeOffset>();
+			return DateTimeOffset.TryParse(token.ToString(), CultureInfo.InvariantCulture,
+				DateTimeStyles.RoundtripKind, out DateTimeOffset value) ? value : null;
+		}
+		catch { return null; }
+	}
+
 	/// <summary>Runs a single Nexus GraphQL search request for <paramref name="count"/> mods starting at
 	/// <paramref name="offset"/> (<paramref name="count"/> must not exceed <see cref="MaxModsPerRequest"/>).</summary>
 	private async Task<(List<GameMod> Results, int Total)> FetchModsPageAsync(
@@ -405,7 +427,7 @@ public class NexusService
 			filter["name"] = new[] { new { value = searchTerm, op = "WILDCARD" } };
 			gqlQuery = @"query SearchMods($filter: ModsFilter, $count: Int, $offset: Int) {
 				mods(filter: $filter, count: $count, offset: $offset) {
-					nodes { modId name summary author version endorsements downloads }
+					nodes { modId name summary author version endorsements downloads updatedAt }
 					totalCount
 				}
 			}";
@@ -428,7 +450,7 @@ public class NexusService
 			};
 			gqlQuery = @"query ListMods($filter: ModsFilter, $sort: [ModsSort!], $count: Int, $offset: Int) {
 				mods(filter: $filter, sort: $sort, count: $count, offset: $offset) {
-					nodes { modId name summary author version endorsements downloads }
+					nodes { modId name summary author version endorsements downloads updatedAt }
 					totalCount
 				}
 			}";
@@ -476,6 +498,9 @@ public class NexusService
 					// downloads yet reads as "0 downloads" rather than silently omitting the figure.
 					Downloads    = ReadCount(node["downloads"]),
 					Endorsements = ReadCount(node["endorsements"]),
+					// How long the mod has been left alone is the one thing the counts cannot say, and Nexus
+					// reports it on the same node — no second request, no extra rate-limit cost.
+					LastUpdated  = ReadDate(node["updatedAt"]),
 					IsSearchResult = true
 				});
 			}
@@ -1268,21 +1293,9 @@ public class NexusService
 	{
 		GamePlatform platform = _settings.InstallFor(_settings.ActiveGame)?.Platform
 			?? GameProfiles.PlatformOf(_settings.ActiveGame);
-		if (platform == GamePlatform.Unknown) return candidates;
-
-		static string TextOf(JToken f) =>
-			$"{f["name"]} {f["file_name"]} {f["description"]}";
-
-		if (!candidates.Any(f => ModPartRules.NamesGogBuild(TextOf(f)))) return candidates;
-
-		var mine = candidates
-			.Where(f => (platform == GamePlatform.Gog) == ModPartRules.NamesGogBuild(TextOf(f)))
-			.ToList();
-
-		// A page that splits by store but has nothing at all for this one is not a reason to download nothing —
-		// that would turn an update into an error. Better to fall through to the old behaviour and let the rest of
-		// the rules choose.
-		return mine.Count > 0 ? mine : candidates;
+		// The file's NAME only, never its description — KeepStoreBuilds explains at length why, and the update
+		// path and the part picker ask the same question of the same pages, so they ask it in one place.
+		return ModPartRules.KeepStoreBuilds(candidates, platform, f => $"{f["name"]} {f["file_name"]}");
 	}
 
 	/// <summary>

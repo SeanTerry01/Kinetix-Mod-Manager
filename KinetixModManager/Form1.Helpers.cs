@@ -908,6 +908,7 @@ public partial class Form1
 			RemoveDiscoveryLoadMoreRow();
 			int firstNewIndex = listDiscovery.Items.Count;
 			MarkAlreadyInstalled(results);
+			MarkAlreadyDownloaded(results);
 			foreach (var mod in results) listDiscovery.Items.Add(mod);
 
 			// Re-add the inline "Load more" row only while this page returned results AND more remain.
@@ -1020,6 +1021,57 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// Stamps each search result with when its archive was last downloaded, read from the active game's downloads
+	/// folder.
+	///
+	/// <para>
+	/// The folder is the record, deliberately, rather than a ledger written at download time. An archive the user
+	/// has deleted stops being claimed the moment it goes, which is what makes the row's promise a true one: the
+	/// point of hearing "you downloaded this three weeks ago" is to go and find the file, and a ledger would go on
+	/// pointing at files that are no longer there. It also means every download already sitting in the folder
+	/// counts, including the ones fetched long before this was written.
+	/// </para>
+	///
+	/// <para>
+	/// The newest archive wins when a mod has several, which is the usual case for a mod updated more than once —
+	/// the question being answered is "when did I last take a copy", not "when did I first".
+	/// </para>
+	/// </summary>
+	private void MarkAlreadyDownloaded(List<StardewMod> results)
+	{
+		if (results.Count == 0) return;
+
+		var newest = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+		try
+		{
+			foreach (string file in Directory.EnumerateFiles(downloadsPath))
+			{
+				string? modId = ModDisplayName.ModIdFromArchiveName(Path.GetFileName(file));
+				if (modId == null) continue;
+
+				DateTime when = File.GetLastWriteTime(file);
+				if (!newest.TryGetValue(modId, out DateTime already) || when > already)
+					newest[modId] = when;
+			}
+		}
+		catch (Exception ex)
+		{
+			// Not being able to read the folder is a reason to say nothing about downloads, never a reason to
+			// fail a search the user asked for.
+			DiagnosticLog.WriteException("Discovery", $"reading the downloads folder {downloadsPath}", ex);
+			return;
+		}
+
+		foreach (StardewMod result in results)
+		{
+			result.LastDownloaded =
+				!string.IsNullOrWhiteSpace(result.NexusID) && newest.TryGetValue(result.NexusID.Trim(), out DateTime when)
+					? new DateTimeOffset(when)
+					: null;
+		}
+	}
+
+	/// <summary>
 	/// Re-marks the Discovery results against the installed list as it now stands, and rewrites the rows so a mod
 	/// that has just arrived stops inviting you to fetch it again.
 	///
@@ -1045,11 +1097,15 @@ public partial class Form1
 		if (results.Count == 0) return;
 
 		bool[] before = results.Select(r => r.IsInstalled).ToArray();
+		DateTimeOffset?[] downloadedBefore = results.Select(r => r.LastDownloaded).ToArray();
 		MarkAlreadyInstalled(results);
+		// A mod arriving in the downloads folder changes its row just as installing it does, and a rescan is the
+		// moment both become true — the download that led to the install landed first.
+		MarkAlreadyDownloaded(results);
 
-		// Nothing became installed since these results were fetched, so leave the list completely alone. A
-		// rebuild that changes nothing is still a rebuild, and this runs after every rescan.
-		if (!results.Where((r, i) => r.IsInstalled != before[i]).Any()) return;
+		// Nothing became installed or downloaded since these results were fetched, so leave the list completely
+		// alone. A rebuild that changes nothing is still a rebuild, and this runs after every rescan.
+		if (!results.Where((r, i) => r.IsInstalled != before[i] || r.LastDownloaded != downloadedBefore[i]).Any()) return;
 
 		int at = listDiscovery.SelectedIndex;
 		bool selectedRowChanged =

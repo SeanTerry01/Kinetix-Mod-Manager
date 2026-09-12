@@ -1,5 +1,133 @@
 # Version 1.5.2
 
+## 🐛 Fixed: deleting a Witcher 3 mod offered to uninstall a different mod
+
+*   Reported from a real session: deleting **Random Encounters Reworked** and each of the mods that came with it asked, every single time, whether to run **WitcherAccess's** uninstaller — the accessibility mod, which was not being deleted. Answering yes would have removed it.
+*   ⚠️ **The rule had a fallback, and the fallback was the whole problem.** A Witcher 3 mod can be installed by running the author's own installer, which writes files the manager never sees, so the manager offers to run that installer's uninstaller when the mod is removed. It found the uninstaller "whose name matches this mod — **or else the first one we found**". Typically only one program registers an uninstaller inside a Witcher folder, so every mod that matched nothing fell through to that one.
+*   **There is no fallback now.** Without positive evidence that an uninstaller belongs to the mod being deleted, no offer is made. Leaving a few of a mod's files behind is a far smaller harm than removing a different mod the user still wants — and here, the mod they need in order to play at all.
+*   The matching itself is more forgiving in exchange, so a mod's own uninstaller is still recognised: case, spaces and punctuation are ignored, the engine's `mod` prefix and the `~` that marks a mod disabled are stripped, and either name may be the longer one — "modWitcherAccess", "~modWitcherAccess" and "Witcher Access v0.3" are all the same mod. A name of fewer than four characters is never matched, because at that length it would eventually collide with something inside an unrelated program's name.
+
+---
+
+## 🔧 Changed: Stay At The System Page is no longer part of the Skyrim accessibility suite
+
+*   **Skyrim Access no longer needs it**, so it has been removed from the suite.
+*   Removed rather than kept as optional. The suite is the list of what you *must* have for the game to be playable — anything in it that is not needed is a mod somebody installs, keeps updated, and troubleshoots for no reason.
+*   ⚠️ **Nothing is uninstalled.** If you already have it, it stays exactly where it is as an ordinary installed mod, still listed and still update-checked. It simply stops being something the suite asks you for, and the suite no longer reports it missing on a copy that does not have it.
+
+---
+
+## 🐛 Fixed: an installed mod was labelled with the mod page's version, not the version installed
+
+*   The manager recorded a newly installed mod's version by asking the **mod's page** what its current version was, rather than looking at the **file it had just installed**. Those are different facts, and the difference is not cosmetic.
+*   ⚠️ **This is what made the downgrade above invisible.** The archive was 6.4.3; the page said 6.5.2; the manifest was written as 6.5.2. So:
+    *   the installed list read out **6.5.2**,
+    *   the update check compared **6.5.2** against the page and found nothing to do — so it would never have corrected itself,
+    *   and reinstalling the correct file said **"powerofthree's Papyrus Extender (version 6.5.2) is already installed. Overwrite it with this copy?"** about a folder that held 6.4.3.
+    
+    A mod that was silently six weeks out of date looked like the most up-to-date thing on the machine, and the one thing on screen that could have revealed it said the opposite.
+*   **The version now comes from the copy that was installed**, in order of who is best placed to know: the archive's own `info.xml` where it has one, then the version Nexus puts in the download's file name, and only then — when neither says anything, as with a hand-renamed archive — the mod page, where it is a better guess than nothing.
+*   The page is still the authority on the mod's **name, author and description**. It was only ever wrong about the version, and only because the version describes a file rather than a mod.
+*   Both install paths had the same line, the ordinary one and The Witcher 3's; both are fixed, and the rule now lives in one place with the reasoning attached.
+*   ⚠️ **Mods already installed keep whatever version was recorded at the time.** A manifest is only rewritten when the mod is reinstalled, so a wrong label stays until then — reinstalling the mod corrects it.
+
+---
+
+## 🐛 Fixed: an update could quietly install an OLDER build, and stop the game starting
+
+*   Reported as a Skyrim that would not launch — the game hung with **po3_PapyrusExtender.dll (Not Responding)**, hours after a normal round of mod updates. SKSE's own log ended mid-sentence:
+
+    ```
+    loading plugin "powerofthree's Papyrus Extender"
+    ```
+
+    and nothing after it. The plugin refuses a game version it does not know and says so in a window that opens *behind* the game, so it reads as a hang rather than an error.
+*   **The update had gone backwards.** Papyrus Extender 6.5.1 had been running fine for a week; the update replaced it with **6.4.3, six weeks older** — and built before the game version installed on the machine.
+*   ⚠️ **The cause was the Steam/GOG rule reading the wrong text.** A mod page that ships one build per store says so in its **file names** — SKSE's are "Skyrim Script Extender (SKSE64) GOG" and "... Steam". The check was reading each file's **description** too, which is where an author lists the runtimes a single universal build supports. Papyrus Extender's says:
+
+    ```
+    Supports SE 1.5.97
+    Supports SE/AE 1.6.1170 or 1.6.1179 GOG
+    Supports SE/AE 1.7.99+
+    ```
+
+    One mention of GOG in that list marked the current file as "the GOG build", so a **Steam** owner had it ruled out — along with every other recent release, since they all say it. What was left was the newest file that happened not to mention GOG, which was the old one.
+*   **The store is now read from the file's name only.** Checked against both pages it matters on: every one of SKSE's GOG files carries GOG in its name, so the split it was written for still works exactly as before, while a universal file stops being mistaken for somebody else's build.
+*   This could affect any mod whose one file lists its supported runtimes and mentions GOG among them — quietly, because a downgrade installs like any other update. It is worth a look at the version of anything that started misbehaving after an update.
+*   The rule now lives in one place rather than two, so the update path and the part picker cannot disagree about it.
+
+---
+
+## ✨ New: Tidy Mod Folder Names
+
+*   **Mods menu → Tidy Mod Folder Names.** Renames the folders your mods are installed into after the mods themselves, so the mods folder reads like a list of mods instead of a list of serial numbers:
+
+    ```
+    Hunterborn-7900-1-6-2                                        -> Hunterborn SE
+    Media Keys Fix 92948 1.0.2 2026-08-21T18-58Z Yj6wQRo26       -> Media Keys Fix SKSE
+    Achievements Mods Enabler SE-AE-245-1-41-1715217907          -> Achievements Mods Enabler SE-AE
+    ```
+*   **This is the convention Mod Organizer 2 uses**, and the manager was already doing the harder half of it. MO2 gives each mod a readable folder and keeps the mod id, version and source archive in a `meta.ini` beside it; this manager writes a `.manager_manifest.json` for exactly that purpose, which is why the mod list has always sounded right no matter what the folder was called. Naming the folder after the mod is the half that was missing. **Vortex** made the other choice — its staging folders keep the whole Nexus suffix and it hides the suffix in its own interface — which is what a mods folder full of `-1-41-1715217907` looks like when nobody finishes the job.
+*   **Nothing happens without a preview.** The full list of "this becomes that" opens first, every row of it, and nothing is renamed until you say yes.
+*   ⚠️ **The mods themselves do not care, and that is why this is safe.** SMAPI, BepInEx and the Witcher's engine all find mods without reference to the folder name, and a Bethesda mod's deployed files are hard links, which follow the file rather than the path it was linked from.
+*   ⚠️ **The manager's own bookkeeping does care**, and all of it is rewritten in the same pass: mod priority, the file conflicts you settled by hand, the record of which mod deployed which file, every saved profile, and the Witcher's own `mods.settings`. A rename without those would quietly reset a load order, which is the failure this was written around.
+*   What is deliberately left alone:
+    *   **A folder that is already properly named** — which is most of them, and every Stardew one, because those arrive named by the author. Rewriting 148 tidy names to fix 23 untidy ones would be the worse tool.
+    *   **Whether a mod is switched off.** The leading dot (or the Witcher's tilde) is what disables a mod, and it survives the rename — dropping it would silently switch a mod back on.
+    *   **The Witcher's `mod` prefix**, without which the engine ignores a folder entirely and says nothing. A Witcher mod keeps its folder-style name rather than taking the spoken one, because a folder called "Brothers In Arms" is a mod that has stopped loading.
+*   Two mods that want the same folder do not get it: the second becomes "SkyUI (2)", and an existing tidy folder is never taken from the mod that already has it.
+*   Names come from the mod's page on Nexus, so a few are more correct than the folder was: `NoStamina-SKSE` is really *Unlimited Stamina - NG*, and `Puzzle Pillar Auto-Unlock` is really *Puzzle Pillar Auto-Solve*.
+
+---
+
+## 🐛 Fixed: mods installed into folders named after Nexus's bookkeeping
+
+*   A mod could end up installed into a folder called **"HouseStorageAnywhere 7 2 2026-08-22T02-14Z ifoLiAHsd"**, and be read out that way, instead of just **"HouseStorageAnywhere"**.
+*   **The cause was one assumption about Nexus's file names**, made when the tail was first trimmed off them: that a mod id is at least three digits, and that an upload timestamp always follows it. Neither holds.
+    *   ⚠️ **A young game's mods are numbered from 1.** Moonlight Peaks' mods are 7, 11, 33, 85 — so *every* Moonlight Peaks mod with an id under 100 kept its whole tail. It was worst exactly where it was least noticed.
+    *   ⚠️ **Older downloads carry no timestamp at all**: "Easy Hacking-266-1-0", "Hunterborn-7900-1-6-2", "Carry Weight Modifiers-2176-1-1-3".
+    *   ⚠️ **And a third shape was never handled**, the one the manager itself asks for when it fetches a single named file: "Skyrim Access_181131_file_772480".
+*   **The name is now cut at the mod id**, found by the same rules that read a mod id out for the Search Mods tab. One set of rules, so the two cannot disagree about where a mod's name ends — and adding "you downloaded this" to a search result and fixing this turned out to be the same problem seen from two sides.
+*   Three questions have to answer yes before any number is taken for a mod id, because a wrong cut takes away part of a real name: it has to be a possible id (never 0, never zero-padded), everything behind it has to look like Nexus's tail, and there has to be a name in front of it. A number sitting behind *other* numbers only counts when it is too big to be a version piece — which is how **"UIExtensions v1-2-0-17561-1-2-0"** is read as mod 17561 rather than mod 2, and why **"SMAPI 4-0-2"** is left alone completely.
+*   Checked against a real installation rather than invented examples: **170 downloads and 213 installed mod folders**. 21 of them are now read correctly that were not, every other one is untouched, and every single change removes a tail — none renames anything.
+*   **The same rule now answers the question everywhere it is asked.** "Where is the mod id in this name?" had grown five separate answers scattered through the manager — the folder namer, the mod scan, the BepInEx scan, the installer's reinstall check and the Witcher 3 folder namer — and four of them were the same weak pattern: the first "-digits-" in the name, three digits minimum. They all defer to one implementation now, so a name that reads correctly in one place cannot read wrongly in another.
+    *   ⚠️ **The BepInEx scan was the live casualty.** It recovers a mod's Nexus id from its folder name when the plugin does not declare one — and with a three-digit floor it could not do that for Moonlight Peaks at all, whose mods are numbered 7, 11, 33. A mod with no id recovered is a mod that never gets update-checked.
+    *   The one place deliberately left stricter is the check on a file **you** picked from anywhere on your disk, which still refuses to guess when a name is ambiguous. There, "ModBackup-12345-old.zip" offering up mod 12345 would quietly attach another mod's updates to yours, and refusing costs only an automatic link.
+*   Mods already installed into a badly named folder keep that folder; this fixes what happens from here on.
+
+---
+
+## ✨ New: search results say when you last downloaded the mod
+
+*   A result you have already pulled down now says so, and when:
+
+    ```
+    Cape Stardew (ID: 14635). Installed. You downloaded this 4 days ago. 12,204 downloads, 903 endorsements. Updated 3 weeks ago. …
+    ```
+*   **The point is to stop you fetching the same mod twice.** Nexus tells you this on the mod page — and going to the page to find out is exactly the trip the rest of the row exists to save. Now the answer is in the list, next to everything else you would judge a result by.
+*   ⚠️ **Nexus's API does not report it.** "You last downloaded this" is built from the website's own logs and is not offered to any program, so the manager answers the question from what it can see: **the archives in that game's downloads folder.** That is a better answer than a ledger would be, in two ways:
+    *   **Every download already in your folder counts**, including ones from long before this was written. Nothing had to be recorded in advance.
+    *   **Deleting an archive stops the claim.** The row goes quiet again, so hearing "you downloaded this" always means the file is still there to use — which is the whole reason for wanting to know.
+*   It reads as **"You downloaded this 2 days ago"** rather than "Downloaded 2 days ago", so it cannot be confused with the mod's own **download count** three words later in the same row.
+*   The row is now in two halves: **what you have** — installed, downloaded — then **what everyone else thinks** — downloads, endorsements, last updated. Both halves come before the description, which is the longest thing to sit through and the last thing you need.
+*   ⚠️ **Reading a mod id out of a download's name is fussier than it looks**, and getting it wrong would send somebody hunting their disk for a file that was never there. Three naming shapes are in circulation, and the rules were checked against a real downloads folder five games deep: 132 of 170 archives identified, and the 38 declined are genuinely nameless — content-server ids with no name in them, GitHub releases, and files placed in the folder by hand. One real trap is guarded by name: `UIExtensions v1-2-0-17561-1-2-0` is mod **17561**, not mod 2, because the author put their own dashed version in front of Nexus's.
+
+---
+
+## ✨ New: search results say when the mod was last updated
+
+*   Every result in **Search Mods** now reads how long ago the mod was last touched, right after its download and endorsement counts:
+
+    ```
+    Serena's Grimoire (ID: 23). 3,428 downloads, 50 endorsements. Updated 3 weeks ago. Dark magic, dramatic rituals.
+    ```
+*   **It is the one thing the counts cannot tell you.** A mod with a hundred thousand downloads and four years of silence behind it is a very different prospect from the same mod updated last week, and the two used to sound identical in the list. Finding out meant leaving the manager and opening the mod's page — the exact trip the rest of the row exists to save.
+*   The age is worded the way Nexus words it on the mod page, with the unit growing to fit the gap: *"5 minutes ago"*, *"5 hours ago"*, *"6 days ago"*, *"3 weeks ago"*, *"1 month ago"*, *"4 years ago"*. Nothing ever reads *"1 weeks ago"* or *"24 hours ago"*.
+*   It sits with the counts, **before** the description, for the same reason they do: everything that can rule a result out is said before the part that takes the longest to hear.
+*   Nexus reports the date on the same request that fetches the results, so nothing about a search got slower and no extra API requests are spent.
+
+---
+
 ## 🐛 Fixed: the window's title read itself out between a prompt and its answer
 
 *   From the speech history again, one step further on:

@@ -89,6 +89,32 @@ public class GameMod
 	/// <inheritdoc cref="Downloads"/>
 	public long Endorsements { get; set; } = -1;
 
+	/// <summary>
+	/// When Nexus last saw a change to the mod, or <c>null</c> when it is not known — nothing on disk records
+	/// it, so it is only filled in for search results.
+	///
+	/// <para>
+	/// It answers the one question the download and endorsement counts cannot: a mod with a hundred thousand
+	/// downloads and four years of silence behind it is a different proposition from the same mod updated last
+	/// week, and until now the only way to tell them apart was to leave the manager and open the mod's page.
+	/// </para>
+	/// </summary>
+	public DateTimeOffset? LastUpdated { get; set; }
+
+	/// <summary>
+	/// When the user last downloaded this mod's archive, or <c>null</c> when they have not — read from the
+	/// archives sitting in the game's downloads folder, so it means "this file is on your computer right now"
+	/// rather than "you fetched this once". Only ever set on a search result.
+	///
+	/// <para>
+	/// Nexus says this on a mod page and it is one of the better reasons to leave the manager: knowing you have
+	/// already pulled a mod down saves you fetching it twice, and points you at the copy you have. The API does
+	/// not report it — it is built from the site's own download logs — so the manager answers from what it can
+	/// see, which is its own downloads folder.
+	/// </para>
+	/// </summary>
+	public DateTimeOffset? LastDownloaded { get; set; }
+
 	/// <summary>True when this instance represents a pending update in the Updates tab.</summary>
 	public bool IsUpdateResult { get; set; }
 
@@ -142,6 +168,14 @@ public class GameMod
 			// own, without Loc, which is why nothing else in this method is localised either.
 			string installed = IsInstalled ? "Installed. " : "";
 
+			// Said in the second person, and before the counts, because it is about the user's own copy rather
+			// than the mod: "you downloaded this 2 days ago" cannot be confused with "3,428 downloads" a moment
+			// later, where a bare "Downloaded 2 days ago" very much could be. It joins "Installed" as the part of
+			// the row that is about you, which is also the part that can end your interest in a result outright.
+			string downloaded = LastDownloaded.HasValue
+				? $"You downloaded this {DescribeAge(LastDownloaded.Value, DateTimeOffset.UtcNow)}. "
+				: "";
+
 			// Downloads and endorsements come BEFORE the summary on purpose. They are the two numbers that
 			// decide whether a result is worth more of your time, and putting them first means you can move on
 			// to the next result without sitting through a description you have already ruled out. It also keeps
@@ -155,10 +189,19 @@ public class GameMod
 				if (joined.Length > 0) popularity = joined + ". ";
 			}
 
+			// How long ago the mod was last touched, in the same relative wording Nexus uses on the mod page
+			// itself ("3 weeks ago", "4 years ago"), and in the same part of the row as the counts: all three
+			// are facts you can act on before hearing a word of the description. A mod with a large download
+			// count and years of silence behind it is a different proposition from the same mod updated last
+			// week, and this is the only thing in the row that separates them.
+			string updated = LastUpdated.HasValue
+				? $"Updated {DescribeAge(LastUpdated.Value, DateTimeOffset.UtcNow)}. "
+				: "";
+
 			// The summary here is however much of it Nexus returns, which for a long one is NOT all of it:
 			// the API's summary field arrives already truncated at roughly 240 characters, often mid-word.
 			// Nothing can recover the rest — the full text lives in the mod's description (Ctrl+Shift+I).
-			return $"{Name} (ID: {NexusID}). {installed}{popularity}{Description}";
+			return $"{Name} (ID: {NexusID}). {installed}{downloaded}{popularity}{updated}{Description}";
 		}
 		string noteSuffix = string.IsNullOrEmpty(Note) ? "" : $" Note: {Note}.";
 		// Some mods genuinely carry no author or version — a Witcher 3 mod folder holds neither, because the
@@ -168,4 +211,35 @@ public class GameMod
 		string ver = string.IsNullOrWhiteSpace(Version) ? "version unknown" : $"version {Version}";
 		return $"{value2}{Name}{by}, {ver}. Category: {Category}. {value3}{value4}{noteSuffix}";
 	}
+
+	/// <summary>
+	/// How long ago <paramref name="updated"/> was, in the same shape Nexus itself uses on a mod page: the unit
+	/// grows with the gap, so a mod touched this morning reads "5 hours ago" and one left alone since 2021 reads
+	/// "4 years ago", rather than both arriving as a date the listener has to do arithmetic on.
+	/// </summary>
+	/// <param name="updated">When the mod was last changed.</param>
+	/// <param name="now">The moment to measure from — a parameter so the wording can be tested without waiting.</param>
+	public static string DescribeAge(DateTimeOffset updated, DateTimeOffset now)
+	{
+		// A timestamp in the future means the two clocks disagree, not that the mod was updated tomorrow. Say
+		// the least wrong thing rather than "in -1 minutes".
+		double seconds = (now - updated).TotalSeconds;
+		if (seconds < 60) return "just now";
+
+		// Each unit runs until the next one can say "1 <unit>" honestly, so nothing ever reads "60 minutes ago"
+		// or "24 hours ago". Months and years are the usual approximations — 30 and 365 days — which is what a
+		// relative age is for; anyone who needs the exact day wants the mod page, not a list row.
+		double minutes = seconds / 60, hours = minutes / 60, days = hours / 24;
+		if (minutes < 60) return Plural((int)minutes, "minute");
+		if (hours   < 24) return Plural((int)hours,   "hour");
+		if (days    <  7) return Plural((int)days,    "day");
+		if (days    < 30) return Plural((int)(days / 7),   "week");
+		if (days   < 365) return Plural((int)(days / 30),  "month");
+		return Plural((int)(days / 365), "year");
+	}
+
+	/// <summary>"1 week ago" / "3 weeks ago" — never "1 weeks ago", which is the kind of thing that sounds like
+	/// a machine talking when every result row in a long list says it.</summary>
+	private static string Plural(int count, string unit) =>
+		count == 1 ? $"1 {unit} ago" : $"{count} {unit}s ago";
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -209,13 +209,17 @@ public static class ModFileSystem
 						string uid = ManifestString(manifest, "UniqueID") ?? folderName;
 						string? nexusId = ManifestString(manifest, "NexusID");
 
-						// Auto-extract NexusID from folderName if not present
+						// Auto-extract NexusID from folderName if not present. The folder is usually named after the
+						// download it came out of, so it still carries the mod id — and finding that is the same
+						// job as reading one out of an archive name, so it goes through the same rules. The
+						// pattern that used to live here required three digits and a hyphen on each side, which
+						// missed a young game's mods entirely (Moonlight Peaks' are numbered 7, 11, 33) and every
+						// older download that carries no upload timestamp.
 						if (string.IsNullOrEmpty(nexusId) && !GameProfiles.IsGame(activeGame, GameProfiles.StardewValley))
 						{
-							var match = System.Text.RegularExpressions.Regex.Match(folderName, @"-(\d{3,9})-");
-							if (match.Success)
+							nexusId = ModDisplayName.ModIdFromArchiveName(folderName);
+							if (!string.IsNullOrEmpty(nexusId))
 							{
-								nexusId = match.Groups[1].Value;
 								try
 								{
 									manifest["NexusID"] = nexusId;
@@ -252,15 +256,13 @@ public static class ModFileSystem
 						string cleanName = folderName.StartsWith(disabledPrefix, StringComparison.Ordinal)
 							? folderName.Substring(disabledPrefix.Length)
 							: folderName;
-						string? extractedNexusId = null;
-						if (!GameProfiles.IsGame(activeGame, GameProfiles.StardewValley))
-						{
-							var match = System.Text.RegularExpressions.Regex.Match(folderName, @"-(\d{3,9})-");
-							if (match.Success)
-							{
-								extractedNexusId = match.Groups[1].Value;
-							}
-						}
+						// Same rules again, and deliberately the same ones: a mod with no metadata of its own is
+						// exactly the mod whose folder name is all there is to go on, so this is where reading it
+						// correctly matters most. Getting the id here is what lets the mod be update-checked at
+						// all.
+						string? extractedNexusId = GameProfiles.IsGame(activeGame, GameProfiles.StardewValley)
+							? null
+							: ModDisplayName.ModIdFromArchiveName(folderName);
 
 						// No version in the folder name means there is no version to state. Leaving it empty is
 						// the honest answer and reads as "version unknown"; inventing 1.0.0 made every such mod
@@ -436,10 +438,7 @@ public static class ModFileSystem
 					// folder name when the manifest doesn't already carry it.
 					string? nexusId = ManifestString(manifest, "NexusID");
 					if (string.IsNullOrEmpty(nexusId))
-					{
-						var match = System.Text.RegularExpressions.Regex.Match(folderName, @"-(\d{3,9})-");
-						if (match.Success) nexusId = match.Groups[1].Value;
-					}
+						nexusId = ModDisplayName.ModIdFromArchiveName(folderName);
 
 					// The plugin's own declaration wins over anything the manager guessed earlier and wrote to the
 					// manifest, because it is the author's answer rather than an inference from a file name.
@@ -1738,10 +1737,7 @@ public static class ModFileSystem
 		// the raw name before that name is cleaned away — otherwise a manual re-install of a mod already installed
 		// would no longer recognise it and would leave two copies deploying the same files.
 		if (string.IsNullOrEmpty(nexusId))
-		{
-			var fromName = System.Text.RegularExpressions.Regex.Match(archiveName, @"-(\d{3,9})-");
-			if (fromName.Success) nexusId = fromName.Groups[1].Value;
-		}
+			nexusId = ModDisplayName.ModIdFromArchiveName(archiveName);
 
 		// For Skyrim/Fallout 4 the mod's identity is known up front (its Nexus id or folder name), so a
 		// reinstall can be confirmed before we even extract. Stardew's identity lives in manifest.json inside
@@ -2041,10 +2037,7 @@ public static class ModFileSystem
 		List<GameMod> installedMods, string? nexusId, string targetFolderName, bool matchByNexusId = true)
 	{
 		if (string.IsNullOrEmpty(nexusId))
-		{
-			var m = System.Text.RegularExpressions.Regex.Match(targetFolderName, @"-(\d{3,9})-");
-			if (m.Success) nexusId = m.Groups[1].Value;
-		}
+			nexusId = ModDisplayName.ModIdFromArchiveName(targetFolderName);
 
 		GameMod? existing = null;
 		if (matchByNexusId && !string.IsNullOrEmpty(nexusId))
@@ -2119,15 +2112,21 @@ public static class ModFileSystem
 		// Generate manifest
 		string manifestPath = Path.Combine(destModFolder, ".manager_manifest.json");
 		string mName = targetFolderName;
-		string mVersion = ExtractVersionFromFileName(zipPath, nexusId) ?? "1.0.0";
 		string mAuthor = "Unknown";
 		string mDesc = "Installed local mod.";
+
+		// Where each answer about the version comes from, kept apart until they can be weighed against each
+		// other. Only the last of these describes the mod rather than the copy being installed — see
+		// ModManifest.VersionOfTheInstalledCopy, which is where the difference is spelled out and why it matters.
+		string? versionFromArchive = ExtractVersionFromFileName(zipPath, nexusId);
+		string? versionFromFomod = null;
+		string? versionFromModPage = null;
 
 		// FOMOD info.xml seeds the metadata for locally-installed scripted mods that have no Nexus id.
 		if (fomodInfo != null)
 		{
 			if (!string.IsNullOrWhiteSpace(fomodInfo.Name)) mName = fomodInfo.Name!;
-			if (!string.IsNullOrWhiteSpace(fomodInfo.Version)) mVersion = fomodInfo.Version!;
+			if (!string.IsNullOrWhiteSpace(fomodInfo.Version)) versionFromFomod = fomodInfo.Version;
 			if (!string.IsNullOrWhiteSpace(fomodInfo.Author)) mAuthor = fomodInfo.Author!;
 		}
 
@@ -2138,14 +2137,20 @@ public static class ModFileSystem
 				var details = await nexusService.GetModDetailsAsync(nexusId);
 				if (details != null)
 				{
+					// The page is the authority on what the mod is called, who wrote it and what it does. It is
+					// NOT the authority on which version is now sitting on this disk.
 					mName = details["name"]?.ToString() ?? mName;
-					mVersion = details["version"]?.ToString() ?? mVersion;
 					mAuthor = details["author"]?.ToString() ?? mAuthor;
 					mDesc = details["summary"]?.ToString() ?? mDesc;
+					versionFromModPage = details["version"]?.ToString();
 				}
 			}
 			catch (Exception ex) { DiagnosticLog.WriteException("Nexus", $"looking up the details of mod {nexusId}", ex); }
 		}
+
+		// "1.0.0" as a last resort is a number nobody wrote down, and IsPlaceholderManifest knows to distrust it.
+		string mVersion =
+			ModManifest.VersionOfTheInstalledCopy(versionFromFomod, versionFromArchive, versionFromModPage) ?? "1.0.0";
 
 		var manifest = new JObject
 		{
@@ -2369,9 +2374,11 @@ public static class ModFileSystem
 		CaptureModDocs(tempDir, destModFolder);
 
 		string mName = primaryFolderName;
-		string mVersion = ExtractVersionFromFileName(zipPath, nexusId) ?? "1.0.0";
 		string mAuthor = "Unknown";
 		string mDesc = "Installed local mod.";
+
+		string? versionFromArchive = ExtractVersionFromFileName(zipPath, nexusId);
+		string? versionFromModPage = null;
 
 		if (!string.IsNullOrEmpty(nexusId) && nexusService != null)
 		{
@@ -2380,14 +2387,19 @@ public static class ModFileSystem
 				var details = await nexusService.GetModDetailsAsync(nexusId);
 				if (details != null)
 				{
+					// As above: the page names the mod, the archive dates the copy. See
+					// ModManifest.VersionOfTheInstalledCopy.
 					mName = details["name"]?.ToString() ?? mName;
-					mVersion = details["version"]?.ToString() ?? mVersion;
 					mAuthor = details["author"]?.ToString() ?? mAuthor;
 					mDesc = details["summary"]?.ToString() ?? mDesc;
+					versionFromModPage = details["version"]?.ToString();
 				}
 			}
 			catch (Exception ex) { DiagnosticLog.WriteException("Nexus", $"looking up the details of mod {nexusId}", ex); }
 		}
+
+		string mVersion =
+			ModManifest.VersionOfTheInstalledCopy(null, versionFromArchive, versionFromModPage) ?? "1.0.0";
 
 		var manifest = new JObject
 		{
@@ -2533,8 +2545,9 @@ public static class ModFileSystem
 	/// </summary>
 	private static string WitcherModFolderName(string archiveName)
 	{
-		string cleaned = SanitiseFolderName(
-			System.Text.RegularExpressions.Regex.Replace(archiveName, @"-\d{3,9}-.*$", "").Trim());
+		// Cleaned by the same rules every other name goes through, so a Witcher folder is not the one place that
+		// keeps a tail the rest of the manager knows how to remove.
+		string cleaned = SanitiseFolderName(ModDisplayName.Clean(archiveName));
 
 		if (cleaned.Length == 0) cleaned = "Mod";
 		cleaned = cleaned.Replace(" ", "");
@@ -2728,13 +2741,10 @@ public static class ModFileSystem
 
 		if (candidates.Count == 0) return null;
 
-		// Prefer one whose name looks like this mod's — "modWitcherAccess" against "WitcherAccess v0.2".
-		string bare = Witcher3ModSettings.BareName(modFolderName);
-		if (bare.StartsWith("mod", StringComparison.OrdinalIgnoreCase)) bare = bare.Substring(3);
-
-		return candidates.FirstOrDefault(c =>
-				bare.Length > 0 && c.DisplayName.Contains(bare, StringComparison.OrdinalIgnoreCase))
-			?? candidates[0];
+		// Only one whose name is this mod's — "modWitcherAccess" against "WitcherAccess v0.3". No match means no
+		// uninstaller, never "the first one we found": see Witcher3Layout.UninstallerBelongsToMod for what that
+		// fallback did.
+		return candidates.FirstOrDefault(c => Witcher3Layout.UninstallerBelongsToMod(modFolderName, c.DisplayName));
 	}
 
 	/// <summary>

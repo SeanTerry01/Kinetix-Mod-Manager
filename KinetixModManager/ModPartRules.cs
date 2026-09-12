@@ -414,7 +414,13 @@ public static class ModPartRules
 		// store be a requirement — otherwise a page with one build for everyone (F4SE's) would answer "no file
 		// found" for a GOG owner, which is worse than the single build it has always correctly handed them.
 		bool platformKnown = part.PlatformSpecific && platform != GamePlatform.Unknown;
-		bool pageSplitsByPlatform = platformKnown && usable.Any(f => NamesGogBuild(f.FullHaystack));
+		// Read the store off the file's NAME, never its description. A page that really does ship one build per
+		// store says so in the file names — SKSE's are "Skyrim Script Extender (SKSE64) GOG" and "... Steam" —
+		// whereas a description is where an author lists every runtime one universal build supports, GOG among
+		// them. Reading the description made "Supports SE/AE 1.6.1170 or 1.6.1179 GOG" mean "this is the GOG
+		// build", so a Steam user had the current file struck out from under them and was handed the newest file
+		// that happened not to mention GOG — six weeks older, and built before the game version they are running.
+		bool pageSplitsByPlatform = platformKnown && usable.Any(f => NamesGogBuild(f.NameHaystack));
 
 		NexusFileInfo? best = null;
 		int bestScore = int.MinValue;
@@ -432,7 +438,7 @@ public static class ModPartRules
 			// The wrong store's build is not a worse answer, it is not an answer: it is compiled against an exe
 			// this copy does not have and will silently refuse to load. So it is dropped rather than scored, which
 			// is what stops a build number read off the OTHER copy of a game from carrying it to the top.
-			if (pageSplitsByPlatform && (platform == GamePlatform.Gog) != NamesGogBuild(full)) continue;
+			if (pageSplitsByPlatform && (platform == GamePlatform.Gog) != NamesGogBuild(named)) continue;
 
 			int score = 0;
 
@@ -491,6 +497,39 @@ public static class ModPartRules
 	/// </summary>
 	public static bool NamesGogBuild(string text) =>
 		!string.IsNullOrEmpty(text) && Regex.IsMatch(text, "\\bgog\\b", RegexOptions.IgnoreCase);
+
+	/// <summary>
+	/// Narrows a mod page's files to the ones built for this copy's store, on the pages that ship one build per
+	/// store. Every other page is returned untouched, so a mod with a single build for everybody is unaffected.
+	/// </summary>
+	///
+	/// <param name="nameOf">
+	/// Must return the file's <b>name</b> — what the author called it, and its archive's name. Never its
+	/// description.
+	///
+	/// <para>
+	/// That distinction is the whole of this. A page that genuinely ships one build per store says so in the file
+	/// names: SKSE's are "Skyrim Script Extender (SKSE64) GOG" and "Skyrim Script Extender (SKSE64) Steam". A
+	/// description is where an author lists the runtimes one universal build supports — powerofthree's Papyrus
+	/// Extender says "Supports SE 1.5.97 / Supports SE/AE 1.6.1170 or 1.6.1179 GOG / Supports SE/AE 1.7.99+" — and
+	/// reading that as "this is the GOG build" struck the current file, and every recent one, out from under a
+	/// Steam owner. What they were given instead was the newest file that happened not to mention GOG: six weeks
+	/// older, built before the game version they were running, and it stopped Skyrim starting.
+	/// </para>
+	/// </param>
+	public static List<T> KeepStoreBuilds<T>(List<T> files, GamePlatform platform, Func<T, string> nameOf)
+	{
+		if (platform == GamePlatform.Unknown || files.Count == 0) return files;
+
+		// No file names a store, so this page does not split by one and every file is for everybody.
+		if (!files.Any(f => NamesGogBuild(nameOf(f)))) return files;
+
+		var mine = files.Where(f => (platform == GamePlatform.Gog) == NamesGogBuild(nameOf(f))).ToList();
+
+		// A page that splits by store but has nothing at all for this one is not a reason to download nothing —
+		// that would turn an update into an error. Better to fall through and let the rest of the rules choose.
+		return mine.Count > 0 ? mine : files;
+	}
 
 	/// <summary>
 	/// Reads a Nexus <c>files.json</c> body into <see cref="NexusFileInfo"/>s.

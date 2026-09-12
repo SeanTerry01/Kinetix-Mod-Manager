@@ -60,11 +60,12 @@ public static class ModManifest
 	/// update key. Returns null when the name doesn't follow the convention (a browser-renamed file, say),
 	/// because a wrong id is worse than none.
 	/// </summary>
-	public static string? ParseNexusIdFromFileName(string fileName)
-	{
-		Match m = Regex.Match(Path.GetFileName(fileName), @"-(\d{3,9})-");
-		return m.Success ? m.Groups[1].Value : null;
-	}
+	public static string? ParseNexusIdFromFileName(string fileName) =>
+		// One set of rules for "where is the mod id in this name", shared with the folder namer and with the
+		// search results that report whether a mod is already downloaded. The pattern that used to live here read
+		// the first "-digits-" it found, which took an author's own dashed version for the id and could not see
+		// the newer space-separated names at all.
+		ModDisplayName.ModIdFromArchiveName(Path.GetFileName(fileName));
 
 	/// <summary>
 	/// The Nexus mod id in a file whose name is unmistakably a Nexus download, or <c>null</c> for anything else.
@@ -100,5 +101,37 @@ public static class ModManifest
 		}
 
 		return ids.Count == 1 ? ids[0] : null;
+	}
+
+	/// <summary>
+	/// Which version to record for a mod that has just been installed: the version of the <b>file that was
+	/// actually installed</b>, never the version the mod's page currently advertises.
+	///
+	/// <para>
+	/// The two are not the same thing, and the difference is not academic. A mod page says 6.5.2 because that is
+	/// its newest release; the file sitting in the downloads folder may be 6.4.3. Recording the page's number
+	/// against a copy of 6.4.3 does not merely mislabel it — it makes a wrong version <b>invisible</b>. The mod
+	/// list reads out the newest number, the update check compares that number and finds nothing to do, and a mod
+	/// that is silently six weeks out of date looks like the most up-to-date thing you own.
+	/// </para>
+	///
+	/// <para>
+	/// Found the long way round: a Skyrim that would not launch, traced to an update that had installed an older
+	/// build than the one it replaced, which nothing in the manager could show because both were labelled with the
+	/// page's version. The install prompt then said "version 6.5.2 is already installed" about a folder holding
+	/// 6.4.3, which is how it came to light at all.
+	/// </para>
+	/// </summary>
+	/// <param name="fromFomodInfo">The version an archive's own <c>info.xml</c> declares. The author's answer about this file.</param>
+	/// <param name="fromArchiveName">The version Nexus puts in the download's name. Nexus's answer about this file.</param>
+	/// <param name="fromModPage">
+	/// What the mod's page says its current version is. Describes the <em>mod</em>, not the copy being installed,
+	/// so it is only used when neither of the others said anything — where it is a better guess than nothing.
+	/// </param>
+	public static string? VersionOfTheInstalledCopy(string? fromFomodInfo, string? fromArchiveName, string? fromModPage)
+	{
+		if (!string.IsNullOrWhiteSpace(fromFomodInfo))   return fromFomodInfo!.Trim();
+		if (!string.IsNullOrWhiteSpace(fromArchiveName)) return fromArchiveName!.Trim();
+		return string.IsNullOrWhiteSpace(fromModPage) ? null : fromModPage!.Trim();
 	}
 }

@@ -160,4 +160,57 @@ public class Witcher3LayoutTests
     {
         Assert.Equal(expected, Witcher3Layout.IsModFolderName(name));
     }
+
+    /// <summary>
+    /// Which mod an uninstaller registered with Windows belongs to.
+    ///
+    /// <para>
+    /// Reported from a real session: deleting "Random Encounters Reworked" and each of the mods that came with it
+    /// asked, every single time, whether to run <b>WitcherAccess's</b> uninstaller — the accessibility mod, which
+    /// was not being deleted and is the thing that makes the game playable at all. Saying yes would have removed
+    /// it. The user said no five or six times and reported it as odd, which it was.
+    /// </para>
+    ///
+    /// <para>
+    /// The rule was "the uninstaller whose name matches this mod, or else the first one we found". Typically only
+    /// one program registers an uninstaller inside a Witcher folder, so every mod that matched nothing fell
+    /// through to that one. There is no fallback now: no evidence, no offer.
+    /// </para>
+    /// </summary>
+    public class WhichModAnUninstallerBelongsTo
+    {
+        [Theory]
+        [InlineData("modWitcherAccess", "WitcherAccess v0.3")]     // the real pair, from a real registry
+        [InlineData("modWitcherAccess", "WitcherAccess")]
+        [InlineData("modWitcherAccess", "Witcher Access v0.3")]    // spaced spelling
+        [InlineData("~modWitcherAccess", "WitcherAccess v0.3")]    // disabled, and still the same mod
+        [InlineData("WitcherAccess", "WitcherAccess v0.3")]        // no engine prefix on the folder
+        public void ItsOwnUninstallerIsStillRecognised(string folder, string displayName)
+        {
+            Assert.True(Witcher3Layout.UninstallerBelongsToMod(folder, displayName));
+        }
+
+        [Theory]
+        // The exact case reported, and the mods that came with it.
+        [InlineData("modRandomEncountersReworked", "WitcherAccess v0.3")]
+        [InlineData("modSharedUtils", "WitcherAccess v0.3")]
+        [InlineData("modRERscripts", "WitcherAccess v0.3")]
+        [InlineData("modBrothersInArms", "WitcherAccess v0.3")]
+        public void AnotherModsDeletionNeverOffersThisUninstaller(string folder, string displayName)
+        {
+            Assert.False(Witcher3Layout.UninstallerBelongsToMod(folder, displayName),
+                "Offering an unrelated mod's uninstaller risks removing a mod the user still wants.");
+        }
+
+        [Theory]
+        [InlineData("modUI", "WitcherAccess v0.3")]   // too short to mean anything
+        [InlineData("mod", "WitcherAccess v0.3")]     // nothing left after the prefix
+        [InlineData("modFoo", "")]
+        [InlineData("modFoo", null)]
+        [InlineData(null, "WitcherAccess v0.3")]
+        public void TooLittleToGoOnIsNotAMatch(string? folder, string? displayName)
+        {
+            Assert.False(Witcher3Layout.UninstallerBelongsToMod(folder, displayName));
+        }
+    }
 }

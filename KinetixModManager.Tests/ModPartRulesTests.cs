@@ -456,4 +456,94 @@ public class ModPartRulesTests
         Assert.Empty(ModPartRules.ParseFilesJson("{\"files\":[]}"));
         Assert.Null(ModPartRules.PickFile(new List<NexusFileInfo>(), part, SkyrimSteamBuild, GamePlatform.Steam));
     }
+
+    // -------------------------------------------------------------------------
+    // A universal file that merely MENTIONS GOG is not the GOG build
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Which store a file is built for is read from its <b>name</b>, never from its description.
+    ///
+    /// <para>
+    /// Reported from a Skyrim that would not start: the game hung on launch with <c>po3_PapyrusExtender.dll</c>
+    /// named, and SKSE's own log stopped mid-sentence at "loading plugin powerofthree's Papyrus Extender". The
+    /// manager had updated that mod hours earlier — to a build six weeks <em>older</em> than the one already
+    /// installed, and older than the game version being run, which is a runtime powerofthree's plugins refuse and
+    /// say so about in a window behind the game.
+    /// </para>
+    ///
+    /// <para>
+    /// The mod ships one universal file per release, and its description lists every runtime that file supports:
+    /// "Supports SE 1.5.97 / Supports SE/AE 1.6.1170 or 1.6.1179 GOG / Supports SE/AE 1.7.99+". Reading the
+    /// description meant the word GOG in that list marked the file as the GOG build, so a Steam copy had it struck
+    /// out along with every other current release, and was handed the newest file left that happened not to
+    /// mention GOG. Names are where a real split is advertised: every one of SKSE's GOG files is called
+    /// "Skyrim Script Extender (SKSE64) GOG".
+    /// </para>
+    /// </summary>
+    public class WhichStoreAFileIsFor
+    {
+        private sealed record PageFile(string Name, string Description, string Version);
+
+        private static List<PageFile> Keep(List<PageFile> files, GamePlatform platform) =>
+            ModPartRules.KeepStoreBuilds(files, platform, f => f.Name);
+
+        /// <summary>Papyrus Extender: one universal file per release, GOG named only in the supported-runtime list.</summary>
+        private static List<PageFile> PapyrusExtender() => new()
+        {
+            new("Papyrus Extender", "FOMOD installer. Supports SE 1.5.97 Supports AE 1.6.640 Supports AE 1.6.1170 and higher", "6.4.3"),
+            new("Papyrus Extender", "FOMOD installer. Supports SE 1.5.97 Supports SE/AE 1.6.1170 or 1.6.1179 GOG Supports SE/AE 1.7.99+", "6.5.1"),
+            new("Papyrus Extender", "FOMOD installer. Supports SE 1.5.97 Supports SE/AE 1.6.1170 or 1.6.1179 GOG Supports SE/AE 1.7.99+", "6.5.2"),
+        };
+
+        /// <summary>SKSE: a page that genuinely does ship one build per store, and says so in the names.</summary>
+        private static List<PageFile> Skse() => new()
+        {
+            new("Skyrim Script Extender (SKSE64) GOG", "Compatible with Skyrim Special Edition 1.6.1179 from GOG.com", "2.2.6"),
+            new("Skyrim Script Extender (SKSE64) Steam", "Compatible with Skyrim Special Edition 1.7.104 from Steam", "2.3.1"),
+        };
+
+        [Theory]
+        [InlineData(GamePlatform.Steam)]
+        [InlineData(GamePlatform.Gog)]
+        public void AGogMentionInTheNotesHidesNothingFromEitherStore(GamePlatform platform)
+        {
+            // Every release stays a candidate, so the newest can win. This is the regression: reading the
+            // description left a Steam owner with only 6.4.3.
+            Assert.Equal(3, Keep(PapyrusExtender(), platform).Count);
+        }
+
+        [Fact]
+        public void TheOlderBuildIsNoLongerAllThatSurvivesForASteamCopy()
+        {
+            List<PageFile> kept = Keep(PapyrusExtender(), GamePlatform.Steam);
+
+            Assert.Contains(kept, f => f.Version == "6.5.2");
+            Assert.False(kept.Count == 1 && kept[0].Version == "6.4.3",
+                "The exact shape of the bug: everything current struck out, leaving only a build older than the game.");
+        }
+
+        [Fact]
+        public void APageThatReallyDoesSplitByStoreStillDoes()
+        {
+            Assert.Equal("Skyrim Script Extender (SKSE64) Steam", Assert.Single(Keep(Skse(), GamePlatform.Steam)).Name);
+            Assert.Equal("Skyrim Script Extender (SKSE64) GOG", Assert.Single(Keep(Skse(), GamePlatform.Gog)).Name);
+        }
+
+        [Fact]
+        public void AnUnknownStoreRulesNothingOut()
+        {
+            Assert.Equal(2, Keep(Skse(), GamePlatform.Unknown).Count);
+        }
+
+        [Fact]
+        public void APageWithNothingForThisStoreKeepsEverythingRatherThanNothing()
+        {
+            // Refusing every file would turn an update into an error. Falling through lets the remaining rules
+            // choose, which is the behaviour a single-build page has always had.
+            var gogOnly = new List<PageFile> { new("Some Mod GOG", "For GOG.", "1.0") };
+
+            Assert.Single(Keep(gogOnly, GamePlatform.Steam));
+        }
+    }
 }

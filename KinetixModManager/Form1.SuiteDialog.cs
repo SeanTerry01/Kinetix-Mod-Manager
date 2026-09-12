@@ -137,7 +137,11 @@ public partial class Form1
 					&& AllNeededPartsInstalled("17230", gameFolder),
 				"Nexus", "17230"));
 			suiteItems.Add(new SuiteItem("Media Keys Fix", HasModNameContains("Media Keys Fix") || HasModNameContains("MediaKeysFix"), "Nexus", "92948"));
-			suiteItems.Add(new SuiteItem("Stay At The System Page - AE", HasModNameContains("Stay At The System Page") || HasModNameContains("StayAtTheSystemPage"), "Nexus", "67883"));
+			// "Stay At The System Page - AE" (Nexus 67883) was part of this suite until Skyrim Access stopped
+			// needing it. Removed rather than left in as optional: the suite is the list of what you must have for
+			// the game to be playable, and anything in it that is not needed is a mod somebody installs, updates
+			// and troubleshoots for no reason. Anyone who already has it keeps it — it stays an ordinary installed
+			// mod, and nothing here uninstalls anything.
 			suiteItems.Add(new SuiteItem("Skyrim Access", HasModNameContains("Skyrim Access") || HasModNameContains("SkyrimAccess") || HasModNameContains("SkyrimTTS"), "Nexus", "181131"));
 		}
 		else if (GameProfiles.IsGame(game, GameProfiles.MoonlightPeaks))

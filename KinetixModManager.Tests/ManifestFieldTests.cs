@@ -111,4 +111,49 @@ public class ManifestFieldTests
         // says which is the mod. Taking the first would be a guess wearing a fact's clothes.
         Assert.Null(ModManifest.NexusIdFromDownloadName("Cape Stardew-16000-14635-7-1-12-1775991448.zip"));
     }
+
+    /// <summary>
+    /// Which version gets recorded when a mod is installed.
+    ///
+    /// <para>
+    /// A page's version and an installed copy's version are different facts, and conflating them hides the one
+    /// failure a mod manager must never hide. Reported as a Skyrim that would not launch: an update had installed
+    /// a build six weeks older than the one it replaced, and nothing could show it, because the new copy was
+    /// labelled with the page's current version. The mod list read out the newest number, the update check
+    /// compared that number and found nothing to do, and the reinstall prompt said "version 6.5.2 is already
+    /// installed" of a folder holding 6.4.3.
+    /// </para>
+    /// </summary>
+    public class VersionOfTheInstalledCopy
+    {
+        [Fact]
+        public void ThePagesVersionNeverOverridesTheFilesOwn()
+        {
+            // The exact case: 6.4.3 was downloaded while the page had moved on to 6.5.2.
+            Assert.Equal("6.4.3", ModManifest.VersionOfTheInstalledCopy(null, "6.4.3", "6.5.2"));
+        }
+
+        [Fact]
+        public void TheArchivesAuthorIsBelievedOverNexusFileName()
+        {
+            // A FOMOD's info.xml is the author's own statement about the very files being installed.
+            Assert.Equal("2.1.0", ModManifest.VersionOfTheInstalledCopy("2.1.0", "2.0.9", "3.0.0"));
+        }
+
+        [Fact]
+        public void ThePageIsUsedOnlyWhenTheFileItselfSaysNothing()
+        {
+            // A hand-renamed archive carries no version. The page's number is then a better guess than none —
+            // it is only wrong to prefer it, not wrong to fall back to it.
+            Assert.Equal("6.5.2", ModManifest.VersionOfTheInstalledCopy(null, null, "6.5.2"));
+            Assert.Equal("6.5.2", ModManifest.VersionOfTheInstalledCopy("", "   ", "6.5.2"));
+        }
+
+        [Fact]
+        public void NothingKnownIsSaidRatherThanInvented()
+        {
+            Assert.Null(ModManifest.VersionOfTheInstalledCopy(null, null, null));
+            Assert.Null(ModManifest.VersionOfTheInstalledCopy("", "", " "));
+        }
+    }
 }

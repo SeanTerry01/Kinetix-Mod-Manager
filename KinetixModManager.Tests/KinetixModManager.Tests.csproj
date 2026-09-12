@@ -52,6 +52,8 @@
     <Compile Include="..\KinetixModManager\NxmLink.cs" />
     <!-- Self-contained "what is this mod actually called?" rules for speech and folder names (BCL only). -->
     <Compile Include="..\KinetixModManager\ModDisplayName.cs" />
+    <!-- Self-contained "what should this mod folder be called?" rules (BCL + ModDisplayName + Witcher3Layout). -->
+    <Compile Include="..\KinetixModManager\ModFolderTidy.cs" />
     <!-- Self-contained BepInEx plugin identity reader (BCL only; System.Reflection.Metadata ships in-box). -->
     <Compile Include="..\KinetixModManager\BepInExPlugin.cs" />
     <!-- Self-contained "where does a mod folder live when enabled/disabled?" rules (BCL + GameProfiles). -->
