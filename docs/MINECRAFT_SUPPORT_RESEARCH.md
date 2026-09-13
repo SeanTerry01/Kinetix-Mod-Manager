@@ -249,7 +249,21 @@ backend, so an abstraction over "where mods come from" is needed. That is real
 work, but Modrinth is a better API than Nexus v1, and the `embedded` dependency
 type is precisely what makes the two-accessibility-mods problem disappear.
 
-### Profiles map to launcher installations, via `gameDir`
+### ✅ Profiles already work — decided 2026-09-13, nothing was built
+
+The manager's existing Profiles feature turned out to need no Minecraft work at all. A profile stores mod id
+→ enabled and applies it through `ModFileSystem.SetModEnabled`, both of which are game-agnostic, and
+`SetModEnabled` already knows the `.jar.disabled` rename. Saving and switching profiles works as it stands.
+
+It also solves the two-access-mods problem for free, without separate instances: one profile with United
+Minecraft on and Minecraft Access off, another the reverse, in one mods folder — and the player's worlds are
+untouched either way, because nothing moves.
+
+The `gameDir` design below is therefore **not implemented**, and is kept only as the answer if separate
+instances are ever wanted for their own sake (chiefly: somewhere to try a new Minecraft version without
+disturbing a working setup). The cost that made it the wrong default is in the last paragraph.
+
+### If separate instances are ever wanted: `gameDir`
 
 The manager's existing Profiles feature has a natural Minecraft equivalent, and it is not a
 new invention: a launcher profile (Modrinth calls it an "instance") takes an optional
@@ -573,9 +587,9 @@ Kept so a future session can tell a real regression from a moved target.
    Fabric's jar-in-jar resolution should prefer the higher version and ignore the
    nested copy, so it ought to be harmless. Not tested. Matters if the user
    installs both access mods' dependency sets, or switches between them.
-6. **Do profiles share saves?** A per-profile `gameDir` isolates worlds along with
-   mods, which is right for testing and wrong for "same world, different mod set".
-   Decide the default, and whether the manager offers a shared saves folder.
+6. ~~**Do profiles share saves?**~~ **Moot as of 2026-09-13.** The existing profiles
+   feature already works for Minecraft and moves nothing on disk, so worlds are
+   never affected. The question only returns if separate instances are built.
 7. ~~**Is route 1 worth the Azure approval?**~~ **Decided 2026-09-12: yes - build both
    modes.** See section 6. The Azure registration is the only item with an external
    waiting period, so it goes first.
