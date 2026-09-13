@@ -199,21 +199,8 @@ public static class FabricInstaller
 		throw new InvalidOperationException("Fabric's version list contained nothing marked stable.");
 	}
 
-	/// <summary>
-	/// The User-Agent every request here carries. Computed locally rather than taken from
-	/// <c>NexusService.AppVersion</c>, which is the same one-line assembly lookup: this file is compiled into
-	/// the test project, and borrowing the constant would drag the whole Nexus service in behind it.
-	/// </summary>
-	private static readonly string UserAgent =
-		"KinetixModManager/" +
-		(System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.1");
-
-	private static async Task<string> GetStringAsync(string url)
-	{
-		using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-		client.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
-		return await client.GetStringAsync(url);
-	}
+	private static async Task<string> GetStringAsync(string url) =>
+		await KinetixHttp.Api.GetStringAsync(url);
 
 	// -------------------------------------------------------------------------
 	// Installing

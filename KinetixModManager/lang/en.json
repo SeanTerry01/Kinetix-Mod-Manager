@@ -5,6 +5,8 @@
   "common.changesCancelled": "Changes cancelled.",
   "common.saveAndClose": "Save and Close",
   "common.browse": "Browse",
+  "speech.unavailableTitle": "Speech Output Not Working",
+  "speech.unavailableBody": "The manager cannot reach your screen reader, so it cannot speak to you directly. Your screen reader should still read this window and the lists inside it as normal. This usually means Tolk.dll is missing from the manager's folder or is being blocked by antivirus. Details have been written to:\n\n{0}",
   "soundDemo.title": "Sound Demo - Escape to Close",
   "soundDemo.previewTheme": "Preview Theme:",
   "soundDemo.soundList": "Sound List",

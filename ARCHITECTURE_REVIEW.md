@@ -262,11 +262,16 @@ Windows game running under Proton. Hardcode the set; don't ask the platform.
 checks this exhausts ephemeral ports. `NexusService.cs:32` already does the right thing with a
 `static readonly HttpClient`. This is a real bug on both platforms, not just a port issue.
 
-**25 `async void` methods** (outside event handlers, where it's unavoidable). An exception in one
-of these cannot be caught by the caller — it goes straight to the unhandled-exception handler and
-kills the process. `SpeakListPosition` (`Form1.Helpers.cs:347`), `SpeakAfterForeignWindow`
-(`:423`) and `AnnounceListEmpty` (`:537`) are `async void` **on the speech path** — the most
-user-visible place for a silent crash.
+**~~25 `async void` methods — an exception kills the process.~~** **Correction (verified
+2026-09-13): this is wrong for this codebase, and the codebase is ahead of the criticism.**
+`Program.cs:141-157` installs three handlers, not one: `Application.SetUnhandledExceptionMode(
+CatchException)` plus `Application.ThreadException` catches what escapes an `async void` on the UI
+thread, `AppDomain.CurrentDomain.UnhandledException` catches the rest, and
+`TaskScheduler.UnobservedTaskException` catches fire-and-forget `Task`s that no one awaited. All
+three log, and `HandleUnhandledException` (`Program.cs:55`) shows the user a dialog naming the log
+path and keeps running. The comments there already set out the exact reasoning, including why an
+unobserved task is marked observed rather than escalated. The 29 `async void` methods are
+consequently a normal WinForms idiom here rather than a defect, and no change was made.
 
 **Zero `ConfigureAwait(false)`** anywhere. Harmless while everything runs on the WinForms sync
 context; it becomes a deadlock source the moment the core is called from a different host. Fix it
@@ -766,11 +771,76 @@ the invalid-character set is Windows' own.
 Phase 1 fixed the portability bugs the tests could see. These were found by reading and are not yet
 done:
 
-- **13 `new HttpClient` sites** (§5.2) leaking sockets into `TIME_WAIT` under repeated update checks.
-- **25 `async void` methods**, three of them on the speech path, where an exception kills the app
-  mid-announcement.
-- **`Speak()` swallows a Tolk load failure** (`Form1.Helpers.cs:1242-1251`), so a broken screen reader
-  gives the user no feedback at all.
-- **`docs/OBJECTIVES.md` is stale** — it still describes a three-game app.
+These were all addressed in the follow-up commit; see `TODO.md` for what genuinely remains.
 
 Next is Phase 2: lifting the 40 domain models out of `Form1` (§4.2).
+
+
+---
+
+## 13. The three robustness items — resolved 2026-09-13
+
+Sean asked for a judgement rather than a menu, so each of the three was decided on its merits. One
+turned out not to be a problem at all.
+
+### 1. Leaking HTTP connections — real, fixed
+
+Twelve call sites wrote `using var client = new HttpClient(...)`. That reads like careful resource
+handling and is close to the opposite: disposing an `HttpClient` disposes the handler beneath it, and
+the pooled TCP connection goes to `TIME_WAIT` instead of back to the pool. An update check across
+forty mods burned forty connections the OS then held for minutes each. The symptom nobody would
+trace to the cause: update checks start failing to connect for a while, then start working again.
+
+`Kinetix.Core/KinetixHttp.cs` (new) holds two long-lived clients — `Api` (60s) and `Downloads`
+(30 min) — on a `SocketsHttpHandler` with `PooledConnectionLifetime = 5 min`, which is what makes a
+static client safe: it retires pooled connections so a long-running process still notices DNS
+changes. All twelve sites now use them. `NexusService.HttpClient` was already doing the right thing
+and was left alone.
+
+Where a request needs its own headers — the Nexus API key — it now builds an `HttpRequestMessage`
+through the existing `BuildRequest` helper rather than setting `DefaultRequestHeaders` on a shared
+client, which would have leaked that key onto every other caller's requests.
+
+**A Phase 0 regression was caught here.** `ModrinthService` and `FabricInstaller` built their
+User-Agent from `Assembly.GetExecutingAssembly()`. That was the app while those files were compiled
+into it; since the split it is `Kinetix.Core`, whose version is its own. The Modrinth User-Agent had
+therefore quietly become `1.0.0`, and Modrinth asks for a User-Agent it can identify and contact.
+The app now hands `KinetixHttp.UserAgent` the real version and the project address at startup
+(`Program.cs`), and `Kinetix.Core.csproj` carries `<Version>1.6.0</Version>` so its assembly is not
+silently unversioned.
+
+Two more instances of the §12 invalid-character bug were found and fixed while in here
+(`NexusService.cs:765` and `:980`, both `Path.GetInvalidFileNameChars()` on a downloaded file name).
+
+### 2. `async void` — not a defect; the review was wrong
+
+**Correction.** §5.2 claimed an exception escaping an `async void` "goes straight to the
+unhandled-exception handler and kills the process". Not here. `Program.cs:141-157` installs three
+nets — `Application.ThreadException` (with `UnhandledExceptionMode.CatchException`),
+`AppDomain.CurrentDomain.UnhandledException`, and `TaskScheduler.UnobservedTaskException` — all of
+which log, and the first two show the user a dialog naming the log file and let the app carry on.
+The comments there already explain the reasoning, down to why an unobserved task is marked observed
+rather than escalated into a crash.
+
+The 29 `async void` methods are the ordinary WinForms idiom, and they are covered. **No change
+made.** Converting them to `async Task` would be churn without a defect behind it.
+
+### 3. Speech failing silently — real, fixed
+
+The narrow thing that *was* true, and worth more than the other two.
+
+When Tolk will not load, `Speak()` logged it — with a comment noting that "the entire symptom is
+silence, with no error to see, by definition" — and then returned having said nothing. The log is
+the one place the affected user cannot look, because they are waiting for the app to talk.
+
+It now tells them, once per session, through the two channels that do not depend on Tolk:
+
+- **A sound.** The audio engine is NAudio and has nothing to do with Tolk, so it still works.
+- **An ordinary message box.** Tolk failing is not the screen reader failing — it usually means
+  `Tolk.dll` is missing or antivirus has blocked it, while NVDA or JAWS is running perfectly and
+  reading window contents over MSAA/UIA as always. A plain WinForms dialog is therefore very likely
+  to be read aloud in exactly the case where nothing spoken through Tolk can be.
+
+Once only, guarded by a flag: the failure recurs on every phrase, and a dialog per phrase would be a
+far worse accessibility bug than the one being reported. Two new strings, `speech.unavailableTitle`
+and `speech.unavailableBody`, which the §12 guard tests already cover.

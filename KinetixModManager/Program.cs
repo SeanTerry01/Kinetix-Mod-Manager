@@ -135,6 +135,14 @@ internal static class Program
 		// anything goes in the header here; the rest is added once it is known.
 		DiagnosticLog.Start(Path.Combine(DataFolder, "mod_manager_log.txt"), MachineHeader());
 
+		// Kinetix.Core does the talking to Modrinth, Fabric and GitHub, but only the app knows the build
+		// number - Kinetix.Core has a version of its own and it is not this one - so the app hands the core
+		// its User-Agent here, before anything has had a chance to make a request. The project address is
+		// part of it because Modrinth asks to be able to identify and contact what is calling them. See
+		// KinetixHttp.
+		KinetixHttp.UserAgent =
+			$"KinetixModManager/{NexusService.AppVersion} (github.com/SeanTerry01/Kinetix-Mod-Manager)";
+
 		// Global safety net for unhandled exceptions. Event handlers must be `async void`, so an
 		// exception that escapes one cannot be observed by a caller; without this it would crash the
 		// app with a raw .NET dialog. Catching it on the UI thread lets us log it and keep running.

@@ -762,21 +762,13 @@ public class NexusService
 	/// <summary>Strips the characters Windows will not accept in a file name, for a name built from a mod's title.</summary>
 	private static string SanitiseFileName(string name)
 	{
-		foreach (char bad in Path.GetInvalidFileNameChars()) name = name.Replace(bad, ' ');
+		foreach (char bad in WindowsFileName.InvalidChars) name = name.Replace(bad, ' ');
 		return name.Replace('.', ' ').Trim();
 	}
 
-	/// <summary>Downloads the raw bytes at <paramref name="uri"/> using a high-timeout HTTP client.</summary>
-	public async Task<byte[]> DownloadBytesAsync(string uri)
-	{
-		using var handler = new HttpClientHandler
-		{
-			AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
-		};
-		using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(30) };
-		client.DefaultRequestHeaders.Add("User-Agent", $"KinetixModManager/{AppVersion}");
-		return await client.GetByteArrayAsync(uri);
-	}
+	/// <summary>Downloads the raw bytes at <paramref name="uri"/> using the high-timeout shared client.</summary>
+	public async Task<byte[]> DownloadBytesAsync(string uri) =>
+		await KinetixHttp.Downloads.GetByteArrayAsync(uri);
 
 	/// <summary>
 	/// Downloads the file at <paramref name="uri"/> directly to <paramref name="destinationPath"/>
@@ -784,16 +776,9 @@ public class NexusService
 	/// </summary>
 	public async Task DownloadFileWithProgressAsync(string uri, string destinationPath, IProgress<double>? progress = null)
 	{
-		using var handler = new HttpClientHandler
-		{
-			AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
-		};
-		using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(30) };
-		client.DefaultRequestHeaders.Add("User-Agent", $"KinetixModManager/{AppVersion}");
-
 		try
 		{
-			using var response = await client.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead);
+			using var response = await KinetixHttp.Downloads.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead);
 			response.EnsureSuccessStatusCode();
 
 			long? totalBytes = response.Content.Headers.ContentLength;
@@ -851,18 +836,13 @@ public class NexusService
 	/// <exception cref="Exception">Thrown on any API or I/O failure.</exception>
 	public async Task<string> DownloadModUpdateAsync(GameMod mod, string downloadsPath, IProgress<double>? progress = null)
 	{
-		using var handler = new HttpClientHandler
-		{
-			AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
-		};
-		using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(30) };
-		client.DefaultRequestHeaders.Add("apikey", _settings.ApiKey);
-		client.DefaultRequestHeaders.Add("User-Agent", $"KinetixModManager/{AppVersion}");
-		client.DefaultRequestHeaders.Add("Accept", "application/json");
-
+		// The key goes on each request rather than on the client: these run on the shared clients now, and a
+		// header set on a shared client's DefaultRequestHeaders would ride along on everyone else's calls too.
+		// BuildRequest is the existing way of saying that.
 		// 1. Get file list
 		string filesUrl = $"https://api.nexusmods.com/v1/games/{CurrentGameDomain}/mods/{mod.NexusID}/files.json";
-		var filesResp = await client.GetAsync(filesUrl);
+		using var filesReq = BuildRequest(HttpMethod.Get, filesUrl);
+		using var filesResp = await KinetixHttp.Api.SendAsync(filesReq);
 		if (!filesResp.IsSuccessStatusCode)
 			throw new Exception($"Nexus rejected the file list request (Status: {filesResp.StatusCode}).");
 
@@ -878,7 +858,8 @@ public class NexusService
 
 		// 2. Get download link
 		string dlUrl = $"https://api.nexusmods.com/v1/games/{CurrentGameDomain}/mods/{mod.NexusID}/files/{fileId}/download_link.json";
-		var linkResp = await client.GetAsync(dlUrl);
+		using var linkReq = BuildRequest(HttpMethod.Get, dlUrl);
+		using var linkResp = await KinetixHttp.Api.SendAsync(linkReq);
 		if (!linkResp.IsSuccessStatusCode)
 			throw new Exception("Nexus denied the download link. This mod might require manual interaction on the website.");
 
@@ -886,7 +867,8 @@ public class NexusService
 
 		// 3. Download and save using streams
 		string tempPath = Path.Combine(downloadsPath, fileName);
-		using (var response = await client.GetAsync(finalUri, HttpCompletionOption.ResponseHeadersRead))
+		// The CDN address Nexus hands back is pre-signed; it carries no key, and it is the large transfer.
+		using (var response = await KinetixHttp.Downloads.GetAsync(finalUri, HttpCompletionOption.ResponseHeadersRead))
 		{
 			response.EnsureSuccessStatusCode();
 			long? totalBytes = response.Content.Headers.ContentLength;
@@ -974,7 +956,7 @@ public class NexusService
 		if (string.IsNullOrEmpty(uri)) throw new Exception("Nexus returned no download address for that file.");
 
 		string safeName = string.IsNullOrEmpty(fileName) ? $"{modId}_{fileId}.zip" : fileName;
-		foreach (char c in Path.GetInvalidFileNameChars()) safeName = safeName.Replace(c, '_');
+		foreach (char c in WindowsFileName.InvalidChars) safeName = safeName.Replace(c, '_');
 
 		Directory.CreateDirectory(downloadsPath);
 		string destination = Path.Combine(downloadsPath, safeName);

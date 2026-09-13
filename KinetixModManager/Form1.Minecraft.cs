@@ -228,10 +228,7 @@ public partial class Form1
 	/// </summary>
 	private async Task<string> InstallGitHubJarAsync(MinecraftSuiteMod mod, string modsFolder)
 	{
-		using var client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-		client.DefaultRequestHeaders.UserAgent.ParseAdd($"KinetixModManager/{NexusService.AppVersion}");
-
-		string json = await client.GetStringAsync($"https://api.github.com/repos/{mod.Source}/releases/latest");
+		string json = await KinetixHttp.Api.GetStringAsync($"https://api.github.com/repos/{mod.Source}/releases/latest");
 		Newtonsoft.Json.Linq.JObject release = Newtonsoft.Json.Linq.JObject.Parse(json);
 
 		var jar = (release["assets"] as Newtonsoft.Json.Linq.JArray)?
@@ -248,7 +245,8 @@ public partial class Form1
 		}
 
 		string path = Path.Combine(modsFolder, name!);
-		File.WriteAllBytes(path, await client.GetByteArrayAsync(url));
+		// The jar itself goes through the download client: a mod is large enough to deserve the long timeout.
+		File.WriteAllBytes(path, await KinetixHttp.Downloads.GetByteArrayAsync(url));
 		return path;
 	}
 

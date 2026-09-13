@@ -44,12 +44,6 @@ public static class ModrinthService
 {
 	private const string ApiBase = "https://api.modrinth.com/v2";
 
-	/// <summary>Modrinth asks for a descriptive User-Agent and is entitled to one.</summary>
-	private static readonly string UserAgent =
-		"KinetixModManager/" +
-		(System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.1") +
-		" (github.com/SeanTerry01/Kinetix-Mod-Manager)";
-
 	/// <summary>
 	/// The newest file of <paramref name="projectIdOrSlug"/> built for <paramref name="gameVersion"/> on Fabric,
 	/// or <c>null</c> when the project has no such file yet.
@@ -165,11 +159,8 @@ public static class ModrinthService
 			["game_versions"] = new JArray(gameVersion)
 		};
 
-		using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
-		client.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
-
 		using var content = new StringContent(body.ToString(), Encoding.UTF8, "application/json");
-		HttpResponseMessage response = await client.PostAsync($"{ApiBase}/version_files/update", content);
+		HttpResponseMessage response = await KinetixHttp.Api.PostAsync($"{ApiBase}/version_files/update", content);
 		if (!response.IsSuccessStatusCode) return latest;
 
 		return ParseHashUpdates(JObject.Parse(await response.Content.ReadAsStringAsync()));
@@ -277,10 +268,7 @@ public static class ModrinthService
 		Directory.CreateDirectory(destinationFolder);
 		string path = Path.Combine(destinationFolder, file.FileName);
 
-		using var client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-		client.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
-
-		byte[] bytes = await client.GetByteArrayAsync(file.Url);
+		byte[] bytes = await KinetixHttp.Downloads.GetByteArrayAsync(file.Url);
 		File.WriteAllBytes(path, bytes);
 
 		return path;
@@ -288,8 +276,6 @@ public static class ModrinthService
 
 	private static async Task<string> GetStringAsync(string url)
 	{
-		using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-		client.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
-		return await client.GetStringAsync(url);
+		return await KinetixHttp.Api.GetStringAsync(url);
 	}
 }

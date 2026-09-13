@@ -1253,7 +1253,46 @@ public partial class Form1
 		if (Tolk.IsLoaded())
 		{
 			Tolk.Output(text, interrupt);
+			return;
 		}
+
+		// Nothing was said, and saying so is the whole point. Everything above this line reports the failure
+		// to the log, which is exactly where the one person who needs to know will not look — they are waiting
+		// for the app to speak.
+		ReportSpeechUnavailable();
+	}
+
+	/// <summary>Set once the user has been told speech is not working, so they are told once and not per phrase.</summary>
+	private bool _speechFailureReported;
+
+	/// <summary>
+	/// Tells the user, once per session, that the screen-reader bridge is not answering — through the two
+	/// channels that do not depend on it.
+	///
+	/// The first is a sound, because the audio engine is NAudio and has nothing to do with Tolk, so it still
+	/// works when Tolk does not. The second is an ordinary message box: Tolk failing is not the same as the
+	/// screen reader failing — usually it means <c>Tolk.dll</c> is missing or blocked, while NVDA or JAWS is
+	/// running perfectly well and reading window contents over MSAA and UIA as it always does. A plain WinForms
+	/// dialog is therefore very likely to be read aloud even in the exact case where nothing the app says
+	/// through Tolk can be.
+	///
+	/// Once only. A failure here repeats on every single phrase, and a dialog per phrase would be a far worse
+	/// accessibility bug than the one it is reporting.
+	/// </summary>
+	private void ReportSpeechUnavailable()
+	{
+		if (_speechFailureReported) return;
+		_speechFailureReported = true;
+
+		try { _soundEngine?.Play("error"); }
+		catch (Exception ex) { DiagnosticLog.WriteException("Speech", "sounding the speech-failure alert", ex); }
+
+		try
+		{
+			MessageBox.Show(this, Loc.T("speech.unavailableBody", DiagnosticLog.Path),
+				Loc.T("speech.unavailableTitle"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+		}
+		catch (Exception ex) { DiagnosticLog.WriteException("Speech", "showing the speech-failure notice", ex); }
 	}
 
 	/// <summary>

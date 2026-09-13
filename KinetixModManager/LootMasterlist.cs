@@ -104,9 +104,7 @@ public class LootMasterlist
 	{
 		try
 		{
-			using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
-			client.DefaultRequestHeaders.UserAgent.ParseAdd($"KinetixModManager/{NexusService.AppVersion}");
-			byte[] bytes = await client.GetByteArrayAsync(url);
+			byte[] bytes = await KinetixHttp.Api.GetByteArrayAsync(url);
 			if (bytes.Length > 0) File.WriteAllBytes(destPath, bytes);
 		}
 		catch (Exception ex)
