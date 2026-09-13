@@ -38,7 +38,11 @@
       "failed_tests": [],
       "seconds": 2.4,
       "log": "logs\\M02.test.log",
-      "restored": true
+      "restored": true,
+      "killed_by_new_test": {
+        "at": "2026-09-13T03:26:22",
+        "detail": "caught by: (unparsed)"
+      }
     },
     "M03": {
       "at": "2026-09-13T03:12:49",
