@@ -92,6 +92,61 @@ public partial class Form1
 			loadGroup.Visible = bethesda;
 	}
 
+	/// <summary>
+	/// Names the per-game tabs and the wiki search box for <paramref name="game"/>.
+	///
+	/// ⚠️ Called from startup as well as from a game switch, and that is the whole reason it is a method.
+	/// SwitchActiveGame returns immediately when the game asked for is the one already loaded — which is
+	/// exactly the case on startup, where the setting has already been restored — so a session reopened
+	/// rather than switched into kept whatever labels the designer built the tabs with. Those say Stardew,
+	/// for every game.
+	/// </summary>
+	private void ApplyGameTabLabels(string game)
+	{
+		tabWiki.Text = GameProfiles.BaseId(game) switch
+		{
+			"SkyrimSE" => Loc.T("tab.wikiSkyrim"),
+			"Fallout4" => Loc.T("tab.wikiFallout"),
+			"MoonlightPeaks" => Loc.T("tab.wikiMoonlight"),
+			"Witcher3" => Loc.T("tab.wikiWitcher"),
+			"Minecraft" => Loc.T("tab.wikiMinecraft"),
+			_ => Loc.T("tab.wikiStardew")
+		};
+
+		tabWalkthroughs.Text = GameProfiles.BaseId(game) switch
+		{
+			"SkyrimSE" => Loc.T("tab.walkSkyrim"),
+			"Fallout4" => Loc.T("tab.walkFallout"),
+			"MoonlightPeaks" => Loc.T("tab.walkMoonlight"),
+			"Witcher3" => Loc.T("tab.walkWitcher"),
+			"Minecraft" => Loc.T("tab.walkMinecraft"),
+			_ => Loc.T("tab.walkStardew")
+		};
+
+		tabGameLog.Text = GameProfiles.BaseId(game) switch
+		{
+			"SkyrimSE" => Loc.T("tab.logsSkyrim"),
+			"Fallout4" => Loc.T("tab.logsFallout"),
+			"MoonlightPeaks" => Loc.T("tab.logsMoonlight"),
+			"Witcher3" => Loc.T("tab.logsWitcher"),
+			"Minecraft" => Loc.T("tab.logsMinecraft"),
+			_ => Loc.T("tab.gameLog")
+		};
+
+		if (txtWikiSearch != null)
+		{
+			txtWikiSearch.AccessibleName = GameProfiles.BaseId(game) switch
+			{
+				"SkyrimSE" => Loc.T("ui.searchWikiSkyrim"),
+				"Fallout4" => Loc.T("ui.searchWikiFallout"),
+				"MoonlightPeaks" => Loc.T("ui.searchWikiMoonlight"),
+				"Witcher3" => Loc.T("ui.searchWikiWitcher"),
+				"Minecraft" => Loc.T("ui.searchWikiMinecraft"),
+				_ => Loc.T("ui.searchWikiStardew")
+			};
+		}
+	}
+
 	private void SwitchActiveGame(string game)
 	{
 		if (_settings.ActiveGame == game) return;
@@ -182,46 +237,7 @@ public partial class Form1
 			};
 		}
 
-		tabWiki.Text = GameProfiles.BaseId(game) switch
-		{
-			"SkyrimSE" => Loc.T("tab.wikiSkyrim"),
-			"Fallout4" => Loc.T("tab.wikiFallout"),
-			"MoonlightPeaks" => Loc.T("tab.wikiMoonlight"),
-			"Witcher3" => Loc.T("tab.wikiWitcher"),
-			"Minecraft" => Loc.T("tab.wikiMinecraft"),
-			_ => Loc.T("tab.wikiStardew")
-		};
-
-		tabWalkthroughs.Text = GameProfiles.BaseId(game) switch
-		{
-			"SkyrimSE" => Loc.T("tab.walkSkyrim"),
-			"Fallout4" => Loc.T("tab.walkFallout"),
-			"MoonlightPeaks" => Loc.T("tab.walkMoonlight"),
-			"Witcher3" => Loc.T("tab.walkWitcher"),
-			"Minecraft" => Loc.T("tab.walkMinecraft"),
-			_ => Loc.T("tab.walkStardew")
-		};
-
-		tabGameLog.Text = GameProfiles.BaseId(game) switch
-		{
-			"SkyrimSE" => Loc.T("tab.logsSkyrim"),
-			"Fallout4" => Loc.T("tab.logsFallout"),
-			"MoonlightPeaks" => Loc.T("tab.logsMoonlight"),
-			"Witcher3" => Loc.T("tab.logsWitcher"),
-			_ => Loc.T("tab.gameLog")
-		};
-
-		if (txtWikiSearch != null)
-		{
-			txtWikiSearch.AccessibleName = GameProfiles.BaseId(game) switch
-			{
-				"SkyrimSE" => Loc.T("ui.searchWikiSkyrim"),
-				"Fallout4" => Loc.T("ui.searchWikiFallout"),
-				"MoonlightPeaks" => Loc.T("ui.searchWikiMoonlight"),
-				"Witcher3" => Loc.T("ui.searchWikiWitcher"),
-				_ => Loc.T("ui.searchWikiStardew")
-			};
-		}
+		ApplyGameTabLabels(game);
 
 		if (GameProfiles.IsGame(game, GameProfiles.StardewValley))
 		{

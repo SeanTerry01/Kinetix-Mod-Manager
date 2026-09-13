@@ -551,9 +551,9 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Rebuilds the Categories dropdown for the active wiki: live categories fetched from the MediaWiki API for
-	/// every searchable wiki (each game wiki and mod wiki shows its own categories), or a clear "no categories"
-	/// placeholder for browse-only wikis. Multi-game wikis (UESP, Fallout) are scoped via their
+	/// Rebuilds the Categories dropdown for the active wiki: the game's curated list for a game wiki, live
+	/// categories fetched from the MediaWiki API for a mod wiki, or a clear "no categories" placeholder for a
+	/// browse-only wiki with no API. Multi-game wikis are scoped via their
 	/// <see cref="ModWikiLink.CategoryPrefix"/> so only the active game's categories appear.
 	/// </summary>
 	private async Task RefreshCategoriesForActiveWikiAsync()
@@ -570,6 +570,25 @@ public partial class Form1
 		}
 
 		cmbWikiCategories.Items.Add("Select Category");
+
+		// A game wiki keeps its curated list. This method used to overwrite that list with a live fetch, and
+		// on a large wiki the live one is worse in two ways at once.
+		//
+		// ⚠️ allcategories is ALPHABETICAL, so a limit of 500 against a wiki with thousands returns an
+		// A-to-B slice. "Most populated" then means "most populated among the categories starting with A
+		// or B" — on minecraft.wiki the list never reaches M for Mobs. And what does survive is mostly
+		// bookkeeping the content filter does not know to drop (Blanked userpages, Articles to be
+		// expanded) plus Bedrock Edition, which is a different edition of the game from the one being
+		// modded. The curated lists are hand-checked against each wiki and short enough to hold in your
+		// head, which the live one never was.
+		//
+		// Mod wikis keep the live fetch: they are small enough for the ranking to mean something, and
+		// there is no curated list to fall back to.
+		if (ActiveWikiIsGameWiki)
+		{
+			RefreshWikiCategories();
+			return;
+		}
 
 		try
 		{

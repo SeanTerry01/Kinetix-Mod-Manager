@@ -46,6 +46,29 @@
 
 *   Profiles work for Minecraft exactly as they do elsewhere, and nothing on disk is moved — so **your worlds are never involved**. A profile for each accessibility mod is the tidiest way to try the other one.
 
+### 📖 Wiki and walkthroughs
+
+*   A searchable **Minecraft Wiki** tab with categories, and a **Minecraft Walkthroughs** tab: eleven guides from the wiki and three from Minecraft Access, with **navigation first** — finding your way is the hardest part of Minecraft without sight, and it is the one thing the game hands a sighted player for free.
+*   ⚠️ Before this, a Minecraft session showed **Stardew Valley's** wiki and Stardew's walkthroughs. Not a missing feature — the wrong game's, which is worse: there is nothing to see that would tell you the guide being read out belongs to another game entirely. Six separate switches decided this and every one of them ended in a default of Stardew Valley, so a game they did not list did not get nothing, it got somebody else's.
+*   Every category and every guide URL was requested and checked before being listed. Four plausible-looking categories and four obvious-sounding tutorials do not exist and were dropped; a page that does not exist comes back empty, which reads as "this game has nothing here".
+*   United Minecraft is weeks old and has no wiki or guides yet, so only Minecraft Access contributes documentation. Its README is read in full by **F3**.
+
+---
+
+## 🐛 Fixed: the Wiki, Walkthroughs and Log tabs kept Stardew Valley's names
+
+*   **Every game was affected, not just Minecraft**, and only on the sessions most people have: the manager reopens the game you last used, and it was reopening it under Stardew Valley's tab names. Switching games by hand named them correctly, which is why this survived five games — the labels are right the moment you go looking for the bug.
+*   ⚠️ The renaming lived inside the game-switch, which does nothing at all when asked for the game that is already loaded. That is exactly what startup is: the active game is restored from settings *before* the window is built, so the switch had nothing to do and the tabs kept the names they were built with. Those names are Stardew Valley's, for every game.
+*   The Log tab and the wiki search box were missing Minecraft from their lists as well, so a Minecraft session heard **"Search Stardew Wiki"** from the box it was typing into. Both fixed, and a test now requires every one of these lists to name every game the manager supports, and requires the renaming to be done somewhere other than the game-switch.
+
+---
+
+## 🔧 Changed: a game wiki's Categories list is hand-picked again
+
+*   Categories for a **game** wiki come from a short curated list per game, rather than being fetched from the wiki and ranked by size. Mod wikis are unchanged and still fetch theirs live.
+*   ⚠️ **The live ranking was wrong on any large wiki, and had been for some time.** The API returns categories **alphabetically**, so asking for five hundred of them from a wiki that has thousands returns an A-to-B slice — "the biggest categories" quietly meant "the biggest categories beginning with A or B", and the list never reached M for Mobs. What did survive was mostly the wiki's own bookkeeping (Blanked userpages, Articles to be expanded) and, on Minecraft, categories belonging to **Bedrock Edition** — a different edition of the game from the one being modded.
+*   The curated lists are checked against each wiki by hand and are short enough to hold in your head, which a list of five hundred never was.
+
 ---
 
 ## 🔧 Changed: the Accessibility Controls viewer is now "Game and Mod Controls"

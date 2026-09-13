@@ -1041,6 +1041,9 @@ public partial class Form1
 		// Apply the per-game Mods-menu labels/visibility for the game restored from settings (startup doesn't go
 		// through SwitchActiveGame when the active game is unchanged).
 		ConfigureModsMenuForGame();
+		// Same reason, for the tab labels: the designer builds the tabs with Stardew's names, and a
+		// session that is restored rather than switched into never reaches the code that renames them.
+		ApplyGameTabLabels(_settings.ActiveGame);
 		listInstalled.KeyDown += List_KeyDown;
 		listUpdates.KeyDown += List_KeyDown;
 		listDiscovery.KeyDown += List_KeyDown;

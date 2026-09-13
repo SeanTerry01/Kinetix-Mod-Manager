@@ -392,7 +392,7 @@ public class MinecraftLayoutTests
 	{
 		// If a second such game is ever added, every "a mod is a folder" assumption needs revisiting rather
 		// than the new game quietly inheriting Minecraft's answers.
-		Assert.Single(GameProfiles.All.Where(g => g.Layout == ModLayout.FabricMods));
+		Assert.Single(GameProfiles.All, g => g.Layout == ModLayout.FabricMods);
 	}
 
 	// -------------------------------------------------------------------------
