@@ -91,6 +91,16 @@ public sealed class GameProfile
 	/// <summary>Article URL prefix; a page is opened as this plus the title.</summary>
 	public string WikiArticleBase { get; init; } = "";
 
+	/// <summary>
+	/// The file the game's mod loader writes its log to — the one the Log tab opens first. Empty for a game
+	/// whose loader keeps none.
+	///
+	/// Another <c>game switch</c> that was living in Form1, and per-game data like every other entry here.
+	/// Stardew Valley is deliberately empty: SMAPI's log is richer and gets its own screen rather than the
+	/// plain Log tab.
+	/// </summary>
+	public string LoaderLogFileName { get; init; } = "";
+
 	/// <summary>The game's name as the user sees it, e.g. "Moonlight Peaks".</summary>
 	public required string DisplayName { get; init; }
 
@@ -389,6 +399,7 @@ public static class GameProfiles
 		new GameProfile
 		{
 			Id                   = Fallout4,
+			LoaderLogFileName    = "f4se.log",
 			WikiApiUrl           = "https://fallout.fandom.com/api.php",
 			WikiArticleBase      = "https://fallout.fandom.com/wiki/",
 			DisplayName          = "Fallout 4",
@@ -418,6 +429,7 @@ public static class GameProfiles
 		new GameProfile
 		{
 			Id                   = Minecraft,
+			LoaderLogFileName    = "latest.log",
 			WikiApiUrl           = "https://minecraft.wiki/api.php",
 			WikiArticleBase      = "https://minecraft.wiki/w/",
 			DisplayName          = "Minecraft",
@@ -453,6 +465,7 @@ public static class GameProfiles
 		new GameProfile
 		{
 			Id                   = MoonlightPeaks,
+			LoaderLogFileName    = "LogOutput.log",
 			WikiApiUrl           = "https://moonlightpeaks.wiki.gg/api.php",
 			WikiArticleBase      = "https://moonlightpeaks.wiki.gg/wiki/",
 			DisplayName          = "Moonlight Peaks",
@@ -480,6 +493,7 @@ public static class GameProfiles
 		new GameProfile
 		{
 			Id                   = SkyrimSE,
+			LoaderLogFileName    = "skse64.log",
 			WikiApiUrl           = "https://en.uesp.net/w/api.php",
 			WikiArticleBase      = "https://en.uesp.net/wiki/",
 			DisplayName          = "Skyrim Special Edition",
@@ -529,6 +543,7 @@ public static class GameProfiles
 		new GameProfile
 		{
 			Id                   = Witcher3,
+			LoaderLogFileName    = "WitcherAccess.log",
 			WikiApiUrl           = "https://witcher.fandom.com/api.php",
 			WikiArticleBase      = "https://witcher.fandom.com/wiki/",
 			DisplayName          = "The Witcher 3: Wild Hunt",

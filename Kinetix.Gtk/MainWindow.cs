@@ -57,6 +57,8 @@ public sealed class MainWindow
 	/// underneath it shifted and F6 quietly started addressing the wrong controls.</summary>
 	private const int WikiTabIndex = 3;
 
+	private readonly Gtk.Label _checkResult = Gtk.Label.New("Press the button to check whether your mods loaded.");
+
 	private GameProfile _game = GameProfiles.Require(GameProfiles.Minecraft);
 	private string _modsFolder = "";
 
@@ -78,6 +80,7 @@ public sealed class MainWindow
 		_tabs.AppendPage(BuildInstalledTab(), Gtk.Label.New("Installed Mods"));
 		_tabs.AppendPage(BuildDiscoverTab(), Gtk.Label.New("Find Mods"));
 		_tabs.AppendPage(BuildWikiTab(), Gtk.Label.New("Wiki"));
+		_tabs.AppendPage(BuildCheckTab(), Gtk.Label.New("Check My Setup"));
 		root.Append(_tabs);
 
 		// A status line that is also spoken. On its own a label change is silent to a screen reader — Orca
@@ -348,6 +351,79 @@ public sealed class MainWindow
 	/// The page is their own session with Nexus. It is shown here, and nothing reads what they type into
 	/// it — the whole value of this flow is that the manager receives a revocable key and never a password.
 	/// </summary>
+	/// <summary>
+	/// Answers the question the whole program exists for: did my mods actually load last time?
+	///
+	/// An unmodded game and a modded one that failed are indistinguishable to a player who cannot see the
+	/// screen — both start, both play, and one of them simply never speaks. The log is the only evidence,
+	/// and reading it by hand is not a reasonable thing to ask of someone whose reason for wanting the mod
+	/// is that they cannot read the screen.
+	///
+	/// It says so even when everything is fine. An all-clear that reports nothing leaves the user no better
+	/// off than before they asked.
+	/// </summary>
+	private Gtk.Widget BuildCheckTab()
+	{
+		var box = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
+
+		var check = Gtk.Button.NewWithLabel("Check my setup");
+		check.OnClicked += (_, _) => RunSetupCheck();
+		box.Append(check);
+
+		_checkResult.SetXalign(0);
+		_checkResult.SetWrap(true);
+		_checkResult.SetSelectable(true);   // selectable, so a reader can walk the text rather than only hear it once
+		_checkResult.SetVexpand(true);
+		_checkResult.SetValign(Gtk.Align.Start);
+		box.Append(_checkResult);
+		return box;
+	}
+
+	private void RunSetupCheck()
+	{
+		string report = DescribeSetup();
+		_checkResult.SetText(report);
+		// Spoken as well as shown: a label changing is silent to a screen reader, and this is the answer
+		// the user pressed the button for.
+		Say(report, interrupt: true);
+	}
+
+	private string DescribeSetup()
+	{
+		string mods = ModsFolderFor(_game);
+		if (string.IsNullOrEmpty(mods) || !Directory.Exists(mods))
+			return $"{_game.DisplayName} is not installed, or its mods folder has not been created yet.";
+
+		if (!_game.IsMinecraft)
+		{
+			// The per-game launch checks live in the WinForms app still. Saying what IS known beats an
+			// all-purpose "everything looks fine" that was never checked.
+			string log = GameLogFiles.LoaderLogPath(_game, _locator.InstallFolder(_game) ?? "");
+			if (string.IsNullOrEmpty(log))
+				return $"{_rows.Count} mods installed for {_game.DisplayName}. This game keeps no loader log, so whether they loaded cannot be checked from here.";
+
+			return File.Exists(log)
+				? $"{_rows.Count} mods installed for {_game.DisplayName}. Its loader log is at {log}."
+				: $"{_rows.Count} mods installed for {_game.DisplayName}. No loader log has been written yet, which usually means the game has not been run since the loader was installed.";
+		}
+
+		string root = _locator.InstallFolder(_game) ?? MinecraftLayout.DefaultRootFolder;
+		MinecraftLaunchOutcome outcome = MinecraftLaunchLog.ReadLatest(root);
+
+		if (outcome.NoLog)
+			return $"{_rows.Count} mods installed. Minecraft has not been run yet, so there is nothing to check.";
+
+		if (!outcome.FabricLoaded)
+			return "The last time Minecraft ran, it ran WITHOUT your mods. The log shows a plain Minecraft start "
+				 + "with no Fabric, which is why the game would have said nothing. Start the game from the manager "
+				 + "rather than through the Minecraft launcher: choosing an installation and launching a world are "
+				 + "separate things there, and the second quietly overrides the first.";
+
+		string version = string.IsNullOrEmpty(outcome.GameVersion) ? "" : $" on Minecraft {outcome.GameVersion}";
+		return $"All good. The last run loaded Fabric{version} with {outcome.ModCount} mods, "
+			 + $"and there are {_rows.Count} in your mods folder now.";
+	}
+
 	/// <summary>Shows a mod's own page in the in-app browser, and moves focus there to read it.</summary>
 	private void OpenModPage(GameMod mod)
 	{
@@ -544,6 +620,7 @@ public sealed class MainWindow
 		3 => _web is null
 			 ? new List<Gtk.Widget> { _tabs }
 			 : new List<Gtk.Widget> { _tabs, _web.Widget },
+		4 => new List<Gtk.Widget> { _tabs, _checkResult },
 		_ => new List<Gtk.Widget> { _tabs }
 	};
 

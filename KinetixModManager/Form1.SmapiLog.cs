@@ -47,86 +47,27 @@ public partial class Form1
 		ShowLogFolder(Loc.T("log.gameTitle", GameDisplayName()), folder, PrimaryGameLogName());
 	}
 
-	/// <summary>
-	/// The folder where the script extender (and most F4SE/SKSE plugins) write their logs for the active
-	/// Bethesda game: <c>Documents\My Games\&lt;game&gt;\F4SE</c> or <c>\SKSE</c>. Empty outside Skyrim/FO4.
-	///
-	/// The per-player folder is asked for by COPY, not by game. A GOG install writes to "Skyrim Special Edition
-	/// GOG", so a hardcoded Steam folder name here would have shown the wrong copy's log — silently, and most
-	/// confusingly of all on the machine where both are installed and both logs exist.
-	/// </summary>
-	private string BethesdaLogFolder()
-	{
-		if (!IsBethesdaGame) return "";
+	// These four were the file-locating half of this screen. They live in GameLogFiles in the core now —
+	// finding a file and reading it are not a window's job, and the GTK head needs both. Kept here as
+	// one-liners so the call sites around the screen read exactly as they did.
 
-		GameProfile profile = GameProfiles.Require(_settings.ActiveGame);
-		string userData = profile.UserDataDirectoryFor(_settings.CurrentGamePath);
-		if (string.IsNullOrEmpty(userData)) return "";
+	private string GameLogFolder() =>
+		GameLogFiles.LoaderLogFolder(GameProfiles.Find(_settings.ActiveGame), _settings.CurrentGamePath,
+			GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true ? MinecraftRootFolder() : "");
 
-		return Path.Combine(userData, GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.Fallout4) ? "F4SE" : "SKSE");
-	}
+	private string PrimaryGameLogName() => GameProfiles.Find(_settings.ActiveGame)?.LoaderLogFileName ?? "";
 
-	/// <summary>
-	/// True when the active game's mod loader keeps a log the manager can show in the Log tab. Skyrim SE and
-	/// Fallout 4 have their script-extender logs; Moonlight Peaks has BepInEx's <c>LogOutput.log</c>; The Witcher 3
-	/// has whatever its hooked mods write beside the game exe. Stardew Valley is deliberately excluded — it has
-	/// its own richer SMAPI Log tab instead.
-	/// </summary>
-	private static bool GameHasLogTab(string game)
-	{
-		GameProfile? profile = GameProfiles.Find(game);
-		return profile != null &&
-			(profile.IsBethesda || profile.IsBepInEx || profile.IsWitcher3 || profile.IsMinecraft);
-	}
+	private static bool GameHasLogTab(string game) => GameLogFiles.HasLoaderLog(GameProfiles.Find(game));
 
-	/// <summary>
-	/// The folder the active game's loader writes its logs to: <c>Documents\My Games\&lt;game&gt;\SKSE</c> (or
-	/// <c>\F4SE</c>) for the Bethesda games, and the game's own <c>BepInEx</c> folder for Moonlight Peaks, where
-	/// BepInEx writes <c>LogOutput.log</c> next to its config and plugins. Empty for games with no loader log.
-	/// </summary>
-	private string GameLogFolder()
-	{
-		GameProfile? profile = GameProfiles.Find(_settings.ActiveGame);
-		if (profile == null) return "";
-		if (profile.IsBethesda) return BethesdaLogFolder();
-		if (profile.IsBepInEx)
-		{
-			string root = _settings.CurrentGamePath;
-			return string.IsNullOrEmpty(root) ? "" : Path.Combine(root, "BepInEx");
-		}
-		// The Witcher 3 writes no log of its own, but the mods that hook it do, and they write beside the game's
-		// executable — which is where a player looking for "why did my mod not load" needs to be pointed.
-		if (profile.IsWitcher3)
-		{
-			string root = _settings.CurrentGamePath;
-			return string.IsNullOrEmpty(root) ? "" : Path.Combine(root, "bin", "x64");
-		}
-		// Minecraft writes one log per run to .minecraft\logs, and it is the only place that answers the
-		// question that matters: whether the game just started with the mods or without them. A vanilla launch
-		// and a modded one look identical from outside — the game runs either way and says nothing.
-		if (profile.IsMinecraft) return Path.Combine(MinecraftRootFolder(), "logs");
-		return "";
-	}
+	private static string[] ReadAllLinesShared(string path) => GameLogFiles.ReadAllLinesShared(path);
 
-	/// <summary>The loader's own log file name for the active game — the one the Log tab opens by default.</summary>
-	private string PrimaryGameLogName() => GameProfiles.BaseId(_settings.ActiveGame) switch
-	{
-		"SkyrimSE"       => "skse64.log",
-		"Fallout4"       => "f4se.log",
-		"MoonlightPeaks" => "LogOutput.log",
-		// No engine log exists; the accessibility mod's own log is the one worth opening first.
-		"Witcher3"       => "WitcherAccess.log",
-		// Minecraft rotates every previous run into a .log.gz and keeps only the current one as plain text.
-		"Minecraft"      => "latest.log",
-		_                => ""
-	};
+	private static string ReadAllTextShared(string path) => GameLogFiles.ReadAllTextShared(path);
 
 	/// <summary>Shows SMAPI's own log, unparsed, inside the window and read only.</summary>
 	private void OpenRawSmapiLog()
 	{
-		string folder = Path.Combine(
-			Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StardewValley", "ErrorLogs");
-		string latest = Path.Combine(folder, "SMAPI-latest.txt");
+		string folder = GameLogFiles.SmapiLogFolder();
+		string latest = GameLogFiles.SmapiLogPath();
 
 		if (File.Exists(latest))
 			ShowLogFile(Loc.T("log.gameTitle", GameDisplayName()), latest);
@@ -134,34 +75,6 @@ public partial class Form1
 			ShowLogFolder(Loc.T("log.gameTitle", GameDisplayName()), folder, "SMAPI-latest.txt");
 		else
 			SpeakBox(Loc.T("smapi.logNotFound"));
-	}
-
-	/// <summary>
-	/// Reads every line of a file even while another process holds it open for writing. SMAPI keeps
-	/// SMAPI-latest.txt open for the whole game session, and <see cref="File.ReadAllLines"/> opens with
-	/// only <see cref="FileShare.Read"/>, so it throws a sharing violation while the game is running and
-	/// the log appears empty. Opening with <see cref="FileShare.ReadWrite"/> lets us read the live log
-	/// without disturbing SMAPI's writer.
-	/// </summary>
-	private static string[] ReadAllLinesShared(string path)
-	{
-		using FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-		using StreamReader reader = new StreamReader(stream);
-		List<string> lines = new List<string>();
-		string? line;
-		while ((line = reader.ReadLine()) != null)
-		{
-			lines.Add(line);
-		}
-		return lines.ToArray();
-	}
-
-	/// <summary>Reads a whole file as text while another process (SMAPI) has it open for writing. See <see cref="ReadAllLinesShared"/>.</summary>
-	private static string ReadAllTextShared(string path)
-	{
-		using FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-		using StreamReader reader = new StreamReader(stream);
-		return reader.ReadToEnd();
 	}
 
 	/// <summary>
