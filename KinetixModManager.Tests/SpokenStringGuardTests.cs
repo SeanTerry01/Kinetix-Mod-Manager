@@ -266,8 +266,14 @@ public class SpokenStringGuardTests
             string dir = Path.Combine(RepositoryRoot(), project);
             Assert.True(Directory.Exists(dir), "Could not find " + project + " at " + dir);
 
-            // Top level only: bin/ and obj/ hold generated copies that would report the same line twice.
-            files.AddRange(Directory.GetFiles(dir, "*.cs", SearchOption.TopDirectoryOnly));
+            // Recursive, because the core keeps its models in a Models/ folder — and a top-level-only sweep
+            // stopped seeing their phrases the moment they moved there, which this guard caught by going red
+            // rather than by quietly passing. bin/ and obj/ are skipped by name: they hold generated copies of
+            // these same files, and counting one twice would report every line in it twice over.
+            files.AddRange(Directory
+                .GetFiles(dir, "*.cs", SearchOption.AllDirectories)
+                .Where(f => !f.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar)
+                         && !f.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar)));
         }
 
         Assert.NotEmpty(files);

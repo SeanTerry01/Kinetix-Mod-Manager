@@ -15,13 +15,6 @@ namespace KinetixModManager;
 /// </summary>
 public partial class Form1
 {
-	/// <summary>One row in the conflict resolver: a contested file path (its winner/summary is recomputed live).</summary>
-	private sealed class ConflictRow
-	{
-		public required string Path;
-		public string Summary = "";
-		public override string ToString() => Summary;
-	}
 
 	private void ShowConflictOverride()
 	{

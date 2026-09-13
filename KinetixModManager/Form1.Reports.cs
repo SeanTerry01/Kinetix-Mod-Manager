@@ -17,20 +17,6 @@ namespace KinetixModManager;
 /// </summary>
 public partial class Form1
 {
-	/// <summary>One row in a report list: the spoken/displayed text plus an optional Enter action.</summary>
-	private sealed class ReportRow
-	{
-		public string Text = "";
-		/// <summary>A term to search for in the Discovery tab on Enter (e.g. a missing mod's UniqueID), or null.</summary>
-		public string? SearchTerm;
-		/// <summary>A page to open in the browser on Enter, or null.</summary>
-		public string? OpenUrl;
-		/// <summary>Stable key identifying a requirement warning so it can be hidden with Delete, or null if not ignorable.</summary>
-		public string? IgnoreKey;
-		/// <summary>An action to run on Enter (e.g. set this mod's update link), or null. Runs after the report closes.</summary>
-		public Func<Task>? OnEnter;
-		public override string ToString() => Text;
-	}
 
 	// ---------------------------------------------------------------------
 	// File-conflict report

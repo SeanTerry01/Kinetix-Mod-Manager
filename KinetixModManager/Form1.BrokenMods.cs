@@ -48,17 +48,6 @@ public partial class Form1
 			listName: Loc.T("broken.listName"), openingNote: findings.OpeningNote);
 	}
 
-	/// <summary>The result of the broken-mod check: the finding rows, an optional spoken advisory, and whether the
-	/// community compatibility data simply couldn't be loaded (offline / not applicable to this game).</summary>
-	private sealed class BrokenModFindings
-	{
-		public List<ReportRow> Rows = new();
-		/// <summary>A finding-level advisory spoken once as context (e.g. the loose-files note), or null.</summary>
-		public string? OpeningNote;
-		/// <summary>True when the compatibility list couldn't be loaded or the game has no such data.</summary>
-		public bool DataUnavailable;
-	}
-
 	/// <summary>
 	/// Gathers the known-broken/incompatible findings for the active game without showing any UI, so both the
 	/// standalone report and the Setup Health Check share one computation. Does not touch the status line or

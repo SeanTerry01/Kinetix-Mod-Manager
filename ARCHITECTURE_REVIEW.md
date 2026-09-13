@@ -515,7 +515,7 @@ literals; hardcode the Windows invalid-filename set; make the `C:\` defaults pla
 make the test fixtures build paths with `Path.Combine` instead of Windows literals. When this is
 green on Linux, the core is genuinely portable and you have CI proof of it.
 
-**Phase 2 — extract the 40 nested types (2–3 days).**
+**Phase 2 — extract the 40 nested types (2–3 days). ✅ DONE — see §14.**
 Move every nested model out of `Form1` into `Kinetix.Core/Models/`. Purely mechanical, guided by
 the compiler. This is what unblocks a second head.
 
@@ -844,3 +844,77 @@ It now tells them, once per session, through the two channels that do not depend
 Once only, guarded by a flag: the failure recurs on every phrase, and a dialog per phrase would be a
 far worse accessibility bug than the one being reported. Two new strings, `speech.unavailableTitle`
 and `speech.unavailableBody`, which the §12 guard tests already cover.
+
+
+---
+
+## 14. Phase 2 — completed 2026-09-13
+
+**The domain model is out of `Form1`.** 36 types moved to `Kinetix.Core/Models/`, plus four
+supporting types that had to come with them. `Form1` is 28,213 lines, down from 28,719, and — far
+more to the point — **a second front end can now name every one of these types.**
+
+### A correction to §4.2 first
+
+It said "40 types are declared as private nested classes in `Form1` partials". Close, but not right:
+**35 were nested, and five** — `WikiNavigationState`, `WikiResult`, `WalkthroughGuide`,
+`LanguageOption`, `ModWikiLink` — **were already top-level `public` classes** simply parked at the
+bottom of `Form1.cs`, after the class closes. Those were never inaccessible, only misfiled. The
+blocker was real for the other 35.
+
+### What moved
+
+| File | Types |
+|---|---|
+| `Models/LoadOrderModels.cs` | `PriorityEntry`, `PluginEntry`, `CreationEntry`, `LoadOrderExport`, `RuleItem`, `ConflictRow`, `PluginSlotUsage` |
+| `Models/KeybindModels.cs` | `KbEntry`, `KbSection`, `ModKeybinds`, `NavNode` |
+| `Models/WikiModels.cs` | `WikiNavigationState`, `WikiResult`, `WalkthroughGuide`, `ModWikiLink` |
+| `Models/ModSettingRows.cs` | `IniRow`, `IniFileChoice`, `CpRow`, `McmRow`, `StardewRow`, `McmValue` |
+| `Models/ListRowModels.cs` | `SaveRow`, `TrackedRow`, `SuiteItem`, `ModDocSource`, `DiscoveryLoadMoreRow`, `HistoryScope`, `LanguageOption`, `GameNotInstalledChoice` |
+| `Models/CuratorModels.cs` | `CuratorRow`, `CategoryRow`, `SuggestionRow` |
+| `Models/BackupModels.cs` | `SafetyBackupMeta`, `SafetyBackupItem`, `DownloadItem` |
+| `Models/ReportModels.cs` | `ReportRow`, `BrokenModFindings` |
+| `Models/ImportModels.cs` | `Mo2Mod`, `Mo2ProfileEntry` |
+
+### Four things that had to move with them
+
+Each of these was pure logic that had been private to the window, and each was needed by a model:
+
+- **`Loc`** → `Kinetix.Core/Loc.cs`. Nearly every row's `ToString()` calls `Loc.T`, since a row's job
+  is to say how it reads aloud. The localisation catalogue was always core rather than UI; it just
+  lived in the app. (`lang/**` stays in the app project, which is where it is copied to output from.)
+- **`VirtualKeys`** → `Kinetix.Core/VirtualKeys.cs`. `DecodeVirtualKey` and `VirtualKeyName` turn a
+  Windows virtual-key code into "Page Up". They stay Windows-shaped deliberately, and the new file
+  says why: the codes belong to the *games*, which write them into their own config files whatever
+  machine they are played on. This is the §4.5 example made concrete — the one place in the program
+  that knows how to say a key out loud, unreachable by anything else.
+- **`LoadOrderRule`** → its own file, lifted out of `AppSettings` where it was nested. It describes a
+  fact about a game's plugins, not about how this program stores settings. Serialisation is
+  unaffected: Newtonsoft writes by property name and the project sets no `TypeNameHandling`, so rules
+  saved by an older build read back unchanged.
+- **`PluginSlots`** → the 255 / 4096 plugin ceilings, previously `private const` on `Form1`. Facts
+  about Skyrim and Fallout 4, not about the window that displays them.
+
+### Three types deliberately stayed
+
+- **`PromptChoice`** — a `readonly record struct` holding a `DialogResult`. Genuinely WinForms.
+- **`ProgressAnnouncer`** — 111 lines holding a `Form1` reference and calling `Speak`, `_soundEngine`
+  and `SetProgressTitle`. It is not a model at all; it is a presenter, and it is waiting on
+  `IAnnouncer` and `ISoundEngine` in Phase 3. Moving it now would only move the coupling.
+- **`AppTab`** — an enum naming the tab strip. A UI concept, and it belongs with the UI.
+
+### The guard caught its own gap
+
+`SpokenStringGuardTests` went red immediately after the move: its source sweep was
+`TopDirectoryOnly`, so the phrases used by the new `Models/` folder registered as unreferenced. That
+is exactly the coverage loss the §12 note predicted — a guard silently ceasing to cover the thing it
+guards — and it failed loudly instead. The sweep is now recursive, skipping `bin/` and `obj/`.
+
+### Verification
+
+```
+dotnet build KinetixModManager.slnx -p:EnableWindowsTargeting=true  →  0 warnings, 0 errors
+dotnet test  KinetixModManager.Tests                                →  1016 passed, 0 failed
+```
+
+Next is Phase 3: the eight interfaces (§7). `ProgressAnnouncer` is the natural first customer.

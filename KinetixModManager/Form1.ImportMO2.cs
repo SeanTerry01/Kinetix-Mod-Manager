@@ -19,8 +19,6 @@ namespace KinetixModManager;
 /// </summary>
 public partial class Form1
 {
-	/// <summary>A regular MO2 mod read from modlist.txt: its folder name and whether it is enabled.</summary>
-	private readonly record struct Mo2Mod(string Name, bool Enabled);
 
 	/// <summary>
 	/// Menu entry point. Walks the user through picking their MO2 folder and profile, then copies the mods and
@@ -297,14 +295,6 @@ public partial class Form1
 			.Where(d => File.Exists(Path.Combine(d, "modlist.txt")))
 			.OrderBy(d => Path.GetFileName(d), StringComparer.OrdinalIgnoreCase)
 			.ToList();
-
-	/// <summary>One row of the profile chooser: a profile and its mod counts, read aloud on focus.</summary>
-	private sealed class Mo2ProfileEntry
-	{
-		public string Dir = "";
-		public string Summary = "";
-		public override string ToString() => Summary;
-	}
 
 	/// <summary>
 	/// Shows an accessible dialog listing the MO2 profiles (with mod and enabled counts) and returns the chosen

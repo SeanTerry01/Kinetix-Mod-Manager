@@ -457,61 +457,6 @@ public partial class Form1
 		});
 	}
 
-	/// <summary>One control line: a parsed key plus its description, or (when <see cref="Key"/> is null) a
-	/// plain info/section-intro line shown verbatim.</summary>
-	private class KbEntry
-	{
-		public string? Key { get; set; }
-		public string Text { get; set; } = "";
-	}
-
-	/// <summary>A named group of control lines (e.g. a README sub-section like "Scanner" or "Combat").
-	/// An empty <see cref="Name"/> is the un-sectioned bucket shown directly under its parent.</summary>
-	private class KbSection
-	{
-		public string Name { get; set; } = "";
-		public bool Gamepad { get; set; }
-		public List<KbEntry> Entries { get; } = new();
-	}
-
-	/// <summary>One entry in the drill-down list: either a leaf (a key/info line) or a group with children.
-	/// <see cref="Owner"/> is the mod the node belongs to, so the config editor works from anywhere inside it.</summary>
-	private class NavNode
-	{
-		public string Label { get; }
-		public ModKeybinds? Owner { get; }
-		public List<NavNode> Children { get; } = new();
-
-		/// <summary>An intro/info line: shown and read aloud, but not counted in the level's "x of y" position.</summary>
-		public bool IsInfo { get; set; }
-
-		public NavNode(string label, ModKeybinds? owner)
-		{
-			Label = label;
-			Owner = owner;
-		}
-
-		public override string ToString() => Label;
-	}
-
-	/// <summary>A source of controls in the list (a mod, or the base-game reference), holding its sections.</summary>
-	private class ModKeybinds
-	{
-		public string Name { get; }
-		public string ConfigPath { get; set; } = "";
-		public List<KbSection> Sections { get; } = new();
-
-		public ModKeybinds(string name, string configPath = "")
-		{
-			Name = name;
-			ConfigPath = configPath;
-		}
-
-		public bool HasContent => Sections.Any(s => s.Entries.Count > 0);
-
-		public override string ToString() => Name;
-	}
-
 	private static List<string> ParseKeybindsHtml(string filePath)
 	{
 		List<string> results = new List<string>();
@@ -1435,77 +1380,7 @@ public partial class Form1
 		string[] parts = raw.Split(',');
 		if (!int.TryParse(parts[0].Trim(), out int vk) || vk <= 0) return "Unassigned";
 		int mods = parts.Length > 1 && int.TryParse(parts[1].Trim(), out int m) ? m : 0;
-		return DecodeVirtualKey(vk, mods);
-	}
-
-	/// <summary>Decodes a Windows virtual-key code plus an MCM modifier bitfield (1=shift, 2=ctrl, 4=alt) into a
-	/// readable combo like "Ctrl + Shift + Page Down".</summary>
-	private static string DecodeVirtualKey(int vk, int modifiers)
-	{
-		var parts = new List<string>();
-		if ((modifiers & 2) != 0) parts.Add("Ctrl");
-		if ((modifiers & 1) != 0) parts.Add("Shift");
-		if ((modifiers & 4) != 0) parts.Add("Alt");
-		parts.Add(VirtualKeyName(vk));
-		return string.Join(" + ", parts);
-	}
-
-	/// <summary>Maps a Windows virtual-key code to a readable key name, covering the keys mods actually bind.</summary>
-	private static string VirtualKeyName(int vk)
-	{
-		if (vk >= 0x41 && vk <= 0x5A) return ((char)vk).ToString();          // A-Z
-		if (vk >= 0x30 && vk <= 0x39) return ((char)vk).ToString();          // 0-9 (top row)
-		if (vk >= 0x60 && vk <= 0x69) return "Numpad " + (vk - 0x60);        // Numpad 0-9
-		if (vk >= 0x70 && vk <= 0x87) return "F" + (vk - 0x6F);              // F1-F24
-
-		return vk switch
-		{
-			0x01 => "Left Mouse Button",
-			0x02 => "Right Mouse Button",
-			0x04 => "Middle Mouse Button",
-			0x05 => "Mouse Button 4",
-			0x06 => "Mouse Button 5",
-			0x08 => "Backspace",
-			0x09 => "Tab",
-			0x0D => "Enter",
-			0x10 => "Shift",
-			0x11 => "Ctrl",
-			0x12 => "Alt",
-			0x13 => "Pause",
-			0x14 => "Caps Lock",
-			0x1B => "Escape",
-			0x20 => "Space",
-			0x21 => "Page Up",
-			0x22 => "Page Down",
-			0x23 => "End",
-			0x24 => "Home",
-			0x25 => "Left Arrow",
-			0x26 => "Up Arrow",
-			0x27 => "Right Arrow",
-			0x28 => "Down Arrow",
-			0x2C => "Print Screen",
-			0x2D => "Insert",
-			0x2E => "Delete",
-			0x6A => "Numpad Multiply",
-			0x6B => "Numpad Plus",
-			0x6D => "Numpad Minus",
-			0x6E => "Numpad Decimal",
-			0x6F => "Numpad Divide",
-			0x90 => "Num Lock",
-			0x91 => "Scroll Lock",
-			0xBA => ";",
-			0xBB => "=",
-			0xBC => ",",
-			0xBD => "-",
-			0xBE => ".",
-			0xBF => "/",
-			0xC0 => "`",
-			0xDB => "[",
-			0xDC => "\\",
-			0xDD => "]",
-			0xDE => "'",
-			_ => "Key " + vk
-		};
+		return VirtualKeys.DecodeVirtualKey(vk, mods);
 	}
 
 	/// <summary>Builds the drill-down forest for the active game: one root node per control source.</summary>

@@ -457,13 +457,6 @@ public class AppSettings
 	/// </summary>
 	public Dictionary<string, List<string>> PluginOrder { get; set; } = new Dictionary<string, List<string>>();
 
-	/// <summary>One persistent load-order rule: <see cref="Plugin"/> must load after <see cref="After"/>.</summary>
-	public class LoadOrderRule
-	{
-		public string Plugin { get; set; } = "";
-		public string After { get; set; } = "";
-	}
-
 	/// <summary>
 	/// Persistent user load-order rules per Skyrim SE / Fallout 4 game ("always load X after Y"), applied by the
 	/// plugin auto-sort on top of masters and LOOT rules. A rule that names a plugin not in the current load order is

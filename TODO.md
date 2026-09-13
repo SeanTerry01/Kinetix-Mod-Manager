@@ -5,7 +5,7 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-09-13, after Phase 1 and the three robustness fixes.
+**Last updated:** 2026-09-13, after Phase 2.
 **State:** 1,016 tests passing on Windows and Linux; all three projects build clean.
 
 ---
@@ -18,6 +18,8 @@ Anything resolved gets deleted from here rather than ticked, so the file stays s
 - ~~**`en.json`** — two phrases read aloud with their own braces in them, plus a guard so it cannot
   recur~~ (`daf4142`)
 - ~~**HTTP connection leak**, the Modrinth User-Agent regression, and speech failing silently~~ (`d727c82`)
+- ~~**Phase 2** — the domain model out of `Form1`: 36 types to `Kinetix.Core/Models/`, plus `Loc`,
+  `VirtualKeys`, `LoadOrderRule` and `PluginSlots`~~
 
 ---
 
@@ -25,23 +27,12 @@ Anything resolved gets deleted from here rather than ticked, so the file stays s
 
 The one sequence that matters. Each step leaves the app shipping and the suite green.
 
-### 1. Phase 2 — get the domain model out of `Form1`  ⬅ **next**
-
-Forty types are declared as **private nested classes inside `Form1`**: `ConflictRow`, `PluginEntry`,
-`SaveRow`, `WikiResult`, `DownloadItem`, `ModKeybinds`, `KbEntry`, `KbSection`, `NavNode`,
-`CategoryRow`, `CreationEntry`, `CuratorRow`, `IniRow`, `McmRow`, `Mo2ProfileEntry`, `ModDocSource`,
-`ModWikiLink`, `PriorityEntry`, `ReportRow`, `SafetyBackupItem`, `SafetyBackupMeta`, `StardewRow`,
-`SuggestionRow`, `TrackedRow`, `WalkthroughGuide`, `WikiNavigationState`, `LoadOrderExport`,
-`BrokenModFindings`, `RuleItem`, `CpRow`, and more.
-
-Every one is a plain data shape, and every one is something a second front end would also need. No
-other UI can reference a model that is `private` to the first one, so this is the actual blocker.
-Mechanical and compiler-guided.
-
-### 2. Phase 3 — the abstractions
+### 1. Phase 3 — the abstractions  ⬅ **next**
 
 Eight interfaces, derived from what the code already calls rather than from what looks tidy.
-`ARCHITECTURE_REVIEW.md` §7 has the signatures.
+`ARCHITECTURE_REVIEW.md` §7 has the signatures. `ProgressAnnouncer` (still in `Form1.Progress.cs`,
+holding a `Form1` reference) is the natural first customer: it needs `IAnnouncer` and `ISoundEngine`
+and nothing else.
 
 | Interface | Replaces | Call sites |
 |---|---|---|
@@ -54,14 +45,14 @@ Eight interfaces, derived from what the code already calls rather than from what
 | `IDispatcher` | `Control.Invoke` | — |
 | `IModSource` | `NexusService` / `ModrinthService` | see §6.1 |
 
-### 3. Phase 4 — drain `Form1` (the long one)
+### 2. Phase 4 — drain `Form1` (the long one)
 
-28,719 lines across 63 partial files, ~232 fields, ~614 methods. Per screen, smallest first:
+28,213 lines across 63 partial files, ~232 fields, ~614 methods. Per screen, smallest first:
 `SmapiLog` → `Dependencies` → `Profiles` → `Updates` → `Install` → `ModList` → `Settings`.
 Target: `Form1` under 5,000 lines. `ShowSettings()` (1,252 lines) and `SetupAccessibleUI()`
 (1,077) are 2,329 of those between them.
 
-### 4. Phase 5 — `Kinetix.Gtk`
+### 3. Phase 5 — `Kinetix.Gtk`
 
 Build `Kinetix.Platform.Linux` first (speech-dispatcher, libsecret, Steam/Heroic/Lutris detection,
 GStreamer) and verify it headless against the core's tests, then write the GTK head against the same

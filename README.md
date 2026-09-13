@@ -94,7 +94,7 @@ The solution is three projects.
 
 | Project | Target | Purpose |
 |---|---|---|
-| `Kinetix.Core` | `net10.0` | The rules, the parsers and the file and HTTP work, with no user interface. Game profiles, mod scanning rules, FOMOD, Modrinth, the Minecraft launcher and Fabric installer, save and INI readers. |
+| `Kinetix.Core` | `net10.0` | The rules, the parsers and the file and HTTP work, with no user interface. Game profiles, mod scanning rules, FOMOD, Modrinth, the Minecraft launcher and Fabric installer, save and INI readers, the localisation catalogue, and the domain models under `Models/`. |
 | `KinetixModManager` | `net10.0-windows` | The WinForms application: the screen it draws, the keys it listens for, and the Windows-only pieces (Tolk, DPAPI, the registry, NAudio, WebView2). |
 | `KinetixModManager.Tests` | `net10.0` | 1,016 xUnit tests against `Kinetix.Core`. |
 

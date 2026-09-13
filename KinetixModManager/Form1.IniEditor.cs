@@ -16,23 +16,6 @@ namespace KinetixModManager;
 /// </summary>
 public partial class Form1
 {
-    /// <summary>A settings row in the editor list. Carries its parsed entry and reads as "[Section] key = value".</summary>
-    private sealed class IniRow
-    {
-        public IniDocument.Entry Entry { get; }
-        public IniRow(IniDocument.Entry entry) => Entry = entry;
-        public override string ToString() => Loc.T("ini.row", Entry.Section, Entry.Key, Entry.Value);
-    }
-
-    /// <summary>A game INI file offered in the chooser. Reads as the file name, noting when it doesn't exist yet.</summary>
-    private sealed class IniFileChoice
-    {
-        public string Label { get; }
-        public string Path { get; }
-        public bool Exists { get; }
-        public IniFileChoice(string label, string path, bool exists) { Label = label; Path = path; Exists = exists; }
-        public override string ToString() => Exists ? Label : Loc.T("ini.chooseMissing", Label);
-    }
 
     /// <summary>
     /// Mods-menu command: lets the user pick one of the active game's configuration INI files and edit it in the

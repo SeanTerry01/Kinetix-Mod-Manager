@@ -17,16 +17,6 @@ public partial class Form1
 {
 	private static readonly string[] DownloadArchiveExtensions = { ".zip", ".7z", ".rar" };
 
-	/// <summary>One row in the downloads list: a downloaded archive with its size and date.</summary>
-	private sealed class DownloadItem
-	{
-		public required string FullPath;
-		public required long Size;
-		public required DateTime Date;
-		public string Summary = "";
-		public override string ToString() => Summary;
-	}
-
 	/// <summary>Entry point (Mods menu / shortcut): lists the active game's downloaded archives for re-install.</summary>
 	private void ShowDownloadsHistory()
 	{

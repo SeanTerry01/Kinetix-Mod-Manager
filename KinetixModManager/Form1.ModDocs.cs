@@ -22,16 +22,6 @@ namespace KinetixModManager;
 /// </summary>
 public partial class Form1
 {
-	/// <summary>One documentation source for the active game.</summary>
-	/// <param name="Title">Display name shown in the chooser (e.g. "Stardew Access").</param>
-	/// <param name="BundledFile">App-relative path to the shipped offline copy (e.g. "docs/stardew-access.md").</param>
-	/// <param name="GitHubRawUrls">Raw Markdown files combined into one doc on refresh; empty for Nexus-only mods.</param>
-	/// <param name="NexusModId">Nexus mod id whose live description is pulled on refresh; null for GitHub-sourced mods.</param>
-	private sealed record ModDocSource(
-		string Title,
-		string BundledFile,
-		IReadOnlyList<string> GitHubRawUrls,
-		string? NexusModId);
 
 	/// <summary>The documentation sources offered for the active game. Designed so adding another doc is one line.</summary>
 	private List<ModDocSource> DocSourcesForActiveGame()

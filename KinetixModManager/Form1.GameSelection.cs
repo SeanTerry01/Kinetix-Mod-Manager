@@ -414,8 +414,6 @@ public partial class Form1
 		return false;
 	}
 
-	private enum GameNotInstalledChoice { Cancel, Locate, Purchase }
-
 	/// <summary>
 	/// Tells the user the game wasn't detected and offers three accessible choices: locate the existing
 	/// install folder, view store links to buy it, or cancel. Returns which the user chose.

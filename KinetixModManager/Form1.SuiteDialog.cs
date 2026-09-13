@@ -722,26 +722,6 @@ public partial class Form1
 										  m.UniqueId.Contains(subStr, StringComparison.OrdinalIgnoreCase));
 	}
 
-	private class SuiteItem
-	{
-		public string Name { get; }
-		public bool IsInstalled { get; }
-		public string Type { get; }
-		public string Source { get; }
-		/// <summary>Extra words spoken after "Installed" for entries that can say more about themselves
-		/// (the script extender reports its version), or "" for the rest.</summary>
-		public string Detail { get; }
-
-		public SuiteItem(string name, bool isInstalled, string type, string source, string detail = "")
-		{
-			Name = name;
-			IsInstalled = isInstalled;
-			Type = type;
-			Source = source;
-			Detail = detail;
-		}
-	}
-
 	/// <summary>
 	/// What to say after "Installed" on the SKSE/F4SE row: the extender's own version, the game build it is
 	/// compiled for, and whether that is the build the user is running.

@@ -15,25 +15,6 @@ namespace KinetixModManager;
 /// </summary>
 public partial class Form1
 {
-	private const int RegularPluginCap = 255;   // usable regular indices 0x00–0xFE (0xFF reserved)
-	private const int RegularPluginNear = 250;  // start warning within the last handful of slots
-	private const int LightPluginCap = 4096;    // the 0xFE light container: indices 0x000–0xFFF
-	private const int LightPluginNear = 4000;
-
-	/// <summary>A snapshot of how many regular and light plugin slots the active load order is using.</summary>
-	private readonly struct PluginSlotUsage
-	{
-		public int RegularUsed { get; init; }
-		public int LightUsed { get; init; }
-		public int RegularRemaining => Math.Max(0, RegularPluginCap - RegularUsed);
-		public bool RegularOver => RegularUsed > RegularPluginCap;
-		public bool RegularNear => RegularUsed >= RegularPluginNear; // true once over, too
-		public bool LightOver => LightUsed > LightPluginCap;
-		public bool LightNear => LightUsed >= LightPluginNear;
-		/// <summary>True when anything is worth warning about (regular or light pool near/over its cap).</summary>
-		public bool AnyConcern => RegularNear || LightNear;
-	}
-
 	/// <summary>
 	/// Counts the plugin slots the active Bethesda load order uses. Regular = present base-game/DLC masters plus
 	/// every non-light plugin in the order; light = the ESL / light-flagged plugins, which use a separate pool.
@@ -96,7 +77,7 @@ public partial class Form1
 		}
 
 		PluginSlotUsage u = GetPluginSlotUsage();
-		string msg = Loc.T("pluginlimit.summary", u.RegularUsed, RegularPluginCap, u.RegularRemaining, u.LightUsed, LightPluginCap);
+		string msg = Loc.T("pluginlimit.summary", u.RegularUsed, PluginSlots.RegularPluginCap, u.RegularRemaining, u.LightUsed, PluginSlots.LightPluginCap);
 		string? warn = PluginLimitWarning(u);
 		if (warn != null) msg += " " + warn;
 		Speak(msg);
@@ -153,10 +134,10 @@ public partial class Form1
 	{
 		if (!IsBethesdaGame) return null;
 		PluginSlotUsage u = GetPluginSlotUsage();
-		if (u.RegularOver) return new ReportRow { Text = Loc.T("pluginlimit.rowOver", u.RegularUsed, RegularPluginCap) };
-		if (u.RegularNear) return new ReportRow { Text = Loc.T("pluginlimit.rowNear", u.RegularUsed, RegularPluginCap, u.RegularRemaining) };
-		if (u.LightOver) return new ReportRow { Text = Loc.T("pluginlimit.rowLightOver", u.LightUsed, LightPluginCap) };
-		if (u.LightNear) return new ReportRow { Text = Loc.T("pluginlimit.rowLightNear", u.LightUsed, LightPluginCap) };
+		if (u.RegularOver) return new ReportRow { Text = Loc.T("pluginlimit.rowOver", u.RegularUsed, PluginSlots.RegularPluginCap) };
+		if (u.RegularNear) return new ReportRow { Text = Loc.T("pluginlimit.rowNear", u.RegularUsed, PluginSlots.RegularPluginCap, u.RegularRemaining) };
+		if (u.LightOver) return new ReportRow { Text = Loc.T("pluginlimit.rowLightOver", u.LightUsed, PluginSlots.LightPluginCap) };
+		if (u.LightNear) return new ReportRow { Text = Loc.T("pluginlimit.rowLightNear", u.LightUsed, PluginSlots.LightPluginCap) };
 		return null;
 	}
 }

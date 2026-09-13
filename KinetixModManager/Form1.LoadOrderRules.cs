@@ -87,11 +87,11 @@ public partial class Form1
 	private bool AddRule(string plugin, string after)
 	{
 		if (!_settings.LoadOrderRules.TryGetValue(_settings.ActiveGame, out var rules))
-			_settings.LoadOrderRules[_settings.ActiveGame] = rules = new List<AppSettings.LoadOrderRule>();
+			_settings.LoadOrderRules[_settings.ActiveGame] = rules = new List<LoadOrderRule>();
 		if (rules.Any(r => string.Equals(r.Plugin, plugin, StringComparison.OrdinalIgnoreCase) &&
 						   string.Equals(r.After, after, StringComparison.OrdinalIgnoreCase)))
 			return false;
-		rules.Add(new AppSettings.LoadOrderRule { Plugin = plugin, After = after });
+		rules.Add(new LoadOrderRule { Plugin = plugin, After = after });
 		_settings.Save();
 		return true;
 	}
@@ -119,7 +119,7 @@ public partial class Form1
 			layout.Controls.Add(new Label { Text = Loc.T("rules.manageHeader", GameDisplayName()), AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(0, 0, 0, 8) }, 0, 0);
 
 			var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = Loc.T("rules.listName"), IntegralHeight = false, HorizontalScrollbar = true };
-			foreach (AppSettings.LoadOrderRule r in rules) list.Items.Add(new RuleItem { Rule = r, Summary = Loc.T("rules.row", r.Plugin, r.After) });
+			foreach (LoadOrderRule r in rules) list.Items.Add(new RuleItem { Rule = r, Summary = Loc.T("rules.row", r.Plugin, r.After) });
 			if (list.Items.Count > 0) list.SelectedIndex = 0;
 			layout.Controls.Add(list, 0, 1);
 			container.Controls.Add(layout);
@@ -149,11 +149,4 @@ public partial class Form1
 		hint: Loc.T(rules.Count == 1 ? "rules.countOne" : "rules.count", rules.Count) + " " + Loc.T("rules.manageHint"));
 	}
 
-	/// <summary>One row in the rules list.</summary>
-	private sealed class RuleItem
-	{
-		public required AppSettings.LoadOrderRule Rule;
-		public string Summary = "";
-		public override string ToString() => Summary;
-	}
 }

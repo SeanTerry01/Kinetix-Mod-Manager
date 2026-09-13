@@ -21,62 +21,6 @@ namespace KinetixModManager;
 /// </summary>
 public partial class Form1
 {
-	/// <summary>One row: an MCM control and its current value, or a heading with no value of its own.</summary>
-	private sealed class McmRow : IListHeadingRow
-	{
-		public required McmControl Control { get; init; }
-		public required string Value { get; init; }
-
-		/// <summary>A heading names the group of settings under it; the rows are numbered within that group.</summary>
-		public bool IsHeading => Control.Kind == McmControlKind.NotASetting;
-
-		public override string ToString() => Control.Kind switch
-		{
-			McmControlKind.NotASetting => Loc.T("mcm.rowHeading", Control.Label),
-			McmControlKind.Key => Loc.T("mcm.rowKey", Control.Label, Display),
-			_ => Loc.T("mcm.row", Control.Label, Display)
-		};
-
-		/// <summary>The value as it should be read out: on/off for a toggle, a key name for a binding.</summary>
-		private string Display
-		{
-			get
-			{
-				if (Value.Length == 0) return Loc.T("mcm.valueUnset");
-
-				return Control.Kind switch
-				{
-					McmControlKind.Toggle => McmToggleIsOn(Value) ? Loc.T("mcm.on") : Loc.T("mcm.off"),
-					McmControlKind.Key => McmKeyText(Value),
-					_ => Value
-				};
-			}
-		}
-	}
-
-	/// <summary>
-	/// An MCM key binding as a person would say it: "Page Up" rather than "33,0".
-	///
-	/// MCM stores a binding as a Windows virtual-key code and a modifier bitfield, which is exactly right for
-	/// the game and useless to read aloud. The controls list already decodes these; this is the same decoding,
-	/// so a key reads identically wherever it appears.
-	/// </summary>
-	private static string McmKeyText(string raw)
-	{
-		string[] parts = raw.Split(',');
-		if (!int.TryParse(parts[0].Trim(), out int virtualKey) || virtualKey <= 0)
-			return Loc.T("mcm.keyUnassigned");
-
-		int modifiers = parts.Length > 1 && int.TryParse(parts[1].Trim(), out int m) ? m : 0;
-		return DecodeVirtualKey(virtualKey, modifiers);
-	}
-
-	/// <summary>
-	/// MCM writes a toggle as 0 or 1, but a hand-edited file may hold true or false. Both are understood so a
-	/// setting someone edited by hand still reads correctly.
-	/// </summary>
-	private static bool McmToggleIsOn(string value) =>
-		value.Trim() is "1" || value.Trim().Equals("true", StringComparison.OrdinalIgnoreCase);
 
 	/// <summary>
 	/// Shows a mod's Mod Configuration Menu settings and lets them be changed. Each change is written as it is
@@ -196,7 +140,7 @@ public partial class Form1
 				Loc.T("mcm.chooseTitle", control.Label),
 				Loc.T("mcm.chooseListName", control.Label),
 				new[] { Loc.T("mcm.on"), Loc.T("mcm.off") },
-				McmToggleIsOn(current) ? Loc.T("mcm.on") : Loc.T("mcm.off"),
+				McmValue.McmToggleIsOn(current) ? Loc.T("mcm.on") : Loc.T("mcm.off"),
 				Loc.T("mcm.chooseHint", control.Help));
 
 			// Written back in the form MCM itself uses, whatever the file happened to hold before.

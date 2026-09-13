@@ -789,17 +789,6 @@ public partial class Form1
 		}
 	}
 
-	/// <summary>
-	/// Sentinel placeholder for the inline "Load more" row pinned to the bottom of the Discovery
-	/// results list. It is never a real search result: it is excluded from the spoken "X of Y"
-	/// position count, and pressing Enter on it loads the next page rather than opening a mod page.
-	/// Its <see cref="ToString"/> is what the screen reader reads when the row is focused.
-	/// </summary>
-	private sealed class DiscoveryLoadMoreRow
-	{
-		public override string ToString() => Loc.T("discovery.loadMoreRow");
-	}
-
 	/// <summary>True when the Discovery list currently ends with the inline "Load more" row.</summary>
 	private bool DiscoveryHasLoadMoreRow() =>
 		listDiscovery.Items.Count > 0 &&

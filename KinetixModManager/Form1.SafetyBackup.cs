@@ -19,15 +19,6 @@ public partial class Form1
 {
 	private const int MaxSafetyBackups = 8;
 
-	/// <summary>Metadata stored alongside each snapshot's copied files.</summary>
-	private sealed class SafetyBackupMeta
-	{
-		public string Reason { get; set; } = "";
-		public DateTime CreatedUtc { get; set; }
-		public List<string> ModPriority { get; set; } = new List<string>();
-		public List<string> PluginOrder { get; set; } = new List<string>();
-	}
-
 	private string SafetyRoot => Path.Combine(dataBasePath, "safety", _settings.ActiveGame);
 
 	/// <summary>The game files a snapshot captures: the three game INIs and the active plugins.txt.</summary>
@@ -85,15 +76,6 @@ public partial class Form1
 				catch (Exception ex) { DiagnosticLog.WriteException("Safety", $"deleting the old snapshot {d.FullName}", ex); }
 		}
 		catch (Exception ex) { DiagnosticLog.WriteException("Safety", "pruning old safety snapshots", ex); }
-	}
-
-	/// <summary>One restorable snapshot in the restore list.</summary>
-	private sealed class SafetyBackupItem
-	{
-		public required string Dir;
-		public required SafetyBackupMeta Meta;
-		public string Summary = "";
-		public override string ToString() => Summary;
 	}
 
 	/// <summary>Lists the active game's safety snapshots; Enter restores one, Delete removes one.</summary>

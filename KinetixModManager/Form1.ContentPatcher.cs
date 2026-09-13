@@ -23,23 +23,6 @@ namespace KinetixModManager;
 /// </summary>
 public partial class Form1
 {
-	/// <summary>One row: a setting, its current answer, and whether that answer is just the author's default.</summary>
-	private sealed class CpRow
-	{
-		public required CpConfigOption Option { get; init; }
-		public required string Value { get; init; }
-
-		/// <summary>True when the pack's config has no answer of its own and the author's default is standing in.</summary>
-		public required bool IsDefault { get; init; }
-
-		public override string ToString() =>
-			IsDefault
-				? Loc.T("cpconfig.rowDefault", Option.Name, DisplayValue)
-				: Loc.T("cpconfig.row", Option.Name, DisplayValue);
-
-		/// <summary>The answer as it should be read out — an empty answer is said, not left as silence.</summary>
-		private string DisplayValue => Value.Length > 0 ? Value : Loc.T("cpconfig.valueEmpty");
-	}
 
 	/// <summary>
 	/// The settings a Stardew mod exposes through Content Patcher, or an empty list when it is not a Content

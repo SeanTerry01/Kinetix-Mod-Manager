@@ -19,14 +19,6 @@ namespace KinetixModManager;
 /// </summary>
 public partial class Form1
 {
-	/// <summary>One row in the tracked-mods list.</summary>
-	private sealed class TrackedRow
-	{
-		public required int ModId;
-		public required bool Installed;
-		public string Summary = "";
-		public override string ToString() => Summary;
-	}
 
 	private async Task ShowTrackedMods()
 	{

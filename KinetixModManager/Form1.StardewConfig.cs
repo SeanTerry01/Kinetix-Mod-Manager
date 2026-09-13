@@ -17,14 +17,6 @@ namespace KinetixModManager;
 /// </summary>
 public partial class Form1
 {
-	/// <summary>One row: a setting and its current value, read as "Label: value".</summary>
-	private sealed class StardewRow
-	{
-		public required StardewSetting Setting { get; init; }
-		public override string ToString() => Loc.T("sdvconfig.row", Setting.Label, Display);
-
-		private string Display => Setting.Value.Length > 0 ? Setting.Value : Loc.T("sdvconfig.valueEmpty");
-	}
 
 	/// <summary>
 	/// Shows a mod's settings and lets them be changed, saving each change as it is made. Returns false when the

@@ -86,20 +86,6 @@ public partial class Form1
 		return !string.IsNullOrWhiteSpace(entry.Name) && HasModNameContains(entry.Name);
 	}
 
-	/// <summary>One row of the suggested list: either a category heading, or a mod under it.</summary>
-	private sealed class SuggestionRow
-	{
-		/// <summary>The mod this row is about, or <c>null</c> when the row is a heading.</summary>
-		public SuggestedMod? Entry { get; init; }
-
-		/// <summary>What the screen reader reads for this row.</summary>
-		public required string Text { get; init; }
-
-		public bool IsHeading => Entry == null;
-
-		public override string ToString() => Text;
-	}
-
 	/// <summary>
 	/// Shows the suggested mods for the game that is open, grouped under the category headings in the order the
 	/// categories are kept.

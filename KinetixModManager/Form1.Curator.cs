@@ -333,42 +333,6 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// One row of the marked-mods list: the entry itself, read out as a sentence.
-	///
-	/// The category's name is handed in rather than looked up here, because a row has no way to reach the stored
-	/// categories and re-reading the file once per row would be silly for a list that is rebuilt on every edit.
-	/// </summary>
-	private sealed class CuratorRow
-	{
-		public required SuggestedMod Entry { get; init; }
-
-		/// <summary>The category's name at the moment the list was built.</summary>
-		public required string Category { get; init; }
-
-		public override string ToString()
-		{
-			string game = GameProfiles.DisplayNameFor(Entry.Game);
-			if (string.IsNullOrEmpty(game)) game = Entry.Game;
-
-			return Entry.Reason.Length > 0
-				? Loc.T("curator.reviewRow", game, Entry.Name, Category, Entry.Reason)
-				: Loc.T("curator.reviewRowNoReason", game, Entry.Name, Category);
-		}
-	}
-
-	/// <summary>One row of the categories list: its name, whether it ships, and how many mods are filed under it.</summary>
-	private sealed class CategoryRow
-	{
-		public required SuggestionCategory Category { get; init; }
-		public required string Label { get; init; }
-		public required int Used { get; init; }
-
-		public override string ToString() => Category.IsBuiltIn
-			? Loc.T("curator.categoryRowBuiltIn", Label, Used)
-			: Loc.T("curator.categoryRow", Label, Used);
-	}
-
-	/// <summary>
 	/// The categories, in the order they are offered, so they can be renamed, reordered, added to and removed.
 	///
 	/// Enter renames, Delete removes, and the left and right arrows move a category up and down the order — that

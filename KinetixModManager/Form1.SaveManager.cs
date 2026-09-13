@@ -20,15 +20,6 @@ public partial class Form1
 	/// <summary>Co-save extensions written next to a save by the script extender; handled alongside the save.</summary>
 	private static readonly string[] CoSaveExtensions = { ".skse", ".f4se" };
 
-	/// <summary>One row in the save manager: the parsed save plus the plugins it needs that are no longer active.</summary>
-	private sealed class SaveRow
-	{
-		public required SaveGame Save;
-		public required List<string> MissingPlugins;
-		public string Summary = "";
-		public override string ToString() => Summary;
-	}
-
 	/// <summary>
 	/// Entry point (Mods menu / shortcut): locates the active game's saves, parses them off the UI thread with a
 	/// spoken status, then shows the accessible list. Only meaningful for Skyrim SE / Fallout 4.

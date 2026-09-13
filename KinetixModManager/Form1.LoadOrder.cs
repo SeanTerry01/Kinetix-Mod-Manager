@@ -205,22 +205,6 @@ public partial class Form1
 	// Load-order export / import
 	// -------------------------------------------------------------------------
 
-	/// <summary>Serializable snapshot of a game's load order: the mod priority order and the plugin order.</summary>
-	private sealed class LoadOrderExport
-	{
-		/// <summary>Bumped if the file shape ever changes incompatibly, so old files can be detected.</summary>
-		public string FormatVersion { get; set; } = "1";
-		/// <summary>Game id this order belongs to ("SkyrimSE" / "Fallout4"), so it is not applied to the wrong game.</summary>
-		public string Game { get; set; } = "";
-		/// <summary>App version that produced the file (informational only).</summary>
-		public string AppVersion { get; set; } = "";
-		public DateTime ExportedAtUtc { get; set; }
-		/// <summary>Mod folder keys, highest conflict priority first. Mirrors <see cref="AppSettings.ModPriority"/>.</summary>
-		public List<string> ModPriority { get; set; } = new List<string>();
-		/// <summary>Active plugin file names in load order. Mirrors <see cref="AppSettings.PluginOrder"/>.</summary>
-		public List<string> PluginOrder { get; set; } = new List<string>();
-	}
-
 	/// <summary>Friendly game name for messages. Falls back to the raw id for anything unexpected.</summary>
 	private static string GameDisplayName(string game) => GameProfiles.Find(game)?.DisplayName ?? game;
 
@@ -357,16 +341,6 @@ public partial class Form1
 		_soundEngine.Play("load_complete");
 		Speak(Loc.T("loadorder.imported",
 			_settings.ModPriority[game].Count, _settings.PluginOrder[game].Count, conflicts.Count));
-	}
-
-	/// <summary>One row of the Mod Priority list: a mod and its current conflict standing.</summary>
-	private sealed class PriorityEntry
-	{
-		public string Key = "";
-		public string Display = "";
-		public bool Enabled;
-		public string Summary = "";
-		public override string ToString() => Summary;
 	}
 
 	/// <summary>
@@ -651,16 +625,6 @@ public partial class Form1
 		});
 	}
 
-	/// <summary>One row of the Plugin Order list: a plugin file and its master/light classification.</summary>
-	private sealed class PluginEntry
-	{
-		public string Name = "";
-		public bool Master;
-		public bool Light;
-		public string Summary = "";
-		public override string ToString() => Summary;
-	}
-
 	/// <summary>
 	/// Rebuilds the Plugin Order list from the saved order. Each row reads the plugin file name and whether
 	/// it is a master or light master, so the masters-first grouping is audible. Order = load order (top
@@ -810,8 +774,8 @@ public partial class Form1
 					if (inSet.Contains(a) && !string.Equals(a, name, StringComparison.OrdinalIgnoreCase)) set.Add(a);
 			// User-defined persistent rules ("load this plugin after X"), applied exactly like a LOOT after-rule so
 			// they compose with masters and LOOT ordering. A rule naming a plugin not in the load order is ignored.
-			if (_settings.LoadOrderRules.TryGetValue(game, out List<AppSettings.LoadOrderRule>? rules))
-				foreach (AppSettings.LoadOrderRule r in rules)
+			if (_settings.LoadOrderRules.TryGetValue(game, out List<LoadOrderRule>? rules))
+				foreach (LoadOrderRule r in rules)
 					if (string.Equals(r.Plugin, name, StringComparison.OrdinalIgnoreCase) &&
 						inSet.Contains(r.After) && !string.Equals(r.After, name, StringComparison.OrdinalIgnoreCase))
 						set.Add(r.After);
@@ -895,18 +859,6 @@ public partial class Form1
 	// mod manager. The game downloads them straight into its Data folder, where they appear as plugin files
 	// prefixed "cc" (e.g. ccBGSSSE001-Fish.esm). This tab simply lists what is installed and lets the user
 	// activate/deactivate each one; ordering is done on the Plugin Order tab. We never delete Creation files.
-
-	/// <summary>One row of the Creations list: an installed Creation plugin and its current state.</summary>
-	private sealed class CreationEntry
-	{
-		/// <summary>The Creation's plugin file name in the game Data folder (e.g. ccBGSSSE001-Fish.esm).</summary>
-		public string File = "";
-		public bool Master;
-		public bool Light;
-		public bool Active;
-		public string Summary = "";
-		public override string ToString() => Summary;
-	}
 
 	/// <summary>
 	/// A readable name for a Creation derived from its plugin file name: the part after the

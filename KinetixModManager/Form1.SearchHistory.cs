@@ -9,14 +9,6 @@ namespace KinetixModManager;
 /// <summary>The accessible "Search History" dialog for the active game's mod searches.</summary>
 public partial class Form1
 {
-	/// <summary>A scope shown in the dialog's "Show" combo: either every search, or one specific day.</summary>
-	private class HistoryScope
-	{
-		public string Label { get; }
-		public DateTime? Day { get; }   // null = all searches
-		public HistoryScope(string label, DateTime? day) { Label = label; Day = day; }
-		public override string ToString() => Label;
-	}
 
 	/// <summary>
 	/// Shows the Search History for the active game — a "Show" combo (All searches, or a specific date, newest
