@@ -8,7 +8,13 @@ namespace KinetixModManager;
 /// runner such as Proton or Soda), which lets us soften Windows-only behaviours that Wine implements
 /// incompletely — notably the per-thread DPI awareness APIs that crash WinForms when menus open.
 /// </summary>
-internal static class PlatformInfo
+/// <remarks>
+/// Public rather than internal because it now lives in Kinetix.Core while its other caller,
+/// ApplicationConfiguration, stays in the WinForms app - and internal does not cross an assembly
+/// boundary. Widening it is the honest fix: what host we are running on is not a private detail of
+/// this layer, and the Linux head will want to ask the same question.
+/// </remarks>
+public static class PlatformInfo
 {
 	private static readonly Lazy<bool> _isWine = new Lazy<bool>(DetectWine);
 

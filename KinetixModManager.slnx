@@ -3,6 +3,7 @@
     <Platform Name="Any CPU" />
     <Platform Name="x64" />
   </Configurations>
+  <Project Path="Kinetix.Core/Kinetix.Core.csproj" />
   <Project Path="KinetixModManager/KinetixModManager.csproj">
     <Platform Solution="*|x64" Project="x64" />
   </Project>

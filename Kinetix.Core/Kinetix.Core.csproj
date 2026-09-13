@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The platform-independent heart of the mod manager: the rules, the parsers and the file and
+    HTTP work, with no user interface of any kind.
+
+    This project did not invent its own contents. Every file in it was already being compiled
+    standalone, against plain net10.0, by KinetixModManager.Tests - which listed them one by one
+    as <Compile Include> paths so that the tests would not have to drag in WebView2, NAudio and
+    Tolk. That list had been maintained by hand for months and was, in effect, an undeclared
+    class library. This project is that list, declared.
+
+    The point of declaring it is that the boundary is now the compiler's business rather than a
+    convention. A file here cannot reach for System.Windows.Forms, the registry or DPAPI, because
+    the target framework does not have them - so the separation holds by itself instead of holding
+    only as long as everyone remembers it.
+
+    TargetFramework is deliberately net10.0 and NOT net10.0-windows. Changing it would silently
+    re-admit the Windows-only surface this project exists to keep out.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- The namespace stays KinetixModManager. Moving 50 files between projects and renaming their
+         namespace are two separate changes, and doing both at once would bury a mechanical move
+         under 135 files of edits. The assembly is named for the layer; the namespace follows later. -->
+    <RootNamespace>KinetixModManager</RootNamespace>
+    <AssemblyName>Kinetix.Core</AssemblyName>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Bethesda save files are LZ4-compressed; see SaveGame.cs. -->
+    <PackageReference Include="K4os.Compression.LZ4" Version="1.3.8" />
+    <!-- Every manifest, every API response and every settings file this layer reads. -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+</Project>

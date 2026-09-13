@@ -16,107 +16,12 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
   </ItemGroup>
 
-  <!-- Compile the self-contained FOMOD logic directly instead of referencing the WinForms app.
-       These four files depend only on the BCL and System.Xml.Linq, so the test project pulls in
-       none of the app's heavy runtime (WebView2, NAudio, Tolk) - keeping the build tiny. -->
+  <!-- The core used to be listed here file by file - 50 <Compile Include> paths reaching into the
+       WinForms app, kept in step by hand so the tests would not drag in WebView2, NAudio and Tolk.
+       That list has become the Kinetix.Core project, so one reference now says what fifty lines said,
+       and a new core file is picked up without anyone having to remember to add it. -->
   <ItemGroup>
-    <Compile Include="..\KinetixModManager\FomodConfig.cs" />
-    <Compile Include="..\KinetixModManager\FomodParser.cs" />
-    <Compile Include="..\KinetixModManager\FomodConditionEvaluator.cs" />
-    <Compile Include="..\KinetixModManager\FomodInstaller.cs" />
-    <!-- Self-contained mod-health checks (depend only on GameMod metadata, no app runtime). -->
-    <Compile Include="..\KinetixModManager\GameMod.cs" />
-    <Compile Include="..\KinetixModManager\ModDependency.cs" />
-    <Compile Include="..\KinetixModManager\ModHealth.cs" />
-    <!-- Self-contained Steam library detection (depends only on the BCL). -->
-    <Compile Include="..\KinetixModManager\SteamLibraryLocator.cs" />
-    <!-- Self-contained GOG game detection, for when GOG's registry entry is missing or stale (BCL only). -->
-    <Compile Include="..\KinetixModManager\GogLibraryLocator.cs" />
-    <!-- Self-contained root-folder-mod layout classifier (depends only on the BCL). -->
-    <Compile Include="..\KinetixModManager\BethesdaLayout.cs" />
-    <!-- Self-contained INI parse/edit model behind the accessible INI editor (depends only on the BCL). -->
-    <Compile Include="..\KinetixModManager\IniDocument.cs" />
-    <!-- Self-contained Bethesda save-file parser (depends on the BCL + K4os LZ4, no app runtime). -->
-    <Compile Include="..\KinetixModManager\SaveGame.cs" />
-    <!-- Self-contained version handling for the smapi.io update check (depends only on the BCL). -->
-    <Compile Include="..\KinetixModManager\SmapiVersion.cs" />
-    <!-- Self-contained "can this mod be update-checked?" rules (BCL + GameMod metadata). -->
-    <Compile Include="..\KinetixModManager\UpdateCoverage.cs" />
-    <!-- Self-contained manifest/download-name parsing (BCL + Newtonsoft). -->
-    <Compile Include="..\KinetixModManager\ModManifest.cs" />
-    <!-- Self-contained "is this Nexus search result the same mod?" rules (BCL + GameMod metadata). -->
-    <Compile Include="..\KinetixModManager\ModNameMatch.cs" />
-    <!-- Self-contained registry of the supported games and their per-game constants (depends only on the BCL). -->
-    <Compile Include="..\KinetixModManager\GameProfiles.cs" />
-    <!-- Self-contained reader for what an nxm:// download link says it is for (depends only on the BCL). -->
-    <Compile Include="..\KinetixModManager\NxmLink.cs" />
-    <!-- Self-contained "what is this mod actually called?" rules for speech and folder names (BCL only). -->
-    <Compile Include="..\KinetixModManager\ModDisplayName.cs" />
-    <!-- Self-contained "what should this mod folder be called?" rules (BCL + ModDisplayName + Witcher3Layout). -->
-    <Compile Include="..\KinetixModManager\ModFolderTidy.cs" />
-    <!-- Self-contained BepInEx plugin identity reader (BCL only; System.Reflection.Metadata ships in-box). -->
-    <Compile Include="..\KinetixModManager\BepInExPlugin.cs" />
-    <!-- Self-contained "where does a mod folder live when enabled/disabled?" rules (BCL + GameProfiles). -->
-    <Compile Include="..\KinetixModManager\ModEnableState.cs" />
-    <!-- Self-contained reader for a game's exported keyboard bindings (BCL + Newtonsoft + GameProfiles). -->
-    <Compile Include="..\KinetixModManager\GameKeybindExport.cs" />
-    <!-- Self-contained reader for a Content Patcher pack's configurable settings (BCL + Newtonsoft). -->
-    <Compile Include="..\KinetixModManager\ContentPatcherConfig.cs" />
-    <!-- Self-contained reader for what a BepInEx config file says about its own settings (BCL only). -->
-    <Compile Include="..\KinetixModManager\BepInExConfigSchema.cs" />
-    <!-- Self-contained reader for a mod's Mod Configuration Menu (BCL + Newtonsoft + IniDocument). -->
-    <Compile Include="..\KinetixModManager\McmConfigSchema.cs" />
-    <!-- Self-contained reader for an ordinary Stardew mod's config.json + i18n labels (BCL + Newtonsoft). -->
-    <Compile Include="..\KinetixModManager\StardewModConfig.cs" />
-    <!-- Self-contained reader for The Witcher 3's own input.settings keybindings (BCL + IniDocument). -->
-    <Compile Include="..\KinetixModManager\Witcher3InputSettings.cs" />
-    <!-- Self-contained reader/writer for The Witcher 3's own mods.settings (BCL + IniDocument). -->
-    <Compile Include="..\KinetixModManager\Witcher3ModSettings.cs" />
-    <!-- Self-contained "how do you read 2,800 bindings aloud?" grouping (BCL + Witcher3InputSettings). -->
-    <Compile Include="..\KinetixModManager\Witcher3Controls.cs" />
-    <!-- Self-contained reader for a Witcher 3 mod's Options-menu declaration (BCL + System.Xml.Linq + McmConfigSchema). -->
-    <Compile Include="..\KinetixModManager\Witcher3UserConfig.cs" />
-    <!-- Self-contained "which file on this mod page do we actually need?" rules (BCL + Newtonsoft + GameProfiles). -->
-    <Compile Include="..\KinetixModManager\ModPartRules.cs" />
-    <!-- Self-contained "which folders in this archive are Witcher 3 mods?" rules (depends only on the BCL). -->
-    <Compile Include="..\KinetixModManager\Witcher3Layout.cs" />
-    <!-- Minecraft: where .minecraft lives, and reading a mod's fabric.mod.json out of its jar (BCL + Json.NET).
-         GameProfiles.cs references it for the Minecraft entry's default folder, so it has to come along. -->
-    <Compile Include="..\KinetixModManager\MinecraftLayout.cs" />
-    <!-- Builds the java command that starts Minecraft without its launcher: version merging, rule evaluation,
-         classpath and argument expansion (BCL + Json.NET + DiagnosticLog). -->
-    <Compile Include="..\KinetixModManager\MinecraftLauncher.cs" />
-    <!-- Reads latest.log to answer whether the last run of Minecraft actually had its mods (BCL only). -->
-    <Compile Include="..\KinetixModManager\MinecraftLaunchLog.cs" />
-    <!-- Reads Modrinth, where Minecraft's Fabric mods live: search results and per-version files
-         (BCL + Json.NET + GameMod). -->
-    <Compile Include="..\KinetixModManager\ModrinthService.cs" />
-    <!-- Reads Minecraft's controls from options.txt and the access mod's own keybinds (BCL + Json.NET). -->
-    <Compile Include="..\KinetixModManager\MinecraftControls.cs" />
-    <!-- Which Minecraft accessibility mod the suite installs, and what each one drags in behind it (BCL only). -->
-    <Compile Include="..\KinetixModManager\MinecraftSuite.cs" />
-    <!-- Installs Fabric without its exe: reads meta.fabricmc.net and writes the launcher's own profile list.
-         The naming, the profile upsert and the Quick Play repoint are pure and tested here (BCL + Json.NET). -->
-    <Compile Include="..\KinetixModManager\FabricInstaller.cs" />
-    <!-- Self-contained Visual C++ runtime consistency check, plus the Wine detection it defers to (BCL only). -->
-    <Compile Include="..\KinetixModManager\VcRuntimeCheck.cs" />
-    <Compile Include="..\KinetixModManager\PlatformInfo.cs" />
-    <!-- Self-contained "which script extender is installed and will it load?" reader (BCL + GameProfiles). -->
-    <Compile Include="..\KinetixModManager\ScriptExtenderInfo.cs" />
-    <!-- Self-contained Markdown outline + phrase search behind the F1/F2/F3 document viewers (BCL only). -->
-    <Compile Include="..\KinetixModManager\DocOutline.cs" />
-    <!-- Self-contained "why did the DLL plugins not load?" reader: Address Library + SKSE/F4SE log (BCL). -->
-    <Compile Include="..\KinetixModManager\ScriptExtenderPlugins.cs" />
-    <!-- Self-contained store behind the curator's list of mods worth suggesting (BCL + Newtonsoft + GameProfiles). -->
-    <Compile Include="..\KinetixModManager\SuggestedMod.cs" />
-    <!-- Self-contained read/write/merge rules for a shared suggestions list (BCL + Newtonsoft + SuggestedMod). -->
-    <Compile Include="..\KinetixModManager\SuggestionList.cs" />
-    <!-- Self-contained "is this a real key press or auto-repeat?" rule (no BCL dependency at all). -->
-    <Compile Include="..\KinetixModManager\KeyRepeatFilter.cs" />
-    <!-- Self-contained "where am I in a list divided by headings?" counting (BCL only). -->
-    <Compile Include="..\KinetixModManager\ListSections.cs" />
-    <!-- The one diagnostic log everything writes to; BCL only, so its formatting is testable directly. -->
-    <Compile Include="..\KinetixModManager\DiagnosticLog.cs" />
+    <ProjectReference Include="..\Kinetix.Core\Kinetix.Core.csproj" />
   </ItemGroup>
 
   <!-- Real files.json bodies, recorded from the Nexus API rather than written by hand. The picking rules exist
