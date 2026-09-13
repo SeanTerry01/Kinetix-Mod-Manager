@@ -1032,9 +1032,19 @@ public partial class Form1
 		// game's. (Moonlight Peaks used to fall through to Stardew Valley's.)
 		if (witcherBindings.Count == 0)
 		{
-			ModKeybinds? gameControls =
-				BuildMinecraftGameControls() ?? BuildExportedGameControls() ?? BuildHardcodedGameControls();
-			if (gameControls != null) sources.Add(gameControls);
+			// Minecraft contributes two top-level entries rather than one — the game's keys and the
+			// accessibility mod's — because its mods are jars and the loop below only recognises a mod that is
+			// a folder, so United Minecraft would otherwise never get an entry of its own.
+			List<ModKeybinds> minecraft = BuildMinecraftControlSources();
+			if (minecraft.Count > 0)
+			{
+				sources.AddRange(minecraft);
+			}
+			else
+			{
+				ModKeybinds? gameControls = BuildExportedGameControls() ?? BuildHardcodedGameControls();
+				if (gameControls != null) sources.Add(gameControls);
+			}
 		}
 
 		// The installed mods come from the manager's own scan rather than a directory walk of our own. Walking
@@ -1153,9 +1163,10 @@ public partial class Form1
 	/// ones a blind player actually reaches for and burying them among sixty vanilla bindings would be a poor
 	/// way to present them.
 	/// </summary>
-	private ModKeybinds? BuildMinecraftGameControls()
+	private List<ModKeybinds> BuildMinecraftControlSources()
 	{
-		if (!GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.Minecraft)) return null;
+		var sources = new List<ModKeybinds>();
+		if (!GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.Minecraft)) return sources;
 
 		string root = MinecraftRootFolder();
 
@@ -1165,33 +1176,37 @@ public partial class Form1
 			MinecraftControls.ReadUnitedMinecraftBindings(
 				Path.Combine(root, MinecraftControls.UnitedMinecraftKeybindsFile));
 
-		if (vanilla.Count == 0 && united.Count == 0) return null;
+		// The game's own keys first, then the accessibility mod's — the same shape and the same order every
+		// other game uses. Two entries at the top level, each opening into its own sections, rather than one
+		// "Minecraft Controls" node holding everything: no other game makes the player go a level deeper
+		// before they can see anything, and somebody who has learned the Stardew or Skyrim list should not
+		// have to learn a different shape here.
+		ModKeybinds? game = BuildMinecraftSource(Loc.T("controls.mcVanillaSection"), MinecraftControls.GroupVanilla(vanilla));
+		if (game != null) sources.Add(game);
 
-		var mod = new ModKeybinds(Loc.T("controls.mcTitle"));
+		ModKeybinds? mod = BuildMinecraftSource(Loc.T("controls.mcUnitedSection"), MinecraftControls.GroupUnitedMinecraft(united));
+		if (mod != null) sources.Add(mod);
 
-		// The game's own keys first, then the accessibility mod's — the same order every other game uses, so
-		// somebody who has learned where to find things in the Stardew or Skyrim list finds them in the same
-		// place here. Consistency across sessions beats putting the more-used section first.
-		AddMinecraftSections(mod, MinecraftControls.GroupVanilla(vanilla), Loc.T("controls.mcVanillaSection"));
-		AddMinecraftSections(mod, MinecraftControls.GroupUnitedMinecraft(united), Loc.T("controls.mcUnitedSection"));
-
-		return mod;
+		return sources;
 	}
 
 	/// <summary>
-	/// Adds one set of grouped bindings to the drill-down, each group its own named section.
+	/// One top-level controls entry from a set of grouped bindings, or <c>null</c> when there are none.
 	///
-	/// The group name carries a prefix saying which half of the list it belongs to — "Minecraft: Movement",
-	/// "United Minecraft: Build mode" — because the two halves have sections that would otherwise collide.
-	/// Both have somewhere to move around and somewhere to handle an inventory, and a bare "Inventory" would
-	/// leave the player unable to tell which one they had landed in.
+	/// Section names are plain here — "Movement", "Build mode" — because the entry they sit under already
+	/// says which list they belong to. They carried a "Minecraft:" prefix while both halves shared one entry,
+	/// and that prefix stops being clarifying and starts being noise the moment the parent supplies it.
 	/// </summary>
-	private static void AddMinecraftSections(
-		ModKeybinds mod, List<MinecraftControls.MinecraftControlSection> groups, string prefix)
+	private static ModKeybinds? BuildMinecraftSource(
+		string title, List<MinecraftControls.MinecraftControlSection> groups)
 	{
+		if (groups.Count == 0) return null;
+
+		var mod = new ModKeybinds(title);
+
 		foreach (MinecraftControls.MinecraftControlSection group in groups)
 		{
-			var section = new KbSection { Name = Loc.T("controls.mcSectionName", prefix, group.Name) };
+			var section = new KbSection { Name = group.Name };
 
 			// Unbound actions are kept rather than hidden — several of United Minecraft's ship with no key,
 			// and "this exists but you would have to bind it" is worth knowing — but the grouping has already
@@ -1201,6 +1216,8 @@ public partial class Form1
 
 			mod.Sections.Add(section);
 		}
+
+		return mod;
 	}
 
 	private ModKeybinds? BuildExportedGameControls()

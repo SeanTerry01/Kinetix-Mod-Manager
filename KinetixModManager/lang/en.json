@@ -1,17 +1,14 @@
-{
+﻿{
   "_name": "English",
-
   "common.cancel": "Cancel",
   "common.confirm": "Confirm",
   "common.changesCancelled": "Changes cancelled.",
   "common.saveAndClose": "Save and Close",
   "common.browse": "Browse",
-
   "soundDemo.title": "Sound Demo - Escape to Close",
   "soundDemo.previewTheme": "Preview Theme:",
   "soundDemo.soundList": "Sound List",
   "soundDemo.announce": "{0}. {1} of {2}",
-
   "themeMgr.title": "Audio Theme Manager - Escape to Cancel",
   "themeMgr.installedThemes": "Installed Themes",
   "themeMgr.setActive": "Set Selected as Active Theme",
@@ -29,7 +26,6 @@
   "themeMgr.confirmDelete": "Delete theme '{0}'?",
   "themeMgr.deleted": "Theme deleted.",
   "themeMgr.saved": "Theme settings saved.",
-
   "shortcutMgr.title": "Shortcut Customization - Escape to Cancel",
   "shortcutMgr.actionList": "Action List",
   "shortcutMgr.remap": "Remap Selected Action",
@@ -41,7 +37,6 @@
   "shortcutMgr.resetDone": "Reset to defaults. Press Save to confirm.",
   "shortcutMgr.saved": "Shortcuts saved.",
   "shortcutMgr.unmapped": "Unmapped",
-
   "settings.title": "Settings",
   "settings.configurePaths": "Configure Paths for Game",
   "settings.modsPath": "Mods Folder Path",
@@ -165,7 +160,6 @@
   "settings.language": "Language",
   "settings.languageAuto": "Automatic (follow Windows)",
   "settings.languageRestart": "Language will change when you restart the program.",
-
   "common.position": "{0} of {1}",
   "common.error": "Error",
   "common.listEmpty": "List is empty.",
@@ -242,30 +236,25 @@
   "credits.report": "{0} Nexus API requests remaining this hour, {1} remaining today.",
   "common.modGroupFirst": "This is a mod group. Expand it and select an individual mod first.",
   "common.close": "Close",
-
   "status.connectedAs": "Connected as {0}",
   "status.ready": "Ready.",
   "status.authRequired": "Authentication Required",
   "status.connecting": "Connecting to Nexus...",
   "status.authFailed": "Authentication Failed - Check API Key",
-
   "app.started": "Welcome to Kinetix Mod Manager. Press F1 for the manual, or Shift + F1 at any time to hear a list of shortcuts for the selected tab.",
   "app.sessionLoaded": "{0} session is loaded.",
   "app.tolkFailed": "Tolk could not be loaded. Please ensure all native DLLs (Tolk.dll, nvdaControllerClient.dll, etc.) are in the application folder or lib folder.\nError: {0}",
   "app.welcome": "Please select a game to manage from the list. Use arrow keys to select, and press Enter to confirm.",
   "app.shuttingDown": "Shutting down Kinetix Mod Manager. Goodbye.",
-
   "manual.notFound": "Manual not found.",
   "manual.toc": "Table of Contents",
   "manual.topicInfo": "Topic Information",
   "manual.windowTitle": "User Manual - Press Escape to Close",
   "manual.currentKeyMappings": "Current Key Mappings",
-
   "changelog.notFound": "Change log not found.",
   "changelog.toc": "Versions",
   "changelog.topicInfo": "Change Details",
   "changelog.windowTitle": "Change Log - Press Escape to Close",
-
   "moddocs.windowTitle": "Mod Documentation - Press Escape to Close",
   "moddocs.loading": "Loading the latest documentation, please wait.",
   "moddocs.toc": "Available Documentation",
@@ -276,7 +265,6 @@
   "moddocs.noBepInExConfigs": "No mod settings were found. A BepInEx mod writes its settings file the first time you run the game with it installed, so launch the game once and try again.",
   "moddocs.settingCurrent": "Currently set to: {0}.",
   "moddocs.settingEmpty": "nothing",
-
   "history.viewTitle": "Search History",
   "history.scopeName": "Show searches from",
   "history.listName": "Past searches",
@@ -298,13 +286,11 @@
   "prompt.retry": "&Retry",
   "prompt.abort": "&Abort",
   "prompt.ignore": "&Ignore",
-
   "history.deleteTitle": "Delete Search",
   "history.clearTitle": "Clear Search History",
   "history.deleteConfirm": "Delete \"{0}\" from the search history?",
   "history.deleted": "Deleted {0}. {1} searches left.",
   "history.deletedNowEmpty": "Deleted {0}. The search history is now empty.",
-
   "doc.intro": "Introduction",
   "doc.posGroup": "{0} of {1}, has sub-topics. Press right arrow to open, left arrow to go back.",
   "doc.navHint": "Press right arrow or Enter to open a section that has sub-topics, left arrow or Backspace to go back, and Tab to read the text. Press Control plus F to search. Press Shift plus F1 for help.",
@@ -325,14 +311,12 @@
   "docsearch.noneLeft": "Nothing was found for {0}. Press Control plus F to search for something else.",
   "docsearch.wrappedToStart": "Back to the first result.",
   "docsearch.wrappedToEnd": "Back to the last result.",
-
   "about.title": "About Kinetix Mod Manager",
   "about.close": "Close About dialog",
   "about.viewTitle": "About Kinetix Mod Manager",
   "about.bodyName": "Program information",
   "about.body": "Kinetix Mod Manager\nVersion: {0}\nPublisher: Audi Venture Games\nWebsite: https://github.com/SeanTerry01/Kinetix-Mod-Manager\n\nKinetix Mod Manager is a fully keyboard-driven, screen-reader-accessible mod manager for {1}. It is built for the blind and visually impaired gaming community, with spoken feedback, full keyboard control, and audio cues throughout.\n\nWith it you can install and manage your mods, check for and apply updates through Nexus Mods, discover new mods, save and switch between mod profiles, keep automatic backups, browse an accessible game wiki, and read the log your game's mod loader writes.\n\nKinetix Mod Manager works with NVDA, JAWS, and SAPI-based screen readers via Tolk.\n\nCopyright (C) 2026 Audi Venture Games.\nProvided as-is for personal and community use.",
   "common.listAnd": "{0} and {1}",
-
   "donate.viewTitle": "Support Kinetix Mod Manager",
   "donate.body": "Hey there! I build and maintain the Kinetix Mod Manager in my free time. If it’s brought you value, buying me a coffee or leaving a small donation goes a long way toward keeping the project alive. Thanks for the support!\n\nPayPal: https://paypal.me/chipper15\nCash App: $SeanTerry01",
   "donate.messageName": "Message from the author",
@@ -351,7 +335,6 @@
   "donate.openFailedCopied": "Could not open your browser for {0}. The link has been copied to the clipboard instead: {1}",
   "donate.openFailed": "Could not open your browser for {0}. The link is {1}",
   "donate.close": "Close the support view",
-
   "controls.treeName": "Controls",
   "controls.rootLevel": "Controls",
   "controls.navHint": "Press right arrow or Enter to open an item, left arrow or Backspace to go back. Press Shift plus F1 for help.",
@@ -359,7 +342,7 @@
   "controls.posGroup": "{0} of {1}, group. Press right arrow to open, left arrow to go back.",
   "controls.editConfig": "Edit Selected Mod Configuration",
   "controls.close": "Close Controls Guide",
-  "controls.windowTitle": "Accessibility Controls for {0} - Press Escape to Close",
+  "controls.windowTitle": "Game and Mod Controls for {0} - Press Escape to Close",
   "controls.editConfigBtn": "Edit Mod Configuration (Enter)",
   "controls.closeBtn": "Close (Escape)",
   "controls.gameKeysLive": "Game Controls (Your Bindings)",
@@ -373,7 +356,6 @@
   "controls.w3KeyGroup": "{0}, {1} things it does",
   "controls.w3KeyRow": "{0}: {1}",
   "controls.w3ActionInSituation": "{0}, {1}",
-
   "keybindReader.offerSpeak": "The keybind reader is not installed.",
   "keybindReader.offerBox": "{0} decides its key bindings while it is running and stores them nowhere the manager can read, so the controls list (Control plus H) can only show the game's default keys.\n\nThe manager can install a small mod, the Keybind Export, which writes your bindings out to a file each time you play. The controls list then shows your own keys, including any you have remapped. It has no keys of its own, no menus, and does not change how the game plays.\n\nIt is 15 kilobytes and is already included with the manager, so nothing is downloaded. Install it?",
   "keybindReader.offerTitle": "Install the Keybind Reader?",
@@ -381,7 +363,6 @@
   "keybindReader.installFailed": "The keybind reader could not be installed. The controls list will keep showing the game's default keys.",
   "keybindReader.declined": "Left alone. The controls list will show the game's default keys.",
   "keybindReader.updated": "Keybind reader updated to version {0}.",
-
   "cpconfig.title": "{0} Settings",
   "cpconfig.row": "{0}: {1}",
   "cpconfig.rowDefault": "{0}: {1}, default",
@@ -397,7 +378,6 @@
   "cpconfig.reset": "{0} put back to the default, {1}.",
   "cpconfig.alreadyDefault": "{0} is already at the mod author's default.",
   "cpconfig.saveFailed": "Could not save the change to {0}. The mod's settings file may be read-only or in use.",
-
   "bepcfg.chooseTitle": "{0}",
   "bepcfg.chooseListName": "Values allowed for {0}",
   "bepcfg.chooseHint": "{0} Currently {1}. Choose a value and press Enter, or press Escape to leave it unchanged.",
@@ -407,7 +387,6 @@
   "bepcfg.invalidBoolean": "That setting must be true or false.",
   "bepcfg.invalidNumber": "That setting must be a number.",
   "bepcfg.invalidRange": "That number is outside the allowed range, {0} to {1}.",
-
   "mcm.title": "{0} Settings",
   "mcm.row": "{0}: {1}",
   "mcm.rowHeading": "{0}, heading",
@@ -431,7 +410,6 @@
   "mcm.headingNotEditable": "That is a heading, not a setting.",
   "mcm.keyNotEditable": "Key bindings are shown here but changed in the game's own controls menu, so the game records the key exactly as it expects it.",
   "mcm.keyUnassigned": "Unassigned",
-
   "sdvconfig.title": "{0} Settings",
   "sdvconfig.row": "{0}: {1}",
   "sdvconfig.valueEmpty": "empty",
@@ -448,7 +426,6 @@
   "sdvconfig.saveFailed": "Could not save {0}. The mod's settings file may be read-only or in use.",
   "sdvconfig.otherValue": "Something else (type it)",
   "sdvconfig.chooseKeyHint": "{0} Currently {1}. Choose a key and press Enter, or choose Something else to type a key combination. Escape leaves it unchanged.",
-
   "config.fileNotFound": "{0} file not found.",
   "config.couldNotRead": "Could not read {0} file.",
   "config.saveChanges": "Save Changes",
@@ -469,7 +446,6 @@
   "config.textEditorName": "File contents",
   "config.saveBtn": "Save (Ctrl+S)",
   "config.cancelBtn": "Cancel (Escape)",
-
   "session.closed": "Game session closed. Returned to game selection screen.",
   "session.switched": "Switched to {0}. Loading mod list.",
   "session.selectGameList": "Select Game List",
@@ -487,7 +463,6 @@
   "session.locateBrowseDesc": "Select the folder where {0} is installed",
   "session.locatedSpeak": "Found {0}. Loading mod list.",
   "session.locateInvalidBox": "That folder does not contain {0}.\n\nPlease choose the folder that holds the game's program file (for example the folder containing the game's .exe).",
-
   "modparts.partOf": "{0} of {1}",
   "modparts.noGameFolder": "The manager does not know where {0}'s game folder is yet, so it cannot install this.",
   "modparts.alreadyComplete": "{0} is already fully installed.",
@@ -517,10 +492,8 @@
   "health.rowLeftover": "No longer used: {0}",
   "health.sumLeftoverOne": "1 file no longer used",
   "health.sumLeftoverMany": "{0} files no longer used",
-
   "settings.modsInGameFolder": "Store this copy's mods inside the game folder",
   "settings.modsInGameFolderDesc": "Keeps this copy's mods in a KinetixMods folder inside the game, instead of in the manager's folder under AppData. Uninstalling the game would delete them.",
-
   "modsfolder.title": "Where Mods Are Stored",
   "modsfolder.notApplicable": "This game keeps its mods inside the game folder already, so there is nothing to move.",
   "modsfolder.needGameFolderSpeak": "Set this copy's game folder first.",
@@ -534,16 +507,13 @@
   "modsfolder.done": "Moved {0} mods. They are now stored in {1}.",
   "modsfolder.failedSpeak": "The mods could not be moved. They have been left where they were.",
   "modsfolder.failedBox": "The mods could not be moved, so they have been left where they were:\n{0}\n\nReason: {1}",
-
   "copies.foundTitle": "Another Copy Found",
   "copies.foundSpeak": "Found {0} more copies of games you already have. Press Enter for details.",
   "copies.foundLine": "{0} — {1}",
   "copies.foundBox": "You own more than one copy of a game, and the manager has found them all:\n\n{0}\n\nEach copy is listed separately in the Games menu and keeps its own mods, load order and backups. Installing a mod for one copy does not install it for the other.",
-
   "games.noneDetectedSpeak": "No supported games were detected on your PC. Kinetix Mod Manager supports Stardew Valley, Skyrim Special Edition, and Fallout 4.",
   "games.noneDetectedBox": "No supported games were detected on your PC.\nKinetix Mod Manager supports:\n- Stardew Valley\n- Skyrim Special Edition\n- Fallout 4\n\nWould you like to purchase any of these games?",
   "games.noneDetectedTitle": "No Games Detected",
-
   "store.selectGamePurchase": "Select game to purchase",
   "store.selectGameSpeak": "Select a game to view store links. Use arrow keys to navigate and press Enter to select.",
   "store.selectStorePage": "Select store page",
@@ -556,7 +526,6 @@
   "store.purchaseTitle": "Purchase {0} - Escape to Close",
   "store.whereBuyLabel": "Where would you like to buy {0}?",
   "store.openStorePage": "Open Store Page",
-
   "launch.launching": "Launching {0}...",
   "launch.gameClosed": "Game closed.",
   "launch.gameRunning": "Game is loaded and running.",
@@ -569,7 +538,6 @@
   "launch.addrLibSpeak": "Warning. Some mods will not load.",
   "launch.addrLibTitle": "Address Library Is Behind Your Game",
   "launch.addrLibBox": "Your game is version {0}, but the Address Library only has data up to version {1}. {2} itself is fine — the problem is one step below it. Mods with a DLL plugin that uses the Address Library, which usually includes the accessibility mod, the Mod Configuration Menu and the crash logger, will be skipped and the game will start without them saying anything.\n\nThis is not something your setup can fix: it needs the Address Library's author to publish a version for {0}, and every mod with its own DLL plugin needs the same. Until then the game runs, but largely unmodded.\n\nLaunch anyway?",
-
   "bepinex.name": "BepInEx",
   "bepinex.missingSpeak": "BepInEx is not installed. Your mods will not load.",
   "bepinex.missingBox": "{0} loads its mods through BepInEx, and BepInEx is not installed. Until it is, the game will start normally but none of your mods will run, and nothing in the game will say so. Download and install BepInEx {1} now?",
@@ -583,7 +551,6 @@
   "bepinex.versionDiffersTitle": "Different BepInEx Version",
   "bepinex.launchWithoutSpeak": "BepInEx is not installed. The game will start with no mods.",
   "bepinex.launchWithoutBox": "BepInEx is not installed, so the game will start with none of your mods loaded. Start it anyway?",
-
   "smapi.logNotFound": "SMAPI log not found.",
   "smapi.foundResults": "Found {0} results. Enter to jump to line in full view.",
   "smapi.uploading": "Uploading log to SMAPI.io...",
@@ -599,7 +566,6 @@
   "smapi.linkGitHub": "GitHub page",
   "smapi.linkSmapi": "SMAPI.io",
   "smapi.linkGeneric": "Link",
-
   "profiles.savePrompt": "What should this profile be called? Enter to save it, Escape to cancel.",
   "profiles.saveTitle": "Save a Profile - Escape to Cancel",
   "profiles.nameEmpty": "A profile needs a name. Nothing saved.",
@@ -611,7 +577,6 @@
   "profiles.applied": "Profile applied: {0}",
   "profiles.applyFailed": "Failed to apply profile: {0}",
   "profiles.listItemPos": "{0}. {1} of {2}",
-
   "modlist.updateInProgress": "Update check already in progress.",
   "modlist.modsPathInvalid": "Mods path invalid.",
   "modlist.noUpdateSources": "No mods found with update sources to check.",
@@ -642,7 +607,6 @@
   "modlist.refreshingInstalled": "Refreshing installed mods.",
   "modlist.refreshedInstalled": "Refreshed installed mods.",
   "modlist.refreshAlreadyRunning": "Already refreshing.",
-
   "login.pasteApiKey": "Paste your Nexus Mods API key. Enter to save it, Escape to cancel.",
   "login.title": "Nexus Login - Escape to Cancel",
   "login.keyEmpty": "No key entered. Your existing key is unchanged.",
@@ -653,7 +617,6 @@
   "link.success": "Mod linked successfully.",
   "link.saveFailedBox": "Failed to save Update Source: {0}",
   "link.failed": "Failed to link mod.",
-
   "modactions.categorySet": "Category for {0} set to {1}.",
   "modactions.notePrompt": "Your note about {0}. Clear the box to remove the note. Enter to save, Escape to cancel.",
   "modactions.noteTitle": "Mod Note - Escape to Cancel",
@@ -700,7 +663,6 @@
   "modactions.deleteBackupFailedBox": "Delete failed: {0}",
   "modactions.depReq": "required",
   "modactions.depOpt": "optional",
-
   "deps.title": "Dependencies — {0}",
   "deps.header": "Dependency view for {0}. Requires, then required by.",
   "deps.selectMod": "Select an installed mod first.",
@@ -719,7 +681,6 @@
   "deps.checkingReqs": "Checking online requirements for {0}...",
   "deps.reverseStardew": "{0}",
   "deps.reverseBethesda": "{0} (its {1} needs {2})",
-
   "deps.resolveTitle": "Resolve Missing Requirements",
   "deps.resolveNoneMissing": "No missing required mods for this mod.",
   "deps.resolveNotSupported": "Resolving requirements isn't available for this game.",
@@ -737,7 +698,6 @@
   "deps.resolveReportFailed": "Failed: {0} ({1})",
   "deps.resolveReportHeader": "Resolved requirements for {0}: {1} installed, {2} to download manually, {3} failed.",
   "deps.resolveReportHint": "Press Enter on a row to open its Nexus files page.",
-
   "err.accessDenied": "access was denied — the file may be read-only, open in another program, or need administrator rights",
   "err.diskFull": "the disk is full",
   "err.fileInUse": "the file is in use by another program",
@@ -749,7 +709,6 @@
   "err.generic": "an unexpected error occurred",
   "err.noModInArchive": "that download doesn't contain a mod for this game — no manifest.json inside. It is probably the wrong file, or the mod is linked to the wrong Nexus page. Select the mod in the Installed list and press Control K to correct its link",
   "err.actionFailed": "{0}: {1}.",
-
   "broken.title": "Broken Mod Check",
   "broken.header": "Mods known to have problems — {0}.",
   "broken.noGame": "Load a game first to check for broken mods.",
@@ -762,7 +721,6 @@
   "broken.warnRow": "{0} ({1}): {2}",
   "broken.listName": "Broken Mods List",
   "broken.looseFilesOff": "Loose file loading is off, but some installed mods provide loose files. Fallout 4 will ignore them until you enable \"Load Loose Mod Files\" on the Mods tab in Settings.",
-
   "updateAll.premiumSpeak": "Update All is a Nexus Mods Premium feature. Free users must update mods individually via the browser.",
   "updateAll.premiumBox": "Updating multiple mods automatically requires a Nexus Mods Premium account. Free users must download and install updates one-by-one.",
   "updateAll.premiumTitle": "Premium Feature Required",
@@ -811,14 +769,13 @@
   "modactions.uninstallerRunning": "Running the uninstaller for {0}. Please wait.",
   "modactions.uninstallerFinished": "{0} has been uninstalled.",
   "modactions.uninstallerFailedBox": "The mod's uninstaller could not be started: {0}",
-  "install.runInstallerBox":"This mod installs itself by running its own installer, {0}.\n\nThe manager has downloaded and unpacked it. Run the installer now?\n\nIt opens in its own window. When you finish it, the manager takes over again and adds the mod to your list.",
+  "install.runInstallerBox": "This mod installs itself by running its own installer, {0}.\n\nThe manager has downloaded and unpacked it. Run the installer now?\n\nIt opens in its own window. When you finish it, the manager takes over again and adds the mod to your list.",
   "install.runInstallerTitle": "Run the Mod's Installer?",
   "install.installerDeclined": "Installer not run. The mod was not installed.",
   "install.installerRunning": "Running {0}. The manager is waiting for it to finish.",
   "install.installerCancelled": "The installer closed without finishing. The mod was not installed.",
   "install.installerFinished": "The installer finished. Adding the mod to your list.",
   "install.installerFailedBox": "The mod's installer could not be started: {0}",
-
   "progress.downloadingName": "Downloading {0}",
   "progress.installingName": "Installing {0}",
   "progress.backingUpName": "Backing up {0}",
@@ -830,7 +787,6 @@
   "progress.feedbackTones": "Tones",
   "progress.feedbackSpeech": "Speech",
   "progress.feedbackBoth": "Both",
-
   "reports.conflictTitle": "File Conflict Report",
   "reports.conflictHeader": "Files provided by more than one enabled mod (highest priority wins):",
   "reports.conflictNone": "No file conflicts. No two enabled mods provide the same file.",
@@ -880,7 +836,6 @@
   "reports.verifyNotApplicable": "File verification applies to Skyrim and Fallout 4. Stardew mods load from their own folders.",
   "reports.verifySelectMod": "Select an installed mod first, then run Verify Mod Files.",
   "reports.verifyNoGamePath": "No game folder is set for this game, so files can't be verified.",
-
   "health.title": "Setup Health Check",
   "health.noGame": "Load a game first to check your setup.",
   "health.checking": "Checking your setup: requirements, broken mods, and file conflicts...",
@@ -906,7 +861,6 @@
   "health.runtimeFile": "{0} is {1}",
   "health.runtimeMismatch": "Your Visual C++ runtime files do not match each other: {0}, but the rest of the set is {1}. Mixed files like this stop mods that are program files from loading, including the accessibility mods, usually with no error and no speech at all. Repairing the Microsoft Visual C++ Redistributable fixes it. Press Enter to open Microsoft's download page.",
   "health.runtimeMissing": "The Microsoft Visual C++ Redistributable does not appear to be installed. Mods that are program files, including the accessibility mods, cannot load without it. Press Enter to open Microsoft's download page.",
-
   "pluginlimit.notApplicable": "Plugin slots apply to Skyrim and Fallout 4. Stardew mods have no plugin limit.",
   "pluginlimit.summary": "Plugin slots: {0} of {1} regular plugins used, {2} remaining. {3} of {4} light plugins used.",
   "pluginlimit.warnNear": "You are approaching the regular plugin limit — only {0} slots left. Convert eligible plugins to light (ESL) to free up space.",
@@ -917,7 +871,6 @@
   "pluginlimit.rowOver": "{0} of {1} regular plugin slots used — over the limit. The game will drop plugins or fail to launch until you disable some or convert them to light (ESL).",
   "pluginlimit.rowLightNear": "{0} of {1} light (ESL) plugin slots used — approaching the limit.",
   "pluginlimit.rowLightOver": "{0} of {1} light (ESL) plugin slots used — over the limit.",
-
   "wizard.title": "Setup Wizard",
   "wizard.header": "Welcome to Kinetix Mod Manager. Let's get you set up.",
   "wizard.listName": "Setup Steps",
@@ -931,7 +884,6 @@
   "wizard.stepFolder": "Confirm your game folder",
   "wizard.goPickGame": "Choose your game from the list, then reopen the Setup Wizard from the Help menu to finish.",
   "wizard.needGameFirst": "Choose a game first, then set its folder.",
-
   "prep.notApplicable": "Preparing for a game update applies to Skyrim and Fallout 4.",
   "prep.noGamePath": "No game folder is set for this game, so it can't be prepared for an update.",
   "prep.alreadyVanilla": "No mods are deployed, so the game folder is already vanilla and ready to update.",
@@ -944,10 +896,8 @@
   "prep.restoreTitle": "Restore Mods After Game Update",
   "prep.restoreWorking": "Redeploying your mods...",
   "prep.restoreDone": "Restored {0} mods with {1} file conflicts.",
-
   "cleanup.freed": "Freed {0} of temporary files.",
   "cleanup.nothing": "No temporary files to clear. Everything is already tidy.",
-
   "safety.notApplicable": "Safety backups apply to Skyrim and Fallout 4.",
   "safety.none": "There are no safety backups yet. One is taken automatically before you purge, rebuild, or edit game settings.",
   "safety.title": "Restore a Safety Backup",
@@ -966,7 +916,6 @@
   "safety.restoreFailed": "Could not restore the safety backup. {0}",
   "safety.deleted": "Backup deleted. {0} remaining.",
   "safety.deletedLast": "Backup deleted. No safety backups remain.",
-
   "rules.notApplicable": "Load order rules apply to Skyrim and Fallout 4 plugins.",
   "rules.selectFirst": "Select a plugin on the Plugin Order tab first, then add a rule for it.",
   "rules.noOthers": "There are no other plugins to make a rule with.",
@@ -989,7 +938,6 @@
   "rules.row": "{0} loads after {1}",
   "rules.removed": "Rule removed. {0} remaining.",
   "rules.removedLast": "Rule removed. No rules remain.",
-
   "conflictfix.notApplicable": "File conflict winners apply to Skyrim and Fallout 4, where mods share a game folder.",
   "conflictfix.none": "There are no file conflicts to resolve. No two enabled mods overwrite the same file.",
   "conflictfix.title": "Choose File Conflict Winners",
@@ -1003,7 +951,6 @@
   "conflictfix.changed": "{0} is now provided by {1}.",
   "conflictfix.reverted": "{0} reverted to priority order. Winner is {1}.",
   "conflictfix.noOverride": "{0} is already using priority order.",
-
   "tracked.noGame": "Load a game first to check your tracked mods.",
   "tracked.needConnect": "Connect to Nexus with your API key first to check your tracked mods.",
   "tracked.checking": "Checking your Nexus tracked mods for updates...",
@@ -1018,7 +965,6 @@
   "tracked.actionHint": "Press Enter to open a mod's Nexus files page.",
   "tracked.rowNotInstalled": "{0} — not installed. Latest version {1}, updated {2}.",
   "tracked.rowUpdate": "{0} — update available. You have {1}, latest is {2}, updated {3}.",
-
   "downloads.noGame": "Load a game first to see its downloaded mods.",
   "downloads.none": "No downloaded mod archives were found for this game.",
   "downloads.title": "Reinstall a Downloaded Mod",
@@ -1033,7 +979,6 @@
   "downloads.deleted": "Download deleted. {0} remaining.",
   "downloads.deletedLast": "Download deleted. No downloads remain.",
   "downloads.deleteFailed": "Could not delete the download. {0}",
-
   "saves.notApplicable": "Save management applies to Skyrim and Fallout 4. Stardew saves are handled by the game.",
   "saves.noFolder": "No saves folder was found for {0}. It appears once you have saved in-game at least once.",
   "saves.none": "No save files were found for {0}.",
@@ -1062,11 +1007,9 @@
   "saves.deleteFailed": "Could not delete the save. {0}",
   "saves.backedUp": "Backed up {0} to your save backups folder.",
   "saves.backupFailed": "Could not back up the save. {0}",
-
   "guardian.title": "Game Update Detected",
   "guardian.updatedSe": "{0} updated from version {1} to {2} since you last opened the manager. {3} and any DLL-based plugins almost always need a matching update before the game will launch. Open the {3} page to check for an update now?",
   "guardian.updatedNoSe": "{0} updated from version {1} to {2} since you last opened the manager. If any of your mods rely on DLL plugins (script-extender style), check that they support the new game version before launching.",
-
   "witcher.settingsWarningTitle": "Witcher 3 Settings",
   "witcher.settingsGameRunningBox": "The Witcher 3 appears to be running. It rewrites its settings file when it exits, so anything changed now will be overwritten when you quit the game, without any warning. Close the game first if you can. Open the settings anyway?",
   "witcher.settingsReadOnlyBox": "The Witcher 3 settings file is marked read-only. While it is, the game itself silently fails to save any setting you change in-game, and changes made here cannot be saved either. Make the file writable now?",
@@ -1164,7 +1107,6 @@
   "coverage.rowBundled": "Covered: {0}, version {1}, updates with {2} ({3}).",
   "coverage.viaNexus": "Nexus ID {0}",
   "coverage.viaGitHub": "GitHub {0}",
-
   "suite.statusName": "Accessibility Mods Status",
   "suite.installerTitle": "{0} Accessibility Suite Installer - Escape to Close",
   "suite.statusTitle": "{0} Accessibility Suite Status",
@@ -1179,10 +1121,8 @@
   "suite.startInstall": "Starting accessibility suite installation.",
   "settings.apiKeyNotNeeded": "Nexus Mods API key: not needed for {0}, which gets its mods from elsewhere.",
   "settings.apiKeySkipHint": "Only needed for games whose mods come from Nexus Mods. If you play Minecraft, you can leave this blank.",
-  "controls.mcTitle": "Minecraft Controls",
   "controls.mcUnitedSection": "United Minecraft",
   "controls.mcVanillaSection": "Minecraft",
-  "controls.mcSectionName": "{0}: {1}",
   "mc.launch.starting": "Starting Minecraft...",
   "mc.launch.startingSpeak": "Starting Minecraft as {0}. The game will speak once it reaches the main menu.",
   "mc.launch.noFabricTitle": "Fabric is not installed",
@@ -1235,7 +1175,6 @@
   "suite.smapiInstalled": "SMAPI installed successfully.",
   "suite.smapiUnconfirmed": "SMAPI installation could not be confirmed. Opening the SMAPI page so you can install it manually.",
   "suite.smapiAutoFailed": "Automatic SMAPI install failed. Opening the SMAPI download page.",
-
   "se.lineVersion": ", version {0}",
   "se.lineMatch": ", built for game {0}, which matches your game",
   "se.lineMismatch": ", built for game {0}, but your game is {1}, so it will not load — reinstall it",
@@ -1250,7 +1189,6 @@
   "se.uninstallDonePartial": "Removed the {0} loader and {1} files. Some script files may remain because this copy of {0} was installed before the manager tracked its files. To remove everything, reinstall {0} from Install Accessibility Suite and then uninstall it again.",
   "se.uninstallFailed": "Could not uninstall {0}.",
   "se.uninstallFailedBox": "Uninstall failed: {0}",
-
   "wiki.searchAcc": "Search {0}",
   "wiki.noCategories": "No categories — browse this wiki in the view",
   "wiki.categoriesUnavailable": "Categories could not be loaded - search the wiki instead",
@@ -1267,7 +1205,6 @@
   "wiki.loadingPage": "Loading page: {0}",
   "wiki.backTo": "Back to {0}",
   "wiki.atTopLevel": "Already at top level.",
-
   "modlist.found": "{0} mods found.",
   "modlist.foundWithGroups": "{0} mods found. {1} rows, including {2} mod groups.",
   "discovery.loginFirst": "Please login first.",
@@ -1290,12 +1227,10 @@
   "discovery.languageHiding": "That is {0} of this game's {1} mods. The {2} language filter hides the rest, because most mod authors leave the language field blank. Set Language to Any language to see them all.",
   "discovery.loadMoreRow": "Load more results, press Enter",
   "discovery.errorBox": "Discovery Error: {0}",
-
   "status.titleFormat": "{0} Kinetix Mod Manager - Status: {1}",
   "helpers.suggestedFixSuffix": ". Suggested Fix: {0}",
   "helpers.pressEnterOpenPage": ". Press Enter to open mod page.",
   "helpers.pressEnterChoose": ". Press Enter to choose from {0} links.",
-
   "help.installed": "Installed Mods: Space to Toggle. Delete to remove mod. {0} to Search. {1} to change Category. {2} to batch toggle Category. {3} for Nexus. {4} for dependencies. {5} to Quick-Fix. {6} for Nexus ID. {7} to install zip. {8} to save as profile. {9} to read description. {10} to change the mod's settings. {11} to edit its config file directly. {12} to edit the mod's manifest file. {13} to launch game.",
   "help.updates": "Updates: Enter for Nexus page. Delete to Ignore this update. {3} to record the offered version as the one you already have. {0} to Update All (Premium). {1} to read description. {2} to launch game.",
   "help.backups": "Backups: Enter to restore. Delete to remove zip. {0} to delete old backups. {1} to open backups folder.",
@@ -1308,7 +1243,6 @@
   "help.gameLog": "Log: View the logs your game and its script-extender plugins write, such as f4se dot log, the per-mod logs, and your accessibility mod's log. Use the Log dropdown to choose which file to view, the Filter dropdown for Full Log or Errors and Warnings, and the Search box to find text. Arrow through the lines. {0} refreshes the log, even while the game is running. Control C copies the selected lines. {1} opens the raw file.",
   "help.creations": "Creations: Bethesda Creations are downloaded inside the game from its Creations menu, or queued from the Bethesda dot net website, never by a mod manager. This list shows the Creations already installed in your game's Data folder, whether each is active, and if it is a master or light master. Use the Up and Down arrows to move through the list, and press Space to activate or deactivate the selected Creation. To change their load order, use the Plugin Order tab.",
   "help.smapiLog": "SMAPI Log: Filter dropdown includes Errors Only, Errors and Warnings, Full Log, and Links Only. Search box available. Enter on a line with a link opens it, or lists the links to choose from when there are several; Enter on a search result jumps to it in full view. {0} to diagnose and fix the selected line. Control C to copy selected lines to the clipboard. {1} to refresh the log, even while the game is running. {2} to upload to SMAPI.io. {3} to open raw file.",
-
   "loadorder.disabledSuffix": ". Disabled",
   "loadorder.conflictWins": ". Overrides {0} files",
   "loadorder.conflictLoses": ". Overridden in {0} files",
@@ -1385,17 +1319,14 @@
   "loadorder.importError": "Could not read that load order file: {0}",
   "loadorder.importInvalid": "That file does not contain a load order.",
   "loadorder.importGameMismatch": "That load order is for {0}, but {1} is currently loaded. Load the matching game first.",
-
   "creations.activeSuffix": ". Active",
   "creations.inactiveSuffix": ". Inactive",
   "creations.activated": "Activated {0}.",
   "creations.deactivated": "Deactivated {0}.",
-
   "gamelog.filterAll": "Full Log",
   "gamelog.filterErrors": "Errors and Warnings",
   "gamelog.foundResults": "{0} lines.",
   "gamelog.refreshed": "Log refreshed, {0} lines.",
-
   "mo2.title": "Import from Mod Organizer 2",
   "mo2.notApplicable": "Importing from Mod Organizer 2 only applies to Skyrim and Fallout 4.",
   "mo2.needModsPath": "Set the mods folder for this game in Settings before importing.",
@@ -1413,7 +1344,6 @@
   "mo2.copying": "Copying {0} of {1}: {2}",
   "mo2.done": "Imported {0} mods from Mod Organizer 2: {1} enabled, {2} disabled. {3} active plugins. {4} skipped as already present, {5} not found.",
   "mo2.error": "Import failed: {0}",
-
   "ui.searchInstalled": "Search Installed Mods",
   "ui.installedList": "Installed Mods List",
   "ui.updatesList": "Available Updates List",
@@ -1446,7 +1376,6 @@
   "ui.wikiContent": "Wiki Content View",
   "ui.walkthroughList": "Walkthrough Guides List",
   "ui.walkthroughContent": "Walkthrough Content View",
-
   "sound.connect": "Played when successfully connected to Nexus Mods.",
   "sound.disconnect": "Played when you are disconnected, need to enter an API key, or when the program closes.",
   "sound.enable": "Played when one or more mods are enabled.",
@@ -1454,7 +1383,6 @@
   "sound.error": "Played when an error occurs, such as a failed download.",
   "sound.loading_indicator": "A pulsing sound that plays while the manager is checking for updates in the background.",
   "sound.load_complete": "Played when the manager has finished checking all mods for updates.",
-
   "menu.file": "&File",
   "menu.refreshAll": "Refresh All ({0})",
   "menu.refreshInstalled": "Refresh Installed Only ({0})",
@@ -1580,12 +1508,11 @@
   "menu.userManual": "User Manual ({0})",
   "menu.changeLog": "View Change Log ({0})",
   "menu.modDocs": "Mod Documentation ({0})",
-  "menu.accessibilityControls": "Accessibility Controls ({0})",
+  "menu.accessibilityControls": "Game and Mod Controls ({0})",
   "menu.soundDemo": "Sound Demo",
   "menu.themeManager": "Audio Theme Manager",
   "menu.donate": "Support Development (Donate)",
   "menu.shortcutCustomization": "Shortcut Customization",
-
   "tab.installed": "Installed Mods",
   "tab.updates": "Updates Available",
   "tab.backups": "Backups",
@@ -1612,7 +1539,6 @@
   "tab.walkFallout": "Fallout 4 Walkthroughs",
   "tab.walkStardew": "Stardew Walkthroughs",
   "tab.walkMoonlight": "Moonlight Peaks Walkthroughs",
-
   "ui.appTitle": "Kinetix Mod Manager",
   "ui.appTitleGame": "{0} Kinetix Mod Manager",
   "ui.searchLabel": "Search:",
@@ -1640,7 +1566,6 @@
   "ui.searchWikiFallout": "Search Fallout 4 Wiki",
   "ui.searchWikiStardew": "Search Stardew Wiki",
   "ui.searchWikiMoonlight": "Search Moonlight Peaks Wiki",
-
   "fomod.wizardTitle": "{0} - Installation Options - Escape to Cancel",
   "fomod.windowTitle": "Installing {0}. Step {1} of {2}. {3}",
   "fomod.stepAnnounce": "{0}. Step {1} of {2}.",
@@ -1658,7 +1583,6 @@
   "fomod.errorAtLeastOne": "Please choose at least one option in the group: {0}.",
   "fomod.installing": "Installing your selected options.",
   "fomod.cancelled": "Mod installation cancelled.",
-
   "menu.groupCurate": "Suggested Mods",
   "menu.suggestedMods": "Suggested Mods for This Game ({0})",
   "menu.curationMode": "Curation Mode ({0})",
@@ -1668,7 +1592,6 @@
   "menu.manageCategories": "Manage Categories",
   "menu.importSuggestions": "Import a Suggested Mods List...",
   "menu.exportSuggestions": "Export Your Suggested Mods...",
-
   "share.fileFilter": "Suggested mods list (*.json)|*.json|All files (*.*)|*.*",
   "share.cancelled": "Nothing changed.",
   "share.exportTitle": "Export Your Suggested Mods",
@@ -1687,7 +1610,6 @@
   "share.exportedBox": "Saved {0} suggestions.\n\nFile name: {1}\nFull path: {2}\n\nThe file is on disk and has been checked - it is there.",
   "share.saveFailedBox": "The file was NOT saved.\n\nWhere it was going: {0}\n\nWhat went wrong: {1}\n\nThe details are in the log - press Control plus Shift plus L to open it. Try a folder inside your Documents or Desktop, which is somewhere you are always allowed to write.",
   "share.saveVanished": "The file was written but is not there afterwards ({0}). Something outside the manager - a sync client, security software, or Windows folder protection - removed or redirected it.",
-
   "share.importTitle": "Import a Suggested Mods List",
   "share.fromAuthor": "{0}, by {1}",
   "share.fromUnknown": "{0}",
@@ -1701,7 +1623,6 @@
   "share.conflictKeepMine": "Keep what I already wrote, for all of them",
   "share.conflictTakeTheirs": "Use this list's wording, for all of them",
   "share.conflictDecideEach": "Let me see each one and decide ({0} to go through)",
-
   "share.pickPosition": "{0} of {1}",
   "share.pickMine": "Mine: {0}",
   "share.pickTheirs": "Theirs: {0}",
@@ -1716,7 +1637,6 @@
   "share.imported": "Imported. {0} added, {1} replaced, {2} of yours kept, {3} already the same.",
   "share.importedCategories": "{0} new categories came with it.",
   "share.importFailed": "Could not save the imported list. {0}",
-
   "suggested.title": "Suggested Mods for {0} - Escape to Close",
   "suggested.listName": "Suggested Mods List",
   "suggested.listDesc": "Mods that make this game easier to play by ear. Press Enter on one to install it. Every mod here is optional.",
@@ -1739,7 +1659,6 @@
   "suggested.openedPage": "Opened the page for {0}.",
   "suggested.noPage": "There is no page recorded for {0}.",
   "suggested.pageFailed": "Could not open the page for {0}.",
-
   "curator.modeOn": "Curation mode on. {0} marks or unmarks the mod you are on, {1} reads back what you have marked.",
   "curator.modeOff": "Curation mode off.",
   "curator.unmarkTitle": "Remove From Suggested Mods",
@@ -1760,7 +1679,6 @@
   "curator.categoryNameEmpty": "A category needs a name. Nothing added.",
   "curator.categoryNameTaken": "There is already a category called {0}. Nothing added.",
   "curator.categoryCreated": "Added the category {0}.",
-
   "curator.categoriesTitle": "Suggestion Categories - Escape to Close",
   "curator.categoriesListName": "Categories List",
   "curator.categoriesListDesc": "Press Enter on a category to rename it, Delete to remove it, Control N to add a new one, or Control with the up and down arrows to move it in the order.",
