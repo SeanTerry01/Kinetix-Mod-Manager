@@ -5,8 +5,8 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-09-13, after mod scanning moved to the core.
-**State:** 1,031 tests passing on Windows and Linux; all five projects build clean.
+**Last updated:** 2026-09-13, after the in-app browser and Nexus sign-in.
+**State:** 1,042 tests passing on Windows and Linux; all five projects build clean.
 
 ---
 
@@ -162,6 +162,24 @@ and the window has a Wiki tab. Everything is in place except the answer to the q
       in the Linux head, and `IBrowserHost` should not be designed until it is answered.
 
 ---
+
+## Nexus sign-in — needs Sean, not code
+
+Sean asked for a "Log in to Nexus" button with the login inside the manager's own web view. The
+plumbing is built and tested (`Kinetix.Core/NexusSso.cs`, 11 tests) and the button is in the GTK head.
+It cannot work yet, for one reason that is not a code problem:
+
+- [ ] **Register the manager with Nexus Mods.** Only approved applications may use single sign-on, and
+      approval is what issues the `application` slug the flow needs. That is a conversation with their
+      community managers. Until then `NexusApplicationSlug` is empty and the button says so plainly
+      rather than failing in a way nobody could act on.
+- [ ] **Store the key through `ISecretStore`** once it arrives, and reuse the `connection_token` so an
+      interrupted sign-in resumes instead of asking for approval again.
+- [ ] **Wire the same button into the WinForms head.** The flow is in the core, so it is the same call;
+      only the "show this page" callback differs (WebView2 rather than WebKitGTK).
+- [ ] **Never read the login page.** It is the user's own session with Nexus. The value of this flow is
+      that the manager receives a revocable key and never sees a password — a note for anyone tempted to
+      "simplify" it later by scraping the form.
 
 ## The GTK head, from here
 

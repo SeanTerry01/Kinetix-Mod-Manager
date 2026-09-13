@@ -282,8 +282,11 @@ public sealed class MainWindow
 		open.OnClicked += (_, _) => OpenWiki();
 		var back = Gtk.Button.NewWithLabel("Back");
 		back.OnClicked += (_, _) => { if (_web?.CanGoBack == true) _web.GoBack(); };
+		var login = Gtk.Button.NewWithLabel("Log in to Nexus Mods");
+		login.OnClicked += (_, _) => _ = SignInToNexusAsync();
 		bar.Append(open);
 		bar.Append(back);
+		bar.Append(login);
 		box.Append(bar);
 
 		try
@@ -316,6 +319,61 @@ public sealed class MainWindow
 		SetStatus($"Loading {url}");
 		Say($"Opening the {_game.DisplayName} wiki. Tab into the page to read it.");
 	}
+
+	/// <summary>
+	/// Signs in to Nexus, with the approval page shown inside this window rather than in a browser.
+	///
+	/// The point is what the user is spared. Today they leave the manager, find the right page on
+	/// nexusmods.com, pick a long random string out of the page furniture and paste it back — which is
+	/// unpleasant sighted and genuinely hostile by ear. Nexus's single sign-on exists so an application
+	/// never has to ask: the user approves it on a Nexus page and the key arrives over a websocket.
+	///
+	/// The page is their own session with Nexus. It is shown here, and nothing reads what they type into
+	/// it — the whole value of this flow is that the manager receives a revocable key and never a password.
+	/// </summary>
+	private async Task SignInToNexusAsync()
+	{
+		if (_web is null) { Say("The in-app browser is not available, so signing in is not possible.", interrupt: true); return; }
+
+		if (string.IsNullOrEmpty(NexusApplicationSlug))
+		{
+			// Said plainly rather than failing quietly. Nexus only permits single sign-on for applications
+			// they have approved, and approval is what supplies this slug — a conversation with their
+			// community managers, not something the code can arrange.
+			SetStatus("Nexus sign-in is not set up yet.");
+			Say("Nexus sign-in is not available yet. The manager has to be registered with Nexus Mods first.", interrupt: true);
+			return;
+		}
+
+		SetStatus("Signing in to Nexus Mods…");
+		Say("Opening the Nexus sign-in page. Approve the manager there, and it will finish by itself.");
+
+		try
+		{
+			string key = await NexusSso.SignInAsync(
+				NexusApplicationSlug,
+				showApprovalPage: url => _ui.Post(() => _web.Load(url)));
+
+			_ui.Post(() =>
+			{
+				SetStatus("Signed in to Nexus Mods.");
+				// The key itself is never spoken or shown. It is a credential, and reading one aloud in a
+				// room is its own kind of leak.
+				Say($"Signed in to Nexus Mods. {key.Length} character key received and stored.", interrupt: true);
+			});
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Nexus", "signing in", ex);
+			_ui.Post(() => { SetStatus("Sign-in failed."); Say($"Nexus sign-in failed. {ex.Message}", interrupt: true); });
+		}
+	}
+
+	/// <summary>
+	/// The name Nexus knows this application by, issued when they approve it. Empty until then, and the
+	/// sign-in button says so rather than failing in a way nobody could act on.
+	/// </summary>
+	private const string NexusApplicationSlug = "";
 
 	private async Task SearchAsync()
 	{
