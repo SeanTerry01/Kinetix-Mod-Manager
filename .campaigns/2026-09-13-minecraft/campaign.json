@@ -1,0 +1,255 @@
+{
+  "repo_root": "../..",
+  "runner": "dotnet",
+  "build_cmd": "dotnet build KinetixModManager.Tests/KinetixModManager.Tests.csproj -v q --nologo",
+  "test_cmd": "dotnet test KinetixModManager.Tests/KinetixModManager.Tests.csproj --nologo -v q",
+  "test_filter_cmd": "dotnet test KinetixModManager.Tests/KinetixModManager.Tests.csproj --nologo -v q --filter \"FullyQualifiedName~{test}\"",
+  "build_timeout_sec": 900,
+  "test_timeout_sec": 1800,
+  "require_count": true,
+  "min_count_ratio": 0.9,
+  "isolate_single_kills": true,
+  "isolate_green_repeats": 3,
+  "max_interrupt_retries": 2,
+  "frame": {
+    "chosen_on": "2026-09-13",
+    "description": "The seven Minecraft source files written in this session, plus the Minecraft branch added to UpdateCoverage. Chosen blind: this is the first campaign this repository has ever run, so there is no previous mutant list to avoid. A sample of the new Minecraft surface, NOT a survey of the manager's ~90 source files.",
+    "dirs": [
+      "KinetixModManager"
+    ],
+    "blind_of_previous_campaigns": true
+  },
+  "mutants": [
+    {
+      "id": "M01",
+      "file": "KinetixModManager/MinecraftLayout.cs",
+      "anchor": "\t\treturn enable\r\n\t\t\t? path.Substring(0, path.Length - suffix.Length)   // strip \".disabled\"\r\n\t\t\t: path + suffix;",
+      "replacement": "\t\treturn enable\r\n\t\t\t? path + suffix\r\n\t\t\t: path.Substring(0, path.Length - suffix.Length);",
+      "breaks": "Enabling a mod disables it and disabling enables it, so every switch in the mod list does the opposite of what it says."
+    },
+    {
+      "id": "M02",
+      "file": "KinetixModManager/MinecraftLayout.cs",
+      "anchor": "\t\treturn !string.IsNullOrEmpty(disabledSuffix) &&\r\n\t\t\t   name.EndsWith(ModExtension + disabledSuffix, StringComparison.OrdinalIgnoreCase);",
+      "replacement": "\t\treturn !string.IsNullOrEmpty(disabledSuffix) &&\r\n\t\t\t   name.EndsWith(disabledSuffix, StringComparison.OrdinalIgnoreCase);",
+      "breaks": "Any file ending in .disabled is listed as a mod, so a stray readme.txt.disabled appears in the mod list as something the user can enable."
+    },
+    {
+      "id": "M03",
+      "file": "KinetixModManager/MinecraftLayout.cs",
+      "anchor": "\t\treturn File.Exists(LauncherProfilesPathFor(folder)) ||\r\n\t\t\t   Directory.Exists(Path.Combine(folder, \"versions\"));",
+      "replacement": "\t\treturn File.Exists(LauncherProfilesPathFor(folder)) &&\r\n\t\t\t   Directory.Exists(Path.Combine(folder, \"versions\"));",
+      "breaks": "A real Minecraft folder that has one of the two markers but not the other is not recognised, so the game reports itself as not installed."
+    },
+    {
+      "id": "M04",
+      "file": "KinetixModManager/MinecraftLayout.cs",
+      "anchor": "\t\tint plus = version!.IndexOf('+');\r\n\t\treturn plus < 0 ? version : version.Substring(0, plus);",
+      "replacement": "\t\tint plus = version!.IndexOf('+');\r\n\t\treturn plus < 0 ? version : version.Substring(0, plus + 1);",
+      "breaks": "A version keeps a trailing plus sign when its build metadata is stripped, so United Minecraft reads as permanently out of date and updating it changes nothing."
+    },
+    {
+      "id": "M05",
+      "file": "KinetixModManager/MinecraftLayout.cs",
+      "anchor": "\t\treturn parts[0] + \"/\" + parts[1].Replace(\".git\", \"\", StringComparison.OrdinalIgnoreCase);",
+      "replacement": "\t\treturn parts[1].Replace(\".git\", \"\", StringComparison.OrdinalIgnoreCase) + \"/\" + parts[0];",
+      "breaks": "A GitHub repository is read owner and name the wrong way round, so the update check asks GitHub about a repository that does not exist and United Minecraft is never checked."
+    },
+    {
+      "id": "M06",
+      "file": "KinetixModManager/MinecraftLayout.cs",
+      "anchor": "\t\t\tif (name[i] == '-' && char.IsDigit(name[i + 1]))\r\n\t\t\t\treturn name.Substring(0, i);",
+      "replacement": "\t\t\tif (name[i] == '-' && char.IsDigit(name[i + 1]))\r\n\t\t\t\treturn name.Substring(0, i + 1);",
+      "breaks": "A bundled dependency's id keeps a trailing hyphen, so it never matches the dependency it satisfies and a mod that carries everything it needs is reported as missing it."
+    },
+    {
+      "id": "M07",
+      "file": "KinetixModManager/FabricInstaller.cs",
+      "anchor": "\t\t$\"fabric-loader-{loaderVersion}-{gameVersion}\";",
+      "replacement": "\t\t$\"fabric-loader-{gameVersion}-{loaderVersion}\";",
+      "breaks": "Fabric is written to a folder name the launcher does not recognise, so the installation appears in the launcher pointing at nothing and the game will not start with mods."
+    },
+    {
+      "id": "M08",
+      "file": "KinetixModManager/FabricInstaller.cs",
+      "anchor": "\tpublic static string ProfileKeyFor(string gameVersion) => $\"fabric-loader-{gameVersion}\";",
+      "replacement": "\tpublic static string ProfileKeyFor(string gameVersion) => $\"fabric-loader-{gameVersion}-kmm\";",
+      "breaks": "Reinstalling Fabric adds a second launcher installation instead of updating the one already there, so the user accumulates near-identical entries to choose between."
+    },
+    {
+      "id": "M09",
+      "file": "KinetixModManager/FabricInstaller.cs",
+      "anchor": "\t\t\tif ((bool?)entry[\"stable\"] != true) continue;",
+      "replacement": "\t\t\tif ((bool?)entry[\"stable\"] == true) continue;",
+      "breaks": "Fabric is installed for a Minecraft release candidate instead of the newest stable version, giving a game that starts perfectly and loads no mods because none are built for it yet."
+    },
+    {
+      "id": "M10",
+      "file": "KinetixModManager/FabricInstaller.cs",
+      "anchor": "\t\tint split = rest.IndexOf('-');\n\t\treturn split < 0 ? \"\" : rest.Substring(split + 1);",
+      "replacement": "\t\tint split = rest.IndexOf('-');\n\t\treturn split < 0 ? \"\" : rest.Substring(split);",
+      "breaks": "The Minecraft version read back from an existing Fabric install carries a leading hyphen, so a hand-installed Fabric is never matched and reads as not installed."
+    },
+    {
+      "id": "M11",
+      "file": "KinetixModManager/FabricInstaller.cs",
+      "anchor": "\t\t\t\t\t\t name.StartsWith(\"fabric-loader-\", StringComparison.OrdinalIgnoreCase) &&\n\t\t\t\t\t\t name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));",
+      "replacement": "\t\t\t\t\t\t name.StartsWith(\"fabric-loader-\", StringComparison.OrdinalIgnoreCase) ||\n\t\t\t\t\t\t name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));",
+      "breaks": "A Fabric installed for a different Minecraft version counts as installed for this one, so the suite reports the loader ready when nothing will load."
+    },
+    {
+      "id": "M12",
+      "file": "KinetixModManager/FabricInstaller.cs",
+      "anchor": "\t\t\t\t[\"lastUsed\"]      = stamp,",
+      "replacement": "\t\t\t\t[\"lastUsed\"]      = \"\",",
+      "breaks": "The new Fabric installation does not claim the launcher's most-recently-used spot, so the Play button still points at vanilla and the game starts without mods."
+    },
+    {
+      "id": "M13",
+      "file": "KinetixModManager/FabricInstaller.cs",
+      "anchor": "\t\tutc.ToUniversalTime().ToString(\"yyyy-MM-dd'T'HH:mm:ss.fff'Z'\", System.Globalization.CultureInfo.InvariantCulture);",
+      "replacement": "\t\tutc.ToUniversalTime().ToString(\"yyyy-MM-dd HH:mm:ss\", System.Globalization.CultureInfo.InvariantCulture);",
+      "breaks": "Timestamps are written to the launcher's profile list in a shape it never writes, which the launcher may not read back as a date at all."
+    },
+    {
+      "id": "M14",
+      "file": "KinetixModManager/FabricInstaller.cs",
+      "anchor": "\t\t\tDateParseHandling = Newtonsoft.Json.DateParseHandling.None",
+      "replacement": "\t\t\tDateParseHandling = Newtonsoft.Json.DateParseHandling.DateTime",
+      "breaks": "Every timestamp in the launcher's profile list is rewritten into a different format when the manager saves it, not just the one being changed."
+    },
+    {
+      "id": "M15",
+      "file": "KinetixModManager/FabricInstaller.cs",
+      "anchor": "\t\t\t\t\tif ((string?)instance[\"configId\"] == profileKey) continue;",
+      "replacement": "\t\t\t\t\tif ((string?)instance[\"configId\"] != profileKey) continue;",
+      "breaks": "Quick Play tiles are never repointed at the Fabric installation, so launching a world from the launcher's home screen still starts an unmodded game."
+    },
+    {
+      "id": "M16",
+      "file": "KinetixModManager/MinecraftSuite.cs",
+      "anchor": "\t\t\t// Declares fabric-api as a hard dependency and does not bundle it.\n\t\t\tNeedsFabricApi = true,",
+      "replacement": "\t\t\t// Declares fabric-api as a hard dependency and does not bundle it.\n\t\t\tNeedsFabricApi = false,",
+      "breaks": "United Minecraft is installed without Fabric API, which it refuses to load without, so the accessibility mod is present and silent."
+    },
+    {
+      "id": "M17",
+      "file": "KinetixModManager/MinecraftSuite.cs",
+      "anchor": "\t\tif (chosen.NeedsFabricApi) plan.Add(FabricApi);\n\t\tplan.Add(chosen);",
+      "replacement": "\t\tplan.Add(chosen);\n\t\tif (chosen.NeedsFabricApi) plan.Add(FabricApi);",
+      "breaks": "The accessibility mod is installed before the API it depends on, so an install interrupted halfway leaves a mod that cannot load."
+    },
+    {
+      "id": "M18",
+      "file": "KinetixModManager/MinecraftSuite.cs",
+      "anchor": "\t\tAccessMods.FirstOrDefault(m => string.Equals(m.Id, id, StringComparison.OrdinalIgnoreCase)) ?? Default;",
+      "replacement": "\t\tAccessMods.FirstOrDefault(m => string.Equals(m.Id, id, StringComparison.OrdinalIgnoreCase)) ?? AccessMods[1];",
+      "breaks": "A user who has not chosen an accessibility mod is given the wrong one, so the suite offers to install Minecraft Access over a working United Minecraft."
+    },
+    {
+      "id": "M19",
+      "file": "KinetixModManager/MinecraftLauncher.cs",
+      "anchor": "\t\tforeach (JToken l in child[\"libraries\"] as JArray ?? new JArray()) libraries.Add(l.DeepClone());\n\t\tforeach (JToken l in parent[\"libraries\"] as JArray ?? new JArray()) libraries.Add(l.DeepClone());",
+      "replacement": "\t\tforeach (JToken l in parent[\"libraries\"] as JArray ?? new JArray()) libraries.Add(l.DeepClone());\n\t\tforeach (JToken l in child[\"libraries\"] as JArray ?? new JArray()) libraries.Add(l.DeepClone());",
+      "breaks": "Fabric's loader comes after the game on the classpath, so the game class loads before anything can transform it and no mod takes effect."
+    },
+    {
+      "id": "M20",
+      "file": "KinetixModManager/MinecraftLauncher.cs",
+      "anchor": "\t\t\tif (matches) allowed = (string?)rule[\"action\"] == \"allow\";",
+      "replacement": "\t\t\tif (matches) allowed = (string?)rule[\"action\"] != \"allow\";",
+      "breaks": "Libraries the game needs are left off the classpath and ones meant for other operating systems are added, so the game fails to start."
+    },
+    {
+      "id": "M21",
+      "file": "KinetixModManager/MinecraftLauncher.cs",
+      "anchor": "\t\tstring.Equals(wanted, actual, StringComparison.OrdinalIgnoreCase) ||\n\t\t(wanted.Equals(\"x86\", StringComparison.OrdinalIgnoreCase) &&\n\t\t actual.Equals(\"x86_64\", StringComparison.OrdinalIgnoreCase));",
+      "replacement": "\t\tstring.Equals(wanted, actual, StringComparison.OrdinalIgnoreCase);",
+      "breaks": "A JVM flag Minecraft gates on the x86 architecture family is dropped on a 64-bit machine, so the game is started without a setting it expects."
+    },
+    {
+      "id": "M22",
+      "file": "KinetixModManager/MinecraftLauncher.cs",
+      "anchor": "\t\tstring group = parts[0].Replace('.', Path.DirectorySeparatorChar);",
+      "replacement": "\t\tstring group = parts[0];",
+      "breaks": "Fabric's own libraries resolve to paths that do not exist, so the game is started with a classpath missing the loader and will not run."
+    },
+    {
+      "id": "M23",
+      "file": "KinetixModManager/MinecraftLauncher.cs",
+      "anchor": "\t\t\t\t\t\t\t   i + 1 < args.Count && args[i + 1].Length == 0;",
+      "replacement": "\t\t\t\t\t\t\t   i + 1 < args.Count && args[i + 1].Length != 0;",
+      "breaks": "Empty arguments are passed to the game and real values are dropped, so starting Minecraft fails before it opens."
+    },
+    {
+      "id": "M24",
+      "file": "KinetixModManager/MinecraftLauncher.cs",
+      "anchor": "\t\treturn string.Join(\"-\", bare.Substring(0, 8), bare.Substring(8, 4), bare.Substring(12, 4),\n\t\t\tbare.Substring(16, 4), bare.Substring(20, 12));",
+      "replacement": "\t\treturn string.Join(\"-\", bare.Substring(0, 8), bare.Substring(8, 4), bare.Substring(12, 4),\n\t\t\tbare.Substring(16, 5), bare.Substring(20, 12));",
+      "breaks": "The player's uuid is malformed, so loading an existing world starts a brand new character and their inventory, position and advancements appear to be gone."
+    },
+    {
+      "id": "M25",
+      "file": "KinetixModManager/MinecraftControls.cs",
+      "anchor": "\t\tif ((modifiers & 1) != 0) parts.Add(\"Shift\");",
+      "replacement": "\t\tif ((modifiers & 2) != 0) parts.Add(\"Shift\");",
+      "breaks": "Shift-modified accessibility keys are read out without the Shift, so the controls list tells the user the wrong key to press."
+    },
+    {
+      "id": "M26",
+      "file": "KinetixModManager/MinecraftControls.cs",
+      "anchor": "\t\t\t344 => \"Right shift\",\n\t\t\t345 => \"Right control\",",
+      "replacement": "\t\t\t344 => \"Right control\",\n\t\t\t345 => \"Right shift\",",
+      "breaks": "Place and break block are read out on each other's keys, so a player following the controls list presses the wrong one."
+    },
+    {
+      "id": "M27",
+      "file": "KinetixModManager/MinecraftControls.cs",
+      "anchor": "\t\t\t\tbinding.IsMouse && mouseSection is not null",
+      "replacement": "\t\t\t\tbinding.IsMouse && mouseSection is null",
+      "breaks": "Mouse-bound actions are mixed back in among the keyboard ones, so a player who cannot use a mouse has no way to see which actions are on it."
+    },
+    {
+      "id": "M28",
+      "file": "KinetixModManager/ModrinthService.cs",
+      "anchor": "\t\t\tJToken? primary = files.FirstOrDefault(f => (bool?)f[\"primary\"] == true);",
+      "replacement": "\t\t\tJToken? primary = files.FirstOrDefault(f => (bool?)f[\"primary\"] != true);",
+      "breaks": "The source-code jar attached to a release is downloaded instead of the mod, so the mods folder gets a file that does nothing."
+    },
+    {
+      "id": "M29",
+      "file": "KinetixModManager/ModrinthService.cs",
+      "anchor": "\t\t\t\t\tif ((string?)dep[\"dependency_type\"] != \"required\") continue;",
+      "replacement": "\t\t\t\t\tif ((string?)dep[\"dependency_type\"] == \"required\") continue;",
+      "breaks": "Dependencies already bundled inside a mod are reported as needing installing, so the manager installs Fabric API beside a mod that already contains it."
+    },
+    {
+      "id": "M30",
+      "file": "KinetixModManager/ModrinthService.cs",
+      "anchor": "\t\t\tstring id = (string?)hit[\"slug\"] ?? (string?)hit[\"project_id\"] ?? \"\";",
+      "replacement": "\t\t\tstring id = (string?)hit[\"project_id\"] ?? (string?)hit[\"slug\"] ?? \"\";",
+      "breaks": "Search results are identified by an opaque id rather than the mod's readable slug, so the id read out in each row means nothing to the user."
+    },
+    {
+      "id": "M31",
+      "file": "KinetixModManager/MinecraftLaunchLog.cs",
+      "anchor": "\t\t\telse if (line.TrimStart().StartsWith(\"[\", StringComparison.Ordinal)) inModList = false;",
+      "replacement": "\t\t\telse if (line.TrimStart().StartsWith(\"]\", StringComparison.Ordinal)) inModList = false;",
+      "breaks": "Ordinary log lines after the mod list are counted as mods, so the report of what loaded is padded with nonsense."
+    },
+    {
+      "id": "M32",
+      "file": "KinetixModManager/MinecraftLaunchLog.cs",
+      "anchor": "\t\t\tFabricLoaded  = game.Length > 0,",
+      "replacement": "\t\t\tFabricLoaded  = game.Length >= 0,",
+      "breaks": "A plain unmodded launch is reported as having loaded the mods, so the one check that catches a silent vanilla start always says everything is fine."
+    },
+    {
+      "id": "M33",
+      "file": "KinetixModManager/UpdateCoverage.cs",
+      "anchor": "\t\t\tif (checkedByFileHash)\n\t\t\t{\n\t\t\t\tresult.Add(new UpdateCoverageEntry { Mod = mod, Kind = UpdateCoverageKind.ByFileHash });\n\t\t\t\tcontinue;\n\t\t\t}",
+      "replacement": "\t\t\tif (!checkedByFileHash)\n\t\t\t{\n\t\t\t\tresult.Add(new UpdateCoverageEntry { Mod = mod, Kind = UpdateCoverageKind.ByFileHash });\n\t\t\t\tcontinue;\n\t\t\t}",
+      "breaks": "Every mod in every other game is reported as checked by its file hash, and Minecraft's are reported as unchecked - the coverage report becomes wrong for all six games."
+    }
+  ]
+}
