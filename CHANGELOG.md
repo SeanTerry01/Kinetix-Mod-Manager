@@ -1,4 +1,4 @@
-﻿# Version 1.5.2
+﻿# Version 1.6.0
 
 ## ✨ New: Minecraft (Java Edition) is the sixth supported game
 
