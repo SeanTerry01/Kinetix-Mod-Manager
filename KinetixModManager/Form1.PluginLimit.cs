@@ -33,7 +33,7 @@ public partial class Form1
 			{
 				bool isLight = _pluginClass.TryGetValue(name, out var f)
 					? f.Light
-					: ModFileSystem.ReadPluginFlags(name).IsLight;
+					: BethesdaPlugins.ReadPluginFlags(name).IsLight;
 				if (isLight) light++;
 				else regular++;
 			}
@@ -49,7 +49,7 @@ public partial class Form1
 	/// </summary>
 	private int CountBaseMastersPresent(string game)
 	{
-		IReadOnlyCollection<string> baseMasters = ModFileSystem.BaseMasters(game);
+		IReadOnlyCollection<string> baseMasters = BethesdaPlugins.BaseMasters(game);
 		string gameRoot = _settings.CurrentGamePath;
 		if (string.IsNullOrEmpty(gameRoot)) return baseMasters.Count;
 

@@ -490,12 +490,12 @@ public partial class Form1
 			foreach (string file in Directory.GetFiles(mod.FolderPath, "*.*", SearchOption.AllDirectories))
 			{
 				string name = Path.GetFileName(file);
-				if (!ModFileSystem.IsPluginFile(name)) continue;
+				if (!BethesdaPlugins.IsPluginFile(name)) continue;
 				allModPlugins.Add(name);
-				if (ModFileSystem.IsBaseMaster(game, name)) continue;
+				if (BethesdaPlugins.IsBaseMaster(game, name)) continue;
 				if (mod.IsEnabled && !cls.ContainsKey(name))
 				{
-					cls[name] = ModFileSystem.ReadPluginFlags(file);
+					cls[name] = BethesdaPlugins.ReadPluginFlags(file);
 					paths[name] = file;
 				}
 			}
@@ -518,7 +518,7 @@ public partial class Form1
 			foreach (string name in savedOrder)
 			{
 				if (stillActive.Contains(name)) continue;
-				if (allModPlugins.Contains(name) || ModFileSystem.IsBaseMaster(game, name)) continue;
+				if (allModPlugins.Contains(name) || BethesdaPlugins.IsBaseMaster(game, name)) continue;
 				if (string.IsNullOrEmpty(gameRoot)) continue;
 				if (!File.Exists(Path.Combine(gameRoot, "Data", name))) continue;
 				existingActive.Add(name);
@@ -533,7 +533,7 @@ public partial class Form1
 		// otherwise a removed mod's plugin would linger in the list and plugins.txt indefinitely.
 		foreach (string name in existingActive)
 		{
-			if (ModFileSystem.IsBaseMaster(game, name)) continue;
+			if (BethesdaPlugins.IsBaseMaster(game, name)) continue;
 			if (allModPlugins.Contains(name) || cls.ContainsKey(name)) continue;
 			string dataPath = string.IsNullOrEmpty(gameRoot) ? "" : Path.Combine(gameRoot, "Data", name);
 			bool canVerify = !string.IsNullOrEmpty(dataPath);
@@ -544,7 +544,7 @@ public partial class Form1
 			bool isCreation = name.StartsWith("cc", StringComparison.OrdinalIgnoreCase) ||
 							  name.Equals("_ResourcePack.esl", StringComparison.OrdinalIgnoreCase);
 			if (canVerify && !hasData && !isCreation) continue; // ghost mod plugin -> drop; Creations preserved
-			cls[name] = hasData ? ModFileSystem.ReadPluginFlags(dataPath) : ModFileSystem.ReadPluginFlags(name);
+			cls[name] = hasData ? BethesdaPlugins.ReadPluginFlags(dataPath) : BethesdaPlugins.ReadPluginFlags(name);
 			if (hasData) paths[name] = dataPath;
 		}
 
@@ -607,7 +607,7 @@ public partial class Form1
 		// The game lists the base-game and DLC masters in plugins.txt; the manager's order leaves them implicit,
 		// so compare like with like or every play session would look like a change.
 		List<string> current = ModFileSystem.ReadActivePlugins(game, _settings.GamePathOf(game))
-			.Where(n => !ModFileSystem.IsBaseMaster(game, n)).ToList();
+			.Where(n => !BethesdaPlugins.IsBaseMaster(game, n)).ToList();
 		if (current.SequenceEqual(order, StringComparer.OrdinalIgnoreCase)) return;
 
 		int missing = order.Count(n => !current.Contains(n, StringComparer.OrdinalIgnoreCase));
@@ -644,7 +644,7 @@ public partial class Form1
 			{
 				bool master, light;
 				if (_pluginClass.TryGetValue(name, out var found)) { master = found.Master; light = found.Light; }
-				else { var f = ModFileSystem.ReadPluginFlags(name); master = f.IsMaster; light = f.IsLight; }
+				else { var f = BethesdaPlugins.ReadPluginFlags(name); master = f.IsMaster; light = f.IsLight; }
 				string tag = light ? Loc.T("loadorder.lightTag") : (master ? Loc.T("loadorder.masterTag") : "");
 				listPluginOrder.Items.Add(new PluginEntry { Name = name, Master = master, Light = light, Summary = name + tag });
 			}
@@ -690,8 +690,8 @@ public partial class Form1
 			return;
 		}
 
-		bool curMaster = InMasterGroup(_pluginClass.TryGetValue(entry.Name, out var cc) ? cc : ModFileSystem.ReadPluginFlags(entry.Name));
-		bool otherMaster = InMasterGroup(_pluginClass.TryGetValue(order[target], out var oc) ? oc : ModFileSystem.ReadPluginFlags(order[target]));
+		bool curMaster = InMasterGroup(_pluginClass.TryGetValue(entry.Name, out var cc) ? cc : BethesdaPlugins.ReadPluginFlags(entry.Name));
+		bool otherMaster = InMasterGroup(_pluginClass.TryGetValue(order[target], out var oc) ? oc : BethesdaPlugins.ReadPluginFlags(order[target]));
 		if (curMaster != otherMaster)
 		{
 			Speak(Loc.T("loadorder.masterBoundary"));
@@ -767,7 +767,7 @@ public partial class Form1
 		{
 			var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 			if (_pluginPaths.TryGetValue(name, out string? p) && File.Exists(p))
-				foreach (string m in ModFileSystem.ReadPluginMasters(p))
+				foreach (string m in BethesdaPlugins.ReadPluginMasters(p))
 					if (inSet.Contains(m) && !string.Equals(m, name, StringComparison.OrdinalIgnoreCase)) set.Add(m);
 			if (ml != null && ml.PluginAfter.TryGetValue(name, out List<string>? afters))
 				foreach (string a in afters)
@@ -898,8 +898,8 @@ public partial class Form1
 			bool isCreation = name.StartsWith("cc", StringComparison.OrdinalIgnoreCase) ||
 							  name.Equals("_ResourcePack.esl", StringComparison.OrdinalIgnoreCase);
 			if (!isCreation) continue;
-			if (!ModFileSystem.IsPluginFile(name)) continue;
-			var flags = ModFileSystem.ReadPluginFlags(file);
+			if (!BethesdaPlugins.IsPluginFile(name)) continue;
+			var flags = BethesdaPlugins.ReadPluginFlags(file);
 			list.Add(new CreationEntry
 			{
 				File = name,

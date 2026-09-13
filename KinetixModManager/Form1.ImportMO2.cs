@@ -215,7 +215,7 @@ public partial class Form1
 		foreach (string name in order)
 		{
 			if (!active.Contains(name)) continue;
-			if (ModFileSystem.IsBaseMaster(game, name)) continue;
+			if (BethesdaPlugins.IsBaseMaster(game, name)) continue;
 			if (seen.Add(name)) ordered.Add(name);
 		}
 		return ordered;

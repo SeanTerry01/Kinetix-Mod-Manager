@@ -62,7 +62,7 @@ public partial class Form1
 		// The set of plugins that would load right now: the active plugins plus the implicit base-game/DLC masters.
 		// A save master outside this set is no longer active, so the save references content it can't load.
 		var activeNow = new HashSet<string>(ModFileSystem.ReadActivePlugins(game, _settings.GamePathOf(game)), StringComparer.OrdinalIgnoreCase);
-		foreach (string bm in ModFileSystem.BaseMasters(game)) activeNow.Add(bm);
+		foreach (string bm in BethesdaPlugins.BaseMasters(game)) activeNow.Add(bm);
 
 		var rows = new List<SaveRow>();
 		foreach (string file in files)

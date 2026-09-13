@@ -17,18 +17,7 @@ namespace KinetixModManager;
 public partial class Form1
 {
 	/// <summary>Enumerates the plugin file paths (.esp/.esm/.esl) a Skyrim/Fallout 4 mod ships, IO errors ignored.</summary>
-	private static IEnumerable<string> ModPluginFiles(StardewMod mod)
-	{
-		if (string.IsNullOrEmpty(mod.FolderPath) || !Directory.Exists(mod.FolderPath))
-			return Enumerable.Empty<string>();
-		try
-		{
-			return Directory.EnumerateFiles(mod.FolderPath, "*", SearchOption.AllDirectories)
-				.Where(f => ModFileSystem.IsPluginFile(Path.GetFileName(f)))
-				.ToList();
-		}
-		catch { return Enumerable.Empty<string>(); }
-	}
+	private static IEnumerable<string> ModPluginFiles(StardewMod mod) => ModDependencies.PluginFiles(mod);
 
 	// ---------------------------------------------------------------------
 	// Dependency tree view
@@ -79,9 +68,9 @@ public partial class Form1
 			string dataDir = string.IsNullOrEmpty(_settings.CurrentGamePath) ? "" : Path.Combine(_settings.CurrentGamePath, "Data");
 			foreach (string plugin in ModPluginFiles(mod))
 			{
-				foreach (string master in ModFileSystem.ReadPluginMasters(plugin))
+				foreach (string master in BethesdaPlugins.ReadPluginMasters(plugin))
 				{
-					if (ModFileSystem.IsBaseMaster(_settings.ActiveGame, master)) continue;
+					if (BethesdaPlugins.IsBaseMaster(_settings.ActiveGame, master)) continue;
 					bool active = activePlugins.Contains(master);
 					bool present = active || (!string.IsNullOrEmpty(dataDir) && File.Exists(Path.Combine(dataDir, master)));
 					string status = active ? Loc.T("deps.statusOk") : (present ? Loc.T("deps.statusDisabled") : Loc.T("deps.statusMissing"));
@@ -136,39 +125,13 @@ public partial class Form1
 	/// one of the target's plugins as a master). Offline and best-effort — it never touches the network, so it is
 	/// safe to run inside a delete confirmation. Returns one human-readable line per dependent.
 	/// </summary>
-	private List<string> GetReverseDependents(StardewMod target)
-	{
-		var result = new List<string>();
-		var others = _allInstalledMods.Where(m => !m.IsGroup && !ReferenceEquals(m, target)).ToList();
-
-		if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley))
-		{
-			if (string.IsNullOrEmpty(target.UniqueId)) return result;
-			foreach (StardewMod m in others)
-				if (m.Dependencies.Any(d => d.IsRequired && string.Equals(d.UniqueId, target.UniqueId, StringComparison.OrdinalIgnoreCase)))
-					result.Add(Loc.T("deps.reverseStardew", m.Name));
-		}
-		else if (IsBethesdaGame)
-		{
-			var targetPlugins = new HashSet<string>(
-				ModPluginFiles(target).Select(Path.GetFileName)!, StringComparer.OrdinalIgnoreCase);
-			if (targetPlugins.Count == 0) return result;
-			foreach (StardewMod m in others)
-			{
-				foreach (string plugin in ModPluginFiles(m))
-				{
-					string? hit = ModFileSystem.ReadPluginMasters(plugin)
-						.FirstOrDefault(master => targetPlugins.Contains(master));
-					if (hit != null)
-					{
-						result.Add(Loc.T("deps.reverseBethesda", m.Name, Path.GetFileName(plugin), hit));
-						break; // one line per dependent mod is enough
-					}
-				}
-			}
-		}
-		return result.Distinct().ToList();
-	}
+	private List<string> GetReverseDependents(StardewMod target) =>
+		ModDependencies.Dependents(target, _allInstalledMods, _settings.ActiveGame)
+			.Select(d => d.IsDeclared
+				? Loc.T("deps.reverseStardew", d.Mod.Name)
+				: Loc.T("deps.reverseBethesda", d.Mod.Name, d.ViaPlugin, d.Master))
+			.Distinct()
+			.ToList();
 
 	// ---------------------------------------------------------------------
 	// One-click resolver
