@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The GTK4 front end. A spike rather than a port: it drives Kinetix.Core directly to prove the core and
+    the platform seams are real on Linux, and it covers Minecraft only, because Minecraft is the one
+    supported game whose accessibility mod speaks natively here. See ARCHITECTURE_REVIEW §16.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Version>1.6.0</Version>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>KinetixModManager.GtkHead</RootNamespace>
+    <AssemblyName>Kinetix.Gtk</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="GirCore.Gtk-4.0" Version="0.7.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The same catalogue the WinForms build ships. Shared rather than copied: the phrases are core, and
+         two front ends disagreeing about what a sentence says would be worse than either wording. -->
+    <None Include="..\KinetixModManager\lang\**">
+      <Link>lang\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kinetix.Core\Kinetix.Core.csproj" />
+    <ProjectReference Include="..\Kinetix.Platform.Linux\Kinetix.Platform.Linux.csproj" />
+  </ItemGroup>
+
+</Project>

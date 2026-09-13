@@ -90,13 +90,15 @@ See `MANUAL.md` for the complete shortcut reference.
 
 ## Project Structure
 
-The solution is three projects.
+The solution is five projects. The last two are experimental and are not part of the Windows release.
 
 | Project | Target | Purpose |
 |---|---|---|
 | `Kinetix.Core` | `net10.0` | The rules, the parsers and the file and HTTP work, with no user interface. Game profiles, mod scanning rules, FOMOD, Modrinth, the Minecraft launcher and Fabric installer, save and INI readers, the localisation catalogue, and the domain models under `Models/`. |
 | `KinetixModManager` | `net10.0-windows` | The WinForms application: the screen it draws, the keys it listens for, and the Windows-only pieces. Those now sit behind interfaces in `Platform/` — Tolk, DPAPI and the UI-thread dispatcher — with the registry, NAudio and WebView2 still to follow. |
 | `KinetixModManager.Tests` | `net10.0` | 1,024 xUnit tests against `Kinetix.Core`. |
+| `Kinetix.Platform.Linux` | `net10.0` | The Linux answers to the same platform questions — currently speech, through speech-dispatcher. No UI toolkit. |
+| `Kinetix.Gtk` | `net10.0` | An experimental GTK4 front end for Linux, covering Minecraft only. See `ARCHITECTURE_REVIEW.md` §17. |
 
 `Kinetix.Core` targets plain `net10.0` rather than `net10.0-windows` deliberately: it cannot reach
 `System.Windows.Forms`, the registry or DPAPI, so the separation is enforced by the compiler rather than

@@ -5,7 +5,7 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-09-13, after Phase 3 (part one).
+**Last updated:** 2026-09-13, after the GTK spike.
 **State:** 1,024 tests passing on Windows and Linux; all three projects build clean.
 
 ---
@@ -22,6 +22,9 @@ Anything resolved gets deleted from here rather than ticked, so the file stays s
   `VirtualKeys`, `LoadOrderRule` and `PluginSlots`~~
 - ~~**Phase 3, part one** — `IAnnouncer`, `ISoundEngine`, `ISecretStore`, `IDispatcher`, their Windows
   implementations, and `ProgressAnnouncer` moved to the core as the first customer~~
+- ~~**Proton vs native** — decided: native, Minecraft + Stardew. See ARCHITECTURE_REVIEW §16~~
+- ~~**GTK spike** — `Kinetix.Platform.Linux` (speech-dispatcher, verified speaking) and `Kinetix.Gtk`
+  (installed mods, live Modrinth search). See §17~~
 
 ---
 
@@ -127,17 +130,47 @@ These stand on their own merits. None is urgent.
 
 ---
 
-## Decisions needed before the GTK head
+## Decisions
 
-Not tasks — questions whose answers change the design.
+**1. Proton or native? — ANSWERED: native, Minecraft and Stardew Valley only.**
 
-1. **Proton or native?** Stardew, Skyrim SE, Fallout 4 and Witcher 3 on Linux run under Proton, with
-   Windows-shaped paths inside a prefix. `IGameLocator` would have to resolve into
-   `~/.steam/steam/steamapps/compatdata/<id>/pfx/`, and mod folder names must keep obeying Windows
-   rules — which is why `WindowsFileName` exists. Minecraft Java is the exception and is natively
-   cross-platform, which makes it the obvious first target.
-2. **Which GTK binding?** `GirCore` is current and targets GTK4 + libadwaita. `GtkSharp` is GTK3-era
-   and effectively stalled.
-3. **WebKitGTK, or defer it?** No .NET binding exists for either, so it needs hand-written P/Invoke
-   — the single largest unknown in the Linux head. Shipping v1 with "open in your default browser"
-   would take 18 files' worth of WebView2 coupling off the critical path.
+Not because Proton is inaccessible in general, but because the *access mods* for the other four games
+speak by driving NVDA or JAWS, which do not exist inside a Proton prefix. Skyrim would load its access
+mod, start, play, and say nothing — the exact silent failure this manager exists to prevent. Minecraft
+Access uses speech-dispatcher on Linux and Stardew Access supports Linux natively; both are quoted in
+ARCHITECTURE_REVIEW §16 from the docs this repo already ships.
+
+Consequences: `IGameLocator` needs no Proton prefix resolution for v1; `WindowsFileName` still applies
+(Stardew mods are shared with Windows machines); a Minecraft-only v1 needs no Nexus API key at all.
+
+**2. Which GTK binding? — ANSWERED in practice: GirCore 0.7.0.**
+
+Restores in under two seconds, targets GTK4, and the spike is built on it. `GtkSharp` is GTK3-era and
+effectively stalled.
+
+**3. WebKitGTK, or open the system browser? — ANSWERED: WebKitGTK. The browser must be in-app.**
+
+Now the largest unknown in the Linux head, and the one piece with no easy path:
+
+- [ ] **WebKitGTK is not installed on the dev machine.** Neither `webkit2gtk-4.1` nor `webkitgtk-6.0`.
+      On Gentoo that is `net-libs/webkit-gtk`, and it is a long compile.
+- [ ] **There is no .NET binding for it.** GirCore does not ship one. It needs hand-written P/Invoke
+      over `WebKitWebView`, or a binding generated from the GIR file.
+- [ ] **The accessibility question is unanswered and matters most.** WebView2 exposes page content to
+      NVDA through UIA; WebKitGTK exposes it through AT-SPI, which Orca reads. Whether the wiki-reading
+      flow — heading navigation, category drilling, the F6 cycle into the web view — behaves the same
+      needs **testing before `IBrowserHost` is designed around it**.
+
+---
+
+## The GTK head, from here
+
+- [ ] **Stardew Valley support** needs `ModFileSystem.ScanMods` out of the WinForms app and into the
+      core. That is the single biggest Core gap the spike exposed.
+- [ ] **The spike's strings are English literals, not `Loc.T`.** The catalogue is wired and copied to
+      its output; using it is the follow-up, and the guard tests should then cover `Kinetix.Gtk` too.
+- [ ] **`ISoundEngine` has no Linux implementation.** The `.ogg` theme packs need GStreamer,
+      libsoundio or similar. The spike is silent apart from speech.
+- [ ] **`ISecretStore` has no Linux implementation.** libsecret, for the Nexus key — not needed for a
+      Minecraft-only v1, needed for Stardew.
+- [ ] **The Minecraft version for search is hard-coded** to 1.21.1 in the spike.

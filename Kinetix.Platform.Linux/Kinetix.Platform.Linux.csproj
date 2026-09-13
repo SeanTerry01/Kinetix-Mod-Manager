@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The Linux answers to the platform questions Kinetix.Core asks. Deliberately free of any UI toolkit:
+    speech, secrets and game detection are not GTK's business, and keeping them apart means the same
+    implementations would serve a different front end, or a headless one.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Version>1.6.0</Version>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>KinetixModManager</RootNamespace>
+    <AssemblyName>Kinetix.Platform.Linux</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kinetix.Core\Kinetix.Core.csproj" />
+  </ItemGroup>
+
+</Project>

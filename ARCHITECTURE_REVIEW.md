@@ -997,3 +997,125 @@ different reason:
 dotnet build KinetixModManager.slnx -p:EnableWindowsTargeting=true  →  0 warnings, 0 errors
 dotnet test  KinetixModManager.Tests                                →  1024 passed, 0 failed
 ```
+
+
+---
+
+## 16. Proton vs native — answered by the shipped docs, 2026-09-13
+
+This was listed as a decision needing an answer before the GTK head could be designed. It turns out the
+repository already answers it, in the accessibility-mod documentation the app itself bundles and shows
+under F3.
+
+**The question is not whether Proton is accessible. It is whether the game's accessibility mod can
+still speak once it is inside a Proton prefix** — and for half the supported games, it cannot.
+
+| Game | Runs natively on Linux? | How its access mod speaks | Verdict |
+|---|---|---|---|
+| **Minecraft Java** | Yes (it is Java) | `minecraft-access.md:169` — *"On Linux, the mod uses Speech Dispatcher for speech output"*, plus eSpeak NG | ✅ Works |
+| **Stardew Valley** | Yes (native Steam build) | `stardew-access.md:3` — *"accessible to blind screen reader users on Windows, Linux and Mac OS"* | ✅ Works |
+| **Skyrim SE** | No — Proton | `skyrim-access.md:3` — *"It uses the NVDA screen reader to voice nearly everything"* | ❌ Silent |
+| **Fallout 4** | No — Proton | `fallout4-access.md:11` — *"works with the NVDA, JAWS, and SAPI screen readers"* | ❌ Silent |
+| **Witcher 3** | No — Proton | WitcherAccess drives a Windows reader | ❌ Silent |
+| **Moonlight Peaks** | No — Proton | BepInEx plugin, Windows speech | ❌ Silent |
+
+NVDA and JAWS are Windows programs. They do not run inside a Proton prefix, and Wine's SAPI is not a
+substitute. So a Proton-hosted Skyrim would load Skyrim Access perfectly, start, play — and say nothing.
+That is precisely the failure mode this manager exists to prevent, and the one the CHANGELOG already
+describes for Minecraft: *"The game starts, plays perfectly, and simply never speaks."*
+
+Managing mods for a game that cannot talk to you is not a smaller feature. It is a worse one than not
+offering it, because the user has no way to tell a broken install from an unsupported one.
+
+### The decision
+
+**Native. Two games: Minecraft Java and Stardew Valley.** Both run natively, both have accessibility
+mods that speak through speech-dispatcher — *the same speech-dispatcher the GTK head talks to*, which
+means one working speech stack rather than two.
+
+Three things follow from this, and each simplifies the work:
+
+1. **`IGameLocator` no longer needs Proton prefix resolution** for a first release. It needs
+   `~/.steam/steam/steamapps/common/Stardew Valley` and `~/.minecraft`. `SteamLibraryLocator` already
+   parses `libraryfolders.vdf` and already passes its tests on Linux.
+2. **Mod folder names must still obey Windows rules** — `WindowsFileName` stays exactly as it is. Stardew
+   mods are shared between machines and SMAPI is cross-platform, so a name Linux accepts and Windows
+   refuses is still a bug.
+3. **The Nexus API key is not needed for a first release.** Minecraft uses Modrinth (no key) and
+   Stardew's mods are on Nexus — so Nexus is needed for Stardew but not for a Minecraft-only v1, which
+   makes Minecraft-first cheaper still.
+
+Proton support is not ruled out forever. It becomes worth building the day a Skyrim access mod can speak
+on Linux, and not before.
+
+---
+
+## 17. The GTK head — a working spike, 2026-09-13
+
+Two new projects, and they run.
+
+### `Kinetix.Platform.Linux` (`net10.0`, no UI toolkit)
+
+`SpeechDispatcherAnnouncer : IAnnouncer` — the Linux counterpart to `TolkAnnouncer`, P/Invoking
+`libspeechd.so.2`. **Verified speaking aloud on this machine** (speech-dispatcher 0.12.1, eSpeak NG).
+
+It is deliberately not a port of the Tolk one. Tolk hands text to whichever screen reader is running;
+speech-dispatcher *is* the speech layer. There is no bridge to be unloaded from underneath it, and
+stopping speech is a real operation rather than a best effort. `IsSpeaking` returns false honestly, with
+a comment saying so — speech-dispatcher can answer it properly through threaded-mode callbacks, which
+this does not use yet, and that is the one place Linux can do better than Windows rather than worse.
+
+Kept free of GTK on purpose: speech, secrets and game detection are not a toolkit's business, and the
+same implementations would serve a headless build or a different front end.
+
+### `Kinetix.Gtk` (`net10.0`, GirCore 0.7.0)
+
+A real window, driving `Kinetix.Core` directly. **Installed** lists the mods in `~/.minecraft/mods`,
+reading each jar's `fabric.mod.json` through `MinecraftLayout.ReadModInfo` — the same reader the WinForms
+build uses, unchanged — and Space enables or disables one through `MinecraftLayout.PathWithEnabled`, so
+the rule about what a disabled mod is called stays in the core. **Find Mods** searches Modrinth live
+through `ModrinthService.SearchAsync`, no API key. F6 cycles focus, F5 refreshes, Ctrl+F searches: the
+Windows shortcuts, on purpose, so nobody has to learn the app twice.
+
+It shares `lang/en.json` with the WinForms build rather than copying it — two front ends disagreeing
+about what a sentence says would be worse than either wording.
+
+Accessibility decisions worth recording, since they are the point of the exercise:
+
+- **A row is one label holding a whole sentence**, not a grid of cells. Orca reads a row's contents in
+  order, so three labels become three stops to arrow through instead of one fact. This is the same
+  reasoning as every `ToString()` on the row types in `Kinetix.Core/Models`.
+- **Disabled comes first** in a row's wording — "disabled, Sodium 0.5.8" — because someone arrowing a
+  list to find what is switched off should not have to hear the whole name first.
+- **Focus moves are announced.** Orca describes the widget that gained focus but not why, and a list it
+  has already described reads as a bare row, leaving the user unsure the key did anything.
+- **The search box is labelled by a `Gtk.Label` with a mnemonic**, not by placeholder text, which Orca
+  does not treat as a name.
+- **The status line is spoken as well as shown.** A label changing is silent to a screen reader.
+
+### What the spike does not do, and does not pretend to
+
+- Minecraft only. Stardew needs `ScanMods`, which is still in `ModFileSystem` in the WinForms app.
+- Its strings are English literals rather than `Loc.T` calls. The catalogue is wired and available;
+  using it is Phase 4 work, and the guard tests deliberately do not cover this project yet.
+- No installing, updating, profiles, backups, wiki or walkthroughs.
+- The Minecraft version for search is hard-coded to 1.21.1.
+
+### Does building this now block anything later?
+
+No — and that was the question worth asking. It is ~450 lines against interfaces that already existed,
+so it commits nothing: it holds an `IAnnouncer` and an `IDispatcher` and calls into the core, exactly as
+the WinForms head does. Nothing in `Kinetix.Core`, `KinetixModManager` or the tests changed to
+accommodate it. When Phase 4 produces presenters, this window becomes their first consumer rather than
+something to be unpicked.
+
+What it buys is proof, of the three things that were still assumptions: that the core genuinely runs on
+Linux, that a real screen reader reads a GTK head built this way, and that the seams from Phase 3 are the
+right shape — `IAnnouncer` needed no change at all to gain a second implementation.
+
+### The one thing that is now a hard blocker
+
+**WebKitGTK is not installed on this machine**, and `webkit2gtk-4.1` / `webkitgtk-6.0` are absent. The
+wiki, walkthrough and mod-description browsers are required to be in-app rather than opening a separate
+browser window, so `IBrowserHost` has to be WebKitGTK and there is no .NET binding for it — it needs
+hand-written P/Invoke. That is now the largest single unknown in the Linux head, and it is on the TODO.
