@@ -1720,5 +1720,15 @@
   "mc.install.notAModSpeak": "{0} is not a Fabric mod, so it has not been installed.",
   "mc.install.notAModBox": "{0} does not contain a fabric.mod.json, so it is not a Fabric mod.\n\nIt may be a resource pack, a shader pack, or the source code attached to a release rather than the mod itself. Putting it in the mods folder would do nothing, and Minecraft would not say why.",
   "mc.search.noVersionSpeak": "Install Fabric first, so the manager knows which Minecraft version to search for mods for.",
-  "modpage.noPage": "There is no mod page for {0}."
+  "modpage.noPage": "There is no mod page for {0}.",
+  "mc.result.title": "{0} - what would you like to do?",
+  "mc.result.listName": "Actions",
+  "mc.result.hint": "Choose what to do with {0}. Download and install puts it straight into your mods folder. Press Enter to choose, or Escape to go back.",
+  "mc.result.install": "Download and install this mod",
+  "mc.result.describe": "Read the full description",
+  "mc.result.page": "Open the mod's page in your browser",
+  "mc.download.done": "{0} version {1} downloaded.",
+  "mc.download.installNowTitle": "Install this mod?",
+  "mc.download.installNowBox": "{0} version {1} has been downloaded.\n\nInstall it into your mods folder now?",
+  "mc.download.keptInDownloads": "Not installed. The file is in your downloads folder if you want it later."
 }

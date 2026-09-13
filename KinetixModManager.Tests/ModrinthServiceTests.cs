@@ -168,6 +168,58 @@ public class ModrinthServiceTests
 		Assert.Equal(new[] { "REQUIRED1" }, file.RequiredDependencyProjectIds);
 	}
 
+	// -------------------------------------------------------------------------
+	// Updates by file hash
+	// -------------------------------------------------------------------------
+
+	[Fact]
+	public void AnUpdateIsFoundByTheHashOfTheJarThatIsInstalled()
+	{
+		// Shaped like the real /v2/version_files/update reply: an object keyed by the hash asked about. This
+		// is exact identification - the file IS that release of that project - rather than the name matching
+		// used elsewhere, which once installed a six-week-old build over a working one.
+		var response = JObject.Parse("""
+		{
+			"58e82722dee4a78235c4b5c06100ae433973f62e": {
+				"project_id": "P7dR8mSH",
+				"version_number": "0.161.0+26.2",
+				"game_versions": ["26.2"],
+				"files": [ { "primary": true, "filename": "fabric-api-0.161.0+26.2.jar",
+							 "url": "https://cdn.modrinth.com/x.jar", "size": 2542898 } ]
+			}
+		}
+		""");
+
+		var updates = ModrinthService.ParseHashUpdates(response);
+
+		Assert.Single(updates);
+		Assert.Equal("0.161.0+26.2", updates["58e82722dee4a78235c4b5c06100ae433973f62e"].VersionNumber);
+		// Case-insensitive, because a hash written in upper case is the same hash.
+		Assert.True(updates.ContainsKey("58E82722DEE4A78235C4B5C06100AE433973F62E"));
+	}
+
+	[Fact]
+	public void AModModrinthDoesNotHostIsAbsentRatherThanReportedUpToDate()
+	{
+		// Verified against the live API: United Minecraft's jar returns nothing at all, because it is
+		// published on GitHub only. Absent must not be read as "nothing newer" - that would quietly stop
+		// checking the one mod a blind player most needs kept current.
+		var updates = ModrinthService.ParseHashUpdates(JObject.Parse("{}"));
+
+		Assert.Empty(updates);
+		Assert.False(updates.ContainsKey("d003f8f5c9b66c052b1e4778f2ba5a1f0794e580"));
+	}
+
+	[Fact]
+	public void AHashWhoseEntryCarriesNoUsableFileIsSkipped()
+	{
+		var updates = ModrinthService.ParseHashUpdates(JObject.Parse("""
+		{ "abc123": { "version_number": "9.9.9", "files": [ { "primary": false, "filename": "sources.jar" } ] } }
+		"""));
+
+		Assert.Empty(updates);
+	}
+
 	[Fact]
 	public void NoBuildForThisVersionIsNullRatherThanSomeOtherVersionsBuild()
 	{

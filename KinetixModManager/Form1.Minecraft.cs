@@ -253,6 +253,131 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// The newest version of an installed Minecraft mod, or <c>null</c> when Modrinth has nothing to say
+	/// about it.
+	///
+	/// <para>
+	/// Identified by the SHA-1 of the jar itself, which is a better answer than any other update check in this
+	/// manager gets. Everywhere else the manager needs a catalogue id, guesses one from a download's file name,
+	/// or matches on the mod's name and hopes — and name matching is what once installed a six-week-old build
+	/// over a working one. A hash is exact: this file IS that release of that project, or Modrinth has never
+	/// seen it.
+	/// </para>
+	///
+	/// <para>
+	/// ⚠️ Null means "no answer", NOT "up to date". A mod Modrinth does not host — United Minecraft is on
+	/// GitHub only — is absent from the reply, and reading that as "nothing newer" would quietly stop checking
+	/// the one mod the player most needs kept current.
+	/// </para>
+	/// </summary>
+	private async Task<string?> LatestModrinthVersionAsync(GameMod mod)
+	{
+		string jar = mod.FolderPath;
+		if (string.IsNullOrEmpty(jar) || !File.Exists(jar)) return null;
+
+		string gameVersion = MinecraftGameVersionInUse(MinecraftRootFolder());
+		if (gameVersion.Length == 0) return null;
+
+		try
+		{
+			string hash = ModrinthService.Sha1Of(jar);
+			Dictionary<string, ModrinthFile> latest =
+				await ModrinthService.GetLatestForHashesAsync(new[] { hash }, gameVersion);
+
+			return latest.TryGetValue(hash, out ModrinthFile? file) ? file.VersionNumber : null;
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Modrinth", $"checking for updates to {mod.Name}", ex);
+			return null;
+		}
+	}
+
+	/// <summary>
+	/// Asks what to do with a mod found by searching Modrinth, and does it.
+	///
+	/// Enter on a result opens the mod's web page for every other catalogue, because for those that is the
+	/// only way to get a file: Nexus wants a browser session or a premium account. Modrinth wants neither —
+	/// the download is a plain URL — so sending the user to a web page to hunt for a download button, on a
+	/// site whose button did not even respond to a screen reader, would be handing back a problem the manager
+	/// is able to solve outright.
+	/// </summary>
+	private async Task OfferMinecraftSearchResultAsync(GameMod result)
+	{
+		string[] actions =
+		{
+			Loc.T("mc.result.install"),
+			Loc.T("mc.result.describe"),
+			Loc.T("mc.result.page"),
+		};
+
+		string? chosen = ShowChoiceList(
+			Loc.T("mc.result.title", result.Name),
+			Loc.T("mc.result.listName"),
+			actions,
+			actions[0],
+			Loc.T("mc.result.hint", result.Name));
+
+		if (chosen is null) { Speak(Loc.T("common.changesCancelled")); return; }
+
+		if (chosen == actions[1]) { SpeakLong(result.Description); return; }
+		if (chosen == actions[2]) { OpenModPage(); return; }
+
+		await DownloadAndInstallModrinthModAsync(result);
+	}
+
+	/// <summary>
+	/// Downloads a Modrinth mod's jar and offers to install it, in the same two beats every other game uses:
+	/// it says the file arrived, then asks whether to install it.
+	/// </summary>
+	private async Task DownloadAndInstallModrinthModAsync(GameMod result)
+	{
+		string gameVersion = MinecraftGameVersionInUse(MinecraftRootFolder());
+		if (gameVersion.Length == 0) { Speak(Loc.T("mc.search.noVersionSpeak")); return; }
+
+		try
+		{
+			SetStatus(Loc.T("suite.downloading", result.Name));
+			Speak(Loc.T("suite.downloading", result.Name));
+
+			ModrinthFile? file = await ModrinthService.GetLatestFileAsync(result.ModrinthId!, gameVersion);
+			if (file is null)
+			{
+				// The search filters on the game version, so this is rare — but a mod can lose support for a
+				// version between the search and the download, and installing a build for another version
+				// would load nothing and say nothing.
+				Speak(Loc.T("mc.install.noBuildSpeak", result.Name, gameVersion));
+				SpeakBox(Loc.T("mc.install.noBuildBox", result.Name, gameVersion),
+					Loc.T("mc.install.noBuildTitle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+				return;
+			}
+
+			// Into the downloads folder first, exactly like a Nexus download, so the file is kept and the
+			// downloads history has something to show.
+			string downloaded = await ModrinthService.DownloadAsync(file, downloadsPath);
+
+			ResetStatus();
+			Speak(Loc.T("mc.download.done", result.Name, file.VersionNumber));
+
+			if (SpeakBox(
+					Loc.T("mc.download.installNowBox", result.Name, file.VersionNumber),
+					Loc.T("mc.download.installNowTitle"),
+					MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+			{
+				Speak(Loc.T("mc.download.keptInDownloads"));
+				return;
+			}
+
+			await InstallMinecraftJarAsync(downloaded);
+		}
+		catch (Exception ex)
+		{
+			LogFailure(result.Name, "Failed to download the mod", ex);
+			ResetStatus();
+		}
+	}
+
+	/// <summary>
 	/// Installs a mod jar the user picked off disk — the other half of browsing Modrinth, since a mod page
 	/// downloads to their Downloads folder and something has to bring it in from there.
 	///

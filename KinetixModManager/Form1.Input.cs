@@ -745,6 +745,15 @@ public partial class Form1
 			{
 				Fire(RunDiscovery(loadMore: true), "RunDiscovery");
 			}
+			// A Modrinth mod can be fetched directly — no browser, no premium account, no download protocol to
+			// register — so Enter offers to do it rather than handing the user to a web page whose download
+			// button they then have to find. Every other catalogue still opens the page, because for those
+			// that IS the only way in.
+			else if (list.SelectedItem is StardewMod modrinthResult &&
+					 !string.IsNullOrEmpty(modrinthResult.ModrinthId))
+			{
+				Fire(OfferMinecraftSearchResultAsync(modrinthResult), "OfferMinecraftSearchResultAsync");
+			}
 			else
 			{
 				OpenModPage();

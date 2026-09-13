@@ -195,7 +195,11 @@ public partial class Form1
 		try
 		{
 			string? latestVersion = null;
-			if (!string.IsNullOrEmpty(group[0].NexusID))
+			if (GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true)
+			{
+				latestVersion = await LatestModrinthVersionAsync(group[0]);
+			}
+			else if (!string.IsNullOrEmpty(group[0].NexusID))
 			{
 				latestVersion = await _nexusService.GetLatestVersionAsync(group[0].NexusID ?? "");
 			}

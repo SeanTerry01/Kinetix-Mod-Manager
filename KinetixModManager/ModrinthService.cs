@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Text;
 using Newtonsoft.Json.Linq;
 
 namespace KinetixModManager;
@@ -128,6 +129,77 @@ public static class ModrinthService
 			.Where(v => v.Length > 0)
 			.Reverse()
 			.ToList() ?? (IReadOnlyList<string>)Array.Empty<string>();
+	}
+
+	// -------------------------------------------------------------------------
+	// Updates
+	// -------------------------------------------------------------------------
+
+	/// <summary>
+	/// The newest build of each installed mod, keyed by the SHA-1 of the jar that is installed now.
+	///
+	/// <para>
+	/// Modrinth identifies a mod by the hash of its file, which is a considerably better answer than every
+	/// other update check in this manager gets. Elsewhere the manager has to know a mod's catalogue id, guess
+	/// it from a download's file name, or match on the mod's name and hope — and matching by name is what once
+	/// installed a six-week-old build over a working one. A hash is exact: this file IS that release of that
+	/// project, or Modrinth has never seen it.
+	/// </para>
+	///
+	/// <para>
+	/// A hash Modrinth does not know is simply absent from the answer. That is the honest result for a mod it
+	/// does not host — United Minecraft is on GitHub only — and it must not be read as "no update available".
+	/// </para>
+	/// </summary>
+	public static async Task<Dictionary<string, ModrinthFile>> GetLatestForHashesAsync(
+		IReadOnlyCollection<string> sha1Hashes, string gameVersion, string loader = "fabric")
+	{
+		var latest = new Dictionary<string, ModrinthFile>(StringComparer.OrdinalIgnoreCase);
+		if (sha1Hashes.Count == 0) return latest;
+
+		var body = new JObject
+		{
+			["hashes"]        = new JArray(sha1Hashes),
+			["algorithm"]     = "sha1",
+			["loaders"]       = new JArray(loader),
+			["game_versions"] = new JArray(gameVersion)
+		};
+
+		using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+		client.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
+
+		using var content = new StringContent(body.ToString(), Encoding.UTF8, "application/json");
+		HttpResponseMessage response = await client.PostAsync($"{ApiBase}/version_files/update", content);
+		if (!response.IsSuccessStatusCode) return latest;
+
+		return ParseHashUpdates(JObject.Parse(await response.Content.ReadAsStringAsync()));
+	}
+
+	/// <summary>
+	/// <see cref="GetLatestForHashesAsync"/>'s parsing half — the response is an object keyed by the hash that
+	/// was asked about, each value a version in the same shape the version listing uses.
+	/// </summary>
+	public static Dictionary<string, ModrinthFile> ParseHashUpdates(JObject response)
+	{
+		var latest = new Dictionary<string, ModrinthFile>(StringComparer.OrdinalIgnoreCase);
+
+		foreach (JProperty entry in response.Properties())
+		{
+			if (entry.Value is not JObject version) continue;
+
+			ModrinthFile? file = ParseNewestFile(new JArray(version));
+			if (file != null) latest[entry.Name] = file;
+		}
+
+		return latest;
+	}
+
+	/// <summary>The SHA-1 of a file, lower-case hex — the form Modrinth's hash lookups expect.</summary>
+	public static string Sha1Of(string path)
+	{
+		using var sha1 = System.Security.Cryptography.SHA1.Create();
+		using FileStream stream = File.OpenRead(path);
+		return Convert.ToHexString(sha1.ComputeHash(stream)).ToLowerInvariant();
 	}
 
 	// -------------------------------------------------------------------------
