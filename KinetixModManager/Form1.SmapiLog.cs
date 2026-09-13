@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -75,7 +75,8 @@ public partial class Form1
 	private static bool GameHasLogTab(string game)
 	{
 		GameProfile? profile = GameProfiles.Find(game);
-		return profile != null && (profile.IsBethesda || profile.IsBepInEx || profile.IsWitcher3);
+		return profile != null &&
+			(profile.IsBethesda || profile.IsBepInEx || profile.IsWitcher3 || profile.IsMinecraft);
 	}
 
 	/// <summary>
@@ -100,6 +101,10 @@ public partial class Form1
 			string root = _settings.CurrentGamePath;
 			return string.IsNullOrEmpty(root) ? "" : Path.Combine(root, "bin", "x64");
 		}
+		// Minecraft writes one log per run to .minecraft\logs, and it is the only place that answers the
+		// question that matters: whether the game just started with the mods or without them. A vanilla launch
+		// and a modded one look identical from outside — the game runs either way and says nothing.
+		if (profile.IsMinecraft) return Path.Combine(MinecraftRootFolder(), "logs");
 		return "";
 	}
 
@@ -111,6 +116,8 @@ public partial class Form1
 		"MoonlightPeaks" => "LogOutput.log",
 		// No engine log exists; the accessibility mod's own log is the one worth opening first.
 		"Witcher3"       => "WitcherAccess.log",
+		// Minecraft rotates every previous run into a .log.gz and keeps only the current one as plain text.
+		"Minecraft"      => "latest.log",
 		_                => ""
 	};
 

@@ -39,6 +39,7 @@ public partial class Form1
 		SetStatus(Loc.T("health.checking"), speak: true);
 
 		ReportRow? runtimeRow = GatherRuntimeFinding();
+		ReportRow? minecraftRow = GatherMinecraftLaunchFinding();
 		(List<ReportRow> reqRows, _) = await GatherRequirementFindings();
 		ReportRow? limitRow = GatherPluginLimitFinding();
 		List<ReportRow> partRows = GatherMissingPartFindings();
@@ -55,6 +56,9 @@ public partial class Form1
 		// First of all, because it outranks everything below it: a broken C runtime stops native mods loading in
 		// every game at once, and no amount of fixing requirements or conflicts will help until it is repaired.
 		if (runtimeRow != null) rows.Add(runtimeRow);
+		// Straight after the runtime, and for the same reason: it is the difference between "a mod is
+		// misconfigured" and "no mod ran at all". Everything below is about a game that at least loaded them.
+		if (minecraftRow != null) rows.Add(minecraftRow);
 		foreach (ReportRow r in reqRows) { r.Text = Loc.T("health.rowReq", r.Text); rows.Add(r); }
 		if (limitRow != null) { limitRow.Text = Loc.T("health.rowLimit", limitRow.Text); rows.Add(limitRow); }
 		// With the missing requirements, because a half-installed mod is the same kind of problem: the mod is
@@ -117,6 +121,44 @@ public partial class Form1
 	/// launches, says nothing, and leaves no error for a screen reader to find. Pointing at the runtime is the
 	/// difference between a five-minute repair and a lost evening.
 	/// </summary>
+	/// <summary>
+	/// Whether the last run of Minecraft actually had its mods, or <c>null</c> for any other game and when
+	/// there is nothing to report.
+	///
+	/// <para>
+	/// The single most valuable check this game has, because it is the one failure the game gives no sign of.
+	/// A correctly installed Fabric, a correct mods folder and a launcher that started the vanilla profile
+	/// produce a game that runs perfectly and never speaks — and nothing on screen, in the game or in the
+	/// manager says why. It cost a real evening before the manager could answer it.
+	/// </para>
+	/// </summary>
+	private ReportRow? GatherMinecraftLaunchFinding()
+	{
+		if (GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft != true) return null;
+
+		string root = MinecraftRootFolder();
+		MinecraftLaunchOutcome outcome = MinecraftLaunchLog.ReadLatest(root);
+
+		// Never launched, or the log has been cleared: nothing to report either way, and inventing a warning
+		// about a game the user has not played yet would be noise.
+		if (outcome.NoLog) return null;
+
+		if (outcome.FabricLoaded)
+		{
+			// Reported even when everything is fine. "Your mods did load, and here is how many" is worth
+			// hearing in a game whose usual failure is silence — an all-clear that says nothing at all leaves
+			// the user no better off than before they asked.
+			return new ReportRow
+			{
+				Text = outcome.ModCount >= 0
+					? Loc.T("health.mcLoaded", outcome.GameVersion, outcome.LoaderVersion, outcome.ModCount)
+					: Loc.T("health.mcLoadedNoCount", outcome.GameVersion, outcome.LoaderVersion)
+			};
+		}
+
+		return new ReportRow { Text = Loc.T("health.mcVanilla") };
+	}
+
 	private ReportRow? GatherRuntimeFinding()
 	{
 		VcRuntimeVerdict? verdict = VcRuntimeCheck.Inspect();

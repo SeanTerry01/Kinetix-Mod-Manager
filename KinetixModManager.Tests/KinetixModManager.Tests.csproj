@@ -86,6 +86,8 @@
     <!-- Builds the java command that starts Minecraft without its launcher: version merging, rule evaluation,
          classpath and argument expansion (BCL + Json.NET + DiagnosticLog). -->
     <Compile Include="..\KinetixModManager\MinecraftLauncher.cs" />
+    <!-- Reads latest.log to answer whether the last run of Minecraft actually had its mods (BCL only). -->
+    <Compile Include="..\KinetixModManager\MinecraftLaunchLog.cs" />
     <!-- Reads Modrinth, where Minecraft's Fabric mods live: search results and per-version files
          (BCL + Json.NET + GameMod). -->
     <Compile Include="..\KinetixModManager\ModrinthService.cs" />

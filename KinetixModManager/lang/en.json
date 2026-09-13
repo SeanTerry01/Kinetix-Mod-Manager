@@ -1730,5 +1730,8 @@
   "mc.download.done": "{0} version {1} downloaded.",
   "mc.download.installNowTitle": "Install this mod?",
   "mc.download.installNowBox": "{0} version {1} has been downloaded.\n\nInstall it into your mods folder now?",
-  "mc.download.keptInDownloads": "Not installed. The file is in your downloads folder if you want it later."
+  "mc.download.keptInDownloads": "Not installed. The file is in your downloads folder if you want it later.",
+  "health.mcLoaded": "Your mods loaded. The last time Minecraft ran it was version {0} with Fabric Loader {1}, and Fabric accepted {2} mods.",
+  "health.mcLoadedNoCount": "Your mods loaded. The last time Minecraft ran it was version {0} with Fabric Loader {1}.",
+  "health.mcVanilla": "⚠️ The last time Minecraft ran, it ran WITHOUT your mods. The log shows a plain Minecraft start with no Fabric and no mods, which is why the game would have said nothing. Start the game with F5 from here rather than through the Minecraft launcher: choosing an installation and launching a world are separate things in the launcher, and the second quietly overrides the first."
 }
