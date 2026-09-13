@@ -253,6 +253,101 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// Installs a mod jar the user picked off disk — the other half of browsing Modrinth, since a mod page
+	/// downloads to their Downloads folder and something has to bring it in from there.
+	///
+	/// ⚠️ The jar is COPIED, not extracted. Every other game's manual install unpacks the archive it is given,
+	/// which for a Fabric mod would replace the mod with a folder of loose classes that the loader ignores.
+	/// </summary>
+	private async Task InstallMinecraftJarAsync(string jarPath)
+	{
+		string modsFolder = MinecraftLayout.ModsFolderFor(MinecraftRootFolder());
+
+		try
+		{
+			// Read it before copying anything. A file that is not a Fabric mod — a resource pack, a shader
+			// pack, a source jar off a GitHub release — sits in the mods folder doing nothing, and the loader
+			// says not a word about it.
+			FabricModInfo info = MinecraftLayout.ReadModInfo(jarPath);
+			if (info.IsUnreadable)
+			{
+				Speak(Loc.T("mc.install.notAModSpeak", Path.GetFileName(jarPath)));
+				SpeakBox(Loc.T("mc.install.notAModBox", Path.GetFileName(jarPath)),
+					Loc.T("mc.install.notAModTitle"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				return;
+			}
+
+			Directory.CreateDirectory(modsFolder);
+			string destination = Path.Combine(modsFolder, Path.GetFileName(jarPath));
+
+			// An existing copy of the SAME mod may be under a different file name — the version is in the name,
+			// so an update never matches by file. Matched by mod id instead, or the mods folder collects every
+			// version the user has ever installed and Fabric refuses to start with duplicates.
+			string? existing = Directory.Exists(modsFolder)
+				? Directory.EnumerateFiles(modsFolder)
+					.Where(f => MinecraftLayout.IsModFile(f, GameProfiles.Require(GameProfiles.Minecraft).DisabledModSuffix))
+					.FirstOrDefault(f => string.Equals(MinecraftLayout.ReadModInfo(f).Id, info.Id,
+						StringComparison.OrdinalIgnoreCase))
+				: null;
+
+			if (existing != null && !ConfirmOverwrite(info.Name, MinecraftLayout.ReadModInfo(existing).Version))
+				return;
+
+			await Task.Run(() =>
+			{
+				if (existing != null && !string.Equals(existing, destination, StringComparison.OrdinalIgnoreCase))
+					File.Delete(existing);
+
+				File.Copy(jarPath, destination, overwrite: true);
+			});
+
+			Speak(Loc.T("mc.install.done", info.Name));
+			await RefreshModList(checkUpdates: false);
+		}
+		catch (Exception ex)
+		{
+			LogFailure(Path.GetFileName(jarPath), "Failed to install the mod", ex);
+		}
+	}
+
+	/// <summary>
+	/// Searches whichever catalogue the loaded game's mods actually come from.
+	///
+	/// Every caller used to ask Nexus directly, which for Minecraft means asking about a game Nexus has no
+	/// Fabric mods for, using a domain that is empty. This is the one place that decides, so the discovery
+	/// list, the update checker and the coverage report cannot disagree about it.
+	/// </summary>
+	private async Task<(List<GameMod> Results, int Total)> SearchActiveGameCatalogueAsync(
+		string searchType, string searchTerm, int page, int pageSize,
+		string? language = null, string? category = null)
+	{
+		if (GameProfiles.Find(_settings.ActiveGame)?.ModSource != ModSource.Modrinth)
+			return await _nexusService.SearchModsAsync(searchType, searchTerm, page, pageSize, language, category);
+
+		// Modrinth needs to know which Minecraft version to filter to, and there is no sensible default: a
+		// mod built for another version installs cleanly and then loads nothing.
+		string gameVersion = MinecraftGameVersionInUse(MinecraftRootFolder());
+		if (gameVersion.Length == 0)
+		{
+			Speak(Loc.T("mc.search.noVersionSpeak"));
+			return (new List<GameMod>(), 0);
+		}
+
+		try
+		{
+			// Language and category are Nexus's filters and have no equivalent here; Modrinth's own categories
+			// are a different vocabulary entirely, so offering them would promise filtering that is not
+			// happening.
+			return await ModrinthService.SearchAsync(searchTerm, gameVersion, (page - 1) * pageSize, pageSize);
+		}
+		catch (Exception ex)
+		{
+			LogFailure("Modrinth", "Search failed", ex);
+			return (new List<GameMod>(), 0);
+		}
+	}
+
+	/// <summary>
 	/// Starts Minecraft with Fabric and the installed mods, without going near the launcher.
 	///
 	/// This is the feature the whole of Minecraft support exists for. The launcher is where the accessibility

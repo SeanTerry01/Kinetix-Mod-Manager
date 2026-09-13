@@ -140,13 +140,22 @@ public partial class Form1
 	/// <summary>Opens the Nexus Mods page for the selected mod in the default browser.</summary>
 	private void OpenModPage()
 	{
-		if (SelectedNexusMod() is StardewMod stardewMod && !string.IsNullOrEmpty(stardewMod.NexusID))
-		{
-			Process.Start(new ProcessStartInfo($"https://www.nexusmods.com/{_nexusService.CurrentGameDomain}/mods/{stardewMod.NexusID}?tab=files")
-			{
-				UseShellExecute = true
-			});
-		}
+		if (SelectedNexusMod() is not StardewMod stardewMod) return;
+
+		// Whichever catalogue the mod came from. Before this the key did nothing at all on a Minecraft
+		// result: it required a Nexus id, and a Modrinth mod has none — so the one action available on a
+		// search result was silently unavailable for a whole game.
+		string url =
+			!string.IsNullOrEmpty(stardewMod.ModrinthId)
+				? $"https://modrinth.com/mod/{stardewMod.ModrinthId}"
+			: !string.IsNullOrEmpty(stardewMod.NexusID)
+				? $"https://www.nexusmods.com/{_nexusService.CurrentGameDomain}/mods/{stardewMod.NexusID}?tab=files"
+			: "";
+
+		if (url.Length == 0) { Speak(Loc.T("modpage.noPage", stardewMod.Name)); return; }
+
+		try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
+		catch (Exception ex) { LogFailure(stardewMod.Name, "Failed to open the mod page", ex); }
 	}
 
 	/// <summary>
@@ -559,13 +568,24 @@ public partial class Form1
 	/// <summary>Opens a file dialog to select a .zip file and installs it via <see cref="InstallFromZip"/>.</summary>
 	private void ManualInstall()
 	{
+		bool minecraft = GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true;
+
 		using OpenFileDialog openFileDialog = new OpenFileDialog
 		{
 			InitialDirectory = downloadsPath,
-			Filter = Loc.T("install.zipFilter")
+			// A Minecraft mod arrives as a .jar and is not an archive to unpack — it IS the mod — so the
+			// picker has to offer them or the file the user just downloaded cannot even be selected.
+			Filter = Loc.T(minecraft ? "install.jarFilter" : "install.zipFilter")
 		};
 		if (openFileDialog.ShowDialog() == DialogResult.OK)
 		{
+			if (minecraft &&
+				openFileDialog.FileName.EndsWith(MinecraftLayout.ModExtension, StringComparison.OrdinalIgnoreCase))
+			{
+				Fire(InstallMinecraftJarAsync(openFileDialog.FileName), "InstallMinecraftJarAsync");
+				return;
+			}
+
 			// A Nexus download carries its mod id in its own file name, and this is the moment that is known for
 			// certain — afterwards nothing on disk says where the mod came from, and it takes a name search
 			// against Nexus to guess it back. Installing by hand used to throw it away, so a mod installed this

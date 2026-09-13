@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -904,7 +904,7 @@ public partial class Form1
 		try
 		{
 			int pageSize = _currentDiscoveryPageSize;
-			var (results, total) = await _nexusService.SearchModsAsync(
+			var (results, total) = await SearchActiveGameCatalogueAsync(
 				searchType, searchTerm, _currentDiscoveryPage, pageSize, language, category);
 			int offset = (_currentDiscoveryPage - 1) * pageSize;
 

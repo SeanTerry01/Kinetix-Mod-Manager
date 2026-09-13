@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -924,7 +924,7 @@ public partial class Form1
 				bool anyResults = false;
 				foreach (string alias in ModNameMatch.SearchAliases(mod))
 				{
-					var (results, _) = await _nexusService.SearchModsAsync("Search", alias, 1, 10);
+					var (results, _) = await SearchActiveGameCatalogueAsync("Search", alias, 1, 10);
 					if (results.Count == 0) continue;
 					anyResults = true;
 

@@ -130,6 +130,75 @@ public static class ModrinthService
 			.ToList() ?? (IReadOnlyList<string>)Array.Empty<string>();
 	}
 
+	// -------------------------------------------------------------------------
+	// Search
+	// -------------------------------------------------------------------------
+
+	/// <summary>
+	/// Searches Modrinth for Fabric mods matching <paramref name="term"/> that are built for
+	/// <paramref name="gameVersion"/>, returning results in the same shape the Nexus search returns so the
+	/// discovery list needs no idea which catalogue it is showing.
+	///
+	/// The game-version facet is not optional. Modrinth will happily return a mod with no build for the
+	/// version being played, and installing one produces a mods folder where nothing loads — the failure this
+	/// whole game is prone to. Better to find fewer mods than to offer ones that cannot work.
+	/// </summary>
+	public static async Task<(List<GameMod> Results, int Total)> SearchAsync(
+		string term, string gameVersion, int offset, int limit, string loader = "fabric")
+	{
+		string facets = "[" +
+			$"[\"versions:{gameVersion}\"]," +
+			$"[\"categories:{loader}\"]," +
+			"[\"project_type:mod\"]]";
+
+		string url = $"{ApiBase}/search?query={Uri.EscapeDataString(term ?? "")}" +
+					 $"&facets={Uri.EscapeDataString(facets)}" +
+					 $"&offset={Math.Max(0, offset)}&limit={Math.Clamp(limit, 1, 100)}";
+
+		return ParseSearch(JObject.Parse(await GetStringAsync(url)));
+	}
+
+	/// <summary>
+	/// <see cref="SearchAsync"/>'s parsing half, split out so the mapping can be tested against a recorded
+	/// response rather than the live service.
+	/// </summary>
+	public static (List<GameMod> Results, int Total) ParseSearch(JObject response)
+	{
+		var results = new List<GameMod>();
+
+		foreach (JToken hit in response["hits"] as JArray ?? new JArray())
+		{
+			// The slug is preferred over the project id: it is what appears in the mod's URL, it is what a
+			// user would quote asking for help, and it is what the API accepts anywhere an id is taken.
+			string id = (string?)hit["slug"] ?? (string?)hit["project_id"] ?? "";
+			if (id.Length == 0) continue;
+
+			results.Add(new GameMod
+			{
+				IsSearchResult = true,
+				ModrinthId     = id,
+				Name           = (string?)hit["title"] ?? id,
+				Author         = (string?)hit["author"] ?? "",
+				Description    = (string?)hit["description"] ?? "",
+				Downloads      = (long?)hit["downloads"] ?? -1,
+				// Modrinth has no endorsements. Follows is the nearest thing it keeps — people who chose to
+				// watch the mod — and it answers the same question a download count cannot: whether anyone
+				// stuck around.
+				Endorsements   = (long?)hit["follows"] ?? -1,
+				LastUpdated    = ParseDate((string?)hit["date_modified"])
+			});
+		}
+
+		return (results, (int?)response["total_hits"] ?? results.Count);
+	}
+
+	private static DateTimeOffset? ParseDate(string? value) =>
+		DateTimeOffset.TryParse(value, System.Globalization.CultureInfo.InvariantCulture,
+			System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal,
+			out DateTimeOffset parsed)
+			? parsed
+			: null;
+
 	/// <summary>Downloads a file to <paramref name="destinationFolder"/> and returns the path written.</summary>
 	public static async Task<string> DownloadAsync(ModrinthFile file, string destinationFolder)
 	{

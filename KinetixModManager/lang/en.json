@@ -758,6 +758,7 @@
   "nxm.keptDownload": "Staying here. The download is saved for {0}.",
   "nxm.switching": "Switching to {0}.",
   "install.zipFilter": "Mod Archives|*.zip;*.7z;*.rar|All files|*.*",
+  "install.jarFilter": "Minecraft Mods|*.jar|All files|*.*",
   "install.installed": "{0} installed!",
   "install.failed": "Install failed: {0}",
   "install.failedAccess": "Install failed: access to a file was denied. Make sure the game is closed, and that an antivirus or Windows Controlled Folder Access isn't blocking your mods folder, then try again.\n\nDetails: {0}",
@@ -1714,5 +1715,10 @@
   "curator.reviewRowNoReason": "{0}: {1}. {2}. No reason recorded.",
   "curator.removeConfirm": "Remove {0} from your suggested mods?",
   "curator.removedPos": "Removed {0}. {1}, {2} of {3}.",
-  "curator.reviewNowEmpty": "Removed {0}. No mods are marked now."
+  "curator.reviewNowEmpty": "Removed {0}. No mods are marked now.",
+  "mc.install.notAModTitle": "Not a Minecraft mod",
+  "mc.install.notAModSpeak": "{0} is not a Fabric mod, so it has not been installed.",
+  "mc.install.notAModBox": "{0} does not contain a fabric.mod.json, so it is not a Fabric mod.\n\nIt may be a resource pack, a shader pack, or the source code attached to a release rather than the mod itself. Putting it in the mods folder would do nothing, and Minecraft would not say why.",
+  "mc.search.noVersionSpeak": "Install Fabric first, so the manager knows which Minecraft version to search for mods for.",
+  "modpage.noPage": "There is no mod page for {0}."
 }

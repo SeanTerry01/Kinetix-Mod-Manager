@@ -44,6 +44,24 @@ public class GameMod
 	/// <summary>Nexus Mods numeric mod ID, or <c>null</c> if not mapped.</summary>
 	public string? NexusID { get; set; }
 
+	/// <summary>
+	/// Modrinth project slug (or id), or <c>null</c> for a mod that does not come from Modrinth.
+	///
+	/// Kept apart from <see cref="NexusID"/> rather than sharing it. The two are not interchangeable: a Nexus
+	/// id is a number that means something entirely different on the other service, and a value in the wrong
+	/// field would send a download or an update check to the wrong catalogue asking about somebody else's mod.
+	/// Which one a game uses is decided by its <c>ModSource</c>.
+	/// </summary>
+	public string? ModrinthId { get; set; }
+
+	/// <summary>
+	/// The mod's id as the user hears it in a search result, whichever catalogue it came from, or <c>""</c>
+	/// when it has none.
+	/// </summary>
+	public string DisplayId =>
+		!string.IsNullOrEmpty(NexusID) ? NexusID! :
+		!string.IsNullOrEmpty(ModrinthId) ? ModrinthId! : "";
+
 	/// <summary>GitHub repository path in 'owner/repo' format, or <c>null</c> if not mapped.</summary>
 	public string? GitHubRepo { get; set; }
 
@@ -201,7 +219,11 @@ public class GameMod
 			// The summary here is however much of it Nexus returns, which for a long one is NOT all of it:
 			// the API's summary field arrives already truncated at roughly 240 characters, often mid-word.
 			// Nothing can recover the rest — the full text lives in the mod's description (Ctrl+Shift+I).
-			return $"{Name} (ID: {NexusID}). {installed}{downloaded}{popularity}{updated}{Description}";
+			// The id is read out because it is what a user quotes when asking for help or looking a mod up, and
+			// it differs by catalogue: a Nexus number, a Modrinth slug. A result with neither says neither,
+			// rather than reading "(ID: )" aloud at the start of every row.
+			string id = DisplayId.Length > 0 ? $" (ID: {DisplayId})" : "";
+			return $"{Name}{id}. {installed}{downloaded}{popularity}{updated}{Description}";
 		}
 		string noteSuffix = string.IsNullOrEmpty(Note) ? "" : $" Note: {Note}.";
 		// Some mods genuinely carry no author or version — a Witcher 3 mod folder holds neither, because the

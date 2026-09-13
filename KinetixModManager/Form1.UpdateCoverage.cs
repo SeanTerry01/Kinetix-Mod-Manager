@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -182,7 +182,7 @@ public partial class Form1
 		{
 			try
 			{
-				(List<GameMod> found, _) = await _nexusService.SearchModsAsync("Search", term, 1, 10);
+				(List<GameMod> found, _) = await SearchActiveGameCatalogueAsync("Search", term, 1, 10);
 				results = found;
 			}
 			catch (Exception ex)
