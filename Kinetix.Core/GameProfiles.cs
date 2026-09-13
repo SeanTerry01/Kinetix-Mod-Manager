@@ -447,12 +447,12 @@ public static class GameProfiles
 			LoaderExeName        = "",
 			LoaderDisplayName    = "BepInEx",
 			Layout               = ModLayout.BepInExPlugins,
-			ModsFolderRelativeToGame = @"BepInEx\plugins",
+			ModsFolderRelativeToGame = Path.Combine("BepInEx", "plugins"),
 			NexusDomain          = "moonlightpeaks",
 			NexusGameId          = "9480",
 			SoundTheme           = "Moonlight Peaks",
 			// Written by the Moonlight Keybind Export plugin; the bundled snapshot stands in until it exists.
-			KeybindExportFileRelativeToGame = @"BepInEx\moonlight-keybinds.json",
+			KeybindExportFileRelativeToGame = Path.Combine("BepInEx", "moonlight-keybinds.json"),
 			BundledKeybindsFileName         = "moonlight-peaks.defaults.json",
 			KeybindReaderFileName           = "MoonlightKeybindExport.dll",
 			KeybindReaderFolderName         = "MoonlightKeybindExport"
@@ -518,8 +518,10 @@ public static class GameProfiles
 			GogStoreUrl          = "https://www.gog.com/game/the_witcher_3_wild_hunt",
 			DefaultInstallFolder = @"C:\Program Files (x86)\Steam\steamapps\common\The Witcher 3",
 			// The game's exe lives two folders down, not beside the game root — every path built from this one
-			// goes through Path.Combine, which takes the relative path in its stride.
-			GameExeName          = @"bin\x64\witcher3.exe",
+			// goes through Path.Combine, which takes the relative path in its stride. It is assembled with
+			// Path.Combine rather than written as "bin\x64\witcher3.exe" for the same reason: a backslash is
+			// only a separator on Windows, and Path.Combine would treat the literal as one long file name off it.
+			GameExeName          = Path.Combine("bin", "x64", "witcher3.exe"),
 			// Nothing to launch separately: The Witcher 3 loads the contents of its own mods folder, and the
 			// native part of an accessibility mod arrives as an .asi beside the exe, loaded however it starts.
 			LoaderExeName        = "",

@@ -654,11 +654,14 @@ public static class ModFileSystem
 		}
 	}
 
-	/// <summary>Strips the characters Windows forbids in a folder name, so a plugin name can become a folder.</summary>
+	/// <summary>
+	/// Strips the characters Windows forbids in a folder name, so a plugin name can become a folder.
+	/// The set is <see cref="WindowsFileName"/>'s rather than the host's, for the reason given there:
+	/// the name has to satisfy the game, which is a Windows game wherever this manager happens to run.
+	/// </summary>
 	private static string SanitiseFolderName(string name)
 	{
-		var invalid = Path.GetInvalidFileNameChars();
-		string cleaned = new string(name.Where(c => !invalid.Contains(c)).ToArray()).Trim();
+		string cleaned = WindowsFileName.StripInvalid(name).Trim();
 		return cleaned.TrimEnd('.');
 	}
 
@@ -2902,7 +2905,11 @@ public static class ModFileSystem
 	private static bool IsWitcherGameOwnedFolder(string folder, string gameFolder)
 	{
 		string full = Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar);
-		foreach (string own in new[] { "dlc", "bin", "mods", @"bin\x64", @"bin\x64_dx12", @"bin\config" })
+		foreach (string own in new[]
+				 {
+					 "dlc", "bin", "mods",
+					 Path.Combine("bin", "x64"), Path.Combine("bin", "x64_dx12"), Path.Combine("bin", "config")
+				 })
 			if (full.Equals(Path.GetFullPath(Path.Combine(gameFolder, own)).TrimEnd(Path.DirectorySeparatorChar),
 					StringComparison.OrdinalIgnoreCase))
 				return true;

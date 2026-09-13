@@ -81,13 +81,20 @@ public class MinecraftLauncherTests
 	// Maven coordinates
 	// -------------------------------------------------------------------------
 
+	// The expectation is written with forward slashes and composed with Path.Combine below, because the
+	// separator here is deliberately the host's. Minecraft is the one supported game that genuinely runs on
+	// Linux, and this path ends up on the classpath handed to java - so it has to be spelled the way the
+	// machine running the game spells a path, not the way Windows does. An [InlineData] cannot call
+	// Path.Combine itself, since an attribute argument has to be a compile-time constant.
 	[Theory]
-	[InlineData("net.fabricmc:fabric-loader:0.19.5", @"net\fabricmc\fabric-loader\0.19.5\fabric-loader-0.19.5.jar")]
-	[InlineData("org.ow2.asm:asm:9.10.1", @"org\ow2\asm\asm\9.10.1\asm-9.10.1.jar")]
-	[InlineData("org.lwjgl:lwjgl:3.4.1:natives-windows", @"org\lwjgl\lwjgl\3.4.1\lwjgl-3.4.1-natives-windows.jar")]
+	[InlineData("net.fabricmc:fabric-loader:0.19.5", "net/fabricmc/fabric-loader/0.19.5/fabric-loader-0.19.5.jar")]
+	[InlineData("org.ow2.asm:asm:9.10.1", "org/ow2/asm/asm/9.10.1/asm-9.10.1.jar")]
+	[InlineData("org.lwjgl:lwjgl:3.4.1:natives-windows", "org/lwjgl/lwjgl/3.4.1/lwjgl-3.4.1-natives-windows.jar")]
 	[InlineData("not-a-coordinate", "")]
-	public void AMavenCoordinateBecomesItsPathUnderLibraries(string coordinate, string expected)
+	public void AMavenCoordinateBecomesItsPathUnderLibraries(string coordinate, string expectedSegments)
 	{
+		string expected = expectedSegments.Length == 0 ? "" : Path.Combine(expectedSegments.Split('/'));
+
 		// Fabric's own libraries name themselves this way and give no download path; the game's carry one.
 		Assert.Equal(expected, MinecraftLauncher.MavenToRelativePath(coordinate));
 	}

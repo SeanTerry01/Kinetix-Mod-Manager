@@ -16,8 +16,12 @@ public class ModEnableStateTests
 {
     private static string P(params string[] parts) => Path.Combine(parts);
 
-    private const string Plugins = @"D:\SteamLibrary\steamapps\common\Moonlight Peaks\BepInEx\plugins";
-    private const string Disabled = @"D:\SteamLibrary\steamapps\common\Moonlight Peaks\BepInEx\plugins-disabled";
+    // Built from segments rather than written as a Windows literal: these tests are about which folder a
+    // mod ends up in, not about which character separates one folder from the next. See TestPaths.
+    private static readonly string Plugins =
+        TestPaths.Under('D', "SteamLibrary", "steamapps", "common", "Moonlight Peaks", "BepInEx", "plugins");
+    private static readonly string Disabled =
+        TestPaths.Under('D', "SteamLibrary", "steamapps", "common", "Moonlight Peaks", "BepInEx", "plugins-disabled");
 
     // -------------------------------------------------------------------------
     // BepInEx: disabling moves the mod out of the folder the chainloader scans
@@ -184,8 +188,8 @@ public class ModEnableStateTests
     {
         // Not under the mods folder and not in the disabled folder either. Two such mods must not answer alike:
         // a shared key claims they came out of one folder.
-        string first = ModEnableState.InstalledGroupFolder(Plugins, @"E:\Elsewhere\FirstMod");
-        string second = ModEnableState.InstalledGroupFolder(Plugins, @"E:\Elsewhere\SecondMod");
+        string first = ModEnableState.InstalledGroupFolder(Plugins, TestPaths.Under('E', "Elsewhere", "FirstMod"));
+        string second = ModEnableState.InstalledGroupFolder(Plugins, TestPaths.Under('E', "Elsewhere", "SecondMod"));
 
         Assert.Equal("FirstMod", first);
         Assert.Equal("SecondMod", second);

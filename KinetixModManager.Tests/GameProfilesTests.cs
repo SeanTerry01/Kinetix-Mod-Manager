@@ -88,9 +88,11 @@ public class GameProfilesTests
     {
         GameProfile mp = GameProfiles.Require(GameProfiles.MoonlightPeaks);
 
-        string mods = mp.ModsFolderFor(@"D:\SteamLibrary\steamapps\common\Moonlight Peaks");
+        string game = TestPaths.Under('D', "SteamLibrary", "steamapps", "common", "Moonlight Peaks");
 
-        Assert.Equal(@"D:\SteamLibrary\steamapps\common\Moonlight Peaks\BepInEx\plugins", mods);
+        string mods = mp.ModsFolderFor(game);
+
+        Assert.Equal(Path.Combine(game, "BepInEx", "plugins"), mods);
         Assert.Null(mp.StagingFolderName);
     }
 

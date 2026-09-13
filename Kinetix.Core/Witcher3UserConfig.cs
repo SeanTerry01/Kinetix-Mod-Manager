@@ -36,8 +36,13 @@ namespace KinetixModManager;
 /// </summary>
 public static class Witcher3UserConfig
 {
-	/// <summary>Where the game keeps every mod's settings menu definition, relative to the game folder.</summary>
-	public const string ConfigMatrixRelativePath = @"bin\config\r4game\user_config_matrix\pc";
+	/// <summary>
+	/// Where the game keeps every mod's settings menu definition, relative to the game folder.
+	/// <c>static readonly</c> rather than <c>const</c> so Path.Combine spells the separator; see
+	/// <see cref="WindowsFileName"/> for why the host's idea of one cannot be assumed.
+	/// </summary>
+	public static readonly string ConfigMatrixRelativePath =
+		Path.Combine("bin", "config", "r4game", "user_config_matrix", "pc");
 
 	/// <summary>The file, inside the player's Witcher 3 documents folder, that holds every mod's settings.</summary>
 	public const string UserSettingsFileName = "user.settings";

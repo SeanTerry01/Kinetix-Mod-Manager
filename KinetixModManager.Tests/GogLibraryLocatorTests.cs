@@ -89,28 +89,31 @@ public class GogLibraryLocatorTests
 	public void DefaultRoots_LooksForAGogGamesFolderOnEveryDrive()
 	{
 		// A GOG library that outgrew the system drive is ordinary, so every fixed drive is worth a look.
-		List<string> roots = GogLibraryLocator.DefaultRoots(null, new[] { @"C:\", @"D:\" });
+		List<string> roots = GogLibraryLocator.DefaultRoots(
+			null, new[] { TestPaths.DriveRoot('C'), TestPaths.DriveRoot('D') });
 
-		Assert.Contains(@"C:\GOG Games", roots);
-		Assert.Contains(@"D:\GOG Games", roots);
+		Assert.Contains(TestPaths.Under('C', "GOG Games"), roots);
+		Assert.Contains(TestPaths.Under('D', "GOG Games"), roots);
 	}
 
 	[Fact]
 	public void DefaultRoots_IncludesGalaxysOwnGamesFolderWhenGalaxyIsInstalled()
 	{
-		List<string> roots = GogLibraryLocator.DefaultRoots(@"C:\Program Files (x86)\GOG Galaxy", new[] { @"C:\" });
+		string galaxy = TestPaths.Under('C', "Program Files (x86)", "GOG Galaxy");
 
-		Assert.Contains(@"C:\Program Files (x86)\GOG Galaxy\Games", roots);
+		List<string> roots = GogLibraryLocator.DefaultRoots(galaxy, new[] { TestPaths.DriveRoot('C') });
+
+		Assert.Contains(Path.Combine(galaxy, "Games"), roots);
 	}
 
 	[Fact]
 	public void DefaultRoots_CopesWithGalaxyNotBeingInstalledAtAll()
 	{
 		// Owning GOG games without ever installing Galaxy is a perfectly normal way to own them.
-		List<string> roots = GogLibraryLocator.DefaultRoots(null, new[] { @"C:\" });
+		List<string> roots = GogLibraryLocator.DefaultRoots(null, new[] { TestPaths.DriveRoot('C') });
 
 		Assert.Single(roots);
-		Assert.Equal(@"C:\GOG Games", roots[0]);
+		Assert.Equal(TestPaths.Under('C', "GOG Games"), roots[0]);
 	}
 
 	// -------------------------------------------------------------------------

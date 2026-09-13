@@ -281,7 +281,7 @@ public static class ModPartRules
 					// The plugin the whole mod exists to run. Checked by the file it deploys as well as by name,
 					// because the name is the weaker signal: every part of this mod is called "Engine Fixes"
 					// something.
-					DetectFile             = @"Data\SKSE\Plugins\EngineFixes.dll",
+					DetectFile             = Path.Combine("Data", "SKSE", "Plugins", "EngineFixes.dll"),
 					DetectModName          = "Engine Fixes",
 					DetectModNameExcluding = "Preloader",
 					Category      = "MAIN",

@@ -52,8 +52,15 @@ public sealed class MinecraftBinding
 /// </summary>
 public static class MinecraftControls
 {
-	/// <summary>United Minecraft's keybind file, relative to the <c>.minecraft</c> root.</summary>
-	public const string UnitedMinecraftKeybindsFile = @"config\united_minecraft_keybinds.json";
+	/// <summary>
+	/// United Minecraft's keybind file, relative to the <c>.minecraft</c> root.
+	///
+	/// <c>static readonly</c> rather than <c>const</c> because Path.Combine is what spells the separator,
+	/// and Minecraft is the one supported game that genuinely runs on Linux — where the separator is not a
+	/// backslash and a literal one would be read as part of the file name.
+	/// </summary>
+	public static readonly string UnitedMinecraftKeybindsFile =
+		Path.Combine("config", "united_minecraft_keybinds.json");
 
 	// -------------------------------------------------------------------------
 	// Vanilla: options.txt

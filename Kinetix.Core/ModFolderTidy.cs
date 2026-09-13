@@ -119,12 +119,18 @@ public static class ModFolderTidy
 		return Truncate(preferred.Length > 0 ? preferred : Sanitise(tidyBare));
 	}
 
-	/// <summary>A folder name Windows will accept: invalid characters dropped, no trailing dots or spaces.</summary>
+	/// <summary>
+	/// A folder name Windows will accept: invalid characters dropped, no trailing dots or spaces.
+	///
+	/// The character set comes from <see cref="WindowsFileName"/> rather than from
+	/// <see cref="Path.GetInvalidFileNameChars"/>, which answers for the host rather than for the game.
+	/// Off Windows the host's answer is two characters instead of 41, so this would quietly stop
+	/// sanitising and hand a Proton-hosted game a folder name it cannot open.
+	/// </summary>
 	private static string Sanitise(string name)
 	{
 		if (string.IsNullOrWhiteSpace(name)) return "";
-		char[] invalid = Path.GetInvalidFileNameChars();
-		string cleaned = new string(name.Where(c => !invalid.Contains(c)).ToArray()).Trim();
+		string cleaned = WindowsFileName.StripInvalid(name).Trim();
 		return cleaned.TrimEnd('.', ' ');
 	}
 

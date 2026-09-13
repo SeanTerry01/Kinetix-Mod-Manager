@@ -167,7 +167,7 @@ public class GameKeybindExportTests
 	{
 		string game = NewFolder();
 
-		Assert.Equal(Path.Combine(game, @"BepInEx\moonlight-keybinds.json"),
+		Assert.Equal(Path.Combine(game, "BepInEx", "moonlight-keybinds.json"),
 			GameKeybindExport.LiveExportPath(Profile()!, game));
 	}
 

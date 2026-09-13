@@ -136,10 +136,12 @@ public class McmConfigSchemaTests
 		string configDir = NewFolder();
 		File.WriteAllText(Path.Combine(configDir, "config.json"), RealisticMenu);
 
-		McmMenu menu = McmConfigSchema.ReadMenu(Path.Combine(configDir, "config.json"), configDir, @"C:\Game")!;
+		string game = TestPaths.Under('C', "Game");
+
+		McmMenu menu = McmConfigSchema.ReadMenu(Path.Combine(configDir, "config.json"), configDir, game)!;
 
 		Assert.Equal(Path.Combine(configDir, "settings.ini"), menu.DefaultsIniPath);
-		Assert.Equal(@"C:\Game\Data\MCM\Settings\XDI.ini", menu.UserIniPath);
+		Assert.Equal(Path.Combine(game, "Data", "MCM", "Settings", "XDI.ini"), menu.UserIniPath);
 	}
 
 	// -------------------------------------------------------------------------
