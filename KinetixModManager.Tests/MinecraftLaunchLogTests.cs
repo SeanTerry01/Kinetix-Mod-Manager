@@ -22,6 +22,10 @@ public class MinecraftLaunchLogTests
 		"\t- fabric-api 0.160.0+26.2",
 		"\t   |-- fabric-api-base 2.0.4+ece063239e",
 		"\t   |-- fabric-biome-api-v1 18.0.6+c7bd5b8e9e",
+		// The LAST child under a parent uses a different corner. Copied from a real log, and the reason this
+		// fixture is worth having verbatim: written from memory it would have used "|--" throughout and hidden
+		// the bug below entirely.
+		"\t   \\-- fabric-transitive-access-wideners-v1 8.1.4+67c847259e",
 		"\t- fabricloader 0.19.5",
 		"\t- minecraft 26.2",
 		"\t- united_minecraft 1.1.0",
@@ -68,6 +72,38 @@ public class MinecraftLaunchLogTests
 		Assert.Contains("united_minecraft", outcome.ModIds);
 		// Nested entries are listed differently and still count as loaded.
 		Assert.Contains("fabric-api-base", outcome.ModIds);
+	}
+
+	[Fact]
+	public void TheLastNestedModUnderAParentIsNotLost()
+	{
+		// ⚠️ A real bug, and one that had been written off as an inherent limitation. The loader draws the mod
+		// list as a tree, and the last child under a parent uses "\--" where the others use "|--". Reading only
+		// "|--" silently dropped three of the fifty-one mods a real log declared - each of them the last child
+		// of its parent - and the shortfall was documented as "best effort" rather than investigated.
+		MinecraftLaunchOutcome outcome = MinecraftLaunchLog.Parse(ModdedLog);
+
+		Assert.Contains("fabric-transitive-access-wideners-v1", outcome.ModIds);
+	}
+
+	[Fact]
+	public void EveryModTheLoaderListedIsRead()
+	{
+		// The exact set rather than a count: this catches reading too FEW (the "\--" bug) and too many (a
+		// terminator that fails and swallows ordinary log lines) in one assertion, and a bare number would
+		// have to be edited every time the fixture grows without ever saying what changed.
+		MinecraftLaunchOutcome outcome = MinecraftLaunchLog.Parse(ModdedLog);
+
+		Assert.Equal(new[]
+		{
+			"fabric-api",
+			"fabric-api-base",
+			"fabric-biome-api-v1",
+			"fabric-transitive-access-wideners-v1",
+			"fabricloader",
+			"minecraft",
+			"united_minecraft",
+		}, outcome.ModIds);
 	}
 
 	[Fact]

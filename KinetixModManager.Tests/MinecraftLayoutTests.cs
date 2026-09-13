@@ -226,6 +226,11 @@ public class MinecraftLayoutTests
 	[InlineData("mod.jar.disabled", true)]
 	[InlineData("readme.txt", false)]
 	[InlineData("mod.zip", false)]
+	// A mutation campaign found the gap these two close. Every case above passes just as happily if the
+	// disabled test is loosened to "ends with .disabled", because none of them is a NON-jar that has been
+	// disabled — so the mod list would offer a stray text file as something the user can switch on.
+	[InlineData("readme.txt.disabled", false)]
+	[InlineData("notes.disabled", false)]
 	public void OnlyJarsAndDisabledJarsCountAsMods(string fileName, bool expected)
 	{
 		Assert.Equal(expected, MinecraftLayout.IsModFile(fileName, ".disabled"));

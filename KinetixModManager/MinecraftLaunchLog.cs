@@ -21,10 +21,11 @@ public sealed class MinecraftLaunchOutcome
 	public int ModCount { get; init; } = -1;
 
 	/// <summary>
-	/// The mod ids read out of the list that follows the count. Best-effort, and deliberately not treated as
-	/// the whole truth: the loader formats nested libraries differently from top-level mods and the list can
-	/// run past where this stops reading, so on a real log this came back with 48 of the 51 the loader
-	/// declared. <see cref="ModCount"/> is the number to quote; these are for recognising particular mods.
+	/// The mod ids read out of the list that follows the count.
+	///
+	/// Complete on a normal log — verified against a real one, all 51 of the 51 the loader declared. Can still
+	/// fall short of <see cref="ModCount"/> on a setup with hundreds of mods, where the list runs past the
+	/// point this stops reading, so that count remains the number to quote.
 	/// </summary>
 	public IReadOnlyList<string> ModIds { get; init; } = Array.Empty<string>();
 
@@ -60,11 +61,17 @@ public static class MinecraftLaunchLog
 	private static readonly Regex ModCountLine = new(
 		@"Loading (?<count>\d+) mods:", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-	// A mod line in the block that follows, either top level or a nested library:
+	// A mod line in the block that follows, either top level or a nested library. The loader draws the nesting
+	// as a tree, and the LAST child under a parent uses a different corner from the rest:
 	//     - fabric-api 0.160.0+26.2
 	//        |-- fabric-api-base 2.0.4+ece063239e
+	//        \-- fabric-transitive-access-wideners-v1 8.1.4+67c847259e
+	//
+	// ⚠️ Missing the "\--" form is why this once read 48 of the 51 mods a real log declared — three mods, each
+	// of them the last child of its parent, silently absent from the list. It was written off as an inherent
+	// limitation of reading the log before anyone checked what the missing lines actually looked like.
 	private static readonly Regex ModLine = new(
-		@"^\s*(?:-|\|--)\s+(?<id>[A-Za-z0-9_\-.]+)\s", RegexOptions.Compiled);
+		@"^\s*(?:-|\|--|\\--)\s+(?<id>[A-Za-z0-9_\-.]+)\s", RegexOptions.Compiled);
 
 	/// <summary>How much of the log to read. The answer is always in the opening lines.</summary>
 	private const int LinesToRead = 400;
