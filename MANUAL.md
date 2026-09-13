@@ -1,13 +1,13 @@
-# Kinetix Mod Manager - User Manual
+﻿# Kinetix Mod Manager - User Manual
 
-Welcome to Kinetix Mod Manager! This is a fully keyboard-driven, screen-reader-accessible mod manager built for the blind and visually impaired gaming community. It currently supports **Stardew Valley**, **Skyrim Special Edition**, **Fallout 4**, **Moonlight Peaks**, and **The Witcher 3: Wild Hunt**, and works with NVDA, JAWS, and SAPI-based screen readers via Tolk.
+Welcome to Kinetix Mod Manager! This is a fully keyboard-driven, screen-reader-accessible mod manager built for the blind and visually impaired gaming community. It currently supports **Stardew Valley**, **Skyrim Special Edition**, **Fallout 4**, **Moonlight Peaks**, **The Witcher 3: Wild Hunt**, and **Minecraft (Java Edition)**, and works with NVDA, JAWS, and SAPI-based screen readers via Tolk.
 
 You choose which game you're managing from the **Games** menu (press **Alt**, then arrow to **Games**), and the manager tailors its mod list, updates, wiki, and other features to that game. Most of this manual applies to every supported game; where something is specific to one game — such as the SMAPI log viewer for Stardew Valley — it is called out.
 
 ## Getting Started & First-Time Setup
 
 1.  **Your First Launch (Setup Wizard)**: When you run the manager for the first time, a guided **Setup Wizard** opens automatically. It's a short, spoken **checklist** of the three things needed to get going — **choose a game**, **set your Nexus API key**, and **confirm your game folder** — and it tells you which steps are **done** and which are **not done yet**. Arrow up and down the steps and press **Enter** on one to complete it (this opens the game chooser, or the Settings window). The checklist refreshes as you finish each step, so you always know what's left. Press **Escape** to close it and finish later. You can reopen it any time from **Help → Setup Wizard (Getting Started)**.
-2.  **Configuring Paths**: The app attempts to find your mods folder automatically for the selected game (the `Mods` folder for Stardew Valley, the `Data` folder for Skyrim Special Edition and Fallout 4, the `BepInEx\plugins` folder for Moonlight Peaks, or the `mods` folder for The Witcher 3). It detects games on **any drive**, including secondary Steam libraries, and finds both the Steam and GOG copies of the games sold on both. If it succeeds, the path will be pre-filled. If not, please use the "Browse" button in settings to select it.
+2.  **Configuring Paths**: The app attempts to find your mods folder automatically for the selected game (the `Mods` folder for Stardew Valley, the `Data` folder for Skyrim Special Edition and Fallout 4, the `BepInEx\plugins` folder for Moonlight Peaks, the `mods` folder for The Witcher 3, or the `mods` folder inside `.minecraft` for Minecraft). It detects games on **any drive**, including secondary Steam libraries, and finds both the Steam and GOG copies of the games sold on both. If it succeeds, the path will be pre-filled. If not, please use the "Browse" button in settings to select it.
     *   **If a game can't be found**, picking it offers a small dialog with three choices — **Locate Installed Folder** (browse to the folder yourself, useful for unusual install locations or when running under Linux/Wine, where you point it at the game folder on your `Z:` drive), **View Store Links** (where to buy the game), or **Cancel**.
 3.  **Nexus Integration**: To search for mods or check for updates, you **must** provide a **Nexus Mods API Key** (sometimes called a Nexus ID). This is a standard requirement for all mod managers. See the **"Nexus Mods Setup"** section below for instructions on how to get yours for free.
 4.  **Closing Settings**: If you aren't ready to configure everything yet, you can press **Escape** or click **Cancel** to close the settings and browse the app. You can reopen this screen at any time by pressing **Ctrl + P**.
@@ -212,7 +212,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Ctrl + Shift + L**: **Open the log** - the manager's record of anything that failed or crashed, including what it was doing at the time. This is the file to send when reporting a problem. It records failures the manager recovers from as well as ones you see, so a problem that left no visible trace is still in there. It opens inside the manager as a read-only view, at the newest entry - **Ctrl + End** for the very end, Escape to close. Nothing in it can be changed by accident, and the full path to the file is given when it opens.
 
 **The game's logs open the same way.** Where the game has more than one - a script extender's folder holds the extender's own log and one for every plugin that writes anything - you get a list of them, the one most likely to have the answer first and the rest by how recently they were written. Press **Enter** on one to read it and **Escape** to go back to the list. Nothing opens in Notepad any more, and no log can be changed while you are reading it.
-*   **Ctrl + H**: Open the **Accessibility Controls** viewer for the active game (a navigable drill-down of every control — see "Accessibility Controls Viewer" below).
+*   **Ctrl + H**: Open the **Game and Mod Controls** viewer for the active game (a navigable drill-down of every control — see "Game and Mod Controls Viewer" below).
 *   **Ctrl + Shift + H**: Open your **Search History** for the active game (see "Searching for Mods" below).
 *   **Ctrl + Shift + F7**: Turn **Curation Mode** on or off — the switch that reveals the commands for building your own Suggested Mods list. Works either way round, since turning it on is what it is for (see "Suggested Mods" below).
 *   **F7**: **Mark or unmark** the selected mod as a suggested mod. Works in the **Installed Mods** list and in **Find New Mods**. Only while Curation Mode is on.
@@ -579,9 +579,9 @@ Your selections are installed exactly as a sighted user's would be, including an
 
 ---
 
-## Accessibility Controls Viewer (Ctrl + H)
+## Game and Mod Controls Viewer (Ctrl + H)
 
-Press **Ctrl + H** at any time to open the **Accessibility Controls** viewer for the active game. It gathers, in one place, the keyboard and gamepad controls you actually have — so you can look up "what does this key do" without leaving the manager.
+Press **Ctrl + H** at any time to open the **Game and Mod Controls** viewer for the active game. It gathers, in one place, the keyboard and gamepad controls you actually have — so you can look up "what does this key do" without leaving the manager.
 
 It is a single **drill-down list**:
 
@@ -667,7 +667,7 @@ A drill-down list is a good way to read a document whose shape you already know,
 
 For the **Mod Documentation** viewer (**F3**) this means a link now reads as its words followed by its address — *"the Stardew Access Nexus page (https://www.nexusmods.com/stardewvalley/mods/16205)"* — because a document read line by line has no other way to offer a link at all. Links that point **inside** the document (to another heading) or at a file in the mod's own source repository keep just their words as before: nothing here could open those, so reading their addresses aloud would be noise for nothing.
 
-**Knowing which sections open.** When you land on a list entry that has sub-topics, it now tells you so and tells you the keys — *"3 of 21, has sub-topics. Press right arrow to open, left arrow to go back."* — the same hint a mod group carries in the installed mods list. The **Accessibility Controls** viewer (**Ctrl + H**) says the same thing on its groups.
+**Knowing which sections open.** When you land on a list entry that has sub-topics, it now tells you so and tells you the keys — *"3 of 21, has sub-topics. Press right arrow to open, left arrow to go back."* — the same hint a mod group carries in the installed mods list. The **Game and Mod Controls** viewer (**Ctrl + H**) says the same thing on its groups.
 
 ---
 
@@ -688,9 +688,86 @@ How it stays current and works offline:
 
 *   A copy of each guide **ships with the manager**, so the viewer opens instantly and works with no internet connection.
 *   In the background it also **refreshes from the source** — the live GitHub documentation for Stardew Access, or (when you are logged in to Nexus) the mod's current Nexus page for Skyrim Access and Fallout 4 Access. The refreshed copy is shown the **next** time you open the viewer.
-*   For exact, up-to-the-minute keybindings of an installed mod, the **Accessibility Controls** viewer (**Ctrl + H**) reads the live keys from the mod's config/MCM; the Mod Documentation viewer is the broader "how do I use this mod" guide.
+*   For exact, up-to-the-minute keybindings of an installed mod, the **Game and Mod Controls** viewer (**Ctrl + H**) reads the live keys from the mod's config/MCM; the Mod Documentation viewer is the broader "how do I use this mod" guide.
 
 F3 is the default shortcut and can be remapped in **Settings → Shortcut Manager** (the action is named "ModDocs").
+
+---
+
+## Minecraft (Java Edition)
+
+Minecraft works differently from every other game here, in ways worth knowing before you start.
+
+### You do not need the Minecraft launcher
+
+Press **F5** and the manager starts the game itself, with Fabric and your mods loaded, going nowhere near the
+Minecraft launcher.
+
+This is the main reason Minecraft support exists. In the launcher, **choosing an installation and launching a
+world are two separate things, and the second quietly overrides the first**. You can select the Fabric
+installation correctly, then launch a world from the home screen, and get an unmodded game — because the world
+tile remembers which installation it was first played with. Nothing tells you. The game starts, plays
+perfectly, and simply never speaks.
+
+You will still need the launcher **once**, to sign in. After that the manager knows who you are and can start
+the game on its own. It plays as you — your own username and your own character — so your worlds, inventory
+and advancements are exactly where you left them.
+
+Servers and Realms need a live sign-in and are not available this way; singleplayer is unaffected.
+
+### Installing Fabric
+
+Fabric is Minecraft's mod loader, and nothing loads without it. Open the **Accessibility Suite Installer** and
+choose Install — the manager sets it up itself. There is no installer program to download and no graphical
+window to get through.
+
+It installs Fabric for a Minecraft version it knows your accessibility mod supports, rather than simply the
+newest one. Fabric is usually ready for a new Minecraft version weeks before the mods are, and installing for
+a version with no mods built for it gives you a game that starts perfectly and stays silent.
+
+### Two accessibility mods
+
+Minecraft has two, and you pick one:
+
+*   **United Minecraft** — the newer of the two, updated more often.
+*   **Minecraft Access** — older, and what many blind players have used for years.
+
+The suite asks once and remembers. Everything either one needs is installed for you; you are never asked about
+Fabric API or anything else underneath.
+
+If you already have one of them installed, the manager notices and uses that, and does not offer to install the
+other over the top. Running both at once will probably say everything twice, so if you want to try the other
+one, the tidiest way is a **profile** for each: save a profile with one enabled and the other disabled, another
+the reverse, and switch between them. Your worlds are untouched either way — nothing moves.
+
+### Finding mods
+
+Minecraft's mods come from **Modrinth**, not Nexus Mods, so **no Nexus API key is needed** and the key box is
+hidden while a Minecraft session is open.
+
+Search works as it does for any other game. Press **Enter** on a result and you are asked what to do:
+
+*   **Download and install** — fetches the mod and puts it straight into your mods folder.
+*   **Read the full description**.
+*   **Open the mod's page** in your browser.
+
+Only mods with a build for the Minecraft version you are on are offered. A mod built for another version
+installs cleanly and then loads nothing at all.
+
+Update checking works differently and rather better here: Modrinth recognises a mod by the file itself, so
+nothing has to be linked by hand and there is no auto-matching to run.
+
+### Enabling and disabling
+
+A Minecraft mod is a single `.jar` file rather than a folder. Disabling one renames it so Fabric skips it, and
+enabling puts the name back. Nothing is moved or deleted.
+
+### Did my mods actually load?
+
+Because an unmodded Minecraft looks and sounds exactly like a modded one that failed, **Check My Setup** reads
+the game's own log and tells you plainly which happened the last time you played — including how many mods
+Fabric accepted. If the answer is that they did not load, it says so and tells you what to do about it. The
+full log is on the **Log** tab.
 
 ---
 
@@ -1285,7 +1362,7 @@ Most Moonlight Peaks mods keep their settings in a configuration file that BepIn
 
 ### The game's own key bindings
 
-Moonlight Peaks settles its controls while it runs, and keeps them nowhere another program can read — so unlike the other three games, the manager cannot simply know what your keys are. It handles this with a snapshot of the game's standard keys that ships inside it, plus an optional 15 KB **Keybind Reader** mod that writes your real bindings out while you play. You are asked once whether to install the reader, and the controls list always says which of the two you are looking at. See **[The Keybind Reader](#the-keybind-reader-moonlight-peaks)** under the Accessibility Controls Viewer for the full explanation.
+Moonlight Peaks settles its controls while it runs, and keeps them nowhere another program can read — so unlike the other three games, the manager cannot simply know what your keys are. It handles this with a snapshot of the game's standard keys that ships inside it, plus an optional 15 KB **Keybind Reader** mod that writes your real bindings out while you play. You are asked once whether to install the reader, and the controls list always says which of the two you are looking at. See **[The Keybind Reader](#the-keybind-reader-moonlight-peaks)** under the Game and Mod Controls Viewer for the full explanation.
 
 ### The BepInEx Log tab
 

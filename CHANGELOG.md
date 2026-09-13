@@ -1,4 +1,59 @@
-# Version 1.5.2
+﻿# Version 1.5.2
+
+## ✨ New: Minecraft (Java Edition) is the sixth supported game
+
+*   Mods, updates, controls, documentation, profiles and launching — Minecraft now has all of it, with **United Minecraft** or **Minecraft Access** as your accessibility mod.
+
+### 🚀 You do not need the Minecraft launcher
+
+*   **Press F5 and the manager starts the game itself**, with Fabric and your mods loaded, going nowhere near the launcher.
+*   ⚠️ **This is the whole reason Minecraft support exists.** In the launcher, choosing an installation and launching a world are two separate things, and **the second quietly overrides the first**. You can select the Fabric installation correctly, launch a world from the home screen, and get an unmodded game — because the world tile remembers whichever installation it was first played with. Nothing tells you. The game starts, plays perfectly, and simply never speaks. This was found the hard way, twice, before a line of code was written.
+*   You still need the launcher **once**, to sign in. After that the manager plays as **you** — your own username and your own character — so your worlds, inventory and advancements are exactly where you left them. Servers and Realms need a live sign-in and are not available this way; singleplayer is unaffected.
+
+### 🔧 Fabric installs itself, with no installer to run
+
+*   Fabric is Minecraft's mod loader and nothing loads without it. The **Accessibility Suite Installer** sets it up directly — no installer program to download, no graphical window to get through, no administrator prompt.
+*   It installs for a Minecraft version your accessibility mod actually supports, **not simply the newest one**. Fabric is usually ready for a new Minecraft version weeks before the mods are, and installing for a version nothing is built for gives you a game that starts perfectly and stays silent.
+*   A Fabric you installed yourself, before you ever had this manager, is recognised and used rather than reported missing.
+
+### 🧩 Two accessibility mods, and you are never asked about the plumbing
+
+*   **United Minecraft** (newer, updated more often) or **Minecraft Access** (older, and what many blind players have used for years). The suite asks once and remembers.
+*   They need different things installed alongside them — one needs Fabric API as a separate file, the other carries its dependencies inside itself — and **you are never asked about any of that**. Both facts are read from the mods themselves, so they stay right when either mod changes.
+*   Already have one of them? The manager notices and uses it, rather than offering to install its rival over the top.
+
+### 🔍 Mods come from Modrinth, so no Nexus key is needed
+
+*   Searching, installing and updating all work as they do for any other game, but through **Modrinth**. **No Nexus API key is required**, and the key box is hidden while a Minecraft session is open.
+*   ⚠️ Previously an empty Nexus key **blocked the entire Settings dialog from saving** — so somebody who only plays Minecraft could not change their sound volume without first pasting a key they would never use. The key is now asked for only when the loaded game actually needs one.
+*   Press **Enter** on a search result to choose: download and install, read the full description, or open the mod's page.
+*   Only mods with a build for the Minecraft version you are on are offered. A mod built for another version installs cleanly and then loads nothing at all.
+*   **Update checking is better here than anywhere else in the manager.** Modrinth recognises a mod by the file itself, so nothing has to be linked by hand and there is no auto-matching to run.
+
+### 🔎 "Did my mods actually load?"
+
+*   An unmodded Minecraft looks and sounds exactly like a modded one that failed, so **Check My Setup** now reads the game's own log and says plainly which happened the last time you played — including how many mods Fabric accepted.
+*   It says so **even when everything is fine**. In a game whose usual failure is silence, an all-clear that tells you nothing leaves you no better off than before you asked.
+*   Minecraft also gets a **Log** tab, showing the current run's log.
+
+### ⌨️ Controls and documentation
+
+*   **Ctrl + H** shows Minecraft's controls and your accessibility mod's, read from the files the game itself reads — so they are your **real** bindings, including anything you have remapped. No helper mod needed.
+*   Both are grouped into sections, because the same key legitimately does several different things: United Minecraft binds Left arrow to three separate actions, each on a different screen. Mouse buttons are a section of their own, so you can see at a glance which actions are not on the keyboard.
+*   **F3** shows United Minecraft's and Minecraft Access's documentation, with offline copies included so it works before you are online.
+
+### 📋 Profiles
+
+*   Profiles work for Minecraft exactly as they do elsewhere, and nothing on disk is moved — so **your worlds are never involved**. A profile for each accessibility mod is the tidiest way to try the other one.
+
+---
+
+## 🔧 Changed: the Accessibility Controls viewer is now "Game and Mod Controls"
+
+*   The name was accurate when the list held only an accessibility mod's keys. It has held the game's own controls and every mod's for some time, so it now says so — in the Mods menu and in the window title.
+*   ⚠️ It is also **one level shallower** for every game. Named sections used to sit under a "Keyboard Controls" heading, which is only worth a level of its own when there is a "Gamepad Controls" beside it to be told apart from. On its own it divided nothing, and cost a keypress and a spoken word on the way to everything you came for.
+
+---
 
 ## 🐛 Fixed: deleting a Witcher 3 mod offered to uninstall a different mod
 

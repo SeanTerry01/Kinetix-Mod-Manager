@@ -361,6 +361,17 @@ public partial class Form1
 			return;
 		}
 
+		// A Fabric mod keeps its settings outside its jar too, in .minecraft\config. The file is flat JSON of
+		// the same shape an ordinary Stardew mod writes, so the settings LIST is reused rather than dropping
+		// the user into raw JSON: a yes/no is offered as two choices, and a number is checked for being one.
+		if (GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true)
+		{
+			string minecraftConfig = FindMinecraftConfigFor(mod);
+			if (minecraftConfig.Length > 0 &&
+				ShowStardewModSettings(mod.Name, mod.FolderPath, minecraftConfig))
+				return;
+		}
+
 		string configPath = Path.Combine(mod.FolderPath, "config.json");
 		if (!File.Exists(configPath))
 		{

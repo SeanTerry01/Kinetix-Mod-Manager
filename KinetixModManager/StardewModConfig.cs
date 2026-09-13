@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -74,12 +74,18 @@ public static class StardewModConfig
 	/// The settings in a mod's config file, with labels from its translation file where it has one. Empty for a
 	/// mod with no config file, an unreadable one, or one holding nothing that can be edited as a single value.
 	/// </summary>
-	public static List<StardewSetting> Read(string modFolder)
+	/// <param name="configFile">
+	/// The exact settings file to read, for a game that does not keep it beside the mod. Minecraft is the
+	/// reason: a Fabric mod's settings live in <c>.minecraft\config\&lt;modid&gt;.json</c>, not in the jar —
+	/// there is nowhere inside a single file for them to go. The shape is the same flat JSON either way, so
+	/// the reader is shared rather than duplicated.
+	/// </param>
+	public static List<StardewSetting> Read(string modFolder, string? configFile = null)
 	{
 		var settings = new List<StardewSetting>();
 		try
 		{
-			string configPath = System.IO.Path.Combine(modFolder, "config.json");
+			string configPath = configFile ?? System.IO.Path.Combine(modFolder, "config.json");
 			if (!File.Exists(configPath)) return settings;
 
 			JObject? config = ParseLenient(File.ReadAllText(configPath));
@@ -98,11 +104,11 @@ public static class StardewModConfig
 	/// expects. The file is edited rather than rewritten, and moved into place, so an interrupted write cannot
 	/// leave a mod with a config it refuses to load.
 	/// </summary>
-	public static bool Write(string modFolder, StardewSetting setting, string newValue)
+	public static bool Write(string modFolder, StardewSetting setting, string newValue, string? configFile = null)
 	{
 		try
 		{
-			string configPath = System.IO.Path.Combine(modFolder, "config.json");
+			string configPath = configFile ?? System.IO.Path.Combine(modFolder, "config.json");
 			JObject? config = ParseLenient(File.ReadAllText(configPath));
 			if (config == null) return false;
 

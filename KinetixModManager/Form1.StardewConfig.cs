@@ -30,9 +30,9 @@ public partial class Form1
 	/// Shows a mod's settings and lets them be changed, saving each change as it is made. Returns false when the
 	/// mod has nothing that can be edited this way, leaving the caller to fall back to the JSON editor.
 	/// </summary>
-	private bool ShowStardewModSettings(string modName, string modFolder)
+	private bool ShowStardewModSettings(string modName, string modFolder, string? configFile = null)
 	{
-		List<StardewSetting> settings = StardewModConfig.Read(modFolder);
+		List<StardewSetting> settings = StardewModConfig.Read(modFolder, configFile);
 		if (settings.Count == 0) return false;
 
 		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
@@ -57,7 +57,7 @@ public partial class Form1
 
 			void Reload(int selectIndex)
 			{
-				settings = StardewModConfig.Read(modFolder);
+				settings = StardewModConfig.Read(modFolder, configFile);
 				list.BeginUpdate();
 				list.Items.Clear();
 				foreach (StardewSetting setting in settings) list.Items.Add(new StardewRow { Setting = setting });
@@ -85,7 +85,7 @@ public partial class Form1
 				string? chosen = EditStardewSetting(setting);
 				if (chosen == null || chosen == setting.Value) return;
 
-				if (!StardewModConfig.Write(modFolder, setting, chosen))
+				if (!StardewModConfig.Write(modFolder, setting, chosen, configFile))
 				{
 					Speak(Loc.T("sdvconfig.saveFailed", setting.Label));
 					return;

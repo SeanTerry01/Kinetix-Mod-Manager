@@ -253,6 +253,40 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// Where a Fabric mod keeps its settings, or <c>""</c> when it has none.
+	///
+	/// ⚠️ Outside the mod, like a BepInEx plugin and unlike everything else. A Fabric mod is a single jar with
+	/// nowhere inside it to write to, so its settings go to <c>.minecraft\config\</c> — which means the usual
+	/// "look for a config beside the mod" finds nothing and reports a mod as having no settings when it has
+	/// two dozen.
+	///
+	/// Two shapes are used in the wild: one file named for the mod, and a folder of them. Both are looked for,
+	/// the single file first because that is what a mod with a handful of options does.
+	/// </summary>
+	private string FindMinecraftConfigFor(GameMod mod)
+	{
+		string configFolder = MinecraftLayout.ConfigFolderFor(MinecraftRootFolder());
+		if (!Directory.Exists(configFolder) || string.IsNullOrEmpty(mod.UniqueId)) return "";
+
+		string single = Path.Combine(configFolder, mod.UniqueId + ".json");
+		if (File.Exists(single)) return single;
+
+		// A mod with more settings splits them into its own folder. Its main file is usually named for the mod
+		// or simply "config.json"; failing both, the only .json in there is unambiguous enough to offer.
+		string folder = Path.Combine(configFolder, mod.UniqueId);
+		if (!Directory.Exists(folder)) return "";
+
+		foreach (string candidate in new[] { mod.UniqueId + ".json", "config.json" })
+		{
+			string path = Path.Combine(folder, candidate);
+			if (File.Exists(path)) return path;
+		}
+
+		string[] jsons = Directory.GetFiles(folder, "*.json");
+		return jsons.Length == 1 ? jsons[0] : "";
+	}
+
+	/// <summary>
 	/// The newest version of an installed Minecraft mod, or <c>null</c> when Modrinth has nothing to say
 	/// about it.
 	///
