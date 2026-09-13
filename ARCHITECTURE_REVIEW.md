@@ -1319,10 +1319,18 @@ GirCore does not ship one. The surface needed is small, which is what makes it v
 title and address, go back, reload. The native widget is adopted into GirCore's object system with
 `InstanceWrapper.WrapHandle`, so it sits in a GirCore layout as an ordinary child.
 
-The window has a **Wiki** tab that loads the active game's wiki in-app. It constructs and runs without
-error. **What has not been established is the part that matters**: whether Orca reads the embedded page the
-way NVDA reads a WebView2 one — headings, links, its own navigation keys — while the manager's keys still
-work around it. That needs a person listening, and it is the last real unknown in the Linux head.
+The window has a **Wiki** tab that loads the active game's wiki in-app.
+
+**Confirmed by ear on 2026-09-13: Orca reads the embedded page, and F6 cycles between the tab strip and
+the web view.** That was the last technical unknown in the Linux port. Everything remaining is work rather
+than risk — no piece of this is now waiting on something that might turn out to be impossible.
+
+Getting there took one bug worth recording, because it is the kind that looks like a platform limitation
+and is not. `CycleFocus` had been written as "page 0, or everything else" when there were two tabs; adding
+the Games tab shifted every page number underneath it, so F6 on the Wiki tab was toggling controls
+belonging to a different tab and the web view could not be reached at all. The symptom — "I can't tab into
+the webview" — is indistinguishable from WebKitGTK not being focusable. It is a list of stops per tab now,
+which cannot drift the same way.
 
 ### Verification
 

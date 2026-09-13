@@ -5,7 +5,7 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-09-13, after the in-app browser and Nexus sign-in.
+**Last updated:** 2026-09-13. Orca confirmed reading the in-app browser — no unknowns left, only work.
 **State:** 1,042 tests passing on Windows and Linux; all five projects build clean.
 
 ---
@@ -157,9 +157,10 @@ effectively stalled.
 `webkitgtk-6.0` 2.52.5, linking `gtk-4`. `Kinetix.Gtk/WebKitView.cs` is a hand-written P/Invoke binding
 and the window has a Wiki tab. Everything is in place except the answer to the question that matters:
 
-- [ ] **Does Orca read the embedded page properly?** Headings, links, its own navigation keys, with the
-      manager's keys still working around it. Needs a person listening. This is the last real unknown
-      in the Linux head, and `IBrowserHost` should not be designed until it is answered.
+- ~~**Does Orca read the embedded page properly?**~~ **ANSWERED: yes.** Verified by ear on 2026-09-13 —
+      Orca reads the embedded page, and F6 cycles between the tab strip and the web view. That was the
+      last technical unknown in the Linux port; every remaining item is work rather than risk.
+      `IBrowserHost` can now be designed from something that demonstrably functions.
 
 ---
 
