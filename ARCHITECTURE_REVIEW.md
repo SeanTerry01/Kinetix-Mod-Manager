@@ -504,7 +504,7 @@ changes behaviourally; the build gets faster and the boundary becomes real and e
 compiler instead of by a comment. **Do this first — it's the highest ratio of value to risk in the
 whole project.**
 
-**Phase 1 — fix the 16 failing tests (1–2 days).**
+**Phase 1 — fix the 16 failing tests (1–2 days). ✅ DONE — see §12.**
 They are a free, precise, self-verifying checklist of portability bugs. Fix the 11 backslash
 literals; hardcode the Windows invalid-filename set; make the `C:\` defaults platform-conditional;
 make the test fixtures build paths with `Path.Combine` instead of Windows literals. When this is
@@ -644,3 +644,133 @@ The boundary is now the compiler's business rather than a convention in a commen
 Concretely: **12,223 lines, 25% of the codebase, are now a declared, referenced, cross-platform
 class library** that both a WinForms head and a GTK head can build against. Next is Phase 1 — the
 16 failing tests.
+
+
+---
+
+## 12. Phase 1 — completed 2026-09-13
+
+**All 1,016 tests now pass on Linux.** They were 993 passing and 16 failing when this review began.
+
+### What the 16 failures actually were
+
+Not all the same thing, and the difference decided each fix. Six were **production bugs** that would
+have shipped; ten were tests asserting a separator rather than a behaviour.
+
+**Production bugs — the code was wrong**
+
+| Fix | Was |
+|---|---|
+| `GameProfiles.cs` Moonlight Peaks mods folder | `@"BepInEx\plugins"` → `Path.Combine("BepInEx", "plugins")` |
+| `GameProfiles.cs` Moonlight keybind export | `@"BepInEx\moonlight-keybinds.json"` → composed |
+| `GameProfiles.cs` Witcher 3 executable | `@"bin\x64\witcher3.exe"` → composed |
+| `MinecraftControls.cs` United Minecraft keybinds | `@"config\united_minecraft_keybinds.json"` → composed (`const` → `static readonly`) |
+| `ModPartRules.cs` Engine Fixes detect file | `@"Data\SKSE\Plugins\EngineFixes.dll"` → composed |
+| `Witcher3UserConfig.cs` config matrix | `@"bin\config\r4game\user_config_matrix\pc"` → composed |
+| `ModFileSystem.cs` Witcher game-owned folders | `@"bin\x64"`, `@"bin\x64_dx12"`, `@"bin\config"` → composed |
+
+Every one of these is fed to `Path.Combine`. A backslash is only a separator on Windows, so off it
+the literal is read as part of one long file name and the lookup silently finds nothing. The
+Moonlight keybind one was not theoretical: `GameKeybindExportTests` was already failing because the
+live export could never be found, so the app fell back to the bundled snapshot and would have shown
+stale keybindings.
+
+A stale comment went with the Witcher fix. It said *"every path built from this one goes through
+Path.Combine, which takes the relative path in its stride"* — true on Windows, and the reason the
+bug looked safe. It now says why the literal could not stay.
+
+**The invalid-character bug — new file, `Kinetix.Core/WindowsFileName.cs`**
+
+`ModFolderTidy.Sanitise` and `ModFileSystem.SanitiseFolderName` both asked
+`Path.GetInvalidFileNameChars()` which characters to strip. That answers *for the host*: 41
+characters on Windows, **2** on Linux. So off Windows neither function crashed — they quietly
+stopped sanitising, and a mod folder called `Skyrim: Reloaded? <best>` would be created happily and
+then be unopenable by the game.
+
+And a game does have to open it. These are Windows games; on Linux they run under Proton, and a name
+Linux accepts but Windows does not is a name the game cannot read. The rule belongs to the game, not
+to the host, so the set is now stated outright and is the same answer on both. Both doc comments
+already *said* "characters Windows forbids" — the code had simply stopped meaning it.
+
+Six tests cover the new type, including one that asserts it matches `Path.GetInvalidFileNameChars()`
+exactly when the host really is Windows.
+
+**Test-fixture fixes — the code was right**
+
+Ten tests hardcoded Windows paths (`@"D:\SteamLibrary\steamapps\common\..."`) or Windows-separator
+expectations. They now build both sides with `Path.Combine` via a new
+`KinetixModManager.Tests/TestPaths.cs`, so they test which folder a mod lands in rather than which
+character separates one from the next. On Windows they produce byte-for-byte the same strings as
+before.
+
+The Maven-coordinate theory in `MinecraftLauncherTests` is the clearest case of the code being
+right: `MavenToRelativePath` uses `Path.DirectorySeparatorChar` deliberately, because its output goes
+on the classpath handed to `java`, and Minecraft is the one supported game that genuinely runs on
+Linux. The test was asserting Windows. Since an `[InlineData]` argument must be a compile-time
+constant, the expectation is now written with forward slashes and composed in the test body.
+
+### The `en.json` audit
+
+Checked separately, after Sean mentioned he thought something was wrong with it. He was right, and
+it was worth finding — **two messages were being read aloud with their own punctuation in them.**
+
+`Loc.T` returns the key itself when a key is missing, and catches `FormatException` and returns the
+**unformatted template** when a phrase is given fewer values than it has placeholders. Both failures
+are silent to a sighted developer and both are read out by the screen reader.
+
+| Bug | Effect |
+|---|---|
+| `reports.dupId` — *"UniqueID "{0}" is used by {1} mods: {2}"* called with **2** of 3 values (`Form1.Reports.cs:72`) | Check My Setup read out *"UniqueID open brace zero close brace is used by open brace one close brace mods"*. The mod count was never passed. |
+| `suggested.manualTitle` — *"Download {0}"* called with **0** values (`Form1.SuggestedMods.cs:318`) | The non-Premium manual-download dialog was titled literally `Download {0}`. |
+
+Both are fixed, and **a new guard test makes the whole class of bug impossible to reintroduce**:
+`EveryPhraseIsGivenAsManyValuesAsItAsksFor` fails the build when any `Loc.T` call passes fewer
+arguments than its phrase has placeholders. It was verified by reintroducing the `reports.dupId` bug
+and watching it fail with the exact file, line and phrase.
+
+Otherwise the file is in good order, and better order than most of the codebase:
+
+- Valid JSON, UTF-8 BOM (harmless — `File.ReadAllText` strips it), **1,739 keys, no duplicates**.
+- **No missing keys.** Every one of the 1,639 literal keys in the source exists. `SpokenStringGuardTests`
+  already guarded this, and it was doing its job.
+- **No dead keys.** 18 never appear as a literal, and all 18 are assembled at runtime —
+  `settings.contrast.` + 4 enum members, `settings.textSize.` + 3, `curator.category` + 4 ids,
+  `sound.` + the 7 `SoundEngine.SoundDescriptions` entries. All 32 were checked by hand and every one
+  resolves.
+- No malformed format items, no empty values. The ten values with leading or trailing space are all
+  deliberate — they are named `…Suffix`, `…Note`, `…Tag` and are concatenated onto other sentences.
+
+One thing left alone, because it is a content decision rather than a defect: `health.mcVanilla` is
+the **only** string of 1,739 that begins with an emoji (`⚠️`, U+26A0 + U+FE0F). It is a
+`ReportRow.Text` in the Health Dashboard, so it is read aloud, and depending on the reader's symbol
+level it is announced as "warning sign" or dropped entirely. The sentence after it already carries
+the warning in words. Worth removing for consistency, but that is Sean's call.
+
+`SpokenStringGuardTests.AppSourceFiles()` was also widened to sweep `Kinetix.Core` as well as the
+app. Core has no `Loc.T` call today because `Loc` is still in the app — but `Loc` belongs in the core
+eventually, and a guard that silently stopped covering the phrases on the day they moved, while
+staying green, would be worse than no guard.
+
+### Verification
+
+```
+dotnet build KinetixModManager.slnx -p:EnableWindowsTargeting=true  →  0 warnings, 0 errors
+dotnet test  KinetixModManager.Tests                                →  1016 passed, 0 failed
+```
+
+Nothing here changes behaviour on Windows: every path fix produces the identical string there, and
+the invalid-character set is Windows' own.
+
+### Still outstanding from this review
+
+Phase 1 fixed the portability bugs the tests could see. These were found by reading and are not yet
+done:
+
+- **13 `new HttpClient` sites** (§5.2) leaking sockets into `TIME_WAIT` under repeated update checks.
+- **25 `async void` methods**, three of them on the speech path, where an exception kills the app
+  mid-announcement.
+- **`Speak()` swallows a Tolk load failure** (`Form1.Helpers.cs:1242-1251`), so a broken screen reader
+  gives the user no feedback at all.
+- **`docs/OBJECTIVES.md` is stale** — it still describes a three-game app.
+
+Next is Phase 2: lifting the 40 domain models out of `Form1` (§4.2).

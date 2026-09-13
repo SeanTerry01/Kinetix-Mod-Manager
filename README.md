@@ -90,6 +90,20 @@ See `MANUAL.md` for the complete shortcut reference.
 
 ## Project Structure
 
+The solution is three projects.
+
+| Project | Target | Purpose |
+|---|---|---|
+| `Kinetix.Core` | `net10.0` | The rules, the parsers and the file and HTTP work, with no user interface. Game profiles, mod scanning rules, FOMOD, Modrinth, the Minecraft launcher and Fabric installer, save and INI readers. |
+| `KinetixModManager` | `net10.0-windows` | The WinForms application: the screen it draws, the keys it listens for, and the Windows-only pieces (Tolk, DPAPI, the registry, NAudio, WebView2). |
+| `KinetixModManager.Tests` | `net10.0` | 1,016 xUnit tests against `Kinetix.Core`. |
+
+`Kinetix.Core` targets plain `net10.0` rather than `net10.0-windows` deliberately: it cannot reach
+`System.Windows.Forms`, the registry or DPAPI, so the separation is enforced by the compiler rather than
+by everyone remembering it.
+
+Inside the app project:
+
 | File(s) | Purpose |
 |---|---|
 | `Form1.cs` + `Form1.*.cs` | UI and orchestration, split into partial-class files by concern (Wiki, Updates, Settings, Install, Profiles, etc.) |
@@ -98,6 +112,17 @@ See `MANUAL.md` for the complete shortcut reference.
 | `ModFileSystem.cs` | Mod scanning, backup management, zip installation |
 | `SoundEngine.cs` | Audio playback via NAudio + NVorbis |
 | `LogAnalyzer.cs` | SMAPI log parsing and fix-rule engine |
+
+### Building
+
+```
+dotnet build KinetixModManager.slnx
+dotnet test  KinetixModManager.Tests
+```
+
+The core and the tests build anywhere .NET 10 runs. To compile the WinForms app on a non-Windows
+machine — useful for checking a change has not broken it, though it cannot run there — add
+`-p:EnableWindowsTargeting=true`.
 
 ---
 

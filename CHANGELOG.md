@@ -1,4 +1,30 @@
-﻿# Version 1.6.0
+﻿# Unreleased
+
+## 🐛 Two messages that read out their own punctuation
+
+*   The **duplicate UniqueID** line in Check My Setup was written to say "UniqueID *X* is used by *N* mods: *list*", but was never given the count. String formatting failed, the failure was caught, and the sentence came out as the raw template — so the screen reader read the braces aloud: "UniqueID open brace zero close brace is used by open brace one close brace mods". It now says the number.
+*   The **manual download** dialog, the one that opens when your Nexus account is not Premium, had the title "Download {0}" for the same reason. It now names the mod.
+
+## 🔧 Under the bonnet: the core is its own project now
+
+*   Nothing you can see changed here, and nothing you do works differently.
+*   The parts of the manager that have no user interface — game profiles, mod scanning rules, FOMOD, Modrinth, the Minecraft launcher and Fabric installer, the save and INI readers — now live in a project of their own, **Kinetix.Core**, instead of being mixed in with the window.
+*   They were already being built separately: the test project had been listing fifty files by hand for months so the tests would not have to load WebView2, NAudio and Tolk. That hand-written list is now a real project reference, so a new file is picked up by itself rather than when somebody remembers.
+*   The point of the split is that Kinetix.Core cannot reach Windows-only things even by accident — the compiler will not let it. That keeps the rules honest, and it is what a version of this manager for another operating system would be built on.
+
+## 🧭 Paths that were spelled the Windows way
+
+*   Seven places wrote a folder path with backslashes in it — the Moonlight Peaks mods folder, its keybind export, The Witcher 3's executable, United Minecraft's keybind file, and three others. Each is now assembled properly. **No difference on Windows**; it is what the same code would need anywhere else.
+*   Folder-name cleaning asked the computer which characters were forbidden, rather than which characters *the game* forbids. On Windows those are the same question. They are not everywhere, and the mod folders this manager makes are read by Windows games. The rule is now stated outright.
+
+## ✅ Tests
+
+*   **1,016 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
+*   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
+
+---
+
+# Version 1.6.0
 
 ## ✨ New: Minecraft (Java Edition) is the sixth supported game
 

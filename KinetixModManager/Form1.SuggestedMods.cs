@@ -315,7 +315,7 @@ public partial class Form1
 			try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
 			catch (Exception ex) { LogError(entry.Name, "Could not open " + url + ": " + ex.Message); }
 
-			SpeakBox(Loc.T("suggested.manualBox", entry.Name), Loc.T("suggested.manualTitle"));
+			SpeakBox(Loc.T("suggested.manualBox", entry.Name), Loc.T("suggested.manualTitle", entry.Name));
 			return;
 		}
 

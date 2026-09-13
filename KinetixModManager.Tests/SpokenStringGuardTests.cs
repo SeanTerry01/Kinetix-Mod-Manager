@@ -144,6 +144,96 @@ public class SpokenStringGuardTests
             string.Join("\n  ", unused));
     }
 
+    [Fact]
+    public void EveryPhraseIsGivenAsManyValuesAsItAsksFor()
+    {
+        // The gap the other two guards left. A phrase that says "{0} of {1}" and is called with one value does
+        // not error either: string.Format throws, Loc.T catches the FormatException, and the caller gets the
+        // template back unformatted. The screen reader then reads the braces out - "Download open brace zero
+        // close brace" - which is the same class of failure as a missing key, and was just as invisible.
+        //
+        // Two real ones were found this way: a duplicate-UniqueID report that never passed its count, and the
+        // manual-download dialog whose title was "Download {0}".
+        //
+        // Only calls whose arguments sit on one line are checked, which is nearly all of them. A call split
+        // across lines is skipped rather than guessed at - a guard that cries wolf gets muted.
+        HashSet<string> known = EnglishKeys();
+        JObject strings = JObject.Parse(File.ReadAllText(EnglishFilePath()));
+        var wrong = new List<string>();
+
+        foreach (string file in AppSourceFiles())
+        {
+            string[] lines = File.ReadAllLines(file);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                foreach (Match call in Regex.Matches(lines[i], @"Loc\.T\(""([^""]+)""([^;]*)"))
+                {
+                    string key = call.Groups[1].Value;
+                    if (!known.Contains(key)) continue;          // EveryPhraseTheAppAsksForExists covers that
+
+                    string? rest = TopLevelArguments(call.Groups[2].Value);
+                    if (rest == null) continue;                  // arguments run onto the next line; skip
+
+                    int needed = PlaceholdersIn((string?)strings[key] ?? "");
+                    int given = rest.Length == 0 ? 0 : rest.Split(',').Length;
+                    if (given >= needed) continue;
+
+                    wrong.Add($"{Path.GetFileName(file)}:{i + 1}  {key} wants {needed} value(s), given {given}" +
+                        $"\n      \"{(string?)strings[key]}\"");
+                }
+            }
+        }
+
+        Assert.True(wrong.Count == 0,
+            "these phrases are called with fewer values than they contain placeholders, so the user is read the " +
+            "template including its braces:\n  " + string.Join("\n  ", wrong));
+    }
+
+    /// <summary>
+    /// The comma-separated argument list after the key, or <c>null</c> when the call does not finish on this
+    /// line. Commas inside nested calls, strings or interpolations are collapsed first so that
+    /// <c>Loc.T("k", Join(", ", names))</c> counts as one argument rather than two.
+    /// </summary>
+    private static string? TopLevelArguments(string afterKey)
+    {
+        var kept = new System.Text.StringBuilder();
+        int depth = 0;
+        bool inString = false;
+
+        for (int i = 0; i < afterKey.Length; i++)
+        {
+            char c = afterKey[i];
+
+            if (inString)
+            {
+                if (c == '\\') { i++; continue; }
+                if (c == '"') inString = false;
+                continue;
+            }
+
+            switch (c)
+            {
+                case '"': inString = true; continue;
+                case '(': case '[': case '{': depth++; continue;
+                case ')' when depth == 0: return kept.ToString().Trim().TrimStart(',').Trim();
+                case ')': case ']': case '}': depth--; continue;
+            }
+
+            if (depth == 0) kept.Append(c);
+        }
+
+        return null;   // never closed on this line
+    }
+
+    /// <summary>How many values a phrase asks for: one more than its highest placeholder index, or zero.</summary>
+    private static int PlaceholdersIn(string phrase)
+    {
+        int highest = -1;
+        foreach (Match m in Regex.Matches(phrase, @"(?<!\{)\{(\d+)[,:}]"))
+            highest = Math.Max(highest, int.Parse(m.Groups[1].Value));
+        return highest + 1;
+    }
+
     private static HashSet<string> EnglishKeys()
     {
         JObject strings = JObject.Parse(File.ReadAllText(EnglishFilePath()));
@@ -158,16 +248,28 @@ public class SpokenStringGuardTests
         Path.Combine(RepositoryRoot(), "KinetixModManager", "lang", "en.json");
 
     /// <summary>
-    /// The app project's <c>.cs</c> files. Walks up from the test binary to the repository root rather than
-    /// assuming a build layout — same approach as <see cref="InstallKeyGuardTests"/>.
+    /// Every <c>.cs</c> file that could speak: the app project and Kinetix.Core. Walks up from the test binary
+    /// to the repository root rather than assuming a build layout — same approach as
+    /// <see cref="InstallKeyGuardTests"/>.
+    ///
+    /// Kinetix.Core has no <c>Loc.T</c> call in it today, because Loc itself is still in the app. It is swept
+    /// anyway: Loc belongs in the core eventually — a second front end needs the same sentences — and a guard
+    /// that quietly stopped covering the phrases on the day they moved would be worse than no guard, since it
+    /// would still be green.
     /// </summary>
     private static IEnumerable<string> AppSourceFiles()
     {
-        string appDir = Path.Combine(RepositoryRoot(), "KinetixModManager");
-        Assert.True(Directory.Exists(appDir), "Could not find the app project at " + appDir);
+        var files = new List<string>();
 
-        // Top level only: bin/ and obj/ hold generated copies that would report the same line twice.
-        string[] files = Directory.GetFiles(appDir, "*.cs", SearchOption.TopDirectoryOnly);
+        foreach (string project in new[] { "KinetixModManager", "Kinetix.Core" })
+        {
+            string dir = Path.Combine(RepositoryRoot(), project);
+            Assert.True(Directory.Exists(dir), "Could not find " + project + " at " + dir);
+
+            // Top level only: bin/ and obj/ hold generated copies that would report the same line twice.
+            files.AddRange(Directory.GetFiles(dir, "*.cs", SearchOption.TopDirectoryOnly));
+        }
+
         Assert.NotEmpty(files);
         return files;
     }

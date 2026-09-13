@@ -69,7 +69,7 @@ public partial class Form1
 		if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley))
 		{
 			foreach (var (uid, names) in ModHealth.FindDuplicateUniqueIds(_allInstalledMods))
-				rows.Add(new ReportRow { Text = Loc.T("reports.dupId", uid, string.Join(", ", names)) });
+				rows.Add(new ReportRow { Text = Loc.T("reports.dupId", uid, names.Count, string.Join(", ", names)) });
 			return rows;
 		}
 
