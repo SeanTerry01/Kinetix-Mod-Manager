@@ -1169,35 +1169,38 @@ public partial class Form1
 
 		var mod = new ModKeybinds(Loc.T("controls.mcTitle"));
 
-		// The accessibility mod first: it is what the player is here for.
-		if (united.Count > 0)
-		{
-			var accessSection = new KbSection { Name = Loc.T("controls.mcUnitedSection") };
-			AddMinecraftBindings(accessSection, united);
-			mod.Sections.Add(accessSection);
-		}
-
-		if (vanilla.Count > 0)
-		{
-			var gameSection = new KbSection { Name = Loc.T("controls.mcVanillaSection") };
-			AddMinecraftBindings(gameSection, vanilla);
-			mod.Sections.Add(gameSection);
-		}
+		// The game's own keys first, then the accessibility mod's — the same order every other game uses, so
+		// somebody who has learned where to find things in the Stardew or Skyrim list finds them in the same
+		// place here. Consistency across sessions beats putting the more-used section first.
+		AddMinecraftSections(mod, MinecraftControls.GroupVanilla(vanilla), Loc.T("controls.mcVanillaSection"));
+		AddMinecraftSections(mod, MinecraftControls.GroupUnitedMinecraft(united), Loc.T("controls.mcUnitedSection"));
 
 		return mod;
 	}
 
 	/// <summary>
-	/// Adds bindings to a section, bound ones first.
+	/// Adds one set of grouped bindings to the drill-down, each group its own named section.
 	///
-	/// Unbound actions are kept rather than hidden — several of United Minecraft's ship with no key, and
-	/// "this exists but you would have to bind it" is worth knowing — but they go last, so the list opens on
-	/// something usable instead of a run of "Not bound".
+	/// The group name carries a prefix saying which half of the list it belongs to — "Minecraft: Movement",
+	/// "United Minecraft: Build mode" — because the two halves have sections that would otherwise collide.
+	/// Both have somewhere to move around and somewhere to handle an inventory, and a bare "Inventory" would
+	/// leave the player unable to tell which one they had landed in.
 	/// </summary>
-	private static void AddMinecraftBindings(KbSection section, List<MinecraftBinding> bindings)
+	private static void AddMinecraftSections(
+		ModKeybinds mod, List<MinecraftControls.MinecraftControlSection> groups, string prefix)
 	{
-		foreach (MinecraftBinding binding in bindings.Where(b => !b.IsUnbound).Concat(bindings.Where(b => b.IsUnbound)))
-			section.Entries.Add(new KbEntry { Key = binding.Key, Text = binding.Action });
+		foreach (MinecraftControls.MinecraftControlSection group in groups)
+		{
+			var section = new KbSection { Name = Loc.T("controls.mcSectionName", prefix, group.Name) };
+
+			// Unbound actions are kept rather than hidden — several of United Minecraft's ship with no key,
+			// and "this exists but you would have to bind it" is worth knowing — but the grouping has already
+			// put them last so a section never opens on a run of "Not bound".
+			foreach (MinecraftBinding binding in group.Bindings)
+				section.Entries.Add(new KbEntry { Key = binding.Key, Text = binding.Action });
+
+			mod.Sections.Add(section);
+		}
 	}
 
 	private ModKeybinds? BuildExportedGameControls()

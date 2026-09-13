@@ -166,6 +166,143 @@ public class MinecraftControlsTests
 	}
 
 	// -------------------------------------------------------------------------
+	// Grouping - why the same key appears several times
+	// -------------------------------------------------------------------------
+
+	[Fact]
+	public void TheSameKeyInDifferentModesLandsInDifferentSections()
+	{
+		// The reason sections exist. United Minecraft binds Left arrow to three different things because each
+		// applies on a different screen; flat, that reads as three contradictory entries for one key and looks
+		// like the manager is confused.
+		var bindings = ReadUnited("""
+		{
+			"look_left":           { "key": 263, "modifiers": 0 },
+			"container_nav_left":  { "key": 263, "modifiers": 0 },
+			"build_cursor_left":   { "key": 263, "modifiers": 0 },
+			"snap_turn_left":      { "key": 263, "modifiers": 4 }
+		}
+		""");
+
+		var sections = MinecraftControls.GroupUnitedMinecraft(bindings);
+
+		Assert.Equal("Looking around", SectionOf(sections, "Look left"));
+		Assert.Equal("Containers and inventory", SectionOf(sections, "Container nav left"));
+		Assert.Equal("Build mode", SectionOf(sections, "Build cursor left"));
+		// Snap turning is a way of looking around, so it belongs with it rather than on its own.
+		Assert.Equal("Looking around", SectionOf(sections, "Snap turn left"));
+	}
+
+	[Fact]
+	public void ALongerPrefixWinsOverAShorterOneThatAlsoMatches()
+	{
+		// "scanner_" and "scan_" both match "scanner_target"; the rules are ordered so the specific one wins.
+		var bindings = ReadUnited("""
+		{ "scanner_target": { "key": 257, "modifiers": 0 }, "scan_surroundings": { "key": 82, "modifiers": 0 } }
+		""");
+
+		var sections = MinecraftControls.GroupUnitedMinecraft(bindings);
+
+		Assert.Equal("Scanner", SectionOf(sections, "Scanner target"));
+		Assert.Equal("Scanner", SectionOf(sections, "Scan surroundings"));
+		Assert.Single(sections);
+	}
+
+	[Fact]
+	public void AnActionTheGroupingHasNeverHeardOfStillAppears()
+	{
+		// A mod update adding a new feature must not make its keys vanish from the list.
+		var bindings = ReadUnited("""{ "teleport_to_the_moon": { "key": 77, "modifiers": 0 } }""");
+
+		Assert.Equal("Other", SectionOf(MinecraftControls.GroupUnitedMinecraft(bindings), "Teleport to the moon"));
+	}
+
+	[Fact]
+	public void TheGamesOwnKeysFollowMinecraftsOwnCategories()
+	{
+		var sections = MinecraftControls.GroupVanilla(ReadOptions(RealOptionsTxt));
+
+		Assert.Equal("Movement", SectionOf(sections, "Forward"));
+		Assert.Equal("Gameplay", SectionOf(sections, "Attack"));
+		Assert.Equal("Inventory", SectionOf(sections, "Hotbar 1"));
+		Assert.Equal("Multiplayer", SectionOf(sections, "Social interactions"));
+		// Screenshot, fullscreen and perspective are Miscellaneous in Minecraft's own Controls screen too.
+		Assert.Equal("Miscellaneous", SectionOf(sections, "Toggle gui"));
+	}
+
+	[Fact]
+	public void TheTwentyTwoDebugKeysAreTheirOwnSectionAndComeLast()
+	{
+		// A third of Minecraft's keys are chunk borders, hitboxes and profiling charts. Left ungrouped they
+		// drown the keys somebody actually plays with.
+		var bindings = ReadOptions("""
+		key_key.forward:key.keyboard.w
+		key_key.debug.showHitboxes:key.keyboard.b
+		key_key.debug.chunkBorders:key.keyboard.g
+		""");
+
+		var sections = MinecraftControls.GroupVanilla(bindings);
+
+		Assert.Equal("Debug", SectionOf(sections, "Debug show hitboxes"));
+		Assert.Equal("Movement", sections[0].Name);
+		Assert.Equal("Debug", sections[^1].Name);
+	}
+
+	[Fact]
+	public void EmptySectionsAreNotOffered()
+	{
+		// The rules declare a dozen sections; a player with only movement keys should get one, not twelve
+		// headings they can arrow through to find nothing inside.
+		var sections = MinecraftControls.GroupVanilla(ReadOptions("key_key.forward:key.keyboard.w"));
+
+		Assert.Single(sections);
+		Assert.Equal("Movement", sections[0].Name);
+	}
+
+	[Fact]
+	public void WithinASectionBoundKeysComeBeforeUnboundOnes()
+	{
+		var bindings = ReadUnited("""
+		{
+			"narrate_coordinate_x": { "key": -1, "modifiers": 0 },
+			"narrate_health":       { "key": 72, "modifiers": 0 }
+		}
+		""");
+
+		var narration = MinecraftControls.GroupUnitedMinecraft(bindings).Single();
+
+		Assert.Equal("Narrate health", narration.Bindings[0].Action);
+		Assert.True(narration.Bindings[^1].IsUnbound);
+	}
+
+	// -------------------------------------------------------------------------
+	// The modifier keys, which a mod may bind as ordinary keys
+	// -------------------------------------------------------------------------
+
+	[Theory]
+	// United Minecraft binds these to place and break a block. Without them the list read "Key 345: Build
+	// place" - a number nobody can act on.
+	[InlineData(344, "Right shift")]
+	[InlineData(345, "Right control")]
+	[InlineData(340, "Left shift")]
+	[InlineData(341, "Left control")]
+	[InlineData(346, "Right alt")]
+	[InlineData(348, "Menu")]
+	[InlineData(280, "Caps lock")]
+	[InlineData(335, "Numpad enter")]
+	public void ModifierAndSpecialKeysAreNamedRatherThanNumbered(int key, string expected)
+	{
+		Assert.Equal(expected, MinecraftControls.DescribeGlfwKey(key));
+	}
+
+	// -------------------------------------------------------------------------
+
+	private static string SectionOf(
+		IEnumerable<MinecraftControls.MinecraftControlSection> sections, string action) =>
+		sections.FirstOrDefault(s => s.Bindings.Any(b => b.Action == action))?.Name
+		?? throw new Xunit.Sdk.XunitException(
+			$"'{action}' is in no section. Sections: "
+			+ string.Join(", ", sections.Select(s => $"{s.Name} [{string.Join(" | ", s.Bindings.Select(b => b.Action))}]")));
 
 	private static MinecraftBinding Find(IEnumerable<MinecraftBinding> bindings, string action) =>
 		bindings.FirstOrDefault(b => b.Action == action)

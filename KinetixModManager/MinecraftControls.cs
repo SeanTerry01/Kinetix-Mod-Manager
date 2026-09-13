@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -11,6 +11,13 @@ namespace KinetixModManager;
 /// <summary>One thing the player can do, and the key that does it. Both already readable aloud.</summary>
 public sealed class MinecraftBinding
 {
+	/// <summary>
+	/// The raw identifier the file used — <c>key.pickItem</c>, <c>build_cursor_left</c>. Kept because it is
+	/// what the grouping reads: the friendly name has already thrown away the prefix that says which part of
+	/// the game a binding belongs to.
+	/// </summary>
+	public required string Id { get; init; }
+
 	/// <summary>What it does, e.g. "Attack", "Narrate coordinates".</summary>
 	public required string Action { get; init; }
 
@@ -72,6 +79,7 @@ public static class MinecraftControls
 
 			bindings.Add(new MinecraftBinding
 			{
+				Id        = action,
 				Action    = FriendlyActionName(action),
 				Key       = FriendlyInputName(input),
 				IsUnbound = IsUnbound(input)
@@ -162,6 +170,7 @@ public static class MinecraftControls
 
 			bindings.Add(new MinecraftBinding
 			{
+				Id        = entry.Name,
 				Action    = FriendlyActionName(entry.Name),
 				Key       = DescribeGlfwCombo(key, modifiers),
 				IsUnbound = key < 0
@@ -227,10 +236,162 @@ public static class MinecraftControls
 			92  => "Backslash",
 			93  => "Right bracket",
 			96  => "Grave accent",
+			280 => "Caps lock",
+			281 => "Scroll lock",
+			282 => "Num lock",
+			283 => "Print screen",
+			284 => "Pause",
+			// The modifier keys, which a mod may bind as ordinary keys rather than as modifiers. United
+			// Minecraft binds Right control to place a block and Right shift to break one, and without these
+			// the list read "Key 345: Build place" — a number nobody can act on.
+			330 => "Numpad decimal",
+			331 => "Numpad divide",
+			332 => "Numpad multiply",
+			333 => "Numpad subtract",
+			334 => "Numpad add",
+			335 => "Numpad enter",
+			336 => "Numpad equals",
+			340 => "Left shift",
+			341 => "Left control",
+			342 => "Left alt",
+			343 => "Left Windows",
+			344 => "Right shift",
+			345 => "Right control",
+			346 => "Right alt",
+			347 => "Right Windows",
+			348 => "Menu",
 			>= 290 and <= 301 => "F" + (key - 289).ToString(CultureInfo.InvariantCulture),
 			>= 320 and <= 329 => "Numpad " + (key - 320).ToString(CultureInfo.InvariantCulture),
 			_ => "Key " + key.ToString(CultureInfo.InvariantCulture)
 		};
+	}
+
+	// -------------------------------------------------------------------------
+	// Grouping
+	// -------------------------------------------------------------------------
+
+	/// <summary>
+	/// Which part of the game a group of bindings belongs to, and the bindings themselves.
+	///
+	/// Sections exist because the same key legitimately does several different things. United Minecraft binds
+	/// Left arrow to <c>look_left</c>, <c>container_nav_left</c> and <c>build_cursor_left</c>, because each
+	/// applies on a different screen or in a different mode. Listed flat, that reads as four contradictory
+	/// entries for one key and looks like the manager is confused; listed under "Looking around",
+	/// "Containers" and "Build mode" it is obvious.
+	/// </summary>
+	public sealed class MinecraftControlSection
+	{
+		public required string Name { get; init; }
+		public List<MinecraftBinding> Bindings { get; } = new();
+	}
+
+	/// <summary>
+	/// Where each family of United Minecraft actions belongs, longest prefix first so <c>scanner_</c> is
+	/// matched before <c>scan_</c>.
+	///
+	/// Read off the mod's own naming, which is consistent: the part before the first underscore says which
+	/// feature an action belongs to. An action matching nothing here still appears, under "Other" — a mod
+	/// update adding a new feature must not make its keys vanish from the list.
+	/// </summary>
+	private static readonly (string Prefix, string Section)[] UnitedSections =
+	{
+		("narrate_",     "Narration"),
+		("scanner_",     "Scanner"),
+		("scan_",        "Scanner"),
+		("place_marker", "Scanner"),
+		("build_",       "Build mode"),
+		("container_",   "Containers and inventory"),
+		("recipe_book_", "Recipe book"),
+		("creative_",    "Creative inventory"),
+		("look_",        "Looking around"),
+		("snap_",        "Looking around"),
+		("reset_rotation", "Looking around"),
+		("trail",        "Trails"),
+		("water_",       "Water"),
+		("toggle_",      "Modes and toggles"),
+		("page_",        "Paging"),
+	};
+
+	/// <summary>
+	/// Which part of the game each vanilla action belongs to, following the categories Minecraft's own
+	/// Controls screen uses.
+	///
+	/// Matched on the action's translation key, because nothing in <c>options.txt</c> states a category — the
+	/// game keeps that in its own code. An unrecognised key lands under "Other" rather than being dropped,
+	/// which is what happens to anything Mojang adds after this was written.
+	/// </summary>
+	private static readonly (string Match, string Section)[] VanillaSections =
+	{
+		("key.forward",   "Movement"), ("key.back", "Movement"), ("key.left", "Movement"),
+		("key.right",     "Movement"), ("key.jump", "Movement"), ("key.sneak", "Movement"),
+		("key.sprint",    "Movement"),
+		("key.attack",    "Gameplay"), ("key.use", "Gameplay"), ("key.pickItem", "Gameplay"),
+		("key.drop",      "Inventory"), ("key.inventory", "Inventory"), ("key.swapOffhand", "Inventory"),
+		("key.hotbar.",   "Inventory"), ("key.saveToolbarActivator", "Inventory"),
+		("key.loadToolbarActivator", "Inventory"),
+		("key.quickActions", "Gameplay"),
+		("key.chat",      "Multiplayer"), ("key.command", "Multiplayer"), ("key.playerlist", "Multiplayer"),
+		("key.socialInteractions", "Multiplayer"), ("key.advancements", "Multiplayer"),
+		("key.friends",   "Multiplayer"),
+		// Declared last, so it comes after every section somebody actually plays with. Minecraft ships
+		// twenty-two of these — a third of all its keys — and they are chunk borders, hitboxes and profiling
+		// charts. Grouping them keeps them out of the way without hiding them from anyone who wants them.
+		("key.debug.",    "Debug"),
+	};
+
+	/// <summary>Groups United Minecraft's bindings by the feature they belong to.</summary>
+	public static List<MinecraftControlSection> GroupUnitedMinecraft(IEnumerable<MinecraftBinding> bindings) =>
+		Group(bindings, UnitedSections, "Other");
+
+	/// <summary>Groups the game's own bindings the way Minecraft's Controls screen groups them.</summary>
+	public static List<MinecraftControlSection> GroupVanilla(IEnumerable<MinecraftBinding> bindings) =>
+		Group(bindings, VanillaSections, "Miscellaneous");
+
+	/// <summary>
+	/// Buckets bindings by the first rule whose prefix their id starts with.
+	///
+	/// Sections come out in the order the rules declare them, not alphabetically — "Movement" before
+	/// "Inventory" is how a player thinks about them, and how the game's own screen presents them. Within a
+	/// section, bound actions precede unbound ones so a list never opens on a run of "Not bound".
+	/// </summary>
+	private static List<MinecraftControlSection> Group(
+		IEnumerable<MinecraftBinding> bindings, (string Prefix, string Section)[] rules, string fallback)
+	{
+		var sections = new List<MinecraftControlSection>();
+		var byName = new Dictionary<string, MinecraftControlSection>(StringComparer.Ordinal);
+
+		MinecraftControlSection SectionFor(string name)
+		{
+			if (byName.TryGetValue(name, out MinecraftControlSection? existing)) return existing;
+
+			var created = new MinecraftControlSection { Name = name };
+			byName[name] = created;
+			sections.Add(created);
+			return created;
+		}
+
+		// Declared order first, so a section's position does not depend on which binding happened to arrive
+		// first. Only sections that end up with something in them survive.
+		foreach ((_, string name) in rules) SectionFor(name);
+		SectionFor(fallback);
+
+		foreach (MinecraftBinding binding in bindings)
+		{
+			string name = rules.FirstOrDefault(r =>
+				binding.Id.StartsWith(r.Prefix, StringComparison.OrdinalIgnoreCase)).Section ?? fallback;
+
+			SectionFor(name).Bindings.Add(binding);
+		}
+
+		foreach (MinecraftControlSection section in sections)
+		{
+			var ordered = section.Bindings.Where(b => !b.IsUnbound)
+				.Concat(section.Bindings.Where(b => b.IsUnbound)).ToList();
+			section.Bindings.Clear();
+			section.Bindings.AddRange(ordered);
+		}
+
+		return sections.Where(s => s.Bindings.Count > 0).ToList();
 	}
 
 	// -------------------------------------------------------------------------
