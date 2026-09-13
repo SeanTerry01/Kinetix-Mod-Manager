@@ -127,12 +127,8 @@ public static class ModFolderTidy
 	/// Off Windows the host's answer is two characters instead of 41, so this would quietly stop
 	/// sanitising and hand a Proton-hosted game a folder name it cannot open.
 	/// </summary>
-	private static string Sanitise(string name)
-	{
-		if (string.IsNullOrWhiteSpace(name)) return "";
-		string cleaned = WindowsFileName.StripInvalid(name).Trim();
-		return cleaned.TrimEnd('.', ' ');
-	}
+	private static string Sanitise(string name) =>
+		string.IsNullOrWhiteSpace(name) ? "" : WindowsFileName.ToFolderName(name);
 
 	/// <summary>Keeps a very long mod name from pushing the files inside it past the path limit.</summary>
 	private static string Truncate(string name) =>

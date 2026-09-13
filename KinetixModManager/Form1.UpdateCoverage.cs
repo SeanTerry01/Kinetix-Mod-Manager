@@ -338,7 +338,7 @@ public partial class Form1
 			// with what it actually put on disk, so a wrong guess here corrects itself.
 			if (installedFromHere && archiveCount[nexusId!] == 1 &&
 				InstalledDownloadVersion("Nexus:" + nexusId) == null &&
-				ModFileSystem.ExtractVersionFromFileName(path, nexusId) is string version)
+				ModScanner.ExtractVersionFromFileName(path, nexusId) is string version)
 				RecordInstalledDownloadVersion("Nexus:" + nexusId, version);
 		}
 		PersistNexusIdLinks(links);
@@ -374,7 +374,7 @@ public partial class Form1
 			PersistNexusIdLinks(links);
 			// The release this download installed, so later checks compare against what is really on disk
 			// rather than the version numbers the mods inside it happen to declare.
-			if (ModFileSystem.ExtractVersionFromFileName(archiveName, nexusId) is string version)
+			if (ModScanner.ExtractVersionFromFileName(archiveName, nexusId) is string version)
 				RecordInstalledDownloadVersion("Nexus:" + nexusId, version);
 		}
 		catch (Exception ex) { LogFailure("ModIdMap", "Could not record the download's Nexus ID", ex); }

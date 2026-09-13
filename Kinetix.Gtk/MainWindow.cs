@@ -122,15 +122,27 @@ public sealed class MainWindow
 			return;
 		}
 
-		foreach (string jar in Directory.EnumerateFiles(_modsFolder)
-			.Where(f => f.EndsWith(MinecraftLayout.ModExtension, StringComparison.OrdinalIgnoreCase)
-					 || f.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase))
-			.OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
-		{
-			// Straight out of the core: the same reader the WinForms build uses, unchanged.
-			FabricModInfo info = MinecraftLayout.ReadModInfo(jar);
-			_rows.Add(new ModRow { JarPath = jar, Info = info, Enabled = MinecraftLayout.IsEnabledModFile(jar) });
-		}
+		// The same scan the WinForms build runs, not a second one written for this window. It was private to
+		// the app until ModScanner moved to the core; until then this had to enumerate jars by hand and would
+		// have drifted from the real thing the first time a rule changed.
+		//
+		// No removeSuperseded callback is passed, so this scan only reads. On Windows the same call deletes
+		// the older of two duplicate installs; here it simply leaves both listed.
+		List<GameMod> scanned = ModScanner.ScanMods(
+			_modsFolder,
+			new Newtonsoft.Json.Linq.JObject(),
+			ScanContext.For(_modsFolder),
+			GameProfiles.Minecraft,
+			(where, what) => DiagnosticLog.Write(where, what));
+
+		foreach (GameMod mod in scanned)
+			_rows.Add(new ModRow
+			{
+				JarPath = mod.FolderPath,
+				Name    = mod.Name,
+				Version = mod.Version,
+				Enabled = MinecraftLayout.IsEnabledModFile(mod.FolderPath)
+			});
 
 		foreach (ModRow row in _rows) _installed.Append(RowLabel(row.Spoken));
 		SetStatus($"{_rows.Count} mods in {_modsFolder}");
@@ -151,12 +163,12 @@ public sealed class MainWindow
 			File.Move(row.JarPath, target);
 			LoadInstalled();
 			_installed.SelectRow(_installed.GetRowAtIndex(Math.Min(i, Math.Max(0, _rows.Count - 1))));
-			Say($"{row.Info.Name} {(row.Enabled ? "disabled" : "enabled")}.", interrupt: true);
+			Say($"{row.Name} {(row.Enabled ? "disabled" : "enabled")}.", interrupt: true);
 		}
 		catch (Exception ex)
 		{
 			DiagnosticLog.WriteException("Mods", $"toggling {row.JarPath}", ex);
-			Say($"Could not change {row.Info.Name}. {ex.Message}", interrupt: true);
+			Say($"Could not change {row.Name}. {ex.Message}", interrupt: true);
 		}
 	}
 

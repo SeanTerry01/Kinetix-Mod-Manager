@@ -168,7 +168,14 @@ public partial class Form1
 			catch (Exception ex) { DiagnosticLog.WriteException("ModIdMap", "copying the old Nexus id map into place", ex); }
 		}
 		JObject nexusIdMap = (File.Exists(idMapPath) ? JObject.Parse(File.ReadAllText(idMapPath)) : new JObject()) ?? new JObject();
-		List<StardewMod> scanned = ModFileSystem.ScanMods(_settings.CurrentModsPath, nexusIdMap, _settings, refreshingGame, LogError);
+		// The last argument is behaviour the scan used to perform on its own: when two copies of a mod are
+		// installed and one is older, the older one is undeployed, backed up and deleted. That is a real
+		// deletion on the user's disk, and nothing in the word "scan" hinted at it. It has not changed —
+		// it is simply passed in now, so it is visible here rather than buried six hundred lines into a
+		// method named for reading.
+		List<StardewMod> scanned = ModScanner.ScanMods(
+			_settings.CurrentModsPath, nexusIdMap, _settings, refreshingGame, LogError,
+			removeSuperseded: RemoveSupersededDuplicate);
 
 		// The scan reads the disk and can take a while on a large mod folder. If the user switched games while it
 		// ran, these are the wrong game's mods and the newer pass is already on its way — publishing them would
@@ -934,5 +941,29 @@ public partial class Form1
 				}
 			}
 		}
+	}
+
+	/// <summary>
+	/// Removes the older of two copies of the same mod, found while scanning: undeploy it, back it up, and
+	/// delete the folder.
+	///
+	/// Lifted out of ModScanner when the scan moved to the core. The behaviour is unchanged and deliberately
+	/// so — this has been running on every refresh for a long time and quietly keeps a mod folder tidy — but
+	/// it is Windows-side work (deployment, plugins.txt) and it is a deletion, so it belongs in front of the
+	/// user's eyes rather than inside something called a scan.
+	/// </summary>
+	private void RemoveSupersededDuplicate(GameMod superseded)
+	{
+		string gameData = Path.Combine(_settings.CurrentGamePath, "Data");
+		ModFileSystem.DeployModFiles(superseded.FolderPath, gameData, false, LogError);
+		ModFileSystem.SyncPluginsFile(superseded.FolderPath, _settings.ActiveGame, _settings.CurrentGamePath, false, LogError);
+
+		string backupsPath = Path.Combine(
+			Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+			"AudiVentureGames", "KinetixModManager", "backups", _settings.ActiveGame);
+		Directory.CreateDirectory(backupsPath);
+
+		ModFileSystem.CreateBackup(superseded.FolderPath, Path.GetFileName(superseded.FolderPath), backupsPath);
+		Directory.Delete(superseded.FolderPath, true);
 	}
 }

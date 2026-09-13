@@ -766,7 +766,7 @@ public partial class Form1
 				// download's file name knows it. Without this the update check falls back to comparing the
 				// version the mod declares against the version on its page, and for the many mods whose authors
 				// never bump the number in the mod itself, that offers the same update forever.
-				if (ModFileSystem.ExtractVersionFromFileName(zipPath, nexusId) is string installedRelease)
+				if (ModScanner.ExtractVersionFromFileName(zipPath, nexusId) is string installedRelease)
 					RecordInstalledDownloadVersion("Nexus:" + nexusId, installedRelease);
 			}
 

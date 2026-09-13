@@ -5,8 +5,8 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-09-13, after the GTK spike.
-**State:** 1,024 tests passing on Windows and Linux; all three projects build clean.
+**Last updated:** 2026-09-13, after mod scanning moved to the core.
+**State:** 1,031 tests passing on Windows and Linux; all five projects build clean.
 
 ---
 
@@ -66,10 +66,9 @@ presenters the WinForms head uses.
 
 These stand on their own merits. None is urgent.
 
-- [ ] **`ModFileSystem.cs` is a second god object** — 3,825 lines, `static`, doing roughly eight
-      jobs: hard links, manifest parsing, mod scanning for four loaders, backups, deployment,
-      `plugins.txt`, INI editing, archive extraction, FOMOD finalisation, uninstaller registry
-      lookup, folder-name sanitising. Should be about eight classes.
+- [ ] **`ModFileSystem.cs` is still a god object** — 3,114 lines after scanning left (was 3,825).
+      What remains: hard links, backups, deployment, `plugins.txt`, INI editing, archive extraction,
+      FOMOD finalisation, uninstaller registry lookup. Should be about six more classes.
 - [ ] **`NexusService` is an instance class, `ModrinthService` is static.** Same job — "where mods
       come from" — two incompatible shapes, so nothing can be source-agnostic without branching on
       the game. This is what `IModSource` is for.
@@ -165,8 +164,8 @@ Now the largest unknown in the Linux head, and the one piece with no easy path:
 
 ## The GTK head, from here
 
-- [ ] **Stardew Valley support** needs `ModFileSystem.ScanMods` out of the WinForms app and into the
-      core. That is the single biggest Core gap the spike exposed.
+- [ ] **Stardew Valley support** — the scanner is in the core now (ARCHITECTURE_REVIEW §19), so this is
+      no longer blocked. It needs a game picker in the GTK head and Stardew's own paths.
 - [ ] **The spike's strings are English literals, not `Loc.T`.** The catalogue is wired and copied to
       its output; using it is the follow-up, and the guard tests should then cover `Kinetix.Gtk` too.
 - [ ] **Confirm the AT-SPI routing by ear.** Announcements now go through Orca rather than

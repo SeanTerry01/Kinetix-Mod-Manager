@@ -104,7 +104,7 @@ public class GameInstall
 	}
 }
 
-public class AppSettings
+public class AppSettings : IModScanContext
 {
 	public string ModsPath { get; set; } = "";
 
@@ -423,11 +423,17 @@ public class AppSettings
 
 	public Dictionary<string, string> ModCategories { get; set; } = new Dictionary<string, string>();
 
+	// Explicit, because the interface asks for a read-only view and the property is the writable store.
+	// The scan only ever reads these; saying so in the type is the point of the interface.
+	IReadOnlyDictionary<string, string> IModScanContext.ModCategories => ModCategories;
+
 	/// <summary>
 	/// Personal free-text notes the user has attached to mods, keyed by mod UniqueID. Spoken when the mod is
 	/// selected in the installed list (e.g. "keep disabled until year 2"). Empty/removed entries mean no note.
 	/// </summary>
 	public Dictionary<string, string> ModNotes { get; set; } = new Dictionary<string, string>();
+
+	IReadOnlyDictionary<string, string> IModScanContext.ModNotes => ModNotes;
 
 	/// <summary>
 	/// Per-game mod priority order for Skyrim SE / Fallout 4, deciding which mod's loose files win when

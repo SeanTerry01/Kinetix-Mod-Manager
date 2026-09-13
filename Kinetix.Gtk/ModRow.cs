@@ -14,7 +14,8 @@ namespace KinetixModManager.GtkHead;
 public sealed class ModRow
 {
 	public required string JarPath { get; init; }
-	public required FabricModInfo Info { get; init; }
+	public required string Name { get; init; }
+	public required string Version { get; init; }
 	public required bool Enabled { get; init; }
 
 	/// <summary>What the reader says for this row.</summary>
@@ -22,8 +23,8 @@ public sealed class ModRow
 	{
 		get
 		{
-			string name = string.IsNullOrWhiteSpace(Info.Name) ? System.IO.Path.GetFileName(JarPath) : Info.Name;
-			string version = string.IsNullOrWhiteSpace(Info.Version) ? "" : " " + Info.Version;
+			string name = string.IsNullOrWhiteSpace(Name) ? System.IO.Path.GetFileName(JarPath) : Name;
+			string version = string.IsNullOrWhiteSpace(Version) ? "" : " " + Version;
 			// State first. The user is arrowing a list to find what is switched off, and putting it last
 			// means hearing the whole name before the one word that was being listened for.
 			string state = Enabled ? "" : "disabled, ";

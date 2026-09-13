@@ -1185,3 +1185,61 @@ two platforms do not merely spell speech differently, they divide the work diffe
 
 **Not yet verified by ear.** The change is correct by design and the routing is confirmed in the log, but
 nobody has listened to it since it was made.
+
+
+---
+
+## 19. Mod scanning moved to the core, 2026-09-13
+
+`ModFileSystem` was the second-largest problem in this review after `Form1`: 3,825 lines, `static`, doing
+roughly eight jobs. It is now **3,114**, and the 748 lines that left are the half a second front end needed
+first — a mod manager that cannot list your mods has nothing to show you.
+
+The split is along one line: **reading what is installed, against changing it.** Scanning all four layouts
+went to `Kinetix.Core/ModScanner.cs`, with the five manifest-parsing helpers that only scanning uses
+(`ParseNexusId`, `ParseGitHubRepo`, `DetectCategory`, `ExtractVersionFromFileName`,
+`CompareVersionsNewer`). Enabling, deploying, backing up, extracting and writing `plugins.txt` stayed in
+the app, where the Windows-only parts of them belong.
+
+### Two things had to be untangled
+
+**`AppSettings` could not come along** — it stores keyboard shortcuts as `System.Windows.Forms.Keys`. But
+the scan reads only three things from it, so `IModScanContext` names exactly those: `CurrentGamePath`,
+`ModCategories`, `ModNotes`. `AppSettings` implements it in three lines. A dependency on the app became a
+dependency on what the app happens to know.
+
+**`ScanMods` deleted files.** Six hundred lines into a method named for reading, on finding two copies of
+one mod, it undeployed the older one, backed it up, and deleted its folder — on every refresh, with
+nothing in the name to suggest it. The behaviour is unchanged and is still what Windows does, but it is now
+an `Action<GameMod>? removeSuperseded` parameter supplied by the caller. It is visible in the signature,
+it sits in `Form1.ModList.cs` where a reader will find it, and **a caller that passes nothing gets a scan
+that only ever reads** — which is what the GTK head passes.
+
+### It has tests now, for the first time
+
+Seven of them, and they could not have existed a day ago: scanning lived in the WinForms app, and the test
+project deliberately does not reference that app, so the most-run logic in the program — every refresh,
+every game switch, every install ends in a scan — was never exercised.
+
+They pin the Minecraft layout, which is the one worth pinning first: the only layout where a mod is a file
+rather than a folder, where the metadata is inside a zip, and where a mod is disabled by a suffix rather
+than a prefix. That a jar is read by its manifest rather than its file name; that a `.jar.disabled` is
+still listed, because hiding it would leave no way to switch it back on; that a jar with no readable
+manifest still appears, because Fabric will try to load it whatever the manager thinks; and that scanning
+deletes nothing when no removal is supplied.
+
+### The GTK head now runs the same scan as Windows
+
+It had been enumerating jars by hand, because the real scan was unreachable — and that copy would have
+drifted from the real thing the first time a rule changed. It now calls `ModScanner.ScanMods`, the same
+call the WinForms build makes, with no `removeSuperseded` so it only reads.
+
+This is also what unblocks **Stardew Valley** in the Linux head, which was the largest remaining gap after
+§16 settled on Minecraft and Stardew as the two native games.
+
+### Verification
+
+```
+dotnet build KinetixModManager.slnx -p:EnableWindowsTargeting=true  →  0 warnings, 0 errors
+dotnet test  KinetixModManager.Tests                                →  1031 passed, 0 failed
+```

@@ -45,4 +45,16 @@ public static class WindowsFileName
 	/// </summary>
 	public static string StripInvalid(string name) =>
 		string.IsNullOrEmpty(name) ? "" : new string(name.Where(c => !Invalid.Contains(c)).ToArray());
+
+	/// <summary>
+	/// <paramref name="name"/> turned into something Windows will accept as a folder: forbidden characters
+	/// gone, and no trailing dot or space.
+	///
+	/// The trailing pair matters as much as the character set and is easier to forget. Windows silently
+	/// refuses to create <c>"Some Mod."</c> or <c>"Some Mod "</c>, and Linux creates both happily — so a
+	/// folder made here off Windows would be one the game could never open, which is the same failure the
+	/// character set exists to prevent.
+	/// </summary>
+	public static string ToFolderName(string name) =>
+		StripInvalid(name).Trim().TrimEnd('.', ' ');
 }
