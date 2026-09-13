@@ -188,6 +188,7 @@ public partial class Form1
 			"Fallout4" => Loc.T("tab.wikiFallout"),
 			"MoonlightPeaks" => Loc.T("tab.wikiMoonlight"),
 			"Witcher3" => Loc.T("tab.wikiWitcher"),
+			"Minecraft" => Loc.T("tab.wikiMinecraft"),
 			_ => Loc.T("tab.wikiStardew")
 		};
 
@@ -197,6 +198,7 @@ public partial class Form1
 			"Fallout4" => Loc.T("tab.walkFallout"),
 			"MoonlightPeaks" => Loc.T("tab.walkMoonlight"),
 			"Witcher3" => Loc.T("tab.walkWitcher"),
+			"Minecraft" => Loc.T("tab.walkMinecraft"),
 			_ => Loc.T("tab.walkStardew")
 		};
 

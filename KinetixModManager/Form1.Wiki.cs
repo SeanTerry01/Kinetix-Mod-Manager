@@ -44,6 +44,31 @@ public partial class Form1
 				new WalkthroughGuide { Title = "Stardew Valley Wiki Secrets Guide", Url = "https://stardewvalleywiki.com/Secrets" },
 				new WalkthroughGuide { Title = "Stardew Access Mod & Keyboard Guide", Url = "https://github.com/khanshoaib3/stardew-access/blob/master/README.md" }
 			},
+			// Every page here was checked to exist before it was listed. The wiki's tutorials live in a
+			// "Tutorial:" namespace, not under "Tutorials/" as the hub's own links suggest — the latter form
+			// redirects, and several plausible-looking titles do not exist at all.
+			//
+			// Navigation leads deliberately. Finding your way is the hardest part of Minecraft without sight,
+			// and it is the one thing the game gives a sighted player for free.
+			"Minecraft" => new[]
+			{
+				new WalkthroughGuide { Title = "Minecraft Wiki Navigation Guide (finding your way)", Url = "https://minecraft.wiki/w/Tutorial:Navigation" },
+				new WalkthroughGuide { Title = "Minecraft Wiki Beginner's Guide", Url = "https://minecraft.wiki/w/Tutorial:Beginner%27s_guide" },
+				new WalkthroughGuide { Title = "Minecraft Wiki Shelters Guide (surviving the first night)", Url = "https://minecraft.wiki/w/Tutorial:Shelters" },
+				new WalkthroughGuide { Title = "Minecraft Wiki Mining Guide", Url = "https://minecraft.wiki/w/Tutorial:Mining" },
+				new WalkthroughGuide { Title = "Minecraft Wiki Crop Farming Guide", Url = "https://minecraft.wiki/w/Tutorial:Crop_farming" },
+				new WalkthroughGuide { Title = "Minecraft Wiki Hunger Management Guide", Url = "https://minecraft.wiki/w/Tutorial:Hunger_management" },
+				new WalkthroughGuide { Title = "Minecraft Wiki Combat Guide", Url = "https://minecraft.wiki/w/Tutorial:Combat" },
+				new WalkthroughGuide { Title = "Minecraft Wiki Things Not To Do", Url = "https://minecraft.wiki/w/Tutorial:Things_not_to_do" },
+				new WalkthroughGuide { Title = "Minecraft Wiki Crafting Reference", Url = "https://minecraft.wiki/w/Crafting" },
+				new WalkthroughGuide { Title = "Minecraft Wiki Controls Reference", Url = "https://minecraft.wiki/w/Controls" },
+				new WalkthroughGuide { Title = "Minecraft Wiki All Tutorials Index", Url = "https://minecraft.wiki/w/Tutorials" },
+				// Minecraft Access ships real documentation; United Minecraft is too new to have any beyond its
+				// README, which F3 already reads.
+				new WalkthroughGuide { Title = "Minecraft Access Setup Guide", Url = "https://docs.mcaccess.org/setup/basic/" },
+				new WalkthroughGuide { Title = "Minecraft Access Features Guide", Url = "https://docs.mcaccess.org/features/" },
+				new WalkthroughGuide { Title = "Minecraft Access Keybindings Guide", Url = "https://docs.mcaccess.org/keybindings/" }
+			},
 			"SkyrimSE" => new[]
 			{
 				new WalkthroughGuide { Title = "UESP Skyrim First-Time Players Guide", Url = "https://en.uesp.net/wiki/Skyrim:First_Time_Players" },
@@ -151,6 +176,10 @@ public partial class Form1
 			// The official wiki.gg wiki is the actively maintained one; the older Fandom wiki is offered below.
 			"MoonlightPeaks" => new ModWikiLink { Title = "Moonlight Peaks Wiki (main game wiki)", Url = "https://moonlightpeaks.wiki.gg/", ApiUrl = "https://moonlightpeaks.wiki.gg/api.php", ArticleBase = "https://moonlightpeaks.wiki.gg/wiki/", IsGameWiki = true },
 			"Witcher3" => new ModWikiLink { Title = "The Witcher Wiki (main game wiki)", Url = "https://witcher.fandom.com/wiki/The_Witcher_3:_Wild_Hunt", ApiUrl = "https://witcher.fandom.com/api.php", ArticleBase = "https://witcher.fandom.com/wiki/", IsGameWiki = true, CategoryPrefix = "The Witcher 3" },
+			// minecraft.wiki is the community wiki the game's own site links to, and it runs a standard
+			// MediaWiki API - so search and categories work in-app rather than opening a browser. Note the
+			// article path is /w/, not /wiki/: the latter answers 301 and every link would take an extra hop.
+			"Minecraft" => new ModWikiLink { Title = "Minecraft Wiki (main game wiki)", Url = "https://minecraft.wiki/", ApiUrl = "https://minecraft.wiki/api.php", ArticleBase = "https://minecraft.wiki/w/", IsGameWiki = true },
 			_ => new ModWikiLink { Title = "Stardew Valley Wiki (main game wiki)", Url = "https://stardewvalleywiki.com/", ApiUrl = "https://stardewvalleywiki.com/mediawiki/api.php", ArticleBase = "https://stardewvalleywiki.com/", IsGameWiki = true }
 		};
 
@@ -198,6 +227,20 @@ public partial class Form1
 				Fandom("Moonlight Peaks Wiki (Fandom community wiki)", "moonlightpeaks.fandom.com"),
 				BrowseOnly("Moonlight Peaks Guides & Walkthroughs", "https://moonlightpeaks.wiki/guides/"),
 				BrowseOnly("Moonlight Peaks Mods (Nexus Mods)", "https://www.nexusmods.com/moonlightpeaks")
+			},
+			// Minecraft's accessibility documentation, such as it is. Minecraft Access publishes a real
+			// documentation site; United Minecraft has only its README, which F3 already reads in full, so
+			// there is nothing to add here for it yet.
+			//
+			// All browse-only: docs.mcaccess.org is a static site rather than a MediaWiki, so there is no API
+			// to search through. Modrinth is listed in place of a Nexus mod hub, since that is where the mods
+			// actually are.
+			"Minecraft" => new[]
+			{
+				BrowseOnly("Minecraft Access Documentation", "https://docs.mcaccess.org/"),
+				BrowseOnly("Minecraft Access Features", "https://docs.mcaccess.org/features/"),
+				BrowseOnly("United Minecraft (GitHub)", "https://github.com/blindgoofball/united-Minecraft"),
+				BrowseOnly("Minecraft Mods (Modrinth)", "https://modrinth.com/mods?g=categories%3Afabric")
 			},
 			// Dedicated wikis for Stardew Valley "world expansion" content mods (new towns, NPCs, quests). Most are
 			// on wiki.gg (fully searchable in-app); Downtown Zuzu (Miraheze) and Stoffton are browse-only.
@@ -465,6 +508,8 @@ public partial class Form1
 			"SkyrimSE" => "https://en.uesp.net/w/api.php",
 			"Fallout4" => "https://fallout.fandom.com/api.php",
 			"MoonlightPeaks" => "https://moonlightpeaks.wiki.gg/api.php",
+			"Witcher3" => "https://witcher.fandom.com/api.php",
+			"Minecraft" => "https://minecraft.wiki/api.php",
 			_ => "https://stardewvalleywiki.com/mediawiki/api.php"
 		};
 
@@ -476,6 +521,8 @@ public partial class Form1
 			"SkyrimSE" => "https://en.uesp.net/wiki/",
 			"Fallout4" => "https://fallout.fandom.com/wiki/",
 			"MoonlightPeaks" => "https://moonlightpeaks.wiki.gg/wiki/",
+			"Witcher3" => "https://witcher.fandom.com/wiki/",
+			"Minecraft" => "https://minecraft.wiki/w/",
 			_ => "https://stardewvalleywiki.com/"
 		};
 
@@ -494,6 +541,9 @@ public partial class Form1
 			"Fallout4" => new string[] { "Quests", "Weapons", "Perks", "Characters", "Factions", "Locations", "Items" },
 			// These are the wiki's own category titles, so unlike Skyrim/Fallout 4 they need no name mapping below.
 			"MoonlightPeaks" => new string[] { "Characters", "Crops", "Farming", "Cooking", "Crafting", "Fishing", "Locations" },
+			// Checked against the wiki's own category list rather than guessed: a category that does not exist
+			// returns an empty page and reads as "this game has nothing here".
+			"Minecraft" => new string[] { "Blocks", "Items", "Hostile mobs", "Passive mobs", "Biomes", "Structures", "Enchantments", "Potions", "Redstone", "Food", "Tools", "Weapons", "Armor", "Villagers" },
 			_ => new string[] { "Villagers", "Crops", "Fish", "Artisan Goods", "Cooking", "Mining", "Animals" }
 		};
 		cmbWikiCategories.Items.AddRange(categories);
