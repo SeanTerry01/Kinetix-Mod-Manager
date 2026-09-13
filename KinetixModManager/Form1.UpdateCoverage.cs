@@ -23,7 +23,10 @@ public partial class Form1
 	/// </summary>
 	private List<UpdateCoverageEntry> ClassifyUpdateCoverage(ISet<string>? smapiKnownIds = null) =>
 		UpdateCoverage.Classify(_allInstalledMods, _settings.CurrentModsPath, smapiKnownIds ?? _smapiCheckedIds,
-			BundledWithMap());
+			BundledWithMap(),
+			// Minecraft's catalogue recognises a mod by the SHA-1 of its jar, so no stored link is needed and
+			// none of its mods is unchecked for want of one.
+			checkedByFileHash: GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true);
 
 	/// <summary>The user's "this mod comes with that one" associations for the active game.</summary>
 	private Dictionary<string, string> BundledWithMap() =>
@@ -405,6 +408,7 @@ public partial class Form1
 				UpdateCoverageKind.SmapiDatabase => "checked via the SMAPI mod database",
 				UpdateCoverageKind.Bundled       => $"bundled with \"{info.Parent!.Name}\" ({LinkOf(info.Parent!)})",
 				UpdateCoverageKind.PartOfSmapi   => "ships with SMAPI; updates with SMAPI",
+				UpdateCoverageKind.ByFileHash    => "checked by the mod file itself, so it needs no link",
 				_ => "NOT CHECKED - " + (info.Reason == UncheckedReason.BlankUpdateKey
 						? "manifest has a blank/malformed UpdateKeys entry"
 						: "manifest declares no UpdateKeys")

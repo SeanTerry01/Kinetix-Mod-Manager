@@ -16,6 +16,16 @@ public enum UpdateCoverageKind
 	Bundled,
 	/// <summary>Ships with SMAPI itself (Console Commands, Save Backup, Error Handler) and updates with it.</summary>
 	PartOfSmapi,
+	/// <summary>
+	/// Identified by the file itself, so no link is needed — Minecraft, where Modrinth recognises a mod by the
+	/// SHA-1 of its jar.
+	///
+	/// A separate kind rather than folding it into <see cref="Linked"/>, because it is a genuinely better
+	/// position to be in and worth saying so: a link can be wrong, out of date, or point at the wrong mod
+	/// page, and a hash cannot. Reported as unchecked it was exactly backwards — Fabric API was the one mod in
+	/// the folder that could be identified with certainty.
+	/// </summary>
+	ByFileHash,
 	/// <summary>Nothing knows where this mod came from — the only kind the user needs to act on.</summary>
 	Unchecked
 }
@@ -79,9 +89,14 @@ public static class UpdateCoverage
 	/// for the case nothing on disk reveals: a mod from the same mod page as another (an optional file, say)
 	/// that unpacked into an unrelated folder of its own.
 	/// </param>
+	/// <param name="checkedByFileHash">
+	/// True for a game whose catalogue identifies a mod by the hash of its file rather than by a stored link —
+	/// Minecraft, on Modrinth. Every mod is then checkable without carrying an id, and reporting them as
+	/// unlinked tells the user to go and fix something that is not broken.
+	/// </param>
 	public static List<UpdateCoverageEntry> Classify(
 		IEnumerable<GameMod> mods, string modsPath, ISet<string>? smapiKnownIds = null,
-		IReadOnlyDictionary<string, string>? bundledWith = null)
+		IReadOnlyDictionary<string, string>? bundledWith = null, bool checkedByFileHash = false)
 	{
 		var all = mods.Where(m => !m.IsGroup).ToList();
 		var linked = all.Where(HasUpdateLink).ToList();
@@ -97,6 +112,13 @@ public static class UpdateCoverage
 			if (HasUpdateLink(mod))
 			{
 				result.Add(new UpdateCoverageEntry { Mod = mod, Kind = UpdateCoverageKind.Linked });
+				continue;
+			}
+			// Checked before the bundle guessing below: where the catalogue knows a mod by its file, there is
+			// nothing left to infer from the folder layout.
+			if (checkedByFileHash)
+			{
+				result.Add(new UpdateCoverageEntry { Mod = mod, Kind = UpdateCoverageKind.ByFileHash });
 				continue;
 			}
 			if (!string.IsNullOrEmpty(mod.UniqueId) && smapiKnownIds != null && smapiKnownIds.Contains(mod.UniqueId))

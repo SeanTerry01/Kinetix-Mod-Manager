@@ -292,4 +292,48 @@ public class UpdateCoverageTests
 		Assert.Equal("Group", UpdateCoverage.TopLevelFolder(inside, ModsPath));
 		Assert.Equal("", UpdateCoverage.RelativeFolder(outside, ModsPath));
 	}
+
+	// -------------------------------------------------------------------------
+	// A catalogue that identifies a mod by its file
+	// -------------------------------------------------------------------------
+
+	[Fact]
+	public void AModCheckedByItsFileHashIsCoveredRatherThanUnchecked()
+	{
+		// Reported exactly backwards before this. Fabric API carries no Nexus id and no GitHub repo, and it
+		// was the one mod in the folder that could be identified with total certainty: Modrinth recognises it
+		// by the SHA-1 of its jar. The report told the user to go and link something that was not broken.
+		var fabricApi = Mod("Fabric API", "fabric-api-0.160.0+26.2.jar");
+
+		var coverage = UpdateCoverage.Classify(
+			new[] { fabricApi }, ModsPath, checkedByFileHash: true);
+
+		Assert.Equal(UpdateCoverageKind.ByFileHash, Entry(coverage, "Fabric API").Kind);
+		Assert.DoesNotContain(coverage, c => c.Kind == UpdateCoverageKind.Unchecked);
+	}
+
+	[Fact]
+	public void AFileHashGameStillPrefersARealLinkWhenTheModHasOne()
+	{
+		// United Minecraft names its GitHub repository in its own manifest, and that is a stronger statement
+		// than "some catalogue might recognise the bytes" - it says where the mod actually comes from.
+		var united = Mod("United Minecraft", "united-minecraft-1.1.0+mc26.2.jar",
+			gitHub: "blindgoofball/united-Minecraft");
+
+		var coverage = UpdateCoverage.Classify(new[] { united }, ModsPath, checkedByFileHash: true);
+
+		Assert.Equal(UpdateCoverageKind.Linked, Entry(coverage, "United Minecraft").Kind);
+	}
+
+	[Fact]
+	public void EveryOtherGameIsUnaffected()
+	{
+		// The flag is off by default, so a Stardew or Skyrim mod with no link is still unchecked and still
+		// worth telling the user about.
+		var stray = Mod("Some Mod", "SomeMod");
+
+		var coverage = UpdateCoverage.Classify(new[] { stray }, ModsPath);
+
+		Assert.Equal(UpdateCoverageKind.Unchecked, Entry(coverage, "Some Mod").Kind);
+	}
 }
