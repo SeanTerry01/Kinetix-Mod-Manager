@@ -57,6 +57,18 @@ public sealed class MainWindow
 	/// underneath it shifted and F6 quietly started addressing the wrong controls.</summary>
 	private const int WikiTabIndex = 3;
 
+	/// <summary>
+	/// The Minecraft version searched and installed for.
+	///
+	/// Hard-coded, and it should not stay that way: it ought to come from the installed Fabric profile, or
+	/// be chosen by the user. Written down here rather than buried in two string literals so that when it is
+	/// fixed there is one place to fix.
+	/// </summary>
+	private const string MinecraftVersion = "1.21.1";
+
+	/// <summary>Where the search box lives. Named for the same reason as <see cref="WikiTabIndex"/>.</summary>
+	private const int FindModsTabIndex = 2;
+
 	private readonly Gtk.Label _checkResult = Gtk.Label.New("Press the button to check whether your mods loaded.");
 
 	private GameProfile _game = GameProfiles.Require(GameProfiles.Minecraft);
@@ -262,7 +274,9 @@ public sealed class MainWindow
 		_search.OnActivate += (_, _) => _ = SearchAsync();
 		var go = Gtk.Button.NewWithLabel("Search");
 		go.OnClicked += (_, _) => _ = SearchAsync();
-		bar.Append(caption); bar.Append(_search); bar.Append(go);
+		var install = Gtk.Button.NewWithLabel("Install selected (Ctrl+I)");
+		install.OnClicked += (_, _) => _ = InstallSelectedAsync();
+		bar.Append(caption); bar.Append(_search); bar.Append(go); bar.Append(install);
 		box.Append(bar);
 
 		_results.SetVexpand(true);
@@ -424,6 +438,64 @@ public sealed class MainWindow
 			 + $"and there are {_rows.Count} in your mods folder now.";
 	}
 
+	/// <summary>
+	/// Installs the selected search result.
+	///
+	/// Only the file-per-mod games for now, which today means Minecraft. The folder-shaped layouts still go
+	/// through the archive pipeline in the WinForms app, and claiming otherwise here would install nothing
+	/// and say it had worked.
+	/// </summary>
+	private async Task InstallSelectedAsync()
+	{
+		int i = _results.GetSelectedRow()?.GetIndex() ?? -1;
+		if (i < 0 || i >= _found.Count) { Say("No mod is selected.", interrupt: true); return; }
+
+		GameMod mod = _found[i];
+
+		if (!_game.IsMinecraft)
+		{
+			Say($"Installing is only available for Minecraft in this build. {_game.DisplayName} mods still have to be installed from the Windows manager.", interrupt: true);
+			return;
+		}
+
+		string mods = ModsFolderFor(_game);
+		if (string.IsNullOrEmpty(mods)) { Say("The mods folder could not be found.", interrupt: true); return; }
+
+		SetStatus($"Installing {mod.Name}…");
+		Say($"Installing {mod.Name}.");
+
+		try
+		{
+			string downloads = Path.Combine(Path.GetTempPath(), "kinetix-downloads");
+
+			ModInstaller.InstallResult? result = await ModInstaller.InstallFromModrinthAsync(
+				mod.ModrinthId ?? "", MinecraftVersion, mods, downloads);
+
+			_ui.Post(() =>
+			{
+				if (result is null)
+				{
+					// A normal answer rather than a failure, and one the user has to hear plainly: a mod
+					// built for another Minecraft version installs perfectly and then loads nothing at all.
+					SetStatus($"No build of {mod.Name} for Minecraft {MinecraftVersion}.");
+					Say($"{mod.Name} has no build for Minecraft {MinecraftVersion}, so it was not installed.", interrupt: true);
+					return;
+				}
+
+				LoadInstalled();
+				string replaced = result.Value.WasUpgrade
+					? $" It replaced {result.Value.Replaced.Count} older copy." : "";
+				SetStatus($"Installed {mod.Name}.");
+				Say($"{mod.Name} installed.{replaced} {_rows.Count} mods now installed.", interrupt: true);
+			});
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Install", $"installing {mod.Name}", ex);
+			_ui.Post(() => { SetStatus("Install failed."); Say($"Installing {mod.Name} failed. {ex.Message}", interrupt: true); });
+		}
+	}
+
 	/// <summary>Shows a mod's own page in the in-app browser, and moves focus there to read it.</summary>
 	private void OpenModPage(GameMod mod)
 	{
@@ -498,7 +570,7 @@ public sealed class MainWindow
 		{
 			// Live, from the core, with no API key — which is the reason Minecraft is the sensible first
 			// game for a Linux build. Every other supported game needs a Nexus key.
-			var (results, total) = await ModrinthService.SearchAsync(term, "1.21.1", 0, 25);
+			var (results, total) = await ModrinthService.SearchAsync(term, MinecraftVersion, 0, 25);
 
 			_ui.Post(() =>
 			{
@@ -575,7 +647,7 @@ public sealed class MainWindow
 	private void AddKeyboardShortcuts()
 	{
 		var keys = Gtk.EventControllerKey.New();
-		keys.OnKeyPressed += (_, args) =>
+		keys.OnKeyPressed += (controller, args) =>
 		{
 			bool ctrl = (args.State & Gdk.ModifierType.ControlMask) != 0;
 
@@ -588,8 +660,13 @@ public sealed class MainWindow
 					LoadInstalled();
 					Say($"Refreshed. {_rows.Count} mods installed.", interrupt: true);
 					return true;
+				// Ctrl+I, the Windows manager's install shortcut. Started and not awaited: a key handler has
+				// to answer now, and the install reports itself through the status line and the announcer.
+				case 0x069 when ctrl:
+					_ = InstallSelectedAsync();
+					return true;
 				case 0x066 when ctrl:            // Ctrl+F
-					_tabs.SetCurrentPage(1);
+					_tabs.SetCurrentPage(FindModsTabIndex);
 					_search.GrabFocus();
 					Say("Search Modrinth.", interrupt: true);
 					return true;
