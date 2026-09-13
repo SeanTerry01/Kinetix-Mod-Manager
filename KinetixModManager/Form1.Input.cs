@@ -641,7 +641,7 @@ public partial class Form1
 			{
 				if (SpeakBox(Loc.T("modlist.deleteProfileConfirm", modProfile.Name), Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 				{
-					string path = Path.Combine(profilesPath, modProfile.Name + ".json");
+					string path = ProfileStore.PathFor(profilesPath, modProfile.Name);
 					if (File.Exists(path))
 					{
 						File.Delete(path);

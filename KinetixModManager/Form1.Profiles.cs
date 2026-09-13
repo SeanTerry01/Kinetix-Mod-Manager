@@ -40,26 +40,28 @@ public partial class Form1
 		text = text.Trim();
 		if (text.Length == 0) { Speak(Loc.T("profiles.nameEmpty")); return; }
 
-		ModProfile modProfile = new ModProfile
-		{
-			Name = text,
-			ThemeOverride = _settings.CurrentTheme
-		};
-		foreach (StardewMod allInstalledMod in _allInstalledMods)
-		{
-			modProfile.ModStates[allInstalledMod.UniqueId] = allInstalledMod.IsEnabled;
-		}
-		// Capture the current Skyrim/Fallout 4 load order (mod priority and plugin order) so applying the
-		// profile restores both.
+		// The Skyrim/Fallout 4 load order is captured too, so applying the profile restores both. Null for
+		// the other games, which is what leaves their order alone rather than clearing it.
+		List<string>? priority = null;
+		List<string>? plugins = null;
 		if (IsBethesdaGame)
 		{
 			EnsureModPriorityList();
-			modProfile.ModPriority = new List<string>(_settings.ModPriority[_settings.ActiveGame]);
-			if (_settings.PluginOrder.TryGetValue(_settings.ActiveGame, out List<string>? plugins) && plugins != null)
-				modProfile.PluginOrder = new List<string>(plugins);
+			priority = new List<string>(_settings.ModPriority[_settings.ActiveGame]);
+			if (_settings.PluginOrder.TryGetValue(_settings.ActiveGame, out List<string>? saved) && saved != null)
+				plugins = new List<string>(saved);
 		}
-		string contents = JsonConvert.SerializeObject(modProfile, Formatting.Indented);
-		File.WriteAllText(Path.Combine(profilesPath, text + ".json"), contents);
+
+		ModProfile modProfile = ProfileStore.Capture(text, _allInstalledMods, _settings.CurrentTheme, priority, plugins);
+
+		if (ProfileStore.Save(profilesPath, modProfile).Length == 0)
+		{
+			// The name survived the length check but nothing usable was left of it once the characters a
+			// file name cannot hold were removed.
+			Speak(Loc.T("profiles.nameEmpty"));
+			return;
+		}
+
 		RefreshProfilesList();
 		Speak(Loc.T("profiles.saved"));
 	}
@@ -77,24 +79,10 @@ public partial class Form1
 
 		listProfiles.BeginUpdate();
 		listProfiles.Items.Clear();
-		if (Directory.Exists(profilesPath))
+		foreach (ModProfile modProfile in ProfileStore.LoadAll(profilesPath,
+			(file, ex) => LogFailure("Profiles", $"Failed to load profile '{file}'", ex)))
 		{
-			string[] files = Directory.GetFiles(profilesPath, "*.json");
-			foreach (string path in files)
-			{
-				try
-				{
-					ModProfile? modProfile = JsonConvert.DeserializeObject<ModProfile>(File.ReadAllText(path));
-					if (modProfile != null)
-					{
-						listProfiles.Items.Add(modProfile);
-					}
-				}
-				catch (Exception ex)
-				{
-					LogFailure("Profiles", $"Failed to load profile '{Path.GetFileName(path)}'", ex);
-				}
-			}
+			listProfiles.Items.Add(modProfile);
 		}
 
 		if (listProfiles.Items.Count > 0)
@@ -140,30 +128,18 @@ public partial class Form1
 			SetStatus(Loc.T("profiles.applying"));
 			bool flag = false;
 			bool flag2 = false;
-			foreach (StardewMod allInstalledMod in _allInstalledMods)
+			// Only what actually differs. A mod the profile never mentioned is left alone rather than
+			// switched off for not appearing, and one already in the right state is not renamed to the name
+			// it already has - see ProfileStore.Changes.
+			foreach (var change in ProfileStore.Changes(profile, _allInstalledMods))
 			{
-				if (profile.ModStates == null || !profile.ModStates.ContainsKey(allInstalledMod.UniqueId))
-				{
-					continue;
-				}
-				bool flag3 = profile.ModStates[allInstalledMod.UniqueId];
-				if (allInstalledMod.IsEnabled != flag3)
-				{
-					// Asset deployment and plugins.txt are reconciled once by RefreshModList at the end
-					// (a profile can flip many mods at once), so only the folder enable/disable happens here.
-					allInstalledMod.FolderPath = ModFileSystem.SetModEnabled(
-						allInstalledMod.FolderPath, flag3, _settings.ActiveGame);
-					allInstalledMod.IsEnabled = flag3;
+				// Asset deployment and plugins.txt are reconciled once by RefreshModList at the end
+				// (a profile can flip many mods at once), so only the folder enable/disable happens here.
+				change.Mod.FolderPath = ModFileSystem.SetModEnabled(
+					change.Mod.FolderPath, change.Enable, _settings.ActiveGame);
+				change.Mod.IsEnabled = change.Enable;
 
-					if (flag3)
-					{
-						flag = true;
-					}
-					else
-					{
-						flag2 = true;
-					}
-				}
+				if (change.Enable) flag = true; else flag2 = true;
 			}
 			// Restore the profile's saved load order (mod priority and plugin order) for Skyrim/Fallout 4.
 			// The RefreshModList call below then reconciles assets and rewrites plugins.txt accordingly.
