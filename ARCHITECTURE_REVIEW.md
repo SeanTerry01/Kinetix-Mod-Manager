@@ -1119,3 +1119,69 @@ right shape — `IAnnouncer` needed no change at all to gain a second implementa
 wiki, walkthrough and mod-description browsers are required to be in-app rather than opening a separate
 browser window, so `IBrowserHost` has to be WebKitGTK and there is no .NET binding for it — it needs
 hand-written P/Invoke. That is now the largest single unknown in the Linux head, and it is on the TODO.
+
+
+---
+
+## 18. Speech routing on Linux — a correction from a real user, 2026-09-13
+
+The spike's first announcer talked to speech-dispatcher directly. That was wrong, and it was the kind of
+wrong that only a screen-reader user finds. Cody's report, testing the window with Orca running:
+
+> *"When I press buttons like F5 it speaks through speech dispatcher which is slow speech rate and all
+> that and I can't interrupt it. Everything should go through Orca unless Orca is not running."*
+
+### Why it was wrong
+
+speech-dispatcher is the layer **underneath** Orca, not beside it. Going straight to it produced a second
+voice, at the daemon's default rate and voice, ignoring every preference the user had configured — and
+uninterruptible, because Orca's interrupt key silences Orca, not some other client of the same daemon.
+
+The mistake was reasoning from the wrong half of the Windows design. Tolk looked like "the thing that
+speaks", so speech-dispatcher looked like its Linux equivalent. **Tolk does not speak.** It asks NVDA or
+JAWS to speak, which is why the user's voice, rate and interrupt key all keep working on Windows. The
+faithful port of that is not a speech daemon — it is asking the screen reader.
+
+### What it does now
+
+`gtk_accessible_announce` (GTK 4.14+, present in 4.20.4 here) posts the text through AT-SPI as an
+announcement on the window, and Orca reads it in the user's own voice, at their rate, obeying their
+interrupt key. `interrupt: true` maps to the HIGH (assertive) priority and `false` to MEDIUM (polite),
+which is the same distinction the call sites have always meant.
+
+speech-dispatcher survives as the fallback for when no screen reader is running at all — because an
+announcement with nothing listening is silence, and silence is this program's worst failure.
+
+### Detecting a screen reader, and the property that lies
+
+`org.a11y.Status.**ScreenReaderEnabled**` sounds exactly like the question and returns **false** on this
+machine with Orca running and reading. It reflects a desktop setting Orca does not necessarily set, and
+is only dependable inside a full GNOME session. Trusting it would have routed every announcement to the
+fallback on precisely the machines that least need one.
+
+`org.a11y.Status.**IsEnabled**` is the one that answers truthfully — accessibility is on and the AT-SPI
+bus is live. Verified at runtime: the log now reads *"a screen reader is running; announcements go
+through AT-SPI"*.
+
+### The larger rule, which is not a Windows rule
+
+**Let the reader read. Announce only what it cannot infer.**
+
+With Tolk, the app is handed the reader's queue, so the Windows build announces list rows and focus moves
+itself. Under AT-SPI, Orca is already doing that — so the same announcements arrive as duplicates, and an
+assertive one cuts off Orca's own description to repeat it. Removed from the spike accordingly:
+
+- **Row selection.** Orca reads the focused row. The row is one label holding the whole sentence exactly
+  so that what Orca reads is the right thing.
+- **F6 focus moves.** Orca names the widget that gains focus.
+
+Kept, because Orca has no way to know them, and made polite rather than assertive so they queue behind it:
+the mod count on opening, the result of a toggle (the row's text changes but focus does not move, so Orca
+has no reason to re-read it), search result counts, and errors.
+
+This is a genuine behavioural difference between the two heads rather than a bug that was fixed, and it is
+the strongest argument yet for `IAnnouncer` being an interface rather than a shared implementation: the
+two platforms do not merely spell speech differently, they divide the work differently.
+
+**Not yet verified by ear.** The change is correct by design and the routing is confirmed in the log, but
+nobody has listened to it since it was made.

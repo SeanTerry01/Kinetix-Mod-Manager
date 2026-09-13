@@ -169,6 +169,11 @@ Now the largest unknown in the Linux head, and the one piece with no easy path:
       core. That is the single biggest Core gap the spike exposed.
 - [ ] **The spike's strings are English literals, not `Loc.T`.** The catalogue is wired and copied to
       its output; using it is the follow-up, and the guard tests should then cover `Kinetix.Gtk` too.
+- [ ] **Confirm the AT-SPI routing by ear.** Announcements now go through Orca rather than
+      speech-dispatcher (ARCHITECTURE_REVIEW §18); the log confirms the route, but nobody has listened
+      to it yet. Check F5, a toggle and a completed search.
+- [ ] **A reader started *after* the app is not noticed.** `ScreenReaderPresence` asks once at startup.
+      A D-Bus signal subscription would fix it; the fallback speaks in the meantime.
 - [ ] **`ISoundEngine` has no Linux implementation.** The `.ogg` theme packs need GStreamer,
       libsoundio or similar. The spike is silent apart from speech.
 - [ ] **`ISecretStore` has no Linux implementation.** libsecret, for the Nexus key — not needed for a

@@ -28,7 +28,7 @@ namespace KinetixModManager.GtkHead;
 public sealed class MainWindow
 {
 	private readonly Gtk.ApplicationWindow _window;
-	private readonly IAnnouncer _announcer = new SpeechDispatcherAnnouncer();
+	private readonly IAnnouncer _announcer;
 	private readonly IDispatcher _ui = new GlibDispatcher();
 
 	private readonly Gtk.Notebook _tabs = Gtk.Notebook.New();
@@ -44,6 +44,9 @@ public sealed class MainWindow
 	public MainWindow(Gtk.Application app)
 	{
 		_window = Gtk.ApplicationWindow.New(app);
+		// Announcements go to the user's screen reader, with speech-dispatcher only as the fallback for
+		// when there is no reader to ask. See OrcaAnnouncer for why that order matters so much.
+		_announcer = new OrcaAnnouncer(_window, new SpeechDispatcherAnnouncer());
 		_window.SetTitle("Kinetix Mod Manager — Minecraft");
 		_window.SetDefaultSize(900, 620);
 
@@ -72,7 +75,7 @@ public sealed class MainWindow
 		_window.Present();
 		// Said rather than shown. The window title is announced by Orca on focus, but the count of what was
 		// found is the thing the user actually opened the program to learn.
-		Say($"Kinetix Mod Manager. {_rows.Count} Minecraft mods installed. Press F6 to move between the tabs and the list.");
+		Say($"{_rows.Count} Minecraft mods installed. Press F6 to move between the tabs and the list.");
 	}
 
 	// -------------------------------------------------------------------------
@@ -93,14 +96,10 @@ public sealed class MainWindow
 		box.Append(buttons);
 
 		_installed.SetVexpand(true);
-		// Announce the row the user has landed on. GTK tells Orca a row is selected, but the sentence the
-		// row carries is what matters, and saying it ourselves is also what lets the wording match the
-		// Windows build exactly.
-		_installed.OnRowSelected += (_, args) =>
-		{
-			int i = args.Row?.GetIndex() ?? -1;
-			if (i >= 0 && i < _rows.Count) Say(_rows[i].Spoken, interrupt: true);
-		};
+		// Nothing is announced on selection, deliberately. Orca reads the row that takes focus already, and
+		// the row is a single label carrying the whole sentence precisely so that what it reads is the
+		// right thing. Saying it again here would be the same sentence twice. The Windows build has to
+		// announce it, because Tolk gives it the reader's queue; on Linux the reader is already doing it.
 
 		var scroller = Gtk.ScrolledWindow.New();
 		scroller.SetChild(_installed);
@@ -182,13 +181,6 @@ public sealed class MainWindow
 		box.Append(bar);
 
 		_results.SetVexpand(true);
-		_results.OnRowSelected += (_, args) =>
-		{
-			int i = args.Row?.GetIndex() ?? -1;
-			if (i >= 0 && i < _found.Count)
-				Say($"{_found[i].Name}. {Trim(_found[i].Description)}", interrupt: true);
-		};
-
 		var scroller = Gtk.ScrolledWindow.New();
 		scroller.SetChild(_results);
 		scroller.SetVexpand(true);
@@ -202,7 +194,7 @@ public sealed class MainWindow
 		if (string.IsNullOrWhiteSpace(term)) { Say("Type something to search for first.", interrupt: true); return; }
 
 		SetStatus($"Searching Modrinth for {term}…");
-		Say($"Searching for {term}.", interrupt: true);
+		Say($"Searching for {term}.");
 
 		try
 		{
@@ -217,7 +209,7 @@ public sealed class MainWindow
 				foreach (GameMod m in _found) _results.Append(RowLabel($"{m.Name} — {Trim(m.Description)}"));
 
 				SetStatus($"{_found.Count} of {total} results for {term}");
-				Say($"{_found.Count} results. Press Tab then arrow down to read them.");
+				Say($"{_found.Count} results.");
 			});
 		}
 		catch (Exception ex)
@@ -284,22 +276,22 @@ public sealed class MainWindow
 	}
 
 	/// <summary>
-	/// Moves focus on, and says where it went.
+	/// Moves focus on, and says nothing about it.
 	///
-	/// The saying is the point. Orca announces the widget that receives focus, but a list it has already
-	/// described reads as a bare row, and the user is left working out whether the key did anything.
+	/// The first version announced where focus had gone, on the reasoning that the user should not have to
+	/// guess whether the key did anything. With a real screen reader attached that reasoning is wrong:
+	/// Orca names the widget that receives focus, so the announcement arrives as a duplicate — and an
+	/// assertive one, cutting off the reader's own description to repeat it.
 	/// </summary>
 	private void CycleFocus()
 	{
 		if (_tabs.GetCurrentPage() == 0)
 		{
-			if (_installed.HasFocus) { _tabs.GrabFocus(); Say("Tabs.", interrupt: true); }
-			else { _installed.GrabFocus(); Say("Installed mods list.", interrupt: true); }
+			if (_installed.HasFocus) _tabs.GrabFocus(); else _installed.GrabFocus();
 		}
 		else
 		{
-			if (_search.HasFocus) { _results.GrabFocus(); Say("Results list.", interrupt: true); }
-			else { _search.GrabFocus(); Say("Search box.", interrupt: true); }
+			if (_search.HasFocus) _results.GrabFocus(); else _search.GrabFocus();
 		}
 	}
 }
