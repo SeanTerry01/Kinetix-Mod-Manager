@@ -1,19 +1,19 @@
 # Kinetix Mod Manager
 
-A fully keyboard-driven, screen-reader-compatible mod manager for **Stardew Valley**, **Skyrim Special Edition**, **Fallout 4**, **Moonlight Peaks** and **The Witcher 3: Wild Hunt**, built for the accessibility community. Designed to work with NVDA, JAWS, and SAPI-based readers out of the box via [Tolk](https://github.com/dkager/tolk).
+A fully keyboard-driven, screen-reader-compatible mod manager for **Stardew Valley**, **Skyrim Special Edition**, **Fallout 4**, **Moonlight Peaks**, **The Witcher 3: Wild Hunt** and **Minecraft: Java Edition**, built for the accessibility community. Designed to work with NVDA, JAWS, and SAPI-based readers out of the box via [Tolk](https://github.com/dkager/tolk).
 
 ---
 
 ## Features
 
 - **Installed Mods** — browse, enable/disable, delete, and search your mod list with real-time audio feedback
-- **Update Checking** — detects available updates via the Nexus Mods API; supports one-click "Update All" for Premium members
-- **Mod Discovery** — search Nexus by keyword or browse trending/popular/recent mods without leaving the app
+- **Update Checking** — detects available updates via the Nexus Mods API, or via Modrinth for Minecraft; supports one-click "Update All" for Premium members
+- **Mod Discovery** — search Nexus by keyword or browse trending/popular/recent mods without leaving the app; Minecraft searches Modrinth instead, and needs no API key
 - **Mod Profiles** — save and restore different enabled/disabled mod configurations for different playthroughs
 - **Automatic Backups** — zips the current mod folder before every update or deletion; configurable retention limit
 - **Dependency Viewer** — shows required and optional dependencies for the selected mod, flagging missing or outdated ones
 - **SMAPI Log Viewer** — parses your latest SMAPI log, filters by level, and suggests fixes for common errors (Stardew Valley)
-- **Integrated Game Wiki** — built-in, screen-reader-friendly wiki browser (Stardew Valley Wiki, UESP for Skyrim, Fallout Wiki) with category drilling
+- **Integrated Game Wiki** — built-in, screen-reader-friendly wiki browser (Stardew Valley Wiki, UESP for Skyrim, Fallout Wiki, Minecraft Wiki) with category drilling
 - **Walkthroughs** — read community walkthroughs and guides for the active game inside the app
 - **Audio Themes** — all feedback sounds are `.ogg` files organized into swappable theme packs
 - **NXM Protocol** — registers as an `nxm://` handler so "Mod Manager Download" buttons on Nexus open the app directly
@@ -30,8 +30,13 @@ A fully keyboard-driven, screen-reader-compatible mod manager for **Stardew Vall
 | Fallout 4 | F4SE | fallout.fandom.com |
 | Moonlight Peaks | BepInEx | moonlightpeaks.wiki.gg |
 | The Witcher 3: Wild Hunt | `mods` folder (no loader) | witcher.fandom.com |
+| Minecraft: Java Edition | Fabric (installed by the manager, no separate installer) | minecraft.wiki |
 
 If you own the same game on both Steam and GOG, both copies appear in the menu and each keeps its own mods.
+
+Minecraft is the exception to the rule that a game needs its own launcher: press **F5** and the manager starts
+the game itself, with Fabric and your mods loaded, without going near the Minecraft launcher. You still sign in
+through the launcher once.
 
 Switch the active game from the **Games** menu.
 
@@ -64,7 +69,7 @@ Press **F1** at any time to open the full User Manual, or **Shift + F1** for con
 |---|---|
 | Open Manual | F1 |
 | Context Help (tab shortcuts) | Shift + F1 |
-| Launch game (via SMAPI for Stardew) | F5 |
+| Launch game (via SMAPI for Stardew; via Fabric, without the launcher, for Minecraft) | F5 |
 | Cycle focus (tabs ↔ list ↔ web view) | F6 |
 | Settings | Ctrl + P |
 | Install from .zip | Ctrl + I |

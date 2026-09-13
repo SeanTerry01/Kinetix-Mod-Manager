@@ -214,10 +214,10 @@ Load each game you own and walk the list. What to expect that is specific to eac
 *   **F3** should offer the Stardew Access documentation, and it should still work with no internet connection.
 *   Update checks: a mod SMAPI cannot place should be reported as unknown, not silently dropped.
 
-### All five games
+### All six games
 
 *   Open a mod's **settings** and confirm you are offered a **list to arrow through**, not a file to type into.
-    This is the same feature in four different shapes and none of them have been heard.
+    This is the same feature in five different shapes and most of them have not been heard.
 *   **Ctrl+H** (controls) and **F3** (mod docs) should either give you something or **say** they have nothing for
     this game. Silence is a bug; "no documentation for this game" is not.
 

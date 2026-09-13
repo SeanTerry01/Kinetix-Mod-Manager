@@ -1,7 +1,19 @@
 # Minecraft (Java Edition) support - research
 
 Research notes for adding Minecraft Java Edition as the sixth supported game.
-Written 2026-09-11. Nothing here is implemented yet.
+Written 2026-09-11.
+
+**Status: BUILT.** Minecraft shipped as the sixth game in 1.6.0 (26 commits,
+2026-09-12 and 13). This document is kept as the reasoning behind the code and as
+the record of what was measured rather than assumed - it is not a plan any more.
+Two things it does not know about, both found during implementation:
+
+*   Bumping the Fabric profile's `lastUsed` is **not** sufficient. Quick Play world
+    tiles carry their own `configId` in `launcher_quick_play.json` and override the
+    selected installation, so a world launched from the home screen runs whichever
+    installation it was first played with. See section 3.
+*   The whole online sign-in chain is now registered and proven, and is waiting only
+    on Mojang's approval of the app. See section 8, and poll `tools\mcauth-probe.py`.
 
 Everything in the "Verified" sections was checked against a real install on this
 machine or against a live API, and the evidence is recorded so it can be

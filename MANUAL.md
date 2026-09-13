@@ -855,7 +855,7 @@ Curation Mode is off to begin with, and while it is off the Suggested Mods subme
 
 With Curation Mode on:
 
-*   **F7** — **mark** the mod you are on as one worth suggesting, or **unmark** it if it is already on your list. This works both in your **Installed Mods** list and in **Find New Mods**, which matters: you can suggest a mod you have never installed, instead of having to install something on all five games just to recommend it.
+*   **F7** — **mark** the mod you are on as one worth suggesting, or **unmark** it if it is already on your list. This works both in your **Installed Mods** list and in **Find New Mods**, which matters: you can suggest a mod you have never installed, instead of having to install something on all six games just to recommend it.
 *   **Shift + F7** — open **the mods you have marked**, across every game.
 
 All three can be remapped in **Settings → Shortcut Manager** (the actions are named "CurationMode", "MarkSuggestion" and "SuggestedList"). That is worth knowing if your screen reader already claims one of them: F7 was chosen because it is the last bare function key the manager does not use, but a screen-reader add-on can lay claim to any key, in which case the app never sees it and rebinding is the fix.

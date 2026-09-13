@@ -1,13 +1,20 @@
 # Pre-release checklist
 
-Written 2026-08-08 for the release that followed v1.4.5, and kept up since. **Now for v1.5.2**, on branch
-`fix/disabled-bepinex-grouping`, **13 commits ahead of `origin/master`, unpushed**, version 1.5.2 in both places.
+Written 2026-08-08 for the release that followed v1.4.5, and kept up since. **Now for v1.6.0**, on branch
+`fix/disabled-bepinex-grouping`, **40 commits ahead of `origin/master`, unpushed**, version 1.6.0 in both
+`KinetixModManager.csproj` and `KinetixModManager\setup.iss`. 1009 tests, build clean with no warnings.
+
+⚠️ The branch name is 40 commits out of date — it was one small BepInEx fix, and the branch is really 1.6.0.
+
+⚠️ **The only tester zip in `KinetixModManager\Setup\` is the 1.5.2 one, and it is stale** — it predates every
+Minecraft commit. Re-cut with `tools\make-test-zip.ps1` before giving anything to a tester.
 
 ⚠️ Sections 1.1 to 1.7 are the v1.5.0/v1.5.1 list. They all shipped and are kept because they describe how to
-test those areas, not because they are outstanding. **§1.0 is the live list for v1.5.2.**
+test those areas, not because they are outstanding. **§1.0 is the live list for v1.6.0; §1.0a is what is still
+outstanding from v1.5.2.**
 
 This is what has **not** been confirmed by ear, what is known to be unverified, and what is deliberately not in
-this release. Everything here builds clean, passes 365 tests, and publishes a complete Release folder — none of
+this release. Everything here builds clean, passes 1009 tests, and publishes a complete Release folder — none of
 it is unfinished work. It is untested work, which is a different thing.
 
 ---
@@ -16,7 +23,62 @@ it is unfinished work. It is untested work, which is a different thing.
 
 Ordered by how likely a problem is and how much it would cost. Work down the list.
 
-### 1.0 v1.5.2 — the live list
+### 1.0 v1.6.0 — Minecraft, the live list
+
+Minecraft is a whole new game rather than a set of fixes, so this section is longer than usual. **Nothing here
+moves an existing game's mods**, and nothing in the Minecraft work touches your worlds — saves are never read,
+written or moved.
+
+⚠️ **The one thing to be careful with is F5.** It starts the game itself, without the launcher. It has been
+run successfully end to end, but it is the newest and most involved code in the release.
+
+#### Confirmed by ear during development
+*   **Enabling and disabling** a Minecraft mod (Fabric API) from the Installed Mods tab.
+*   **F5** launching straight to the main menu with Fabric and the mods active, going nowhere near the launcher —
+    then loading a world, playing, and shutting down cleanly.
+*   **Modrinth search** results reading well in the list.
+*   **Update checking**: every mod reported up to date, and the Update Check Report correctly empty.
+*   **Profiles**: saving a "United Minecraft" profile, disabling two mods, re-applying the profile, and both mods
+    coming back enabled.
+*   The **Walkthroughs** list.
+
+#### Not yet confirmed — work down this list
+*   **Press Enter on a Modrinth search result.** It should offer a choice — install, read the full description,
+    open the mod's page — rather than doing nothing. The Download button doing nothing was the original report;
+    this is the replacement and it has never been heard.
+*   **Minecraft Access as the chosen accessibility mod.** Everything so far has been tested with United Minecraft
+    only. The suite should offer the choice, install Minecraft Access as a **single jar with no Fabric API**, and
+    warn rather than install if its rival is already there. This is the largest untested path in the release.
+*   **Mod settings for United Minecraft** — picked from a list rather than typed, as in the other games.
+*   **Check My Setup's "did my mods load" row.** It reads the game's own log and should say plainly what happened
+    the last time you played, including the mod count — **and say so even when everything is fine.**
+*   **The title bar after closing the game.** It used to stay on "Starting Minecraft..." forever; it should
+    return to its resting form once the game exits.
+*   **A Minecraft session should not connect to Nexus at all**, including when the manager starts up with
+    Minecraft already the active game. It used to connect anyway.
+*   **The Nexus API key box should be absent from Settings** while Minecraft is loaded, and Settings should save
+    without one.
+*   **Ctrl+H**, in its final shape: the game's own controls first, then the accessibility mod's, mouse buttons in
+    a section of their own, and no "Keyboard Controls" level above it all. Four rounds of feedback went into
+    this; the last two changes have not been heard.
+*   **F3** documentation for United Minecraft and Minecraft Access.
+*   **The Log tab**, showing the current run's log.
+*   **The tab names on a restored session** — "Minecraft Wiki", "Minecraft Walkthroughs", "Minecraft Log", and a
+    search box that says "Search the Minecraft Wiki". ⚠️ **Worth checking one other game too** (load Stardew,
+    close the manager, reopen it): this bug affected all six games on a reopened session, not just Minecraft.
+*   **The wiki Categories dropdown** should offer 14 entries — Blocks, Items, Hostile mobs, Passive mobs, Biomes,
+    Structures, Enchantments, Potions, Redstone, Food, Tools, Weapons, Armor, Villagers — not several hundred.
+    ⚠️ This changed for **every** game's wiki, so a quick listen on Stardew or Skyrim is worth it.
+
+#### Deliberately not in this release
+*   **Online (signed-in) Minecraft.** The code is designed for it and the Azure app registration is done and
+    proven, but Mojang has not yet approved the app. Poll with `tools\mcauth-probe.py`: **403 = still pending,
+    200 = approved.** Offline mode is complete and is the sensible everyday mode; online is a later addition
+    with no rework, and only servers and Realms need it.
+
+---
+
+### 1.0a v1.5.2 — still outstanding
 
 Everything in 1.5.2 is a fix or a diagnostic. **Nothing in it moves your mods.** Two rounds of testing have been
 done on a portable build; results are recorded here.
@@ -148,7 +210,7 @@ Verified by reading the list programmatically, not by ear.
 
 From commit `a5f0f2c`, which predates this session and was never ear-tested. It ships in this release.
 
-*   For each of the four games, open a mod's settings and confirm you are given a list to arrow through rather
+*   For each game, open a mod's settings and confirm you are given a list to arrow through rather
     than a file to type into.
 
 ---
