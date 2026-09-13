@@ -615,38 +615,11 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Compares two dot-separated version strings. Returns <c>true</c> if <paramref name="target"/>
-	/// is numerically greater than <paramref name="current"/>.
+	/// Compares two dot-separated version strings; true when <paramref name="target"/> is the greater.
+	/// Kept as a wrapper so the dozens of call sites around the app read as they did; the rule itself is
+	/// <see cref="ModVersions.IsNewer"/> in the core, where the update decision that depends on it also lives.
 	/// </summary>
-	private bool IsNewerVersion(string? current, string? target)
-	{
-		if (string.IsNullOrEmpty(target))
-		{
-			return false;
-		}
-		if (string.IsNullOrEmpty(current))
-		{
-			return true;
-		}
-		string[] array = current.Split('.');
-		string[] array2 = target.Split('.');
-		for (int i = 0; i < Math.Max(array.Length, array2.Length); i++)
-		{
-			int result;
-			int num = ((i < array.Length && int.TryParse(array[i], out result)) ? result : 0);
-			int result2;
-			int num2 = ((i < array2.Length && int.TryParse(array2[i], out result2)) ? result2 : 0);
-			if (num2 > num)
-			{
-				return true;
-			}
-			if (num > num2)
-			{
-				return false;
-			}
-		}
-		return false;
-	}
+	private bool IsNewerVersion(string? current, string? target) => ModVersions.IsNewer(current, target);
 
 	/// <summary>
 	/// Runs a mod's own installer and waits for it to finish, returning whether it completed.

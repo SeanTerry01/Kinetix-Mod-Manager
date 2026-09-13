@@ -37,16 +37,11 @@ public partial class Form1
 	/// leaving a row reading "Current: 2.2.0. Latest: 2.2.0". Taking the maximum makes the result independent
 	/// of which check finishes first.
 	/// </summary>
-	private void RecordLatestVersion(StardewMod mod, string? candidate)
-	{
-		if (string.IsNullOrWhiteSpace(candidate)) return;
-		if (string.IsNullOrEmpty(mod.LatestVersion) || IsNewerVersion(mod.LatestVersion, candidate))
-			mod.LatestVersion = candidate;
-	}
+	private void RecordLatestVersion(StardewMod mod, string? candidate) =>
+		mod.LatestVersion = ModVersions.Best(mod.LatestVersion, candidate) ?? mod.LatestVersion;
 
 	/// <summary>The key identifying the one download a mod comes from — its Nexus page or GitHub repo.</summary>
-	private static string DownloadKey(StardewMod mod) =>
-		!string.IsNullOrEmpty(mod.NexusID) ? "Nexus:" + mod.NexusID : "GitHub:" + mod.GitHubRepo;
+	private static string DownloadKey(StardewMod mod) => ModVersions.DownloadKey(mod);
 
 	/// <summary>The release of <paramref name="key"/>'s download the manager knows is installed, or null.</summary>
 	private string? InstalledDownloadVersion(string key) =>
@@ -73,14 +68,8 @@ public partial class Form1
 	/// Uses the recorded release of its download when there is one, so a mod whose manifest version the author
 	/// never bumped isn't offered the same update forever. The single place this question is answered.
 	/// </summary>
-	private bool HasPendingUpdate(StardewMod installed, string? latestVersion)
-	{
-		if (string.IsNullOrWhiteSpace(latestVersion)) return false;
-		string? recorded = UpdateCoverage.HasUpdateLink(installed)
-			? InstalledDownloadVersion(DownloadKey(installed))
-			: null;
-		return IsNewerVersion(recorded ?? installed.Version, latestVersion);
-	}
+	private bool HasPendingUpdate(StardewMod installed, string? latestVersion) =>
+		ModVersions.HasPendingUpdate(installed, latestVersion, InstalledDownloadVersion(DownloadKey(installed)));
 
 	/// <summary>
 	/// Takes a row the user has settled off the Updates list and reports where the cursor landed: the row now
@@ -854,19 +843,7 @@ public partial class Form1
 	/// — the state every mod is in that the manager did not install itself, because nothing on disk records
 	/// either. The placeholder texts here are the ones the scanners write when they have nothing better.
 	/// </summary>
-	private static bool NeedsNexusDetails(StardewMod mod)
-	{
-		bool noAuthor = string.IsNullOrWhiteSpace(mod.Author) ||
-						mod.Author.Equals("Unknown", StringComparison.OrdinalIgnoreCase) ||
-						mod.Author.Equals("User", StringComparison.OrdinalIgnoreCase);
-
-		string description = (mod.Description ?? "").Trim();
-		bool noDescription = description.Length == 0 ||
-							 description == "Installed local mod." ||
-							 description == "Installed BepInEx plugin.";
-
-		return noAuthor || noDescription;
-	}
+	private static bool NeedsNexusDetails(StardewMod mod) => ModVersions.NeedsDetails(mod);
 
 	/// <summary>
 	/// Fetches the author and summary for every linked mod that is still missing them, and returns how many were
