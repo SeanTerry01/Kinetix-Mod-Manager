@@ -77,6 +77,20 @@ public sealed class GameProfile
 	/// <summary>The stable internal id used as the key in settings and in <c>AppSettings.ActiveGame</c>.</summary>
 	public required string Id { get; init; }
 
+	/// <summary>
+	/// The game's wiki: the MediaWiki <c>api.php</c> that search and categories query, and the article
+	/// prefix a result is opened at.
+	///
+	/// Here rather than in the window that displays them, because they are per-game constants and this is
+	/// where those live — the same reasoning that put the Steam ids and the executable names here. They
+	/// were a pair of <c>game switch { ... }</c> expressions inside Form1.Wiki, which is precisely the
+	/// shape this class exists to replace, and it meant a second front end could not open a wiki at all.
+	/// </summary>
+	public string WikiApiUrl { get; init; } = "";
+
+	/// <summary>Article URL prefix; a page is opened as this plus the title.</summary>
+	public string WikiArticleBase { get; init; } = "";
+
 	/// <summary>The game's name as the user sees it, e.g. "Moonlight Peaks".</summary>
 	public required string DisplayName { get; init; }
 
@@ -375,6 +389,8 @@ public static class GameProfiles
 		new GameProfile
 		{
 			Id                   = Fallout4,
+			WikiApiUrl           = "https://fallout.fandom.com/api.php",
+			WikiArticleBase      = "https://fallout.fandom.com/wiki/",
 			DisplayName          = "Fallout 4",
 			SteamAppId           = "377160",
 			GogProductId         = "1998527297",
@@ -402,6 +418,8 @@ public static class GameProfiles
 		new GameProfile
 		{
 			Id                   = Minecraft,
+			WikiApiUrl           = "https://minecraft.wiki/api.php",
+			WikiArticleBase      = "https://minecraft.wiki/w/",
 			DisplayName          = "Minecraft",
 			// No store ids at all: Mojang sells Java Edition directly, and it arrives either as the Microsoft
 			// Store package Microsoft.MinecraftJavaEdition_8wekyb3d8bbwe or as the standalone launcher. Neither
@@ -435,6 +453,8 @@ public static class GameProfiles
 		new GameProfile
 		{
 			Id                   = MoonlightPeaks,
+			WikiApiUrl           = "https://moonlightpeaks.wiki.gg/api.php",
+			WikiArticleBase      = "https://moonlightpeaks.wiki.gg/wiki/",
 			DisplayName          = "Moonlight Peaks",
 			SteamAppId           = "2209900",
 			GogProductId         = null, // Steam only at the time of writing.
@@ -460,6 +480,8 @@ public static class GameProfiles
 		new GameProfile
 		{
 			Id                   = SkyrimSE,
+			WikiApiUrl           = "https://en.uesp.net/w/api.php",
+			WikiArticleBase      = "https://en.uesp.net/wiki/",
 			DisplayName          = "Skyrim Special Edition",
 			SteamAppId           = "489830",
 			GogProductId         = "1711230643",
@@ -486,6 +508,8 @@ public static class GameProfiles
 		new GameProfile
 		{
 			Id                   = StardewValley,
+			WikiApiUrl           = "https://stardewvalleywiki.com/mediawiki/api.php",
+			WikiArticleBase      = "https://stardewvalleywiki.com/",
 			DisplayName          = "Stardew Valley",
 			SteamAppId           = "413150",
 			GogProductId         = "1453375253",
@@ -505,6 +529,8 @@ public static class GameProfiles
 		new GameProfile
 		{
 			Id                   = Witcher3,
+			WikiApiUrl           = "https://witcher.fandom.com/api.php",
+			WikiArticleBase      = "https://witcher.fandom.com/wiki/",
 			DisplayName          = "The Witcher 3: Wild Hunt",
 			// Wild Hunt's original app id. The Complete Edition sells as 499450 and installs the same game into
 			// the same folder, so both have to be looked for.

@@ -1003,6 +1003,9 @@ dotnet test  KinetixModManager.Tests                                →  1024 pa
 
 ## 16. Proton vs native — answered by the shipped docs, 2026-09-13
 
+> **Superseded in part by §20.** The speech findings below are correct and worth keeping. The conclusion
+> drawn from them — scoping the Linux build to two games — was wrong, and is corrected there.
+
 This was listed as a decision needing an answer before the GTK head could be designed. It turns out the
 repository already answers it, in the accessibility-mod documentation the app itself bundles and shows
 under F3.
@@ -1236,6 +1239,90 @@ call the WinForms build makes, with no `removeSuperseded` so it only reads.
 
 This is also what unblocks **Stardew Valley** in the Linux head, which was the largest remaining gap after
 §16 settled on Minecraft and Stardew as the two native games.
+
+### Verification
+
+```
+dotnet build KinetixModManager.slnx -p:EnableWindowsTargeting=true  →  0 warnings, 0 errors
+dotnet test  KinetixModManager.Tests                                →  1031 passed, 0 failed
+```
+
+
+---
+
+## 20. Correction: this is a mod manager for games, not for Minecraft — 2026-09-13
+
+§16 established a real fact and then drew the wrong conclusion from it. Cody's correction:
+
+> *"Every game supported here needs to work so the program shouldn't be specifically for Minecraft. It is
+> an accessible mod manager for games in general, just so you understand."*
+
+He is right, and the error is worth naming because it is an easy one to repeat.
+
+### What was conflated
+
+Two different questions got answered as one:
+
+1. **Can the manager manage this game's mods on Linux?** For all six: yes. Installing, enabling, sorting
+   load order, checking updates — none of that depends on the game being able to speak.
+2. **Will the game itself talk to you when you play it under Proton?** For Skyrim, Fallout 4, The Witcher 3
+   and Moonlight Peaks: probably not, because their access mods drive NVDA or JAWS.
+
+The second is a fact about the **games**, not about this program. Dropping four games from the manager on
+account of it is like refusing to sell someone a screwdriver because their shed has no light. People mod on
+one machine and play on another; access mods gain platforms; and a user is entitled to decide for
+themselves. The right response is to **tell** the user what to expect, never to withhold the game.
+
+### A second thing §16 got wrong, in the manager's favour
+
+It implied Proton support means re-teaching the manager where mods live. It does not. **Under Proton the
+game's files sit in `steamapps/common/<Game>` exactly as a native install would** — Proton changes how a
+game runs, not where it is installed. What lives inside the compatibility prefix is the *Windows user
+profile*: `Documents\My Games` with Skyrim's INIs and saves, and `%LOCALAPPDATA%`.
+
+So mod paths, which are relative to the game folder, already work on Linux for every game. Only saves and
+INIs need the prefix. That is a much smaller job than §16 implied, and it is why `IGameLocator` asks two
+questions rather than one.
+
+### What changed as a result
+
+- **`IGameLocator`** (`Kinetix.Core/Abstractions/`) — `InstallFolder`, `UserDocumentsFolder`,
+  `LibraryRoots`. Two questions, because on Linux they have different answers.
+- **`LinuxGameLocator`** (`Kinetix.Platform.Linux`) — finds installs through `SteamLibraryLocator`, which
+  was already in the core and already passing its tests off Windows, because a Steam library is laid out
+  identically on both. Covers the four places Steam installs itself, Flatpak included, and resolves a
+  Proton prefix's `drive_c` for the user-profile side.
+- **The GTK head has a Games tab**, built from `GameProfiles.All` rather than naming any game. Uninstalled
+  games are listed and say so — a blind user who cannot see an empty list has no way to tell "not
+  supported" from "not installed yet", and the first is a reason to give up on the program.
+- **Enabling and disabling goes through `ModEnableState`**, so each game's own rule applies — a leading dot
+  for Stardew, a tilde for The Witcher, a move out of `plugins` for BepInEx, a suffix for Minecraft.
+  Reimplementing Minecraft's rule locally, which the spike did, is how two front ends start to disagree
+  about what "disabled" means.
+
+### The wiki URLs moved to where the per-game data lives
+
+Opening a wiki needed the URLs, and they were two `game switch { ... }` expressions inside
+`Form1.Wiki.cs` — the exact shape `GameProfiles` exists to replace, and its own doc comment says so. They
+are now `WikiApiUrl` and `WikiArticleBase` on `GameProfile`, filled in for all six games, and `Form1` looks
+them up instead of switching.
+
+---
+
+## 21. The in-app browser works — 2026-09-13
+
+`webkitgtk-6.0` 2.52.5 is installed and links `gtk-4`, which is the build that matters: `webkit2gtk-4.1` is
+the GTK3 one and will not embed in a GTK4 window however similar the name looks.
+
+`Kinetix.Gtk/WebKitView.cs` is a hand-written P/Invoke binding — there is no .NET binding for WebKitGTK and
+GirCore does not ship one. The surface needed is small, which is what makes it viable: load a URL, read the
+title and address, go back, reload. The native widget is adopted into GirCore's object system with
+`InstanceWrapper.WrapHandle`, so it sits in a GirCore layout as an ordinary child.
+
+The window has a **Wiki** tab that loads the active game's wiki in-app. It constructs and runs without
+error. **What has not been established is the part that matters**: whether Orca reads the embedded page the
+way NVDA reads a WebView2 one — headings, links, its own navigation keys — while the manager's keys still
+work around it. That needs a person listening, and it is the last real unknown in the Linux head.
 
 ### Verification
 

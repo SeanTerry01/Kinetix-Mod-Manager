@@ -503,28 +503,12 @@ public partial class Form1
 	/// </summary>
 	private string CurrentWikiApiUrl => _activeWiki != null
 		? _activeWiki.ApiUrl
-		: GameProfiles.BaseId(_settings.ActiveGame) switch
-		{
-			"SkyrimSE" => "https://en.uesp.net/w/api.php",
-			"Fallout4" => "https://fallout.fandom.com/api.php",
-			"MoonlightPeaks" => "https://moonlightpeaks.wiki.gg/api.php",
-			"Witcher3" => "https://witcher.fandom.com/api.php",
-			"Minecraft" => "https://minecraft.wiki/api.php",
-			_ => "https://stardewvalleywiki.com/mediawiki/api.php"
-		};
+		: GameProfiles.Find(_settings.ActiveGame)?.WikiApiUrl ?? "";
 
 	/// <summary>Article URL prefix for the active wiki; results are opened as <c>base + Title</c>.</summary>
 	private string CurrentWikiBaseUrl => _activeWiki != null
 		? _activeWiki.ArticleBase
-		: GameProfiles.BaseId(_settings.ActiveGame) switch
-		{
-			"SkyrimSE" => "https://en.uesp.net/wiki/",
-			"Fallout4" => "https://fallout.fandom.com/wiki/",
-			"MoonlightPeaks" => "https://moonlightpeaks.wiki.gg/wiki/",
-			"Witcher3" => "https://witcher.fandom.com/wiki/",
-			"Minecraft" => "https://minecraft.wiki/w/",
-			_ => "https://stardewvalleywiki.com/"
-		};
+		: GameProfiles.Find(_settings.ActiveGame)?.WikiArticleBase ?? "";
 
 	/// <summary>True when the active wiki is the base game wiki (curated categories + game-specific prefixes).</summary>
 	private bool ActiveWikiIsGameWiki => _activeWiki == null || _activeWiki.IsGameWiki;

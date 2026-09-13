@@ -13,16 +13,24 @@ namespace KinetixModManager.GtkHead;
 /// <para>
 /// Every decision here is about what a screen reader will make of it, because that is the only interface
 /// this program really has. A row is a single label holding a whole sentence rather than a grid of cells,
-/// so arrowing down a list gives one fact per press instead of three. Focus moves are announced explicitly,
-/// because Orca will describe the widget that gained focus but not why it did. Nothing depends on a colour,
-/// a position, or a pointer.
+/// so arrowing down a list gives one fact per press instead of three. What Orca already says is deliberately
+/// not said again - it reads the focused row and names the widget that takes focus, so the window announces
+/// only what Orca cannot know. Nothing depends on a colour, a position, or a pointer.
 /// </para>
 ///
 /// <para>
-/// It covers Minecraft only, deliberately. Minecraft Java is the one supported game that runs natively on
-/// Linux <em>and</em> whose accessibility mods speak here — Minecraft Access uses speech-dispatcher, the same
-/// speech-dispatcher this window talks to. Skyrim and Fallout 4 would run under Proton, but their access mods
-/// speak by driving NVDA, which does not exist on Linux, so the game would start and then say nothing.
+/// It covers every game the manager supports, not one of them. That is the whole point of the program: an
+/// accessible mod manager for games in general, which happens to be the only one of its kind. The games come
+/// from <see cref="GameProfiles"/> rather than being named here, so a seventh game arrives in this window
+/// the same way it arrives in the WinForms one — by being added to the table.
+/// </para>
+///
+/// <para>
+/// A separate matter, worth knowing and not worth confusing with the above: on Linux the accessibility mods
+/// for Skyrim, Fallout 4 and The Witcher 3 speak by driving NVDA or JAWS, which do not exist inside a Proton
+/// prefix, so those games may run and stay silent. That is a fact about the <em>games</em>, not about this
+/// manager — managing their mods works regardless, and a user may well be modding on one machine and playing
+/// on another. It belongs in front of the user as information, never as a reason to withhold the game.
 /// </para>
 /// </summary>
 public sealed class MainWindow
@@ -37,8 +45,15 @@ public sealed class MainWindow
 	private readonly Gtk.Entry _search = Gtk.Entry.New();
 	private readonly Gtk.Label _status = Gtk.Label.New("");
 
+	private readonly Gtk.ListBox _games = Gtk.ListBox.New();
+	private readonly IGameLocator _locator = new LinuxGameLocator();
+
 	private readonly List<ModRow> _rows = new();
 	private readonly List<GameMod> _found = new();
+	private readonly List<GameProfile> _gameList = new();
+	private WebKitView? _web;
+
+	private GameProfile _game = GameProfiles.Require(GameProfiles.Minecraft);
 	private string _modsFolder = "";
 
 	public MainWindow(Gtk.Application app)
@@ -47,7 +62,7 @@ public sealed class MainWindow
 		// Announcements go to the user's screen reader, with speech-dispatcher only as the fallback for
 		// when there is no reader to ask. See OrcaAnnouncer for why that order matters so much.
 		_announcer = new OrcaAnnouncer(_window, new SpeechDispatcherAnnouncer());
-		_window.SetTitle("Kinetix Mod Manager — Minecraft");
+		_window.SetTitle("Kinetix Mod Manager");
 		_window.SetDefaultSize(900, 620);
 
 		var root = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
@@ -55,8 +70,10 @@ public sealed class MainWindow
 		root.SetMarginStart(8); root.SetMarginEnd(8);
 
 		_tabs.SetVexpand(true);
+		_tabs.AppendPage(BuildGamesTab(), Gtk.Label.New("Games"));
 		_tabs.AppendPage(BuildInstalledTab(), Gtk.Label.New("Installed Mods"));
 		_tabs.AppendPage(BuildDiscoverTab(), Gtk.Label.New("Find Mods"));
+		_tabs.AppendPage(BuildWikiTab(), Gtk.Label.New("Wiki"));
 		root.Append(_tabs);
 
 		// A status line that is also spoken. On its own a label change is silent to a screen reader — Orca
@@ -81,6 +98,54 @@ public sealed class MainWindow
 	// -------------------------------------------------------------------------
 	// Installed
 	// -------------------------------------------------------------------------
+
+	/// <summary>
+	/// Every supported game, whether or not it is installed, with what was found for each.
+	///
+	/// Uninstalled games are listed rather than hidden, and say so. A blind user who cannot see an empty
+	/// list has no way to tell "this game is not supported" from "I have not installed it yet" — and the
+	/// first is a reason to give up on the program while the second is not.
+	/// </summary>
+	private Gtk.Widget BuildGamesTab()
+	{
+		var box = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
+
+		_games.SetVexpand(true);
+		_games.OnRowActivated += (_, args) =>
+		{
+			int i = args.Row?.GetIndex() ?? -1;
+			if (i >= 0 && i < _gameList.Count) SelectGame(_gameList[i]);
+		};
+
+		foreach (GameProfile game in GameProfiles.All)
+		{
+			_gameList.Add(game);
+			string? install = _locator.InstallFolder(game);
+			_games.Append(RowLabel(install is null
+				? $"{game.DisplayName} — not installed"
+				: $"{game.DisplayName} — {install}"));
+		}
+
+		var scroller = Gtk.ScrolledWindow.New();
+		scroller.SetChild(_games);
+		scroller.SetVexpand(true);
+		box.Append(scroller);
+
+		var hint = Gtk.Label.New("Press Enter on a game to load its mods.");
+		hint.SetXalign(0);
+		box.Append(hint);
+		return box;
+	}
+
+	/// <summary>Makes <paramref name="game"/> the active one and loads its mods.</summary>
+	private void SelectGame(GameProfile game)
+	{
+		_game = game;
+		LoadInstalled();
+		_tabs.SetCurrentPage(1);
+		_installed.GrabFocus();
+		Say($"{game.DisplayName}. {_rows.Count} mods installed.", interrupt: true);
+	}
 
 	private Gtk.Widget BuildInstalledTab()
 	{
@@ -113,12 +178,11 @@ public sealed class MainWindow
 		_rows.Clear();
 		while (_installed.GetFirstChild() is { } child) _installed.Remove(child);
 
-		string root = MinecraftLayout.DefaultRootFolder;
-		_modsFolder = MinecraftLayout.ModsFolderFor(root);
+		_modsFolder = ModsFolderFor(_game);
 
-		if (!Directory.Exists(_modsFolder))
+		if (string.IsNullOrEmpty(_modsFolder) || !Directory.Exists(_modsFolder))
 		{
-			SetStatus($"No Minecraft mods folder at {_modsFolder}.");
+			SetStatus($"{_game.DisplayName} is not installed, or its mods folder has not been created yet.");
 			return;
 		}
 
@@ -132,7 +196,7 @@ public sealed class MainWindow
 			_modsFolder,
 			new Newtonsoft.Json.Linq.JObject(),
 			ScanContext.For(_modsFolder),
-			GameProfiles.Minecraft,
+			_game.Id,
 			(where, what) => DiagnosticLog.Write(where, what));
 
 		foreach (GameMod mod in scanned)
@@ -154,9 +218,11 @@ public sealed class MainWindow
 		if (i < 0 || i >= _rows.Count) { Say("No mod is selected.", interrupt: true); return; }
 
 		ModRow row = _rows[i];
-		// The rule for what a disabled mod is called lives in the core, not here. Fabric accepts a candidate
-		// only when it ends in ".jar", so the suffix is what takes a mod out of the running.
-		string target = MinecraftLayout.PathWithEnabled(row.JarPath, !row.Enabled, ".disabled");
+		// Every layout switches a mod off differently - a leading dot for Stardew, a tilde for The Witcher, a
+		// move out of plugins for BepInEx, a suffix for Minecraft - and ModEnableState in the core is the one
+		// place that knows which. Reimplementing any of it here is how the two front ends would start to
+		// disagree about what "disabled" means.
+		string target = ModEnableState.TargetPath(row.JarPath, !row.Enabled, _game.Id);
 
 		try
 		{
@@ -200,6 +266,57 @@ public sealed class MainWindow
 		return box;
 	}
 
+	/// <summary>
+	/// The game's wiki, inside the window rather than in a browser.
+	///
+	/// The whole question this tab exists to answer is whether Orca reads a WebKitGTK page the way NVDA reads
+	/// a WebView2 one — headings, links, and its own navigation keys — while the manager's keys still work
+	/// around it. If it does, the wiki, the walkthroughs and the mod descriptions all follow the same path.
+	/// </summary>
+	private Gtk.Widget BuildWikiTab()
+	{
+		var box = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
+
+		var bar = Gtk.Box.New(Gtk.Orientation.Horizontal, 6);
+		var open = Gtk.Button.NewWithLabel("Open this game's wiki");
+		open.OnClicked += (_, _) => OpenWiki();
+		var back = Gtk.Button.NewWithLabel("Back");
+		back.OnClicked += (_, _) => { if (_web?.CanGoBack == true) _web.GoBack(); };
+		bar.Append(open);
+		bar.Append(back);
+		box.Append(bar);
+
+		try
+		{
+			_web = new WebKitView();
+			_web.Widget.SetVexpand(true);
+			box.Append(_web.Widget);
+		}
+		catch (Exception ex)
+		{
+			// A missing or mismatched WebKitGTK is worth saying out loud rather than showing an empty tab:
+			// webkit2gtk-4.1 is the GTK3 build and will not embed here, and that is an easy mistake to make.
+			DiagnosticLog.WriteException("Web", "creating the web view", ex);
+			var problem = Gtk.Label.New("The in-app browser could not start. WebKitGTK 6.0 (the GTK4 build) is needed.");
+			problem.SetWrap(true);
+			box.Append(problem);
+		}
+
+		return box;
+	}
+
+	private void OpenWiki()
+	{
+		if (_web is null) { Say("The in-app browser is not available.", interrupt: true); return; }
+
+		string url = _game.WikiArticleBase;
+		if (string.IsNullOrWhiteSpace(url)) { Say($"{_game.DisplayName} has no wiki configured.", interrupt: true); return; }
+
+		_web.Load(url);
+		SetStatus($"Loading {url}");
+		Say($"Opening the {_game.DisplayName} wiki. Tab into the page to read it.");
+	}
+
 	private async Task SearchAsync()
 	{
 		string term = _search.GetBuffer().GetText();
@@ -234,6 +351,35 @@ public sealed class MainWindow
 	// -------------------------------------------------------------------------
 	// Shared
 	// -------------------------------------------------------------------------
+
+	/// <summary>
+	/// Where <paramref name="game"/> keeps its mods, or empty when it cannot be found.
+	///
+	/// Three shapes, and the profile says which: Minecraft keeps its mods beside its launcher rather than in
+	/// a game folder; the Bethesda games stage theirs in a manager-owned folder outside the game entirely;
+	/// everything else keeps them under the install.
+	/// </summary>
+	private string ModsFolderFor(GameProfile game)
+	{
+		if (game.IsMinecraft)
+		{
+			string root = _locator.InstallFolder(game) ?? MinecraftLayout.DefaultRootFolder;
+			return MinecraftLayout.ModsFolderFor(root);
+		}
+
+		string? install = _locator.InstallFolder(game);
+		if (string.IsNullOrEmpty(install)) return "";
+
+		if (!string.IsNullOrEmpty(game.StagingFolderName))
+		{
+			// Staged mods live beside the manager's own data, not in the game, so that a game update cannot
+			// take them with it.
+			string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+			return Path.Combine(appData, "AudiVentureGames", "KinetixModManager", game.StagingFolderName);
+		}
+
+		return game.ModsFolderFor(install);
+	}
 
 	/// <summary>A row that is exactly one label, so a screen reader reads one sentence per arrow press.</summary>
 	private static Gtk.Widget RowLabel(string text)

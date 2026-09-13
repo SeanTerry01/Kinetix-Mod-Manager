@@ -131,34 +131,35 @@ These stand on their own merits. None is urgent.
 
 ## Decisions
 
-**1. Proton or native? — ANSWERED: native, Minecraft and Stardew Valley only.**
+**1. Proton or native? — ANSWERED: all six games. See ARCHITECTURE_REVIEW §20.**
 
-Not because Proton is inaccessible in general, but because the *access mods* for the other four games
-speak by driving NVDA or JAWS, which do not exist inside a Proton prefix. Skyrim would load its access
-mod, start, play, and say nothing — the exact silent failure this manager exists to prevent. Minecraft
-Access uses speech-dispatcher on Linux and Stardew Access supports Linux natively; both are quoted in
-ARCHITECTURE_REVIEW §16 from the docs this repo already ships.
+This is an accessible mod manager for games in general. Managing a game's mods on Linux works for all
+six and does not depend on the game being able to speak.
 
-Consequences: `IGameLocator` needs no Proton prefix resolution for v1; `WindowsFileName` still applies
-(Stardew mods are shared with Windows machines); a Minecraft-only v1 needs no Nexus API key at all.
+Separately, and worth surfacing *to the user* rather than acting on: the access mods for Skyrim,
+Fallout 4, The Witcher 3 and Moonlight Peaks drive NVDA or JAWS, which do not exist in a Proton prefix,
+so those games may run and stay silent. Minecraft Access uses speech-dispatcher and Stardew Access
+supports Linux natively. That is a fact about the games, not the manager.
+
+Under Proton the game's files are still in `steamapps/common`, so mod paths already work everywhere.
+Only saves and INIs live inside the prefix — which is why `IGameLocator` asks two questions.
+
+- [ ] **Warn in the UI** which games' access mods are not expected to speak on this platform, so the
+      user knows what they are getting rather than finding out in game.
 
 **2. Which GTK binding? — ANSWERED in practice: GirCore 0.7.0.**
 
 Restores in under two seconds, targets GTK4, and the spike is built on it. `GtkSharp` is GTK3-era and
 effectively stalled.
 
-**3. WebKitGTK, or open the system browser? — ANSWERED: WebKitGTK. The browser must be in-app.**
+**3. WebKitGTK, or open the system browser? — ANSWERED: WebKitGTK, and it is installed and working.**
 
-Now the largest unknown in the Linux head, and the one piece with no easy path:
+`webkitgtk-6.0` 2.52.5, linking `gtk-4`. `Kinetix.Gtk/WebKitView.cs` is a hand-written P/Invoke binding
+and the window has a Wiki tab. Everything is in place except the answer to the question that matters:
 
-- [ ] **WebKitGTK is not installed on the dev machine.** Neither `webkit2gtk-4.1` nor `webkitgtk-6.0`.
-      On Gentoo that is `net-libs/webkit-gtk`, and it is a long compile.
-- [ ] **There is no .NET binding for it.** GirCore does not ship one. It needs hand-written P/Invoke
-      over `WebKitWebView`, or a binding generated from the GIR file.
-- [ ] **The accessibility question is unanswered and matters most.** WebView2 exposes page content to
-      NVDA through UIA; WebKitGTK exposes it through AT-SPI, which Orca reads. Whether the wiki-reading
-      flow — heading navigation, category drilling, the F6 cycle into the web view — behaves the same
-      needs **testing before `IBrowserHost` is designed around it**.
+- [ ] **Does Orca read the embedded page properly?** Headings, links, its own navigation keys, with the
+      manager's keys still working around it. Needs a person listening. This is the last real unknown
+      in the Linux head, and `IBrowserHost` should not be designed until it is answered.
 
 ---
 
