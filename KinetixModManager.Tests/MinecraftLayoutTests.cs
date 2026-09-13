@@ -278,6 +278,50 @@ public class MinecraftLayoutTests
 	}
 
 	// -------------------------------------------------------------------------
+	// Versions and update sources
+	// -------------------------------------------------------------------------
+
+	[Theory]
+	[InlineData("1.1.0+mc26.2", "1.1.0")]
+	[InlineData("0.160.0+26.2", "0.160.0")]
+	[InlineData("1.1.0", "1.1.0")]
+	[InlineData("", "")]
+	public void BuildMetadataIsNotPartOfTheVersion(string version, string expected)
+	{
+		Assert.Equal(expected, MinecraftLayout.VersionWithoutBuildMetadata(version));
+	}
+
+	[Fact]
+	public void TheSameReleaseWrittenTwoWaysIsNotAnUpdate()
+	{
+		// The phantom update this guards. United Minecraft's manifest says "1.1.0" and its GitHub tag says
+		// "v1.1.0+mc26.2"; the general comparison splits on dots, sees a fourth segment in the tag that the
+		// manifest lacks, and reports the mod out of date for ever - with "updating" downloading the very same
+		// release again and changing nothing.
+		Assert.True(MinecraftLayout.SameRelease("1.1.0", "1.1.0+mc26.2"));
+		Assert.True(MinecraftLayout.SameRelease("0.160.0+26.2", "0.160.0+26.2"));
+
+		// A real update still reads as one.
+		Assert.False(MinecraftLayout.SameRelease("1.1.0", "1.2.0+mc26.2"));
+		Assert.False(MinecraftLayout.SameRelease("0.160.0+26.2", "0.161.0+26.2"));
+	}
+
+	[Theory]
+	// A mod that is not on Modrinth can still be update-checked, because its manifest names its repository.
+	[InlineData("https://github.com/blindgoofball/united-Minecraft", "blindgoofball/united-Minecraft")]
+	[InlineData("https://github.com/blindgoofball/united-Minecraft/issues", "blindgoofball/united-Minecraft")]
+	[InlineData("https://www.github.com/owner/repo.git", "owner/repo")]
+	// Anything that is not a GitHub repository gives nothing, rather than a repo name that does not exist.
+	[InlineData("https://modrinth.com/mod/fabric-api", "")]
+	[InlineData("https://github.com/onlyanowner", "")]
+	[InlineData("not a url", "")]
+	[InlineData("", "")]
+	public void AGitHubHomepageBecomesARepositoryToCheck(string url, string expected)
+	{
+		Assert.Equal(expected, MinecraftLayout.GitHubRepoFromUrl(url));
+	}
+
+	// -------------------------------------------------------------------------
 	// Paths and detection
 	// -------------------------------------------------------------------------
 

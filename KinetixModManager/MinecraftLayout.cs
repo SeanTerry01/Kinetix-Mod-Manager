@@ -309,6 +309,57 @@ public static class MinecraftLayout
 	}
 
 	/// <summary>
+	/// A version with its build metadata removed — <c>1.1.0+mc26.2</c> gives <c>1.1.0</c>.
+	///
+	/// Minecraft versions carry the game version after a <c>+</c> almost universally, and the two sides of an
+	/// update check do not agree about whether to include it: United Minecraft's manifest says <c>1.1.0</c>
+	/// while its GitHub tag says <c>v1.1.0+mc26.2</c>. Semantic versioning says build metadata is ignored when
+	/// comparing precedence, and it has to be here too.
+	/// </summary>
+	public static string VersionWithoutBuildMetadata(string? version)
+	{
+		if (string.IsNullOrEmpty(version)) return "";
+
+		int plus = version!.IndexOf('+');
+		return plus < 0 ? version : version.Substring(0, plus);
+	}
+
+	/// <summary>
+	/// Whether two version strings name the same release, ignoring build metadata.
+	///
+	/// ⚠️ Guards a permanent phantom update. The general comparison splits on dots, so <c>1.1.0</c> against
+	/// <c>1.1.0+mc26.2</c> becomes <c>[1,1,0]</c> against <c>[1,1,0+mc26,2]</c> — a fourth segment appears out
+	/// of the build metadata, 2 beats nothing, and the mod is reported as out of date for ever. Updating it
+	/// would download the same release again and change nothing, which is worse than saying nothing at all.
+	/// </summary>
+	public static bool SameRelease(string? installed, string? candidate) =>
+		VersionWithoutBuildMetadata(installed)
+			.Equals(VersionWithoutBuildMetadata(candidate), StringComparison.OrdinalIgnoreCase);
+
+	/// <summary>
+	/// The <c>owner/repo</c> in a GitHub URL, or <c>""</c> when it is not one.
+	///
+	/// A Fabric mod names its own homepage and sources in <c>fabric.mod.json</c>, and for a great many mods
+	/// that is a GitHub repository. Reading it back is what lets a mod that is NOT on Modrinth still be
+	/// checked for updates — United Minecraft is published on GitHub releases only, and is precisely the mod a
+	/// blind player most needs kept current.
+	/// </summary>
+	public static string GitHubRepoFromUrl(string? url)
+	{
+		if (string.IsNullOrWhiteSpace(url)) return "";
+		if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? parsed)) return "";
+		if (!parsed.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) &&
+			!parsed.Host.Equals("www.github.com", StringComparison.OrdinalIgnoreCase)) return "";
+
+		string[] parts = parsed.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+		if (parts.Length < 2) return "";
+
+		// Anything deeper is a page within the repository — /issues, /releases, /blob/... — and the repo is
+		// still just the first two segments.
+		return parts[0] + "/" + parts[1].Replace(".git", "", StringComparison.OrdinalIgnoreCase);
+	}
+
+	/// <summary>
 	/// The mod id inside a nested jar's file name — <c>META-INF/jars/fabric-api-base-2.0.4+ece0.jar</c> gives
 	/// <c>fabric-api-base</c>.
 	///

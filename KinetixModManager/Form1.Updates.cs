@@ -197,7 +197,18 @@ public partial class Form1
 			string? latestVersion = null;
 			if (GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true)
 			{
-				latestVersion = await LatestModrinthVersionAsync(group[0]);
+				// Modrinth first, by the hash of the jar, which is exact. Then GitHub for a mod Modrinth does
+				// not host — United Minecraft is published on GitHub releases only, and it names its own
+				// repository in its manifest, so there is no reason for it to be the one mod nothing can check.
+				string? remote = await LatestModrinthVersionAsync(group[0])
+					?? (!string.IsNullOrEmpty(group[0].GitHubRepo)
+						? await GetGitHubLatestReleaseVersionAsync(group[0].GitHubRepo!)
+						: null);
+
+				// ⚠️ Settled here rather than left to the general comparison, which splits on dots and so reads
+				// "1.1.0+mc26.2" as having a fourth segment that "1.1.0" lacks — reporting the mod out of date
+				// for ever, and "updating" it by downloading the same release again.
+				latestVersion = MinecraftLayout.SameRelease(group[0].Version, remote) ? null : remote;
 			}
 			else if (!string.IsNullOrEmpty(group[0].NexusID))
 			{

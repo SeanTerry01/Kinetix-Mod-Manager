@@ -422,7 +422,14 @@ public static class ModFileSystem
 					UniqueId    = uid,
 					Description = info.Description,
 					FolderPath  = file,
-					IsEnabled   = MinecraftLayout.IsEnabledModFile(file)
+					IsEnabled   = MinecraftLayout.IsEnabledModFile(file),
+					// Kept from the mod's own manifest so a mod that is NOT on Modrinth can still be checked
+					// for updates. United Minecraft is published on GitHub releases only and names its
+					// repository right here — without this it would be the one mod in the folder nothing
+					// could ever tell the player was out of date.
+					GitHubRepo  = MinecraftLayout.GitHubRepoFromUrl(info.HomepageUrl) is { Length: > 0 } repo
+						? repo
+						: null
 				};
 
 				if (info.IsUnreadable)

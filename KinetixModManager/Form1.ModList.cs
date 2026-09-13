@@ -317,16 +317,31 @@ public partial class Form1
 		{
 			return;
 		}
-		List<IGrouping<string, StardewMod>> list = (from m in _allInstalledMods
-			where !string.IsNullOrEmpty(m.NexusID) || !string.IsNullOrEmpty(m.GitHubRepo)
-			group m by (!string.IsNullOrEmpty(m.NexusID) ? "Nexus:" + m.NexusID : "GitHub:" + m.GitHubRepo)).ToList();
+		// Minecraft mods carry no stored catalogue link and need none: Modrinth identifies a mod by the SHA-1
+		// of its jar, so every installed mod is checkable and each is its own group. Requiring a link here
+		// reported "none of your mods have a Nexus or GitHub link" for a folder in which every single mod
+		// could in fact be checked.
+		bool minecraft = GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true;
+
+		List<IGrouping<string, StardewMod>> list = minecraft
+			? _allInstalledMods
+				.Where(m => !m.IsGroup && !string.IsNullOrEmpty(m.FolderPath))
+				.GroupBy(m => "Minecraft:" + m.FolderPath).ToList()
+			: (from m in _allInstalledMods
+			   where !string.IsNullOrEmpty(m.NexusID) || !string.IsNullOrEmpty(m.GitHubRepo)
+			   group m by (!string.IsNullOrEmpty(m.NexusID) ? "Nexus:" + m.NexusID : "GitHub:" + m.GitHubRepo)).ToList();
 		// Mods with neither a Nexus nor a GitHub link are excluded from the grouping above; remember them so the
 		// completion announcement can say they were skipped (a manually-placed mod would otherwise look "up to
 		// date" when it was never checked). For Stardew Valley most of these are still covered by the smapi.io
 		// batch below, which resolves mods by UniqueID — only what it doesn't recognise is really unchecked, so
 		// the final count is worked out at the end of the run (see UncheckedModCount).
-		_updateUnlinkedMods = _allInstalledMods.Where(m => !m.IsGroup
-			&& string.IsNullOrEmpty(m.NexusID) && string.IsNullOrEmpty(m.GitHubRepo)).ToList();
+		// Nothing is "unlinked" for Minecraft — every mod can be asked about by hash, so none is skipped for
+		// want of a link. A mod Modrinth turns out not to host simply gets no answer, which is reported when
+		// the run finishes rather than guessed at before it starts.
+		_updateUnlinkedMods = minecraft
+			? new List<StardewMod>()
+			: _allInstalledMods.Where(m => !m.IsGroup
+				&& string.IsNullOrEmpty(m.NexusID) && string.IsNullOrEmpty(m.GitHubRepo)).ToList();
 		_smapiCheckedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		// Stardew Valley additionally runs one smapi.io batch check (counted as a unit), which catches
 		// mods whose manifest update key is missing or broken — the manifest-only Nexus grouping below
