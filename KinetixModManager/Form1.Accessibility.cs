@@ -1650,17 +1650,24 @@ public partial class Form1
 		}
 
 		// Structured source: the un-sectioned intro/keys lead the Keyboard category, then each named section.
+		//
+		// "Keyboard Controls" is only worth a level of its own when there is a "Gamepad Controls" beside it to
+		// be told apart from. On its own it is a heading that divides nothing — every mod with named sections
+		// and no gamepad list made the player open it before they could see anything, which is one keypress
+		// and one spoken word on the way to everything they came for.
 		if (keyboard.Count > 0 || unnamed.Count > 0)
 		{
-			var kb = new NavNode("Keyboard Controls", mod);
-			foreach (KbEntry e in unnamed) kb.Children.Add(Leaf(e, mod));
+			NavNode keyboardParent = gamepad.Count > 0 ? new NavNode("Keyboard Controls", mod) : modNode;
+
+			foreach (KbEntry e in unnamed) keyboardParent.Children.Add(Leaf(e, mod));
 			foreach (KbSection sec in keyboard)
 			{
 				var sn = new NavNode(sec.Name, mod);
 				foreach (KbEntry e in sec.Entries) sn.Children.Add(Leaf(e, mod));
-				kb.Children.Add(sn);
+				keyboardParent.Children.Add(sn);
 			}
-			modNode.Children.Add(kb);
+
+			if (!ReferenceEquals(keyboardParent, modNode)) modNode.Children.Add(keyboardParent);
 		}
 
 		if (gamepad.Count > 0)

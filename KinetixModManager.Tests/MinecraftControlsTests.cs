@@ -223,11 +223,16 @@ public class MinecraftControlsTests
 		var sections = MinecraftControls.GroupVanilla(ReadOptions(RealOptionsTxt));
 
 		Assert.Equal("Movement", SectionOf(sections, "Forward"));
-		Assert.Equal("Gameplay", SectionOf(sections, "Attack"));
 		Assert.Equal("Inventory", SectionOf(sections, "Hotbar 1"));
 		Assert.Equal("Multiplayer", SectionOf(sections, "Social interactions"));
 		// Screenshot, fullscreen and perspective are Miscellaneous in Minecraft's own Controls screen too.
 		Assert.Equal("Miscellaneous", SectionOf(sections, "Toggle gui"));
+
+		// Attack, Use and Pick item are Minecraft's whole Gameplay category, and all three ship on mouse
+		// buttons — so on a default setup Gameplay is empty and every one of them is in Mouse buttons. Which
+		// is precisely the list a player not using a mouse needs.
+		Assert.DoesNotContain(sections, s => s.Name == "Gameplay");
+		Assert.Equal("Mouse buttons", SectionOf(sections, "Attack"));
 	}
 
 	[Fact]
@@ -246,6 +251,32 @@ public class MinecraftControlsTests
 		Assert.Equal("Debug", SectionOf(sections, "Debug show hitboxes"));
 		Assert.Equal("Movement", sections[0].Name);
 		Assert.Equal("Debug", sections[^1].Name);
+	}
+
+	[Fact]
+	public void MouseButtonsAreTheirOwnSection()
+	{
+		// A player who cannot see the screen is unlikely to be using the mouse, so "these are the actions on
+		// mouse buttons" is exactly the list they need in order to know what to rebind.
+		var sections = MinecraftControls.GroupVanilla(ReadOptions(RealOptionsTxt));
+
+		Assert.Equal("Mouse buttons", SectionOf(sections, "Attack"));
+		Assert.Equal("Mouse buttons", SectionOf(sections, "Use"));
+		Assert.Equal("Mouse buttons", SectionOf(sections, "Pick item"));
+
+		// Still grouped by what they do everywhere the input is a key.
+		Assert.Equal("Movement", SectionOf(sections, "Forward"));
+	}
+
+	[Fact]
+	public void RebindingAnActionToAKeyMovesItOutOfTheMouseSection()
+	{
+		// The section follows the actual binding rather than the action, so it stays truthful after a remap
+		// rather than claiming Attack is on the mouse when the player has moved it to a key.
+		var sections = MinecraftControls.GroupVanilla(ReadOptions("key_key.attack:key.keyboard.k"));
+
+		Assert.Equal("Gameplay", SectionOf(sections, "Attack"));
+		Assert.DoesNotContain(sections, s => s.Name == "Mouse buttons");
 	}
 
 	[Fact]

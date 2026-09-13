@@ -26,6 +26,16 @@ public sealed class MinecraftBinding
 
 	/// <summary>True when nothing is bound to this action, so a viewer can group or skip them.</summary>
 	public bool IsUnbound { get; init; }
+
+	/// <summary>
+	/// True when this is bound to a mouse button rather than a key.
+	///
+	/// Worth separating out. A player who cannot see the screen is unlikely to be using the mouse, so "these
+	/// three actions are on mouse buttons" is exactly the list they need in order to know what to rebind. It
+	/// follows the actual binding rather than the action, so rebinding Attack to a key moves it out of the
+	/// mouse section, which is the truthful answer.
+	/// </summary>
+	public bool IsMouse { get; init; }
 }
 
 /// <summary>
@@ -82,7 +92,8 @@ public static class MinecraftControls
 				Id        = action,
 				Action    = FriendlyActionName(action),
 				Key       = FriendlyInputName(input),
-				IsUnbound = IsUnbound(input)
+				IsUnbound = IsUnbound(input),
+				IsMouse   = input.StartsWith("key.mouse.", StringComparison.Ordinal)
 			});
 		}
 
@@ -293,8 +304,19 @@ public static class MinecraftControls
 	/// feature an action belongs to. An action matching nothing here still appears, under "Other" — a mod
 	/// update adding a new feature must not make its keys vanish from the list.
 	/// </summary>
+	/// <summary>
+	/// A rule that matches by the INPUT rather than by the action's name: anything bound to a mouse button.
+	///
+	/// Written as a reserved token in the rules list so the mouse section keeps a declared position among the
+	/// others instead of being bolted on at one end. No action id can collide with it.
+	/// </summary>
+	private const string MouseRule = "<mouse>";
+
 	private static readonly (string Prefix, string Section)[] UnitedSections =
 	{
+		// The accessibility mod binds only keys today, but if it ever binds a mouse button the same rule
+		// applies — a player who is not using the mouse needs to know which actions are on it.
+		(MouseRule, "Mouse buttons"),
 		("narrate_",     "Narration"),
 		("scanner_",     "Scanner"),
 		("scan_",        "Scanner"),
@@ -330,6 +352,9 @@ public static class MinecraftControls
 		("key.hotbar.",   "Inventory"), ("key.saveToolbarActivator", "Inventory"),
 		("key.loadToolbarActivator", "Inventory"),
 		("key.quickActions", "Gameplay"),
+		// Matched on what the binding IS rather than what it does — see MouseRule. Positioned here so it reads
+		// after the things done with the keyboard and before the debug keys.
+		(MouseRule,       "Mouse buttons"),
 		("key.chat",      "Multiplayer"), ("key.command", "Multiplayer"), ("key.playerlist", "Multiplayer"),
 		("key.socialInteractions", "Multiplayer"), ("key.advancements", "Multiplayer"),
 		("key.friends",   "Multiplayer"),
@@ -375,10 +400,19 @@ public static class MinecraftControls
 		foreach ((_, string name) in rules) SectionFor(name);
 		SectionFor(fallback);
 
+		// A rule's position in the array is its reading order, not its matching precedence, and for the mouse
+		// rule the two differ deliberately. It has to be tried FIRST — what a binding is beats what it does,
+		// or "key.attack" matches Gameplay before anything notices it is on a mouse button — while sitting
+		// mid-list so the section reads after the keyboard ones.
+		string? mouseSection = rules.FirstOrDefault(r => r.Prefix == MouseRule).Section;
+
 		foreach (MinecraftBinding binding in bindings)
 		{
-			string name = rules.FirstOrDefault(r =>
-				binding.Id.StartsWith(r.Prefix, StringComparison.OrdinalIgnoreCase)).Section ?? fallback;
+			string name =
+				binding.IsMouse && mouseSection is not null
+					? mouseSection
+					: rules.FirstOrDefault(r => r.Prefix != MouseRule &&
+						binding.Id.StartsWith(r.Prefix, StringComparison.OrdinalIgnoreCase)).Section ?? fallback;
 
 			SectionFor(name).Bindings.Add(binding);
 		}
