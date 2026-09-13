@@ -519,7 +519,7 @@ green on Linux, the core is genuinely portable and you have CI proof of it.
 Move every nested model out of `Form1` into `Kinetix.Core/Models/`. Purely mechanical, guided by
 the compiler. This is what unblocks a second head.
 
-**Phase 3 — the abstractions (3–5 days).**
+**Phase 3 — the abstractions (3–5 days). ◐ PARTLY DONE — see §15.**
 Define the eight interfaces. Implement `Kinetix.Platform.Windows` by moving the existing Tolk,
 DPAPI, Registry and NAudio code behind them. Delete the direct `Tolk.*` calls from `Form1`.
 Fix the `HttpClient` disposal and the `async void` speech methods while you're in there.
@@ -918,3 +918,82 @@ dotnet test  KinetixModManager.Tests                                →  1016 pa
 ```
 
 Next is Phase 3: the eight interfaces (§7). `ProgressAnnouncer` is the natural first customer.
+
+
+---
+
+## 15. Phase 3 — four seams of eight, 2026-09-13
+
+Four of the eight interfaces in §7 are defined, implemented and wired. The other four are deliberately
+not, and the reason is given below — it is not that they ran out of time.
+
+### What was built
+
+| Interface | Windows implementation | What it removes from the rest of the program |
+|---|---|---|
+| `IAnnouncer` | `Platform/TolkAnnouncer.cs` | Every direct Tolk call |
+| `ISoundEngine` | `SoundEngine` (already had the shape) | NAudio |
+| `ISecretStore` | `Platform/DpapiSecretStore.cs` | DPAPI, out of `AppSettings` |
+| `IDispatcher` | `Platform/WinFormsDispatcher.cs` | `Control.Invoke` / `BeginInvoke` |
+
+The measurable result:
+
+- **Tolk is now named in two files** — its own P/Invoke declarations, and the one class implementing
+  `IAnnouncer`. It was four. All ~537 `Speak(...)` call sites are untouched, because `Form1.Speak`
+  became a delegation rather than a rewrite: one seam, no call-site churn.
+- **`ProtectedData` is named in one file.** `AppSettings` now holds an `ISecretStore` and knows nothing
+  about how a secret is kept. This was one of the genuine "will not run at all off Windows" blockers,
+  since `ProtectedData` throws rather than degrading.
+- `PlainTextSecretStore` in the core is the default, so settings can be read and written with no
+  keyring at all — which is what the tests need. It is named for what it does on purpose: a class with
+  a reassuring name that stores a key in the clear is how a build ships doing exactly that.
+
+`IAnnouncer` extends `IDisposable`, which was not in the §7 sketch. A speech connection is a resource
+on every platform — Tolk is unloaded, speech-dispatcher is closed — and the shutdown path has to say
+its goodbye and *wait* before letting go, because disposing mid-sentence cuts the sentence off.
+
+### The first real customer, and the proof it works
+
+`ProgressAnnouncer` was the natural test of whether these seams are real, and it moved to
+`Kinetix.Core/ProgressAnnouncer.cs`.
+
+It used to hold a `Form1` and reach through it for five different things. It now takes `IAnnouncer`,
+`ISoundEngine`, `IDispatcher` and a new three-member `IProgressDisplay` — the user's chosen feedback
+mode, the sentence that opens an operation, and somewhere to put a live percentage — which `Form1`
+implements with methods it already had. Only the last of those is genuinely a window's job, and
+splitting it that way is what let the actual behaviour move: the decile rule, the tone throttling, and
+the rule about when it is worth crossing to the UI thread at all.
+
+**That behaviour is now tested.** `ProgressAnnouncerTests` has 8 tests covering things that previously
+could not be exercised without standing up a window: that the operation is named once rather than on
+every update, that only whole deciles are spoken (a large download reports thousands of times), that
+100% is deliberately never spoken because the caller's own success message follows it, that Tones-only
+says nothing and Speech-only plays nothing, that Off means off, and that finishing resets the display
+rather than leaving a stale "Downloading Project Fluent 100%" to be read out later — which once landed
+between a prompt's question and its answer.
+
+`ProgressFeedback` moved to the core with it: it names a user preference, not a widget.
+
+### The four that were not built, and why
+
+`IPrompts`, `IBrowserHost`, `IGameLocator` and `IModSource` are **not** defined yet. Writing an
+interface nobody implements is a guess dressed as a design, and each of these is a guess for a
+different reason:
+
+- **`IPrompts`** — 177 `SpeakBox` calls plus 12 `ShowDialog`, and the real design question is the
+  inline-prompt system, which deliberately avoids modal dialogs. The right shape follows from draining
+  those screens in Phase 4, not from sketching it now.
+- **`IBrowserHost`** — depends on an unanswered question (see TODO): whether the first Linux release
+  embeds WebKitGTK at all, or opens the system browser. Those two need different interfaces.
+- **`IGameLocator`** — depends on the Proton-vs-native decision. A locator that resolves into a
+  compatdata prefix is a different contract from one that finds a native install.
+- **`IModSource`** — the most worthwhile of the four, and the largest: it means reconciling
+  `NexusService` (instance, stateful, API key) with `ModrinthService` (static, stateless). Worth its
+  own change rather than being tacked onto this one.
+
+### Verification
+
+```
+dotnet build KinetixModManager.slnx -p:EnableWindowsTargeting=true  →  0 warnings, 0 errors
+dotnet test  KinetixModManager.Tests                                →  1024 passed, 0 failed
+```

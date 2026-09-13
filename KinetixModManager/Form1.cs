@@ -106,6 +106,24 @@ public partial class Form1 : Form, IMessageFilter
         return base.ProcessCmdKey(ref msg, keyData);
     }
 
+	/// <summary>
+	/// How the program speaks. Every one of the ~537 Speak calls in this class ends up here, and this is the
+	/// only field in the app that knows a screen reader exists.
+	///
+	/// Constructed directly rather than injected because there is exactly one implementation per platform and
+	/// no configuration to make: what varies is which assembly supplies it, and that is a build-time question.
+	/// A Linux build would hand a speech-dispatcher announcer to the same field.
+	/// </summary>
+	private readonly IAnnouncer _announcer = new TolkAnnouncer();
+
+	/// <summary>
+	/// Getting back onto the UI thread. Not yet used by much - the existing code calls Invoke and BeginInvoke
+	/// directly in a few hundred places - but it is what the presenters extracted in Phase 4 will take, so
+	/// that they can be moved without bringing Control.Invoke with them.
+	/// </summary>
+	private IDispatcher Dispatcher => _dispatcher ??= new WinFormsDispatcher(this);
+	private IDispatcher? _dispatcher;
+
 	/// <summary>Nexus Mods and GitHub HTTP service.</summary>
 	private NexusService _nexusService = null!;
 
@@ -207,7 +225,7 @@ public partial class Form1 : Form, IMessageFilter
 			// reader announces that new window — cutting off the message it was already speaking, so the goodbye
 			// was never heard at all. Tolk is also unloaded at the end of this method, and unloading it
 			// mid-sentence would cut the message off just as surely; hence waiting here rather than later.
-			if (Tolk.IsLoaded() && _settings.SpeakShutdownMessage)
+			if (_announcer.IsAvailable && _settings.SpeakShutdownMessage)
 			{
 				Speak(Loc.T("app.shuttingDown"), interrupt: true);
 				await WaitForSpeechAsync(minMs: 1800, maxMs: 6000);
@@ -236,8 +254,7 @@ public partial class Form1 : Form, IMessageFilter
 		}
 		finally
 		{
-			try { if (Tolk.IsLoaded()) Tolk.Unload(); }
-			catch (Exception ex) { DiagnosticLog.WriteException("Speech", "unloading the screen-reader bridge", ex); }
+			_announcer.Dispose();
 			_readyToClose = true;
 		}
 	}
@@ -572,17 +589,10 @@ public partial class Form1 : Form, IMessageFilter
 			_settings.Save();
 		}
 		DetectModsPath();
-		try
-		{
-			Tolk.Load();
-			Tolk.TrySAPI(trySAPI: true);
-			// The welcome / shortcut-hint announcement is spoken from the Shown handler (below) so we can wait
-			// for it to finish before the startup loading speaks over it.
-		}
-		catch (Exception ex)
-		{
-			SpeakBox(Loc.T("app.tolkFailed", ex.Message));
-		}
+		// Touching IsAvailable is what opens the bridge; the implementation handles loading it and logging a
+		// failure. The welcome / shortcut-hint announcement is spoken from the Shown handler (below) so we can
+		// wait for it to finish before the startup loading speaks over it.
+		if (!_announcer.IsAvailable) SpeakBox(Loc.T("app.tolkFailed", Loc.T("speech.unavailableTitle")));
 		// Migrate old root backups/downloads files to StardewValley game subfolder if present
 		try
 		{
@@ -660,7 +670,7 @@ public partial class Form1 : Form, IMessageFilter
 			{
 				form._readyToClose = true;
 				form._pipeCts.Cancel();
-				if (Tolk.IsLoaded()) Tolk.Unload();
+				form._announcer.Dispose();
 				return;
 			}
 

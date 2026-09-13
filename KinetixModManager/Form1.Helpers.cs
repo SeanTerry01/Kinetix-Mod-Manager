@@ -138,7 +138,7 @@ public partial class Form1
 	/// The wait is the reader's <em>reaction</em> time, not its speaking time — how long it takes to notice the
 	/// selection changed and begin describing it, measured at around 70ms. That does not vary with the user's
 	/// speech rate, which is what makes it safe to wait out where waiting for speech to <em>finish</em> would not
-	/// be: Tolk reports <see cref="Tolk.IsSpeaking"/> reliably only for its own voice, so any such wait is really
+	/// be: IsSpeaking is reliable only for the bridge's own voice on Windows, so any such wait is really
 	/// a guess at how fast the user has their reader set. Announcing straight away instead put the numbers ahead
 	/// of the reader every time, which is the whole problem this exists to fix.
 	/// </para>
@@ -493,13 +493,8 @@ public partial class Form1
 	/// <summary>Which announcement is the current one. See <see cref="SpeakListPosition"/>.</summary>
 	private int _speakListGeneration;
 
-	/// <summary>Stops whatever the screen reader is currently saying, if one is loaded.</summary>
-	private static void SilenceSpeech()
-	{
-		if (!Tolk.IsLoaded()) return;
-		try { Tolk.Silence(); }
-		catch (Exception ex) { DiagnosticLog.WriteException("Speech", "silencing the screen reader", ex); }
-	}
+	/// <summary>Stops whatever the screen reader is currently saying, if one is listening.</summary>
+	private void SilenceSpeech() => _announcer.Silence();
 
 	[System.Runtime.InteropServices.DllImport("user32.dll")]
 	private static extern IntPtr GetFocus();
@@ -1204,13 +1199,13 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Sends <paramref name="text"/> to the active screen reader via Tolk.
-	/// Auto-reloads Tolk if it has been externally unloaded since the last call.
+	/// Says <paramref name="text"/> through whatever is listening — see <see cref="IAnnouncer"/>, which on
+	/// Windows is Tolk and reloads itself if the reader has restarted underneath us.
 	/// </summary>
 	private void Speak(string text) => Speak(text, interrupt: false);
 
 	/// <summary>
-	/// Sends <paramref name="text"/> to the active screen reader via Tolk. When <paramref name="interrupt"/>
+	/// Says <paramref name="text"/> through the active screen reader. When <paramref name="interrupt"/>
 	/// is true, it cuts off any in-progress/queued speech first — used to take full control of the wording
 	/// and ordering of an announcement (e.g. so a list's title is spoken before its first item).
 	/// </summary>
@@ -1228,20 +1223,11 @@ public partial class Form1
 
 		// If the screen reader was unloaded externally (e.g., NVDA restarted),
 		// attempt a silent reload before speaking so users don't lose announcements.
-		if (!Tolk.IsLoaded())
+		// Reloading a bridge that has gone away, and the reporting when it will not come back, both belong to
+		// the implementation now; this asks only whether anyone is listening. See IAnnouncer.
+		if (_announcer.IsAvailable)
 		{
-			try { Tolk.Load(); Tolk.TrySAPI(trySAPI: true); }
-			catch (Exception ex)
-			{
-				// Worth recording above almost anything else here: a screen-reader bridge that will not load
-				// means the app says nothing at all from this point on, and for the person relying on it the
-				// entire symptom is silence — with no error to see, by definition.
-				DiagnosticLog.WriteException("Speech", "reloading the screen-reader bridge", ex);
-			}
-		}
-		if (Tolk.IsLoaded())
-		{
-			Tolk.Output(text, interrupt);
+			_announcer.Speak(text, interrupt);
 			return;
 		}
 
@@ -1342,11 +1328,12 @@ public partial class Form1
 	/// UI thread's message loop to be running, so blocking that thread to wait for speech means the speech does
 	/// not start until the wait is over.
 	///
-	/// Tolk only reports <see cref="Tolk.IsSpeaking"/> reliably for its own SAPI voice — most screen readers
-	/// return false even while talking — so a fixed minimum sized to the sentence is waited out regardless, then
-	/// it stops early once speech is known to be done, or at the hard cap.
+	/// <see cref="IAnnouncer.IsSpeaking"/> is only ever "probably not" on Windows — Tolk answers it reliably
+	/// for its own SAPI voice and most screen readers return false even while talking — so a fixed minimum
+	/// sized to the sentence is waited out regardless, then it stops early once speech is known to be done, or
+	/// at the hard cap. A platform that answers this properly, as speech-dispatcher does, simply exits sooner.
 	/// </summary>
-	private static async Task WaitForSpeechAsync(int minMs = 2500, int maxMs = 12000)
+	private async Task WaitForSpeechAsync(int minMs = 2500, int maxMs = 12000)
 	{
 		const int step = 100;
 		int elapsed = 0;
@@ -1354,9 +1341,7 @@ public partial class Form1
 		{
 			await Task.Delay(step);
 			elapsed += step;
-			bool speaking;
-			try { speaking = Tolk.IsSpeaking(); } catch { speaking = false; }
-			if (!speaking && elapsed >= minMs) break;
+			if (!_announcer.IsSpeaking && elapsed >= minMs) break;
 		}
 	}
 

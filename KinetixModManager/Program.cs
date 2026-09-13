@@ -143,6 +143,11 @@ internal static class Program
 		KinetixHttp.UserAgent =
 			$"KinetixModManager/{NexusService.AppVersion} (github.com/SeanTerry01/Kinetix-Mod-Manager)";
 
+		// Secrets are protected with DPAPI on Windows. Assigned here, before AppSettings.Load() below reads
+		// the file, because the default store does not encrypt at all - see PlainTextSecretStore, which is
+		// named for what it does so that shipping with it by accident is visible rather than quiet.
+		AppSettings.Secrets = new DpapiSecretStore();
+
 		// Global safety net for unhandled exceptions. Event handlers must be `async void`, so an
 		// exception that escapes one cannot be observed by a caller; without this it would crash the
 		// app with a raw .NET dialog. Catching it on the UI thread lets us log it and keep running.

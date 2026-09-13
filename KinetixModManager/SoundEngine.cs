@@ -13,7 +13,7 @@ namespace KinetixModManager;
 /// Sounds are loaded from the active theme folder under the application's "sounds" directory.
 /// All playback is fire-and-forget on a background thread so the UI is never blocked.
 /// </summary>
-public class SoundEngine
+public class SoundEngine : ISoundEngine
 {
 	/// <summary>
 	/// Human-readable descriptions for every named sound event, used in the Sound Demo dialog.

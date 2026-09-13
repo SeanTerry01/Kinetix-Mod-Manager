@@ -5,6 +5,14 @@
 *   The **duplicate UniqueID** line in Check My Setup was written to say "UniqueID *X* is used by *N* mods: *list*", but was never given the count. String formatting failed, the failure was caught, and the sentence came out as the raw template — so the screen reader read the braces aloud: "UniqueID open brace zero close brace is used by open brace one close brace mods". It now says the number.
 *   The **manual download** dialog, the one that opens when your Nexus account is not Premium, had the title "Download {0}" for the same reason. It now names the mod.
 
+## 🔧 Under the bonnet: the screen reader is now one replaceable part
+
+*   Nothing you can see changed, and nothing you do works differently.
+*   Every spoken word in the manager — all five hundred-odd places that say something — used to call **Tolk**, the bridge to NVDA and JAWS, directly. They now go through a single seam, and Tolk is named in exactly two files instead of being spread through the app.
+*   The same was done for sounds, for the way your API key is encrypted, and for the plumbing that gets background work back onto the window.
+*   Why it matters: those four are the pieces that only exist on Windows. Isolating them is what makes a version of this manager for another operating system possible at all — and on Windows, everything behaves exactly as it did.
+*   The progress feedback (the rising tone, the "20 percent", the title bar) moved out of the window entirely and is now covered by its own tests, which could not be written before because testing it meant opening the app.
+
 ## 🔧 Under the bonnet: the core is its own project now
 
 *   Nothing you can see changed here, and nothing you do works differently.
@@ -19,7 +27,7 @@
 
 ## ✅ Tests
 
-*   **1,016 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
+*   **1,024 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 
 ---

@@ -11,20 +11,6 @@ using Newtonsoft.Json.Converters;
 namespace KinetixModManager;
 
 /// <summary>
-/// How the manager gives audible progress feedback during long downloads and installs.
-/// <see cref="Tones"/> plays a rising synthesized pitch, <see cref="Speech"/> speaks the name once
-/// then bare deciles ("10 percent", ...). <see cref="Off"/> is useful for users who already rely on
-/// their screen reader's own progress-bar beeps (e.g. NVDA's "Progress bar output").
-/// </summary>
-public enum ProgressFeedback
-{
-	Off,
-	Tones,
-	Speech,
-	Both
-}
-
-/// <summary>
 /// A high-contrast colour scheme for low-vision users, applied over the whole UI. <see cref="Off"/> keeps the
 /// normal Windows colours; the others force a bold foreground/background pair the user finds easiest to read.
 /// </summary>
@@ -918,36 +904,17 @@ public class AppSettings
 	// DPAPI helpers — CurrentUser scope so only this Windows account can read
 	// -------------------------------------------------------------------------
 
-	private static string EncryptApiKey(string plainText)
-	{
-		if (string.IsNullOrEmpty(plainText)) return "";
-		try
-		{
-			byte[] data = Encoding.UTF8.GetBytes(plainText);
-			byte[] encrypted = ProtectedData.Protect(data, null, DataProtectionScope.CurrentUser);
-			return Convert.ToBase64String(encrypted);
-		}
-		catch
-		{
-			// If DPAPI is unavailable for any reason, fall back to plain text so the
-			// app remains functional (e.g., in a sandbox without a user profile).
-			return plainText;
-		}
-	}
+	/// <summary>
+	/// Where secrets are protected before they are written, and read back after.
+	///
+	/// A property rather than a constructor parameter because AppSettings is deserialized by Newtonsoft,
+	/// which will not call a constructor of ours, and because every caller in the program shares one store
+	/// anyway. Program.cs assigns the platform's implementation at startup; the default keeps the type
+	/// usable on its own, which is what the settings tests rely on.
+	/// </summary>
+	public static ISecretStore Secrets { get; set; } = new PlainTextSecretStore();
 
-	private static string DecryptApiKey(string encryptedText)
-	{
-		if (string.IsNullOrEmpty(encryptedText)) return "";
-		try
-		{
-			byte[] data = Convert.FromBase64String(encryptedText);
-			byte[] decrypted = ProtectedData.Unprotect(data, null, DataProtectionScope.CurrentUser);
-			return Encoding.UTF8.GetString(decrypted);
-		}
-		catch
-		{
-			// Fallback: treat as plain text (handles migration from pre-encryption settings).
-			return encryptedText;
-		}
-	}
+	private static string EncryptApiKey(string plainText) => Secrets.Protect(plainText);
+
+	private static string DecryptApiKey(string encryptedText) => Secrets.Unprotect(encryptedText);
 }

@@ -5,8 +5,8 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-09-13, after Phase 2.
-**State:** 1,016 tests passing on Windows and Linux; all three projects build clean.
+**Last updated:** 2026-09-13, after Phase 3 (part one).
+**State:** 1,024 tests passing on Windows and Linux; all three projects build clean.
 
 ---
 
@@ -20,6 +20,8 @@ Anything resolved gets deleted from here rather than ticked, so the file stays s
 - ~~**HTTP connection leak**, the Modrinth User-Agent regression, and speech failing silently~~ (`d727c82`)
 - ~~**Phase 2** — the domain model out of `Form1`: 36 types to `Kinetix.Core/Models/`, plus `Loc`,
   `VirtualKeys`, `LoadOrderRule` and `PluginSlots`~~
+- ~~**Phase 3, part one** — `IAnnouncer`, `ISoundEngine`, `ISecretStore`, `IDispatcher`, their Windows
+  implementations, and `ProgressAnnouncer` moved to the core as the first customer~~
 
 ---
 
@@ -27,27 +29,24 @@ Anything resolved gets deleted from here rather than ticked, so the file stays s
 
 The one sequence that matters. Each step leaves the app shipping and the suite green.
 
-### 1. Phase 3 — the abstractions  ⬅ **next**
+### 1. Phase 3, part two — the four remaining interfaces
 
-Eight interfaces, derived from what the code already calls rather than from what looks tidy.
-`ARCHITECTURE_REVIEW.md` §7 has the signatures. `ProgressAnnouncer` (still in `Form1.Progress.cs`,
-holding a `Form1` reference) is the natural first customer: it needs `IAnnouncer` and `ISoundEngine`
-and nothing else.
+Done: `IAnnouncer`, `ISoundEngine`, `ISecretStore`, `IDispatcher`. Tolk is now named in two files and
+`ProtectedData` in one.
 
-| Interface | Replaces | Call sites |
+These four are **deliberately not designed yet**, because each depends on a decision that has not been
+made. Writing the interface first would be guessing.
+
+| Interface | Replaces | Blocked on |
 |---|---|---|
-| `IAnnouncer` | Tolk | 537 `Speak(...)`, funnelling into two methods |
-| `ISoundEngine` | NAudio | 3 |
-| `ISecretStore` | Windows DPAPI | `AppSettings.cs:928-945` |
-| `IGameLocator` | `Microsoft.Win32.Registry` | 19 files |
-| `IBrowserHost` | WebView2 | 18 files |
-| `IPrompts` | `SpeakBox` / `ShowDialog` | 177 + 12 |
-| `IDispatcher` | `Control.Invoke` | — |
-| `IModSource` | `NexusService` / `ModrinthService` | see §6.1 |
+| `IModSource` | `NexusService` / `ModrinthService` | Nothing — just the largest. Reconciling an instance, stateful, key-carrying service with a static stateless one. The most worthwhile of the four. |
+| `IPrompts` | `SpeakBox` (177) / `ShowDialog` (12) | The shape follows from draining those screens in Phase 4, and from the inline-prompt system that deliberately avoids modal dialogs. |
+| `IBrowserHost` | WebView2 (18 files) | Decision 3 below — embedding WebKitGTK and opening the system browser need different contracts. |
+| `IGameLocator` | `Microsoft.Win32.Registry` (19 files) | Decision 1 below — resolving into a Proton prefix is a different contract from finding a native install. |
 
 ### 2. Phase 4 — drain `Form1` (the long one)
 
-28,213 lines across 63 partial files, ~232 fields, ~614 methods. Per screen, smallest first:
+~28,100 lines across 63 partial files, ~232 fields, ~614 methods. Per screen, smallest first:
 `SmapiLog` → `Dependencies` → `Profiles` → `Updates` → `Install` → `ModList` → `Settings`.
 Target: `Form1` under 5,000 lines. `ShowSettings()` (1,252 lines) and `SetupAccessibleUI()`
 (1,077) are 2,329 of those between them.

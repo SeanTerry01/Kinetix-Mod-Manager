@@ -20,12 +20,32 @@ internal sealed class ProgressFeedbackChoice
 	public override string ToString() => _display;
 }
 
-/// <summary>Unified audible/visual progress feedback for long downloads and installs.</summary>
-public partial class Form1
+/// <summary>
+/// Unified audible/visual progress feedback for long downloads and installs.
+///
+/// The deciding, throttling and marshalling all live in <see cref="ProgressAnnouncer"/> in the core now. What
+/// is left here is the three things that genuinely belong to a window: the user's chosen mode, the sentence
+/// that opens an operation, and the title bar it is shown in — which is what <see cref="IProgressDisplay"/>
+/// asks for.
+/// </summary>
+public partial class Form1 : IProgressDisplay
 {
+	/// <inheritdoc />
+	ProgressFeedback IProgressDisplay.Mode => _settings.ProgressFeedback;
+
+	/// <inheritdoc />
+	string IProgressDisplay.OpeningPhrase(string name, string phraseKey) => OpeningPhrase(name, phraseKey);
+
+	/// <inheritdoc />
+	void IProgressDisplay.ShowProgress(string name, string phraseKey, int percent) =>
+		SetProgressTitle(name, phraseKey, percent);
+
+	/// <inheritdoc />
+	void IProgressDisplay.ResetProgress() => ResetStatus();
+
 	/// <summary>Creates a progress reporter for a download (<paramref name="installing"/> false) or install (true).</summary>
 	private ProgressAnnouncer NewProgress(string name, bool installing) =>
-		new ProgressAnnouncer(this, name, installing ? "progress.installingName" : "progress.downloadingName");
+		NewProgress(name, installing ? "progress.installingName" : "progress.downloadingName");
 
 	/// <summary>
 	/// A progress announcer that says something other than downloading or installing — backing a mod up, say.
@@ -35,7 +55,7 @@ public partial class Form1
 	/// doing the opposite.
 	/// </summary>
 	private ProgressAnnouncer NewProgress(string name, string phraseKey) =>
-		new ProgressAnnouncer(this, name, phraseKey);
+		new ProgressAnnouncer(this, _announcer, _soundEngine, Dispatcher, name, phraseKey);
 
 	private string? _cachedGameDisplayName;
 	private string? _cachedGameDisplayKey;
@@ -132,126 +152,4 @@ public partial class Form1
 		_                         => "progress.titleDownloading"
 	};
 
-	/// <summary>
-	/// One place that turns a stream of percentage updates into the feedback the user actually hears and sees.
-	/// Implements <see cref="IProgress{T}"/> so it can be handed straight to the download and extract helpers.
-	/// On the first update it speaks the operation name once ("Installing My Big Mod, 0 percent"); after that it
-	/// speaks only bare deciles ("10 percent", "20 percent", …) so it never repeats the name. A rising synthesized
-	/// tone tracks the percentage continuously (throttled so a fast download doesn't machine-gun beeps), and the
-	/// title bar's percentage stays live throughout. Which of these channels are active is decided by
-	/// <see cref="AppSettings.ProgressFeedback"/>, so a user can pick tones, speech, both, or off (e.g. to defer
-	/// to their screen reader's own progress-bar beeps). All five download/install call sites share this so they
-	/// behave identically.
-	/// </summary>
-	internal sealed class ProgressAnnouncer : IProgress<double>
-	{
-		private const long ToneThrottleMs = 45;
-
-		private readonly Form1 _form;
-		private readonly string _name;
-		private readonly string _phraseKey;
-
-		private bool _opened;
-		private bool _done;
-		private int _lastSpokenDecile = -1;
-		private int _lastTonePct = -1;
-		private int _lastTitlePct = -1;
-		private long _lastToneTicks;
-
-		public ProgressAnnouncer(Form1 form, string name, string phraseKey)
-		{
-			_form = form;
-			_name = name;
-			_phraseKey = phraseKey;
-		}
-
-		private ProgressFeedback Mode => _form._settings.ProgressFeedback;
-		private bool TonesOn  => Mode is ProgressFeedback.Tones  or ProgressFeedback.Both;
-		private bool SpeechOn => Mode is ProgressFeedback.Speech or ProgressFeedback.Both;
-
-		/// <summary>Receives a 0–100 percentage (called on a background thread by the download/extract helpers).</summary>
-		public void Report(double value)
-		{
-			int pct = (int)Math.Round(value);
-			if (pct < 0) pct = 0; else if (pct > 100) pct = 100;
-
-			// First update: announce the name once, prime the tone, and show the title.
-			if (!_opened)
-			{
-				_opened = true;
-				_lastSpokenDecile = 0;
-				_lastTonePct = pct;
-				_lastTitlePct = pct;
-				_lastToneTicks = Environment.TickCount64;
-				if (TonesOn) _form._soundEngine.PlayTone(pct);
-				Ui(() =>
-				{
-					if (SpeechOn)
-						_form.Speak(_form.OpeningPhrase(_name, _phraseKey) + ", " + Loc.T("progress.percentSpoken", 0));
-					_form.SetProgressTitle(_name, _phraseKey, pct);
-				});
-				return;
-			}
-
-			// Tones follow the percentage closely, but throttled so a fast download doesn't flood playback.
-			if (TonesOn && pct != _lastTonePct && Environment.TickCount64 - _lastToneTicks >= ToneThrottleMs)
-			{
-				_lastTonePct = pct;
-				_lastToneTicks = Environment.TickCount64;
-				_form._soundEngine.PlayTone(pct);
-			}
-
-			// Speech is deciles only (10, 20, …, 90). 100% is left to the caller's success message / closing tone.
-			int decile = (pct / 10) * 10;
-			bool speakNow = SpeechOn && decile > _lastSpokenDecile && decile < 100;
-			if (speakNow) _lastSpokenDecile = decile;
-
-			// Only touch the UI thread when there is actually something to change — Report can fire thousands of
-			// times for a large download, so marshaling the title on every byte would flood the message queue.
-			bool titleChanged = pct != _lastTitlePct;
-			if (titleChanged) _lastTitlePct = pct;
-			if (!speakNow && !titleChanged) return;
-
-			Ui(() =>
-			{
-				if (speakNow) _form.Speak(Loc.T("progress.percentSpoken", decile));
-				if (titleChanged) _form.SetProgressTitle(_name, _phraseKey, pct);
-			});
-		}
-
-		/// <summary>
-		/// Marks the operation finished, playing the closing 100% tone. The spoken "done" is intentionally left to
-		/// the caller's own success message (e.g. "X installed!") so there is never a redundant "100 percent".
-		/// </summary>
-		public void Complete()
-		{
-			if (_done) return;
-			_done = true;
-			if (TonesOn) _form._soundEngine.PlayTone(100);
-
-			// And put the title back. It was left reading "Downloading Project Fluent... 100%" long after the
-			// download had finished — which is only untidy until something makes the screen reader read the
-			// window out, and then it is a whole stale sentence in the middle of what the user is doing. That is
-			// exactly what landed between a prompt's question and its answer.
-			Ui(() => _form.ResetStatus());
-		}
-
-		/// <summary>Runs a UI action on the form's thread without blocking the background download/extract loop.</summary>
-		private void Ui(Action action)
-		{
-			try
-			{
-				if (_form.IsDisposed) return;
-				if (_form.InvokeRequired) _form.BeginInvoke(action);
-				else action();
-			}
-			catch (Exception ex)
-			{
-				// The form may be closing mid-operation, which is ordinary. Recorded anyway: this swallows every
-				// exception the reporting action itself raises, so without it a bug in progress reporting is
-				// invisible rather than merely harmless.
-				DiagnosticLog.WriteException("Progress", "reporting progress to the window", ex);
-			}
-		}
-	}
 }
