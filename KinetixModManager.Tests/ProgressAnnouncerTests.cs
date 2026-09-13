@@ -150,7 +150,7 @@ public class ProgressAnnouncerTests
 		p.Complete();
 
 		Assert.Equal(1, d.Resets);
-		Assert.Equal(1, s.Tones.FindAll(t => t == 100).Count);
+		Assert.Single(s.Tones.FindAll(t => t == 100));
 	}
 
 	[Fact]

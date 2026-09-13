@@ -166,8 +166,8 @@ public partial class Form1
 	{
 		try
 		{
-			ModFileSystem.CreateBackup(folderPath, modName, backupsPath);
-			ModFileSystem.PruneBackups(modName, backupsPath, _settings.MaxBackupsPerMod);
+			BackupStore.CreateBackup(folderPath, modName, backupsPath);
+			BackupStore.PruneBackups(modName, backupsPath, _settings.MaxBackupsPerMod);
 			RefreshBackupsList();
 		}
 		catch (Exception ex)
@@ -189,10 +189,10 @@ public partial class Form1
 		try
 		{
 			ProgressAnnouncer progress = NewProgress(displayName, "progress.backingUpName");
-			await Task.Run(() => ModFileSystem.CreateBackup(folderPath, modName, backupsPath, progress));
+			await Task.Run(() => BackupStore.CreateBackup(folderPath, modName, backupsPath, progress));
 			progress.Complete();
 
-			ModFileSystem.PruneBackups(modName, backupsPath, _settings.MaxBackupsPerMod);
+			BackupStore.PruneBackups(modName, backupsPath, _settings.MaxBackupsPerMod);
 			RefreshBackupsList();
 		}
 		catch (Exception ex)
@@ -201,7 +201,7 @@ public partial class Form1
 		}
 	}
 
-	/// <summary>Runs <see cref="ModFileSystem.PruneBackups"/> for every mod that has backups on disk.</summary>
+	/// <summary>Runs <see cref="BackupStore.PruneBackups"/> for every mod that has backups on disk.</summary>
 	private void PruneAllBackups()
 	{
 		if (!Directory.Exists(backupsPath))
@@ -222,7 +222,7 @@ public partial class Form1
 		}
 
 		foreach (string modName in modNames)
-			ModFileSystem.PruneBackups(modName, backupsPath, _settings.MaxBackupsPerMod);
+			BackupStore.PruneBackups(modName, backupsPath, _settings.MaxBackupsPerMod);
 		int deleted = before - Directory.GetFiles(backupsPath, "*.zip").Length;
 
 		if (deleted > 0)
@@ -253,7 +253,7 @@ public partial class Form1
 		}
 
 		foreach (string modName in modNames)
-			ModFileSystem.PruneBackups(modName, backupsPath, 1);
+			BackupStore.PruneBackups(modName, backupsPath, 1);
 		int trimmed = before - Directory.GetFiles(backupsPath, "*.zip").Length;
 
 		RefreshBackupsList();

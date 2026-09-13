@@ -686,23 +686,9 @@ public partial class Form1
 
 		listBackups.BeginUpdate();
 		listBackups.Items.Clear();
-		if (Directory.Exists(backupsPath))
-		{
-			string[] files = Directory.GetFiles(backupsPath, "*.zip");
-			foreach (string text in files)
-			{
-				string text2 = Path.GetFileNameWithoutExtension(text);
-				if (text2.Length > 16 && text2[text2.Length - 16] == '_')
-				{
-					text2 = text2.Substring(0, text2.Length - 16);
-				}
-				listBackups.Items.Add(new BackupItem
-				{
-					Name = text2,
-					FullPath = text
-				});
-			}
-		}
+		// Newest first, which is what the store returns: the backup a user wants is nearly always the one
+		// taken moments ago, by the update they are now regretting.
+		foreach (BackupItem item in BackupStore.List(backupsPath)) listBackups.Items.Add(item);
 
 		if (listBackups.Items.Count > 0)
 		{
@@ -963,7 +949,7 @@ public partial class Form1
 			"AudiVentureGames", "KinetixModManager", "backups", _settings.ActiveGame);
 		Directory.CreateDirectory(backupsPath);
 
-		ModFileSystem.CreateBackup(superseded.FolderPath, Path.GetFileName(superseded.FolderPath), backupsPath);
+		BackupStore.CreateBackup(superseded.FolderPath, Path.GetFileName(superseded.FolderPath), backupsPath);
 		Directory.Delete(superseded.FolderPath, true);
 	}
 }

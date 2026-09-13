@@ -188,83 +188,6 @@ public static class ModFileSystem
 	// Backup management
 	// -------------------------------------------------------------------------
 
-	/// <summary>
-	/// Creates a timestamped <c>.zip</c> backup of a mod folder.
-	/// </summary>
-	/// <summary>
-	/// Zips a mod folder into the backups folder. Supply <paramref name="progress"/> (0–100) to be told how far
-	/// along it is — a large mod can take long enough that silence looks like the manager has hung.
-	/// </summary>
-	public static void CreateBackup(string folderPath, string modName, string backupsPath,
-		IProgress<double>? progress = null)
-	{
-		if (!Directory.Exists(folderPath)) return;
-		Directory.CreateDirectory(backupsPath);
-		string dest = Path.Combine(backupsPath, $"{modName}_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
-
-		if (progress == null)
-		{
-			ZipFile.CreateFromDirectory(folderPath, dest);
-			return;
-		}
-
-		// Written entry by entry so progress can be reported, and measured in BYTES rather than files: mods are
-		// routinely one large archive beside a handful of small files, and counting files would race to 90% and
-		// then sit there for the entire wait — the opposite of reassuring.
-		string[] files = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories);
-		long total = 0;
-		foreach (string file in files)
-		{
-			try { total += new FileInfo(file).Length; }
-			catch (Exception ex) { DiagnosticLog.WriteException("Backup", $"measuring {file}", ex); }
-		}
-		if (total <= 0) total = 1;
-
-		string root = Path.GetFullPath(folderPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-		long done = 0;
-
-		using (var zip = ZipFile.Open(dest, ZipArchiveMode.Create))
-		{
-			foreach (string file in files)
-			{
-				string relative = Path.GetFullPath(file).Substring(root.Length);
-				zip.CreateEntryFromFile(file, relative);
-				try { done += new FileInfo(file).Length; }
-				catch (Exception ex) { DiagnosticLog.WriteException("Backup", $"measuring {file}", ex); }
-				progress.Report(Math.Min(100.0, done * 100.0 / total));
-			}
-
-			// ZipFile.CreateFromDirectory records empty folders; keep doing so, or restoring a backup would
-			// quietly drop a folder a mod expects to exist.
-			foreach (string dir in Directory.GetDirectories(folderPath, "*", SearchOption.AllDirectories))
-			{
-				if (Directory.EnumerateFileSystemEntries(dir).Any()) continue;
-				string relative = Path.GetFullPath(dir).Substring(root.Length).Replace(Path.DirectorySeparatorChar, '/');
-				zip.CreateEntry(relative + "/");
-			}
-		}
-
-		progress.Report(100.0);
-	}
-
-	/// <summary>
-	/// Deletes oldest backups.
-	/// </summary>
-	public static void PruneBackups(string modName, string backupsPath, int maxCount)
-	{
-		if (!Directory.Exists(backupsPath)) return;
-		var files = Directory.GetFiles(backupsPath, modName + "_*.zip")
-			.Select(p => new FileInfo(p))
-			.OrderByDescending(f => f.CreationTime)
-			.ToList();
-
-		for (int i = maxCount; i < files.Count; i++)
-		{
-			try { files[i].Delete(); }
-			catch (Exception ex) { DiagnosticLog.WriteException("Backup", $"deleting the old backup {files[i].FullName}", ex); }
-		}
-	}
-
 	// -------------------------------------------------------------------------
 	// File deployment (Skyrim / Fallout 4)
 	// -------------------------------------------------------------------------
@@ -1272,8 +1195,8 @@ public static class ModFileSystem
 								throw new OperationCanceledException("User declined to overwrite an existing mod.");
 							overwriteConfirmed = true;
 						}
-						CreateBackup(existing.FolderPath, mName, backupsPath);
-						PruneBackups(mName, backupsPath, maxBackups);
+						BackupStore.CreateBackup(existing.FolderPath, mName, backupsPath);
+						BackupStore.PruneBackups(mName, backupsPath, maxBackups);
 						ForceDeleteDirectory(existing.FolderPath);
 					}
 				}
@@ -1427,8 +1350,8 @@ public static class ModFileSystem
 			if (!string.IsNullOrEmpty(currentGamePath))
 				SyncPluginsFile(existing.FolderPath, activeGame, currentGamePath, false, logError);
 
-			CreateBackup(existing.FolderPath, targetFolderName, backupsPath);
-			PruneBackups(targetFolderName, backupsPath, maxBackups);
+			BackupStore.CreateBackup(existing.FolderPath, targetFolderName, backupsPath);
+			BackupStore.PruneBackups(targetFolderName, backupsPath, maxBackups);
 			ForceDeleteDirectory(existing.FolderPath);
 		}
 
@@ -1693,8 +1616,8 @@ public static class ModFileSystem
 			GameMod? existing = FindExistingInstall(installedMods, nexusId, folderName);
 			if (existing != null && Directory.Exists(existing.FolderPath))
 			{
-				CreateBackup(existing.FolderPath, folderName, backupsPath);
-				PruneBackups(folderName, backupsPath, maxBackups);
+				BackupStore.CreateBackup(existing.FolderPath, folderName, backupsPath);
+				BackupStore.PruneBackups(folderName, backupsPath, maxBackups);
 				ForceDeleteDirectory(existing.FolderPath);
 			}
 
@@ -2220,8 +2143,8 @@ public static class ModFileSystem
 		GameMod? existing = FindExistingInstall(installedMods, nexusId, targetFolderName);
 		if (existing != null && Directory.Exists(existing.FolderPath))
 		{
-			CreateBackup(existing.FolderPath, targetFolderName, backupsPath);
-			PruneBackups(targetFolderName, backupsPath, maxBackups);
+			BackupStore.CreateBackup(existing.FolderPath, targetFolderName, backupsPath);
+			BackupStore.PruneBackups(targetFolderName, backupsPath, maxBackups);
 			ForceDeleteDirectory(existing.FolderPath);
 		}
 		if (Directory.Exists(destModFolder))
