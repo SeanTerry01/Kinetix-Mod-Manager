@@ -53,6 +53,10 @@ public sealed class MainWindow
 	private readonly List<GameProfile> _gameList = new();
 	private WebKitView? _web;
 
+	/// <summary>Named rather than written as 3, because the last time a tab was inserted every number
+	/// underneath it shifted and F6 quietly started addressing the wrong controls.</summary>
+	private const int WikiTabIndex = 3;
+
 	private GameProfile _game = GameProfiles.Require(GameProfiles.Minecraft);
 	private string _modsFolder = "";
 
@@ -259,6 +263,15 @@ public sealed class MainWindow
 		box.Append(bar);
 
 		_results.SetVexpand(true);
+		// Enter on a result opens that mod's page in the manager's own browser and puts focus in it. This is
+		// the flow a search is actually for - find something, then read about it - and it was missing, which
+		// is why searching appeared to lead nowhere: the web view existed but nothing reached it.
+		_results.OnRowActivated += (_, args) =>
+		{
+			int i = args.Row?.GetIndex() ?? -1;
+			if (i >= 0 && i < _found.Count) OpenModPage(_found[i]);
+		};
+
 		var scroller = Gtk.ScrolledWindow.New();
 		scroller.SetChild(_results);
 		scroller.SetVexpand(true);
@@ -293,6 +306,10 @@ public sealed class MainWindow
 		{
 			_web = new WebKitView();
 			_web.Widget.SetVexpand(true);
+			// Explicit, because F6 hands focus here directly and a widget that cannot take it silently
+			// swallows the key — which reads, from the outside, exactly like the web view not working.
+			_web.Widget.SetCanFocus(true);
+			_web.Widget.SetFocusable(true);
 			box.Append(_web.Widget);
 		}
 		catch (Exception ex)
@@ -331,6 +348,24 @@ public sealed class MainWindow
 	/// The page is their own session with Nexus. It is shown here, and nothing reads what they type into
 	/// it — the whole value of this flow is that the manager receives a revocable key and never a password.
 	/// </summary>
+	/// <summary>Shows a mod's own page in the in-app browser, and moves focus there to read it.</summary>
+	private void OpenModPage(GameMod mod)
+	{
+		if (_web is null) { Say("The in-app browser is not available.", interrupt: true); return; }
+
+		string id = mod.ModrinthId ?? "";
+		if (id.Length == 0) { Say($"There is no page for {mod.Name}.", interrupt: true); return; }
+
+		_web.Load($"https://modrinth.com/mod/{id}");
+		SetStatus($"Reading about {mod.Name}");
+
+		// Switching tab and moving focus together, because doing only the first leaves the user on a page
+		// they cannot get into, which is precisely the gap this came from.
+		_tabs.SetCurrentPage(WikiTabIndex);
+		_web.Widget.GrabFocus();
+		Say($"Opening the page for {mod.Name}.");
+	}
+
 	private async Task SignInToNexusAsync()
 	{
 		if (_web is null) { Say("The in-app browser is not available, so signing in is not possible.", interrupt: true); return; }
@@ -492,22 +527,45 @@ public sealed class MainWindow
 	}
 
 	/// <summary>
-	/// Moves focus on, and says nothing about it.
+	/// The things F6 moves between, for the tab that is showing: the tab strip first, then that tab's own
+	/// controls in the order someone works through them.
 	///
-	/// The first version announced where focus had gone, on the reasoning that the user should not have to
-	/// guess whether the key did anything. With a real screen reader attached that reasoning is wrong:
-	/// Orca names the widget that receives focus, so the announcement arrives as a duplicate — and an
-	/// assertive one, cutting off the reader's own description to repeat it.
+	/// Written as a list per tab rather than as a chain of ifs, because the chain is what broke. It had been
+	/// "page 0 or everything else" from when there were two tabs, and adding the Games tab silently shifted
+	/// every page number underneath it — so F6 on the Wiki tab was toggling the search box and results list
+	/// belonging to a different tab, and the web view could not be reached at all. A list cannot drift like
+	/// that: a tab either appears here or it does not.
+	/// </summary>
+	private List<Gtk.Widget> FocusStops() => _tabs.GetCurrentPage() switch
+	{
+		0 => new List<Gtk.Widget> { _tabs, _games },
+		1 => new List<Gtk.Widget> { _tabs, _installed },
+		2 => new List<Gtk.Widget> { _tabs, _search, _results },
+		3 => _web is null
+			 ? new List<Gtk.Widget> { _tabs }
+			 : new List<Gtk.Widget> { _tabs, _web.Widget },
+		_ => new List<Gtk.Widget> { _tabs }
+	};
+
+	/// <summary>
+	/// Moves focus to the next stop, and says nothing about it.
+	///
+	/// The silence is deliberate: Orca names the widget that receives focus, so announcing it here arrives
+	/// as a duplicate — and an assertive one, cutting off the reader's own description to repeat it.
 	/// </summary>
 	private void CycleFocus()
 	{
-		if (_tabs.GetCurrentPage() == 0)
-		{
-			if (_installed.HasFocus) _tabs.GrabFocus(); else _installed.GrabFocus();
-		}
-		else
-		{
-			if (_search.HasFocus) _results.GrabFocus(); else _search.GrabFocus();
-		}
+		List<Gtk.Widget> stops = FocusStops();
+		if (stops.Count == 0) return;
+
+		int current = stops.FindIndex(w => w.HasFocus);
+
+		// Focus somewhere this tab does not list — a button in the toolbar, or nothing yet. Going to the
+		// tab's main control is more useful than going to the strip the user has just come from.
+		Gtk.Widget next = current < 0
+			? stops[Math.Min(1, stops.Count - 1)]
+			: stops[(current + 1) % stops.Count];
+
+		next.GrabFocus();
 	}
 }
