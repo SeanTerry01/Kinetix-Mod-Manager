@@ -5,6 +5,10 @@
 *   The **duplicate UniqueID** line in Check My Setup was written to say "UniqueID *X* is used by *N* mods: *list*", but was never given the count. String formatting failed, the failure was caught, and the sentence came out as the raw template — so the screen reader read the braces aloud: "UniqueID open brace zero close brace is used by open brace one close brace mods". It now says the number.
 *   The **manual download** dialog, the one that opens when your Nexus account is not Premium, had the title "Download {0}" for the same reason. It now names the mod.
 
+## 🐛 A profile with a slash or a dot in its name
+
+*   Profiles were saved to a file named after whatever you typed, with nothing checked. A profile called **"Mage/Thief"** failed to save at all; one ending in a dot or a space saved under a name Windows then refused to open. Worst of the three, saving and deleting disagreed about the name — so a profile could appear in the list and then refuse to be deleted. All three are fixed, and the same rule is now used everywhere a name becomes a file.
+
 ## 🔧 Under the bonnet: the screen reader is now one replaceable part
 
 *   Nothing you can see changed, and nothing you do works differently.
@@ -27,7 +31,8 @@
 
 ## ✅ Tests
 
-*   **1,024 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
+*   **1,117 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
+*   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 
 ---

@@ -1338,3 +1338,57 @@ which cannot drift the same way.
 dotnet build KinetixModManager.slnx -p:EnableWindowsTargeting=true  →  0 warnings, 0 errors
 dotnet test  KinetixModManager.Tests                                →  1031 passed, 0 failed
 ```
+
+
+---
+
+## 22. Phase 4 — six screens, and where it stops being worth it, 2026-09-13
+
+Six screens drained, in the order §8 set out. The pattern held throughout: what **locates, decides or
+reads** goes to the core; what draws and wires stays; and the call sites around each screen are left
+reading as they did, behind one-line wrappers.
+
+| Screen | What moved | Tests |
+|---|---|---:|
+| SMAPI Log | `LogAnalyzer`, `LogEntry`, `GameLogFiles`, per-game log names | 9 |
+| Dependencies | `BethesdaPlugins`, `ModDependencies` | 10 |
+| Profiles | `ModProfile`, `ProfileStore` | 14 |
+| Updates | `ModVersions` — the update decision itself | 23 |
+| Install | `ModInstaller` | 9 |
+| ModList | `BackupStore`, `BackupItem` | 10 |
+
+**1,009 → 1,117 tests.** Every one of the 108 covers a rule that had no way of being checked while it
+lived inside a window.
+
+### The numbers, without dressing
+
+| | Start | Now |
+|---|---:|---:|
+| `ModFileSystem` | 3,825 | **2917** |
+| `Form1` | 28,719 | 27909 |
+| `Kinetix.Core` | 0 | **15860** across 90 files |
+
+`Form1` moved about 3%, and that is the honest picture rather than a disappointing one. What comes out of
+these screens is decision logic — dense, small, and the part a second front end cannot do without. What
+stays is widget construction, which genuinely belongs to a WinForms head. `ModFileSystem` is where the
+reduction actually happened, because it was full of logic that had no business being there.
+
+### Two defects found by extracting
+
+- **Profile names were never sanitised.** Save and delete each built `name + ".json"` from raw user input,
+  and *differently* — so a profile called `Mage/Thief` failed to save, one ending in a dot saved under a
+  name Windows refused to open, and an awkward name could be listed and then refuse to be deleted. One rule
+  now, with a test that saves and deletes an awkward name to prove the two paths agree.
+- **`ScanMods` deleted mod folders** (§19). Still the most significant thing found in this whole pass.
+
+### Where Phase 4 should stop
+
+**Here, for now.** `ShowSettings()` (1,252 lines) and `SetupAccessibleUI()` (1,077) are the two biggest
+methods left and together are 2,329 lines — but they are almost entirely widget construction and event
+wiring. Extracting them would move lines between files without giving the core anything it can use, and
+§8's target of "`Form1` under 5,000 lines" was a number chosen before anyone had looked at what those lines
+actually are. It is not a good target and should not be chased.
+
+What is worth doing next is not more of this. It is `ExtractModAsync` — the archive pipeline, and the
+largest remaining thing in `ModFileSystem` — because it is what stops the GTK head installing mods for any
+game but Minecraft. That is a capability, not a tidy-up.

@@ -5,8 +5,8 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-09-13. Orca confirmed reading the in-app browser — no unknowns left, only work.
-**State:** 1,042 tests passing on Windows and Linux; all five projects build clean.
+**Last updated:** 2026-09-13, after six Phase 4 screens. No unknowns left, only work.
+**State:** 1,117 tests passing on Windows and Linux; all five projects build clean, zero warnings.
 
 ---
 
@@ -25,6 +25,9 @@ Anything resolved gets deleted from here rather than ticked, so the file stays s
 - ~~**Proton vs native** — decided: native, Minecraft + Stardew. See ARCHITECTURE_REVIEW §16~~
 - ~~**GTK spike** — `Kinetix.Platform.Linux` (speech-dispatcher, verified speaking) and `Kinetix.Gtk`
   (installed mods, live Modrinth search). See §17~~
+- ~~**Orca reads the in-app browser** — confirmed by ear; the last technical unknown~~
+- ~~**Phase 4, six screens** — SMAPI Log, Dependencies, Profiles, Updates, Install, ModList. See §22~~
+- ~~**The GTK head installs Minecraft mods** — `ModInstaller`, Install button and Ctrl+I~~
 
 ---
 
@@ -47,7 +50,18 @@ made. Writing the interface first would be guessing.
 | `IBrowserHost` | WebView2 (18 files) | Decision 3 below — embedding WebKitGTK and opening the system browser need different contracts. |
 | `IGameLocator` | `Microsoft.Win32.Registry` (19 files) | Decision 1 below — resolving into a Proton prefix is a different contract from finding a native install. |
 
-### 2. Phase 4 — drain `Form1` (the long one)
+### 2. Phase 4 — drain `Form1`  ◐ six screens done, and paused on purpose
+
+Done: SMAPI Log, Dependencies, Profiles, Updates, Install, ModList (§22).
+
+**Paused deliberately, not abandoned.** `ShowSettings()` (1,252 lines) and `SetupAccessibleUI()` (1,077)
+are what remain, and they are almost entirely widget construction — extracting them would move lines
+between files without giving the core anything it can use. The "`Form1` under 5,000 lines" target was set
+before anyone looked at what those lines are; it is not a good target.
+
+- [ ] **`ExtractModAsync` and the archive pipeline** — the largest thing left in `ModFileSystem`, and the
+      reason the GTK head can install Minecraft mods and no others. This is the one worth doing, and it is
+      a capability rather than a tidy-up.
 
 ~28,100 lines across 63 partial files, ~232 fields, ~614 methods. Per screen, smallest first:
 `SmapiLog` → `Dependencies` → `Profiles` → `Updates` → `Install` → `ModList` → `Settings`.
