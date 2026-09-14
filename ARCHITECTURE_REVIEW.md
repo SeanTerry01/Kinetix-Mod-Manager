@@ -1485,3 +1485,80 @@ self-contained, entirely portable, and the GTK head's next stated goal. Two real
 
 Neither is reachable from the archive layer, and neither should be fixed without the tests that come from
 moving the code.
+
+## 24. Per-game sounds, and what "connect" means in Minecraft, 2026-09-14
+
+Sean asked for two things that sound like one. The first turned out to be mostly built already; the second is
+new, and is the more interesting of the two.
+
+### The theme already followed the game
+
+`GameProfiles` has carried a `SoundTheme` per game since Minecraft support landed, `AppSettings.ThemeForGame`
+maps a game to it, and `AllowManualTheme` is the opt-out for a user who would rather choose. Minecraft's
+profile already said `SoundTheme = "Minecraft"`. The only thing missing was the folder.
+
+So the work was a scaffold — `sounds/Minecraft/` with a folder per event and a note in each saying what
+belongs there, plus `sounds/README.txt` describing the convention — and one defect that the scaffold itself
+would have triggered.
+
+**A folder that existed and was empty made the manager silent.** `SoundEngine` fell back to the Default theme
+when the theme's folder was *missing*, then looked for `.ogg` files and returned quietly if there were none.
+That is exactly the state of a theme somebody is halfway through authoring: every folder there, most of them
+empty. The manager would have stopped making the sound it used to make, with no error anywhere, in the one
+channel a blind user cannot check for themselves.
+
+The rule is now `SoundThemes.Resolve` in the core, judged on the **file** rather than the folder, and the
+lookup, the theme-for-game map and the installed-theme list all live there — which is also the groundwork for
+`ISoundEngine` on Linux, since choosing the file is the portable half of playing a sound. Three separate
+`Directory.GetDirectories(themesPath)` calls in Settings and the Sound Demo became one `SoundThemes.Installed`,
+which additionally gives the theme list a stable order with Default first, rather than whatever order the
+filesystem returned.
+
+### Minecraft's connect cue was about nothing
+
+For every other game, connect and disconnect mean Nexus: signed in to where the mods come from, or not.
+**Minecraft's mods come from Modrinth, which has no accounts at all**, so for Minecraft those cues were
+attached to nothing — and worse, one of them fired at a player who could do nothing about it (below).
+
+The connection a Minecraft player has is to a server, and the client states both ends of it in
+`logs/latest.log`. `MinecraftServerLog` reads a line, `MinecraftServerSession` keeps the state, and
+`MinecraftLogTail` follows the file while the game runs. Four decisions are worth recording:
+
+- **Singleplayer stays silent.** A local world logs `Starting integrated minecraft server` and never
+  `Connecting to`, so a player who only plays alone hears neither cue rather than one that means nothing.
+- **Chat is excluded outright.** The client writes chat to the same log, so `[CHAT] Steve was disconnected` is
+  a sentence in somebody else's game. Matching it would sound the disconnect cue at a player who is still
+  online — a false positive that would have been very hard to trace back to its cause.
+- **The tail starts at the end of the previous run's log.** That log is still on disk when the game is
+  started and very likely ends with the player joining a server, so reading from the beginning would announce
+  a connection to a server they left yesterday. The game truncates the file as it opens it, which the tail
+  notices (the length drops below where it is) and then reads the new run from its start.
+- **Process exit is the backstop.** Quitting straight out of a server closes the process, and whether the
+  client got a line out first is not something to depend on. `GameEnded()` reports the disconnection if the
+  session was still open, and reports it once.
+
+Leaving a server for the menu is the one transition the client does not state plainly in every version. The
+patterns for it are a short, named list in one place, and everything else — dropped, kicked, timed out, quit —
+is covered. Extending it is a one-line change with a test beside it.
+
+It plays a sound and says nothing. The game is in front of the player with its own accessibility mod talking;
+the manager taking the floor over the top of that would be worse than silence, which is precisely what a
+short cue is for.
+
+### Two defects found by asking what the cue meant
+
+- **Minecraft demanded a Nexus API key it never uses.** `RefreshModList` gated on an empty `ApiKey` before it
+  checked `UsesNexus`, so a Minecraft player with no Nexus account — which is every Minecraft player who has
+  never modded another game — opened the manager to the disconnect cue, Settings forced open, and an empty mod
+  list. Nothing they could have typed would have satisfied it.
+- **Four places played `connect` for things that connect to nothing**: a load-order sort that changed
+  something, the AI provider test passing, and an app or SMAPI update being found. All four are now
+  `load_complete`, which is what they are — and it makes the connect cue worth listening for again.
+
+### Tests
+
+**1,143 → 1,175.** Twelve on theme resolution — including the empty-folder fallback, the README-only folder,
+and a stable choice between several files — and a guard that fails the build if a game asks for a theme that
+is not there or a theme is missing an event folder. Twenty on the Minecraft cue: singleplayer, chat, server
+hopping, rejoining after a drop, quitting from inside a server, and the tail's own awkward cases — a
+half-written line, a rolled-over log, CRLF, and a log that does not exist yet.

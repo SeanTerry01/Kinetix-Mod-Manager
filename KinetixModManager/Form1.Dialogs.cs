@@ -51,8 +51,7 @@ public partial class Form1
 			DropDownStyle = ComboBoxStyle.DropDownList,
 			Font = new Font("Segoe UI", 12f)
 		};
-		cmbTheme.Items.AddRange(Directory.GetDirectories(themesPath).Select(Path.GetFileName).Cast<object>()
-			.ToArray());
+		cmbTheme.Items.AddRange(SoundThemes.Installed(themesPath).Cast<object>().ToArray());
 		cmbTheme.SelectedItem = previewTheme;
 		cmbTheme.SelectedIndexChanged += delegate
 		{
@@ -287,8 +286,7 @@ public partial class Form1
 		void RefreshList()
 		{
 			lb.Items.Clear();
-			lb.Items.AddRange(Directory.GetDirectories(themesPath).Select(Path.GetFileName).Cast<object>()
-				.ToArray());
+			lb.Items.AddRange(SoundThemes.Installed(themesPath).Cast<object>().ToArray());
 			lb.SelectedItem = tempActiveTheme;
 		}
 	}

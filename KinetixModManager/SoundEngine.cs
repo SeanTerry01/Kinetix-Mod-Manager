@@ -21,8 +21,8 @@ public class SoundEngine : ISoundEngine
 	public static readonly IReadOnlyDictionary<string, string> SoundDescriptions =
 		new Dictionary<string, string>
 		{
-			{ "connect",            "Played when successfully connected to Nexus Mods." },
-			{ "disconnect",         "Played when you are disconnected, need to enter an API key, or when the program closes." },
+			{ "connect",            "Played when successfully connected to Nexus Mods. For Minecraft, whose mods come from Modrinth and need no account, it plays when you join a multiplayer server instead." },
+			{ "disconnect",         "Played when you are disconnected, need to enter an API key, when the session is closed, or when the program closes. For Minecraft, when you leave a server." },
 			{ "enable",             "Played when one or more mods are enabled." },
 			{ "disable",            "Played when one or more mods are disabled or deleted." },
 			{ "error",              "Played when an error occurs, such as a failed download." },
@@ -45,9 +45,9 @@ public class SoundEngine : ISoundEngine
 	}
 
 	/// <summary>
-	/// Plays a named sound event on a background thread.
-	/// Looks up the first <c>.ogg</c> file in <c>&lt;themesPath&gt;/&lt;theme&gt;/&lt;name&gt;/</c>.
-	/// Falls back to the Default theme folder if the active theme does not contain the sound.
+	/// Plays a named sound event on a background thread. Which file that is — the active theme's, or the
+	/// Default theme's where this theme has not authored one — is <see cref="SoundThemes.Resolve"/>'s
+	/// decision, so the Linux head answers it the same way.
 	/// </summary>
 	/// <param name="name">Name of the sound sub-folder (e.g. <c>"connect"</c>).</param>
 	/// <param name="themeOverride">
@@ -91,18 +91,11 @@ public class SoundEngine : ISoundEngine
 			try
 			{
 				string theme = themeOverride ?? _settings.CurrentTheme;
-				string soundDir = Path.Combine(_themesPath, theme, name);
-				if (!Directory.Exists(soundDir))
-					soundDir = Path.Combine(_themesPath, "Default", name);
-
-				if (!Directory.Exists(soundDir))
+				string? file = SoundThemes.Resolve(_themesPath, theme, name);
+				if (file == null)
 					return;
 
-				string[] files = Directory.GetFiles(soundDir, "*.ogg");
-				if (files.Length == 0)
-					return;
-
-				using VorbisWaveReader reader = new VorbisWaveReader(files[0]);
+				using VorbisWaveReader reader = new VorbisWaveReader(file);
 				using WaveOutEvent output = new WaveOutEvent();
 				output.Volume = (float)_settings.SoundVolume / 100f;
 				output.Init(reader);

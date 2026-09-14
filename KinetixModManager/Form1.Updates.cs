@@ -461,7 +461,8 @@ public partial class Form1
 	/// </summary>
 	private async void NotifySmapiUpdateAvailable(string current, string latest, string url)
 	{
-		_soundEngine.Play("connect");
+		// A check that found something, not a connection.
+		_soundEngine.Play("load_complete");
 		Speak(Loc.T("updates.smapiAvailableSpeak", current, latest));
 		if (SpeakBox(
 				Loc.T("updates.smapiBox", current, latest),
@@ -1003,7 +1004,8 @@ public partial class Form1
 			string target = tag.StartsWith("v") ? tag.Substring(1) : tag;
 			if (IsNewerVersion(NexusService.AppVersion, target))
 			{
-				_soundEngine.Play("connect");
+				// A check that found something, not a connection.
+				_soundEngine.Play("load_complete");
 				Speak(Loc.T("updates.newVersion", tag));
 				if (!string.IsNullOrEmpty(release.DownloadUrl))
 				{

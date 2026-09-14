@@ -378,12 +378,10 @@ public class AppSettings : IModScanContext
 
 	/// <summary>
 	/// Maps an active-game identifier to its sound-theme folder name (under <c>sounds/</c>).
-	/// Games without a dedicated theme, or no game loaded ("None"), fall back to "Default".
-	/// The SoundEngine also falls back to the Default theme per-sound, so a game whose theme
-	/// folder does not exist yet (e.g. Skyrim/Fallout 4 before their themes are authored) will
-	/// simply play the Default sounds.
+	/// Kept here because half the app already calls it by this name; the rule itself is
+	/// <see cref="SoundThemes.ForGame"/>, in the core, where the Linux head can reach it.
 	/// </summary>
-	public static string ThemeForGame(string game) => GameProfiles.Find(game)?.SoundTheme ?? "Default";
+	public static string ThemeForGame(string game) => SoundThemes.ForGame(game);
 
 	/// <summary>
 	/// Which Minecraft accessibility mod the suite installs and keeps up to date — one of the ids in

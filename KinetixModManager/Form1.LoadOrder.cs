@@ -804,7 +804,9 @@ public partial class Form1
 			_suppressPrioritySpeak = false;
 		}
 
-		_soundEngine.Play(changed ? "connect" : "load_complete");
+		// Sorting a load order finished; it did not connect to anything. The connect cue is reserved for a
+		// real connection now — Nexus for most games, a Minecraft server for Minecraft.
+		_soundEngine.Play("load_complete");
 		string scope = ml != null ? Loc.T("loadorder.scopeLoot") : Loc.T("loadorder.scopeDeps");
 		Speak(changed ? Loc.T("loadorder.sorted", sorted.Count, scope) : Loc.T("loadorder.sortNoChange", scope));
 	}

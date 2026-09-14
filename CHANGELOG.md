@@ -9,6 +9,22 @@
 
 *   Profiles were saved to a file named after whatever you typed, with nothing checked. A profile called **"Mage/Thief"** failed to save at all; one ending in a dot or a space saved under a name Windows then refused to open. Worst of the three, saving and deleting disagreed about the name — so a profile could appear in the list and then refuse to be deleted. All three are fixed, and the same rule is now used everywhere a name becomes a file.
 
+## ✨ Minecraft has its own sounds, and its connect cue means joining a server
+
+*   **The sound theme has always followed the game you load** — Skyrim sounds like Skyrim, Stardew sounds like Stardew, so you know which session you are in before anything is read out. Minecraft was the one supported game with no theme of its own. Its folder is now there: drop `.ogg` files into `sounds\Minecraft\connect\`, `\error\` and the rest and they are picked up, with **no setting to change and nothing to register**. Each folder has a note in it saying what belongs there, and `sounds\README.txt` explains the whole convention for anyone making a theme.
+*   **A sound you have not recorded yet plays the Default theme's**, one sound at a time. That already worked when a folder was missing — but a folder that existed and was *empty* made the manager go silent for that event instead, which is the normal state of a theme somebody is halfway through making. Fixed, and now tested.
+*   **The connect and disconnect sounds now mean something real in Minecraft.** For every other game they say the manager has signed in to Nexus Mods. Minecraft's mods come from Modrinth, which has no accounts, so those cues had nothing to say. They now follow the connection a Minecraft player actually has: **connect when you join a multiplayer server or a Realm, disconnect when you leave it** — including being dropped, kicked or timed out, and quitting the game while still on a server. Hopping straight from one server to another plays both, so you can hear the first one end.
+*   Your own worlds make no sound either way. A singleplayer world is not a connection to anything.
+*   It is a **sound and nothing else** — no spoken announcement. The game is in front of you with its own accessibility mod talking, and the manager speaking over it would be worse than saying nothing.
+
+## 🐛 Minecraft asked for a Nexus key it never uses
+
+*   Opening the manager with Minecraft loaded and no Nexus API key played the **disconnect** sound, forced the Settings window open and left the mod list empty. Nothing you could have typed would have fixed it, because Minecraft's mods come from Modrinth and the key is never used for them. Only games that actually get their mods from Nexus ask for one now.
+
+## 🔧 The connect sound is for connections
+
+*   Four places played the **connect** sound for things that connect to nothing: a load-order sort that changed something, the AI provider test passing, and an app or SMAPI update being found. All four now play **load complete**, which is what they are. It also means the connect cue is worth listening for again.
+
 ## 🔒 A mod archive can no longer point at your own files
 
 *   Mod archives were checked to make sure nothing in them escaped the folder they were unpacked into — but only by looking at the names inside. A **link** (a shortcut the filesystem follows) named something ordinary like `textures`, pointing at your documents, passed that check, and what happens next in an install is copying that folder into the game. Links are now followed and refused if they lead anywhere outside.
@@ -45,10 +61,11 @@
 
 ## ✅ Tests
 
-*   **1,143 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
+*   **1,175 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
 *   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 *   Twenty-six of them cover unpacking a downloaded mod, including one that extracts a **real .7z** rather than a stand-in — the only way to know that reading one without `7za.exe` actually works.
+*   A new guard fails the build if a game asks for a sound theme that is not there, or if a theme is missing a folder — the kind of gap that plays the Default sounds and is never noticed.
 
 ---
 

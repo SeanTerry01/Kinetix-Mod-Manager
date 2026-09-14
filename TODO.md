@@ -5,8 +5,8 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-09-14, after the archive pipeline moved to the core. No unknowns left, only work.
-**State:** 1,143 tests passing on Windows and Linux; all five projects build clean, zero warnings.
+**Last updated:** 2026-09-14, after per-game sounds and the Minecraft server cue. No unknowns left, only work.
+**State:** 1,175 tests passing on Windows and Linux; all five projects build clean, zero warnings.
 
 ---
 
@@ -30,6 +30,8 @@ Anything resolved gets deleted from here rather than ticked, so the file stays s
 - ~~**The GTK head installs Minecraft mods** — `ModInstaller`, Install button and Ctrl+I~~
 - ~~**The archive pipeline** — `ModArchive` in the core: signature routing, zip/7z/rar in managed code,
   the link-aware escape guard, nested archives, staging. `7za.exe` gone. See §23~~
+- ~~**Per-game sounds, and Minecraft's connect cue** — `SoundThemes` in the core, the `sounds/Minecraft`
+  scaffold, and connect/disconnect wired to joining and leaving a server. See §24~~
 
 ---
 
@@ -214,8 +216,9 @@ It cannot work yet, for one reason that is not a code problem:
       to it yet. Check F5, a toggle and a completed search.
 - [ ] **A reader started *after* the app is not noticed.** `ScreenReaderPresence` asks once at startup.
       A D-Bus signal subscription would fix it; the fallback speaks in the meantime.
-- [ ] **`ISoundEngine` has no Linux implementation.** The `.ogg` theme packs need GStreamer,
-      libsoundio or similar. The spike is silent apart from speech.
+- [ ] **`ISoundEngine` has no Linux implementation.** The `.ogg` theme packs need GStreamer, libsoundio or
+      similar. Choosing *which* file to play is done and portable (`SoundThemes`, §24); what is left is the
+      playing, plus copying `sounds/**` to the GTK head's output the way `lang/**` already is.
 - [ ] **`ISecretStore` has no Linux implementation.** libsecret, for the Nexus key — not needed for a
       Minecraft-only v1, needed for Stardew.
 - [ ] **The Minecraft version for search is hard-coded** to 1.21.1 in the spike.

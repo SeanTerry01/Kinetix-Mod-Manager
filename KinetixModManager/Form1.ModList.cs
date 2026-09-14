@@ -57,7 +57,12 @@ public partial class Form1
 	private async Task RefreshModList(bool checkUpdates)
 	{
 		if (_settings.ActiveGame == "None") return;
-		if (string.IsNullOrEmpty(_settings.ApiKey))
+
+		// Only a game whose mods come from Nexus needs a Nexus key. Without this check a Minecraft player —
+		// whose mods come from Modrinth, which has no accounts — opened the manager to the disconnect cue,
+		// Settings forced open, and an empty mod list, with nothing on screen explaining what was wanted.
+		// Nothing they could have done would have satisfied it, either: the key is not used for their game.
+		if (_nexusService.UsesNexus && string.IsNullOrEmpty(_settings.ApiKey))
 		{
 			if (!_isSettingsOpen)
 			{

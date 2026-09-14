@@ -544,8 +544,7 @@ public partial class Form1
 			DropDownStyle = ComboBoxStyle.DropDownList,
 			Width = 150
 		};
-		cTheme.Items.AddRange(Directory.GetDirectories(themesPath).Select(Path.GetFileName).Cast<object>()
-			.ToArray());
+		cTheme.Items.AddRange(SoundThemes.Installed(themesPath).Cast<object>().ToArray());
 		cTheme.SelectedItem = _settings.CurrentTheme;
 		cTheme.SelectedIndexChanged += delegate
 		{
@@ -1041,7 +1040,8 @@ public partial class Form1
 			{
 				// 256 tokens of headroom so a "thinking" model still has room to emit the visible reply.
 				await _aiService.AskAsync(prov.Id, model, key, "You are a connection test.", "Reply with the single word OK.", 256, testBaseUrl);
-				_soundEngine.Play("connect");
+				// A test that passed is an operation that finished, not a connection the app now holds.
+				_soundEngine.Play("load_complete");
 				Speak(Loc.T("settings.aiTestOk"));
 			}
 			catch (Exception ex)

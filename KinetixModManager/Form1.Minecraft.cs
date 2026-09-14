@@ -551,8 +551,12 @@ public partial class Form1
 			};
 			foreach (string argument in plan.Arguments) start.ArgumentList.Add(argument);
 
+			// Built before the game starts, deliberately: it notes how long the previous run's log is so that
+			// the run about to begin is read from its own beginning. See MinecraftLogTail.
+			var log = new MinecraftLogTail(MinecraftLayout.LatestLogPathFor(root));
+
 			System.Diagnostics.Process? started = System.Diagnostics.Process.Start(start);
-			if (started != null) Fire(TrackMinecraftSessionAsync(started), "TrackMinecraftSessionAsync");
+			if (started != null) Fire(TrackMinecraftSessionAsync(started, log), "TrackMinecraftSessionAsync");
 		}
 		catch (Exception ex)
 		{
@@ -572,8 +576,15 @@ public partial class Form1
 	/// profile has no executable name at all. What the manager starts here IS the game, from first frame to
 	/// last, so waiting on the handle is both sufficient and exact.
 	/// </summary>
-	private async Task TrackMinecraftSessionAsync(System.Diagnostics.Process game)
+	private async Task TrackMinecraftSessionAsync(System.Diagnostics.Process game, MinecraftLogTail log)
 	{
+		// The connect and disconnect cues, for the one game where they are not about Nexus at all. See
+		// MinecraftServerLog: Minecraft's mods come from Modrinth, which needs no account, so the connection
+		// worth hearing about is the player's to a server — and the client says so in its own log.
+		var server = new MinecraftServerSession();
+		using var stopFollowingLog = new CancellationTokenSource();
+		Task following = log.RunAsync(line => PlayServerCue(server, line), stopFollowingLog.Token);
+
 		try
 		{
 			// Long enough to be past the point where a bad command line would have thrown it straight out, so
@@ -597,6 +608,14 @@ public partial class Form1
 		}
 		finally
 		{
+			stopFollowingLog.Cancel();
+			try { await following; }
+			catch (Exception ex) { DiagnosticLog.WriteException("Minecraft", "finishing with the game's log", ex); }
+
+			// Quitting straight out of a server closes the process, and whether the client got a line out
+			// first is not something to depend on. If the player was still connected, say so now.
+			if (server.GameEnded() != null) _soundEngine.Play("disconnect");
+
 			try { game.Dispose(); }
 			catch (Exception ex)
 			{
@@ -610,6 +629,33 @@ public partial class Form1
 		// the top of it sounds like a second thing happened.
 		await Task.Delay(5000);
 		ResetStatus();
+	}
+
+	/// <summary>
+	/// Sounds the connect or disconnect cue for one line of the game's log.
+	///
+	/// Sound and nothing else, on purpose. The game is in front of the player with its own accessibility mod
+	/// talking, and the manager speaking over the top of that would be worse than saying nothing — which is
+	/// exactly what a short cue is for: it carries the fact without taking the floor.
+	///
+	/// Runs on the log follower's thread. Nothing here touches a control, and the sound engine plays on a
+	/// thread of its own, so there is no marshalling to do.
+	/// </summary>
+	private void PlayServerCue(MinecraftServerSession session, string line)
+	{
+		foreach (MinecraftServerChange change in session.Read(line))
+		{
+			if (change == MinecraftServerChange.Connected)
+			{
+				DiagnosticLog.Write("Minecraft", $"joined the server {session.Server}");
+				_soundEngine.Play("connect");
+			}
+			else
+			{
+				DiagnosticLog.Write("Minecraft", "left the server");
+				_soundEngine.Play("disconnect");
+			}
+		}
 	}
 
 	/// <summary>
