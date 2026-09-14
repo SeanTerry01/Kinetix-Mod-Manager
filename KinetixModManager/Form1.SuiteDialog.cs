@@ -475,7 +475,7 @@ public partial class Form1
 									if (item.Type == "Loader")
 									{
 										ProgressAnnouncer inst = NewProgress(item.Name, installing: true);
-										await ModFileSystem.InstallScriptExtenderAsync(tempPath, _settings.CurrentGamePath, game, LogError, _nexusService, inst);
+										await ModFileSystem.InstallScriptExtenderAsync(tempPath, _settings.CurrentGamePath, game, LogError, inst);
 										inst.Complete();
 									}
 									else
@@ -506,7 +506,7 @@ public partial class Form1
 							{
 								SetStatus(Loc.T("suite.installingItem", item.Name), speak: false);
 								ProgressAnnouncer inst = NewProgress(item.Name, installing: true);
-								await ModFileSystem.InstallScriptExtenderAsync(tempPath, _settings.CurrentGamePath, game, LogError, _nexusService, inst);
+								await ModFileSystem.InstallScriptExtenderAsync(tempPath, _settings.CurrentGamePath, game, LogError, inst);
 								inst.Complete();
 							}
 							else

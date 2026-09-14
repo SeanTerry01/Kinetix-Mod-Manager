@@ -34,6 +34,12 @@
          its hidden bookkeeping var and its three groups are what the reader has to cope with, and an invented
          file would only reproduce what the code already expects. -->
     <None Include="fixtures\*.xml" CopyToOutputDirectory="PreserveNewest" />
+    <!-- A real solid LZMA2 7z, made with 7-Zip 23.01, holding a Stardew-shaped mod folder. It is here because
+         7z support moved from shelling out to 7za.exe to reading the archive in-process, and the only way to
+         know that actually works is to extract a genuine one - a hand-built container would only test the
+         assumptions the code already makes. Solid on purpose: it is the case that used to be slow enough to
+         look like a hang. -->
+    <None Include="fixtures\*.7z" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

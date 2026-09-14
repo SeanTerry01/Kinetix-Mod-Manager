@@ -10,9 +10,10 @@ namespace KinetixModManager;
 /// Putting a downloaded mod where the game will load it, for the layouts where a mod is a single file.
 ///
 /// <para>
-/// Minecraft today; anything else that ships one file per mod tomorrow. The folder-shaped layouts —
-/// Stardew's manifest folders, the Bethesda staging tree, BepInEx plugins — still go through the archive
-/// pipeline in the WinForms app, and this deliberately does not pretend otherwise.
+/// Minecraft today; anything else that ships one file per mod tomorrow. Unpacking an archive is
+/// <see cref="ModArchive"/>'s job and is now portable; what stays in the WinForms app is the layer above
+/// it — deciding what an unpacked Stardew manifest folder, Bethesda staging tree or BepInEx plugin means
+/// and where its files belong — and this deliberately does not pretend otherwise.
 /// </para>
 ///
 /// <para>

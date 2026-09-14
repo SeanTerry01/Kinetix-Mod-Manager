@@ -132,9 +132,9 @@ public partial class Form1
 				// differently — the extender records a manifest so it can be cleanly uninstalled later.
 				if (IsScriptExtenderPart(part))
 					await ModFileSystem.InstallScriptExtenderAsync(
-						archive, gameFolder, _settings.ActiveGame, LogError, _nexusService, install);
+						archive, gameFolder, _settings.ActiveGame, LogError, install);
 				else
-					await ModFileSystem.InstallEnginePreloaderAsync(archive, gameFolder, LogError, _nexusService);
+					await ModFileSystem.InstallEnginePreloaderAsync(archive, gameFolder, LogError);
 				install.Complete();
 			}
 			else

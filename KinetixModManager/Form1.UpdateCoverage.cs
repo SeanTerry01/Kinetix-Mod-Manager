@@ -319,7 +319,7 @@ public partial class Form1
 		foreach (var (path, nexusId) in archives)
 		{
 			bool installedFromHere = false;
-			foreach (string id in ModFileSystem.ReadModIdsInArchive(path))
+			foreach (string id in ModArchive.ReadModIds(path))
 			{
 				if (!byUniqueId.TryGetValue(id, out var mods)) continue;
 				installedFromHere = true;   // this download's mods are on disk

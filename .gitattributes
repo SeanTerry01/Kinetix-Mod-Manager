@@ -45,6 +45,17 @@
 #*.gif   binary
 
 ###############################################################################
+# archive fixtures
+#
+# The test suite carries real archives. Line-ending normalisation would corrupt
+# them, and content sniffing is not something to leave to chance for a file whose
+# whole purpose is to be byte-exact.
+###############################################################################
+*.7z    binary
+*.rar   binary
+*.zip   binary
+
+###############################################################################
 # diff behavior for common document formats
 # 
 # Convert binary document formats to text before diffing them. This feature

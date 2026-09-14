@@ -5,8 +5,8 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-09-13, after six Phase 4 screens. No unknowns left, only work.
-**State:** 1,117 tests passing on Windows and Linux; all five projects build clean, zero warnings.
+**Last updated:** 2026-09-14, after the archive pipeline moved to the core. No unknowns left, only work.
+**State:** 1,143 tests passing on Windows and Linux; all five projects build clean, zero warnings.
 
 ---
 
@@ -28,6 +28,8 @@ Anything resolved gets deleted from here rather than ticked, so the file stays s
 - ~~**Orca reads the in-app browser** — confirmed by ear; the last technical unknown~~
 - ~~**Phase 4, six screens** — SMAPI Log, Dependencies, Profiles, Updates, Install, ModList. See §22~~
 - ~~**The GTK head installs Minecraft mods** — `ModInstaller`, Install button and Ctrl+I~~
+- ~~**The archive pipeline** — `ModArchive` in the core: signature routing, zip/7z/rar in managed code,
+  the link-aware escape guard, nested archives, staging. `7za.exe` gone. See §23~~
 
 ---
 
@@ -59,9 +61,13 @@ are what remain, and they are almost entirely widget construction — extracting
 between files without giving the core anything it can use. The "`Form1` under 5,000 lines" target was set
 before anyone looked at what those lines are; it is not a good target.
 
-- [ ] **`ExtractModAsync` and the archive pipeline** — the largest thing left in `ModFileSystem`, and the
-      reason the GTK head can install Minecraft mods and no others. This is the one worth doing, and it is
-      a capability rather than a tidy-up.
+- [ ] **`ExtractModAsync`'s layout half.** The archive half is done (§23); what is left in that method is what
+      an unpacked tree *means* — a Stardew manifest folder, a Bethesda staging tree, a BepInEx plugin, a
+      Witcher `mod…` folder. **Take the Stardew branch first:** it is self-contained, entirely portable, and
+      it is what the GTK head needs next. Two real defects are sitting in it and should be fixed with the
+      tests that come from the move — the multi-mod common-prefix search compares path strings (so `Mods/Auto`
+      looks like a parent of `Mods/AutoFish`), and the copy rebases paths with `string.Replace`, which
+      replaces every occurrence rather than the leading one.
 
 ~28,100 lines across 63 partial files, ~232 fields, ~614 methods. Per screen, smallest first:
 `SmapiLog` → `Dependencies` → `Profiles` → `Updates` → `Install` → `ModList` → `Settings`.
@@ -80,9 +86,9 @@ presenters the WinForms head uses.
 
 These stand on their own merits. None is urgent.
 
-- [ ] **`ModFileSystem.cs` is still a god object** — 3,114 lines after scanning left (was 3,825).
-      What remains: hard links, backups, deployment, `plugins.txt`, INI editing, archive extraction,
-      FOMOD finalisation, uninstaller registry lookup. Should be about six more classes.
+- [ ] **`ModFileSystem.cs` is still a god object** — 2,502 lines (was 3,825). What remains: hard links,
+      backups, deployment, `plugins.txt`, INI editing, per-game finalisation, FOMOD finalisation, uninstaller
+      registry lookup. Should be about five more classes.
 - [ ] **`NexusService` is an instance class, `ModrinthService` is static.** Same job — "where mods
       come from" — two incompatible shapes, so nothing can be source-agnostic without branching on
       the game. This is what `IModSource` is for.
@@ -198,8 +204,9 @@ It cannot work yet, for one reason that is not a code problem:
 
 ## The GTK head, from here
 
-- [ ] **Stardew Valley support** — the scanner is in the core now (ARCHITECTURE_REVIEW §19), so this is
-      no longer blocked. It needs a game picker in the GTK head and Stardew's own paths.
+- [ ] **Stardew Valley support** — the scanner is in the core (§19) and so is unpacking a download (§23), so
+      what stands between here and a Stardew install on Linux is the layout half of `ExtractModAsync` above,
+      plus a game picker in the GTK head and Stardew's own paths.
 - [ ] **The spike's strings are English literals, not `Loc.T`.** The catalogue is wired and copied to
       its output; using it is the follow-up, and the guard tests should then cover `Kinetix.Gtk` too.
 - [ ] **Confirm the AT-SPI routing by ear.** Announcements now go through Orca rather than

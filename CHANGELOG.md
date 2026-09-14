@@ -9,6 +9,20 @@
 
 *   Profiles were saved to a file named after whatever you typed, with nothing checked. A profile called **"Mage/Thief"** failed to save at all; one ending in a dot or a space saved under a name Windows then refused to open. Worst of the three, saving and deleting disagreed about the name — so a profile could appear in the list and then refuse to be deleted. All three are fixed, and the same rule is now used everywhere a name becomes a file.
 
+## 🔒 A mod archive can no longer point at your own files
+
+*   Mod archives were checked to make sure nothing in them escaped the folder they were unpacked into — but only by looking at the names inside. A **link** (a shortcut the filesystem follows) named something ordinary like `textures`, pointing at your documents, passed that check, and what happens next in an install is copying that folder into the game. Links are now followed and refused if they lead anywhere outside.
+*   The check used to run on one install path. It now runs on all of them, including the script extender and the Engine Fixes preloader.
+*   No archive from Nexus or Modrinth has ever been seen doing this. It was possible, which was enough.
+
+## 🔧 Under the bonnet: .7z and .rar mods no longer need a downloaded helper
+
+*   Mods that arrive as **.7z** used to be unpacked by `7za.exe` — a program the manager quietly downloaded from 7-zip.org the first time you installed one, and then ran. It is now unpacked by the manager itself.
+*   What that fixes for you: installing a .7z mod no longer needs a working internet connection at that moment, no longer fails behind a company firewall or a fussy antivirus, and no longer depends on a helper program from 2010 that could not read some newer archives at all.
+*   **Solid archives** — the kind where every file shares one compressed block, which is most .7z mods — are now read straight through instead of file by file. A large mod that used to sit there looking frozen now extracts at the speed it should.
+*   A mod archive written on Windows keeps its folder structure when unpacked anywhere else. This makes no difference on Windows and is the difference between a working and a silently broken install elsewhere.
+*   All of this moved into **Kinetix.Core**, so unpacking a mod is no longer something only the Windows app knows how to do.
+
 ## 🔧 Under the bonnet: the screen reader is now one replaceable part
 
 *   Nothing you can see changed, and nothing you do works differently.
@@ -31,9 +45,10 @@
 
 ## ✅ Tests
 
-*   **1,117 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
+*   **1,143 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
 *   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
+*   Twenty-six of them cover unpacking a downloaded mod, including one that extracts a **real .7z** rather than a stand-in — the only way to know that reading one without `7za.exe` actually works.
 
 ---
 

@@ -8,9 +8,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using SharpCompress.Archives;
-using SharpCompress.Archives.Rar;
-using SharpCompress.Common;
 
 namespace KinetixModManager;
 
@@ -964,30 +961,6 @@ public static class ModFileSystem
 	}
 
 	/// <summary>
-	/// Returns a writable temp-extraction base directory on the same volume as <paramref name="modsPath"/>,
-	/// so extraction/staging don't consume space on the system drive. Falls back to the system temp folder
-	/// when the mods drive can't be resolved or isn't writable.
-	/// </summary>
-	private static string GetExtractionTempRoot(string modsPath)
-	{
-		try
-		{
-			if (!string.IsNullOrEmpty(modsPath))
-			{
-				string? root = Path.GetPathRoot(Path.GetFullPath(modsPath));
-				if (!string.IsNullOrEmpty(root) && Directory.Exists(root))
-				{
-					string candidate = Path.Combine(root, "KinetixModManager.tmp");
-					Directory.CreateDirectory(candidate);
-					return candidate;
-				}
-			}
-		}
-		catch (Exception ex) { DiagnosticLog.WriteException("Install", "choosing a temporary folder on the mods drive", ex); }
-		return Path.GetTempPath();
-	}
-
-	/// <summary>
 	/// Extracts a .zip archive, backs up older version, and creates manifests for non-Stardew games.
 	/// </summary>
 	public static async Task<string> ExtractModAsync(
@@ -1033,48 +1006,14 @@ public static class ModFileSystem
 				throw new OperationCanceledException("User declined to overwrite an existing mod.");
 		}
 
-		// Extract on the same volume as the destination mods folder so a full system drive (C:) never
-		// blocks an install whose mods live elsewhere (e.g. D:). The staging copy and the final move stay
-		// on one drive too, which keeps the move cheap. Falls back to the system temp folder if the mods
-		// drive can't be resolved or written to.
-		string tempDir = Path.Combine(GetExtractionTempRoot(modsPath), "Extract_" + Path.GetRandomFileName());
+		// Stage on the destination's own filesystem so a full system drive never blocks an install whose mods
+		// live elsewhere, and so the final move stays a rename rather than a copy. ModArchive.TempRootFor
+		// picks the spot and falls back to the system temp folder when it can't.
+		string tempDir = Path.Combine(ModArchive.TempRootFor(modsPath), "Extract_" + Path.GetRandomFileName());
 		try
 		{
-			await Task.Run(async () =>
-			{
-				Directory.CreateDirectory(tempDir);
-				// Route by the archive's real signature, not its file name: a 7z/rar mod can arrive named ".zip"
-				// (see DetectArchiveFormat), which would otherwise crash the zip extractor. Only when the bytes are
-				// unrecognised do we trust the extension.
-				ArchiveFormat fmt = DetectArchiveFormat(zipPath);
-				if (fmt == ArchiveFormat.Unknown)
-				{
-					string ext = Path.GetExtension(zipPath).ToLower();
-					fmt = ext == ".7z" ? ArchiveFormat.SevenZip : ext == ".rar" ? ArchiveFormat.Rar : ArchiveFormat.Zip;
-				}
-				if (fmt == ArchiveFormat.SevenZip)
-				{
-					string dataBasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AudiVentureGames", "KinetixModManager");
-					string exePath = await Ensure7ZipCommandLineTool(dataBasePath, nexusService);
-					Run7ZipExtract(exePath, zipPath, tempDir, installProgress);
-				}
-				else if (fmt == ArchiveFormat.Rar)
-				{
-					// The bundled 7za and .NET's ZipFile cannot read RAR, so use SharpCompress (managed).
-					ExtractWithSharpCompress(zipPath, tempDir, installProgress);
-				}
-				else
-				{
-					ExtractZipWithProgress(zipPath, tempDir, installProgress);
-				}
-			});
-
-			string canonicalTemp = Path.GetFullPath(tempDir).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-			foreach (string entry in Directory.GetFileSystemEntries(tempDir, "*", SearchOption.AllDirectories))
-			{
-				if (!Path.GetFullPath(entry).StartsWith(canonicalTemp, StringComparison.OrdinalIgnoreCase))
-					throw new InvalidOperationException($"Unsafe archive: entry escapes the extraction directory ({entry}).");
-			}
+			await Task.Run(() => ModArchive.Extract(zipPath, tempDir, installProgress));
+			ModArchive.GuardAgainstEscapedEntries(tempDir);
 
 			if (GameProfiles.Find(activeGame)?.IsBepInEx == true)
 			{
@@ -1171,11 +1110,11 @@ public static class ModFileSystem
 				// Some downloads wrap the mod itself in a second archive — a "pick the variant you want" pack, or
 				// a zip that simply contains the real zip. Unpack one level of nested archives and look again
 				// before declaring the download unusable.
-				await ExtractNestedArchivesAsync(tempDir, nexusService);
+				ModArchive.ExtractNested(tempDir);
 				manifests = Directory.GetFiles(tempDir, "manifest.json", SearchOption.AllDirectories);
 			}
 			if (manifests.Length == 0)
-				throw new ModArchiveContentException(DescribeMissingManifest(zipPath, tempDir));
+				throw new ModArchiveContentException(ModArchive.DescribeMissingManifest(zipPath, tempDir));
 
 			bool overwriteConfirmed = confirmOverwrite == null; // no callback => proceed without prompting
 			foreach (string mPath in manifests)
@@ -2286,360 +2225,14 @@ public static class ModFileSystem
 	// Helpers
 	// -------------------------------------------------------------------------
 
-	/// <summary>
-	/// Reads the mod UniqueIDs declared inside a downloaded .zip, by parsing every manifest.json in it without
-	/// extracting anything. Pairing these with <see cref="ModManifest.ParseNexusIdFromFileName"/> recovers exactly which
-	/// installed mods came from which Nexus page — including every mod of a multi-mod download, where usually
-	/// only one (or none) carries an update key. Returns an empty list for anything unreadable or not a zip.
-	/// </summary>
-	public static List<string> ReadModIdsInArchive(string archivePath)
-	{
-		var ids = new List<string>();
-		try
-		{
-			if (DetectArchiveFormat(archivePath) != ArchiveFormat.Zip) return ids;
-			using ZipArchive archive = ZipFile.OpenRead(archivePath);
-			foreach (ZipArchiveEntry entry in archive.Entries)
-			{
-				if (!entry.Name.Equals("manifest.json", StringComparison.OrdinalIgnoreCase)) continue;
-				if (entry.Length > 512 * 1024) continue;   // a "manifest" that large isn't one
-				try
-				{
-					using var reader = new StreamReader(entry.Open());
-					JObject manifest = JObject.Parse(reader.ReadToEnd());
-					string? id = ModScanner.ManifestString(manifest, "UniqueID");
-					if (!string.IsNullOrWhiteSpace(id)) ids.Add(id!.Trim());
-				}
-				catch (Exception ex) { DiagnosticLog.WriteException("Install", $"reading a manifest inside {archivePath}", ex); }
-			}
-		}
-		catch (Exception ex) { DiagnosticLog.WriteException("Install", $"reading {archivePath} as a zip", ex); }
-		return ids;
-	}
-
-	private static async Task<string> Ensure7ZipCommandLineTool(string dataBasePath, NexusService? nexusService)
-	{
-		string toolDir = Path.Combine(dataBasePath, "tools");
-		if (!Directory.Exists(toolDir))
-		{
-			Directory.CreateDirectory(toolDir);
-		}
-		string exePath = Path.Combine(toolDir, "7za.exe");
-		if (File.Exists(exePath))
-		{
-			return exePath;
-		}
-
-		string zipPath = Path.Combine(toolDir, "7za920.zip");
-		string url = "https://www.7-zip.org/a/7za920.zip";
-		
-		byte[] zipBytes;
-		if (nexusService != null)
-		{
-			zipBytes = await nexusService.DownloadBytesAsync(url);
-		}
-		else
-		{
-			using var client = new System.Net.Http.HttpClient();
-			zipBytes = await client.GetByteArrayAsync(url);
-		}
-
-		File.WriteAllBytes(zipPath, zipBytes);
-		
-		using (ZipArchive archive = ZipFile.OpenRead(zipPath))
-		{
-			ZipArchiveEntry? entry = archive.GetEntry("7za.exe");
-			if (entry != null)
-			{
-				entry.ExtractToFile(exePath, overwrite: true);
-			}
-		}
-
-		try { File.Delete(zipPath); }
-		catch (Exception ex) { DiagnosticLog.WriteException("Install", $"deleting the downloaded {zipPath}", ex); }
-
-		return exePath;
-	}
-
-	/// <summary>
-	/// Extracts a RAR (or other SharpCompress-supported) archive to <paramref name="outputDir"/>, preserving
-	/// folder structure. Used for <c>.rar</c> mods, which neither .NET's ZipFile nor the bundled 7za can read.
-	/// The caller's post-extraction path-escape check (in <see cref="ExtractModAsync"/>) still guards against
-	/// malicious entries.
-	/// </summary>
-	/// <summary>
-	/// Extracts a .zip entry-by-entry so install progress can be reported as a true percentage of bytes written.
-	/// Mirrors <see cref="ZipFile.ExtractToDirectory(string,string)"/> including its path-traversal guard (an entry
-	/// whose resolved path escapes <paramref name="outputDir"/> is rejected before any bytes are written).
-	/// </summary>
-	/// <summary>The archive container of a downloaded mod, identified by its file signature.</summary>
-	/// <summary>
-	/// Thrown when an archive extracted fine but doesn't hold a mod for the active game — most often a Stardew
-	/// download with no <c>manifest.json</c> anywhere inside. Distinct from an I/O or extraction failure because
-	/// the fix is different: the file is the wrong download, usually because the mod is linked to the wrong Nexus
-	/// page. The message carries what the archive actually contained, for the error log.
-	/// </summary>
-	public sealed class ModArchiveContentException : Exception
-	{
-		public ModArchiveContentException(string message) : base(message) { }
-	}
-
-	/// <summary>
-	/// Builds the diagnostic message for a Stardew download with no manifest.json: names the archive and lists
-	/// what was actually extracted, so the error log shows whether the file was empty, held only documentation,
-	/// or is simply a different mod than expected.
-	/// </summary>
-	private static string DescribeMissingManifest(string archivePath, string extractedRoot)
-	{
-		string contents;
-		try
-		{
-			var names = Directory.EnumerateFileSystemEntries(extractedRoot, "*", SearchOption.TopDirectoryOnly)
-				.Select(Path.GetFileName).Take(8).ToList();
-			contents = names.Count == 0 ? "the archive extracted to nothing" : "it contains: " + string.Join(", ", names);
-		}
-		catch { contents = "its contents could not be listed"; }
-
-		return $"No manifest.json found in {Path.GetFileName(archivePath)} — {contents}. " +
-			   "This download is not a SMAPI mod, so it is probably the wrong file for this mod.";
-	}
-
-	/// <summary>
-	/// Unpacks any archives found inside an already-extracted download, one level deep, into a sibling folder
-	/// each. Used only as a fallback when the expected mod files weren't found at the top level. Best-effort:
-	/// an archive that can't be read is skipped rather than failing the install.
-	/// </summary>
-	private static async Task ExtractNestedArchivesAsync(string tempDir, NexusService? nexusService)
-	{
-		string[] inner;
-		try
-		{
-			inner = Directory.GetFiles(tempDir, "*.*", SearchOption.AllDirectories)
-				.Where(f =>
-				{
-					string ext = Path.GetExtension(f).ToLowerInvariant();
-					return ext == ".zip" || ext == ".7z" || ext == ".rar";
-				})
-				.Take(12)   // a sane bound: a mod pack with more variants than this isn't auto-installable anyway
-				.ToArray();
-		}
-		catch { return; }
-
-		foreach (string archive in inner)
-		{
-			try
-			{
-				string outDir = archive + "__unpacked";
-				Directory.CreateDirectory(outDir);
-				ArchiveFormat fmt = DetectArchiveFormat(archive);
-				if (fmt == ArchiveFormat.Unknown)
-				{
-					string ext = Path.GetExtension(archive).ToLowerInvariant();
-					fmt = ext == ".7z" ? ArchiveFormat.SevenZip : ext == ".rar" ? ArchiveFormat.Rar : ArchiveFormat.Zip;
-				}
-				if (fmt == ArchiveFormat.SevenZip)
-				{
-					string dataBasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AudiVentureGames", "KinetixModManager");
-					string exePath = await Ensure7ZipCommandLineTool(dataBasePath, nexusService);
-					Run7ZipExtract(exePath, archive, outDir);
-				}
-				else if (fmt == ArchiveFormat.Rar)
-				{
-					ExtractWithSharpCompress(archive, outDir);
-				}
-				else
-				{
-					ExtractZipWithProgress(archive, outDir, null);
-				}
-			}
-			catch (Exception ex) { DiagnosticLog.WriteException("Install", $"unpacking the nested archive {archive}", ex); }
-		}
-	}
-
-	private enum ArchiveFormat { Zip, SevenZip, Rar, Unknown }
-
-	/// <summary>
-	/// Detects a mod archive's real format from its leading bytes (magic number) rather than its file extension.
-	/// Nexus mods are commonly .7z or .rar, but the downloaded file can end up named ".zip" — the CDN filename
-	/// isn't always present, in which case <see cref="ResolveNxmUrlAsync"/> falls back to a ".zip" name. Feeding a
-	/// 7z/rar to .NET's ZipFile then throws "End of Central Directory record could not be found". Sniffing the
-	/// signature routes each archive to the right extractor regardless of how it was named.
-	/// </summary>
-	private static ArchiveFormat DetectArchiveFormat(string path)
-	{
-		try
-		{
-			using FileStream fs = File.OpenRead(path);
-			byte[] head = new byte[8];
-			int n = fs.Read(head, 0, head.Length);
-			// 7z: 37 7A BC AF 27 1C
-			if (n >= 6 && head[0] == 0x37 && head[1] == 0x7A && head[2] == 0xBC && head[3] == 0xAF && head[4] == 0x27 && head[5] == 0x1C)
-				return ArchiveFormat.SevenZip;
-			// RAR (v1.5–4.x and v5.0 both start): 52 61 72 21 1A 07
-			if (n >= 6 && head[0] == 0x52 && head[1] == 0x61 && head[2] == 0x72 && head[3] == 0x21 && head[4] == 0x1A && head[5] == 0x07)
-				return ArchiveFormat.Rar;
-			// ZIP (incl. empty/spanned variants): 50 4B {03 04 | 05 06 | 07 08}
-			if (n >= 4 && head[0] == 0x50 && head[1] == 0x4B &&
-				((head[2] == 0x03 && head[3] == 0x04) || (head[2] == 0x05 && head[3] == 0x06) || (head[2] == 0x07 && head[3] == 0x08)))
-				return ArchiveFormat.Zip;
-		}
-		catch (Exception ex) { DiagnosticLog.WriteException("Install", $"reading the first bytes of {path} to identify it", ex); }
-		return ArchiveFormat.Unknown;
-	}
-
-	private static void ExtractZipWithProgress(string archivePath, string outputDir, IProgress<double>? progress)
-	{
-		using ZipArchive archive = ZipFile.OpenRead(archivePath);
-		string canonicalRoot = Path.GetFullPath(outputDir).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-		long total = 0;
-		foreach (ZipArchiveEntry e in archive.Entries) total += e.Length;
-		if (total <= 0) total = 1;
-
-		long done = 0;
-		foreach (ZipArchiveEntry entry in archive.Entries)
-		{
-			string destPath = Path.GetFullPath(Path.Combine(outputDir, entry.FullName));
-			if (!destPath.StartsWith(canonicalRoot, StringComparison.OrdinalIgnoreCase))
-				throw new InvalidOperationException($"Unsafe archive: entry escapes the extraction directory ({entry.FullName}).");
-
-			// Directory entries have an empty Name; create the folder and move on.
-			bool isDir = entry.FullName.EndsWith("/") || entry.FullName.EndsWith("\\") || string.IsNullOrEmpty(entry.Name);
-			if (isDir)
-			{
-				Directory.CreateDirectory(destPath);
-				continue;
-			}
-
-			Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
-			entry.ExtractToFile(destPath, overwrite: true);
-			done += entry.Length;
-			progress?.Report((double)done / total * 100.0);
-		}
-		progress?.Report(100.0);
-	}
-
-	private static void ExtractWithSharpCompress(string archivePath, string outputDir, IProgress<double>? progress = null)
-	{
-		if (progress == null)
-		{
-			// ArchiveFactory auto-detects the format (RAR4/RAR5) and extracts every entry, preserving paths.
-			ArchiveFactory.WriteToDirectory(archivePath, outputDir,
-				new ExtractionOptions { ExtractFullPath = true, Overwrite = true });
-			return;
-		}
-
-		// Progress variant: extract entry-by-entry, reporting bytes written as a percentage of the total.
-		using IArchive archive = RarArchive.OpenArchive(archivePath, null);
-		var options = new ExtractionOptions { ExtractFullPath = true, Overwrite = true };
-		long total = 0;
-		foreach (IArchiveEntry e in archive.Entries)
-			if (!e.IsDirectory && e.Size > 0) total += e.Size;
-		if (total <= 0) total = 1;
-
-		long done = 0;
-		foreach (IArchiveEntry entry in archive.Entries)
-		{
-			if (entry.IsDirectory) continue;
-			entry.WriteToDirectory(outputDir, options);
-			if (entry.Size > 0) done += entry.Size;
-			progress.Report((double)done / total * 100.0);
-		}
-		progress.Report(100.0);
-	}
-
-	private static void Run7ZipExtract(string exePath, string archivePath, string outputDir, IProgress<double>? progress = null)
-	{
-		// Parsing 7za's in-place progress output is brittle across versions, so for install % we instead poll the
-		// bytes written to the output folder against the archive's known uncompressed size. The extraction command
-		// itself is left exactly as before, so progress can never break an install — it's purely observational.
-		long totalUncompressed = progress != null ? Try7ZipUncompressedSize(exePath, archivePath) : 0;
-
-		using var process = new System.Diagnostics.Process();
-		process.StartInfo.FileName = exePath;
-		process.StartInfo.Arguments = $"x \"{archivePath}\" -o\"{outputDir}\" -y";
-		process.StartInfo.CreateNoWindow = true;
-		process.StartInfo.UseShellExecute = false;
-		process.StartInfo.RedirectStandardOutput = false;
-		process.StartInfo.RedirectStandardError = false;
-
-		process.Start();
-
-		if (progress != null && totalUncompressed > 0)
-		{
-			while (!process.WaitForExit(250))
-			{
-				long written = DirectorySize(outputDir);
-				progress.Report(Math.Clamp((double)written / totalUncompressed * 100.0, 0, 99));
-			}
-		}
-		process.WaitForExit();
-
-		if (process.ExitCode != 0)
-		{
-			throw new Exception($"7-Zip extraction failed with exit code {process.ExitCode}.");
-		}
-		progress?.Report(100.0);
-	}
-
-	/// <summary>Sums the uncompressed size of every file in a 7z archive via <c>7za l -slt</c>; 0 if it can't be read.</summary>
-	private static long Try7ZipUncompressedSize(string exePath, string archivePath)
-	{
-		try
-		{
-			using var p = new System.Diagnostics.Process();
-			p.StartInfo.FileName = exePath;
-			p.StartInfo.Arguments = $"l -slt \"{archivePath}\"";
-			p.StartInfo.CreateNoWindow = true;
-			p.StartInfo.UseShellExecute = false;
-			p.StartInfo.RedirectStandardOutput = true;
-			p.Start();
-			string output = p.StandardOutput.ReadToEnd();
-			p.WaitForExit();
-
-			long sum = 0;
-			foreach (System.Text.RegularExpressions.Match m in
-				System.Text.RegularExpressions.Regex.Matches(output, @"(?m)^Size = (\d+)\s*$"))
-			{
-				if (long.TryParse(m.Groups[1].Value, out long size)) sum += size;
-			}
-			return sum;
-		}
-		catch { return 0; }
-	}
-
-	/// <summary>Total size in bytes of all files currently under <paramref name="dir"/> (best-effort; 0 on error).</summary>
-	private static long DirectorySize(string dir)
-	{
-		try
-		{
-			long sum = 0;
-			foreach (string f in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
-			{
-				try { sum += new FileInfo(f).Length; }
-				catch (Exception ex) { DiagnosticLog.WriteException("Disk", $"measuring {f}", ex); }
-			}
-			return sum;
-		}
-		catch { return 0; }
-	}
-
-	public static async Task InstallScriptExtenderAsync(string archivePath, string gamePath, string activeGame, Action<string, string> logError, NexusService? nexusService = null, IProgress<double>? installProgress = null)
+	public static async Task InstallScriptExtenderAsync(string archivePath, string gamePath, string activeGame, Action<string, string> logError, IProgress<double>? installProgress = null)
 	{
 		string tempDir = Path.Combine(Path.GetTempPath(), "Extender_" + Path.GetRandomFileName());
 		try
 		{
 			Directory.CreateDirectory(tempDir);
-			string ext = Path.GetExtension(archivePath).ToLower();
-			if (ext == ".7z")
-			{
-				string dataBasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AudiVentureGames", "KinetixModManager");
-				string exePath = await Ensure7ZipCommandLineTool(dataBasePath, nexusService);
-				await Task.Run(() => Run7ZipExtract(exePath, archivePath, tempDir, installProgress));
-			}
-			else
-			{
-				await Task.Run(() => ExtractZipWithProgress(archivePath, tempDir, installProgress));
-			}
+			await Task.Run(() => ModArchive.Extract(archivePath, tempDir, installProgress));
+			ModArchive.GuardAgainstEscapedEntries(tempDir);
 
 			string loaderExePattern = GameProfiles.IsGame(activeGame, GameProfiles.SkyrimSE) ? "skse64_loader.exe" : "f4se_loader.exe";
 			string[] matches = Directory.GetFiles(tempDir, loaderExePattern, SearchOption.AllDirectories);
@@ -2790,23 +2383,14 @@ public static class ModFileSystem
 	/// from <paramref name="archivePath"/> directly into the game's root folder (where the preloader
 	/// must live), so the user does not have to perform the manual root-folder step themselves.
 	/// </summary>
-	public static async Task InstallEnginePreloaderAsync(string archivePath, string gamePath, Action<string, string> logError, NexusService? nexusService = null)
+	public static async Task InstallEnginePreloaderAsync(string archivePath, string gamePath, Action<string, string> logError)
 	{
 		string tempDir = Path.Combine(Path.GetTempPath(), "Preloader_" + Path.GetRandomFileName());
 		try
 		{
 			Directory.CreateDirectory(tempDir);
-			string ext = Path.GetExtension(archivePath).ToLower();
-			if (ext == ".7z")
-			{
-				string dataBasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AudiVentureGames", "KinetixModManager");
-				string exePath = await Ensure7ZipCommandLineTool(dataBasePath, nexusService);
-				await Task.Run(() => Run7ZipExtract(exePath, archivePath, tempDir));
-			}
-			else
-			{
-				await Task.Run(() => ZipFile.ExtractToDirectory(archivePath, tempDir));
-			}
+			await Task.Run(() => ModArchive.Extract(archivePath, tempDir));
+			ModArchive.GuardAgainstEscapedEntries(tempDir);
 
 			string[] matches = Directory.GetFiles(tempDir, "d3dx9_42.dll", SearchOption.AllDirectories);
 			if (matches.Length == 0)

@@ -767,7 +767,7 @@ public partial class Form1
 			// Access guarding the mods folder, or a file held open elsewhere. Say so rather than a bare path error.
 			AiInstallFailure(Loc.T("install.failedAccess", ex.Message), spokenName);
 		}
-		catch (ModFileSystem.ModArchiveContentException ex)
+		catch (ModArchiveContentException ex)
 		{
 			// The archive was fine but holds no mod for this game — say what to do about it, and keep the raw
 			// detail (what the archive did contain) in the error log rather than in the spoken message.

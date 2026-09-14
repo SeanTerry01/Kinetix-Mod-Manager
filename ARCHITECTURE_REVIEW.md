@@ -1392,3 +1392,96 @@ actually are. It is not a good target and should not be chased.
 What is worth doing next is not more of this. It is `ExtractModAsync` — the archive pipeline, and the
 largest remaining thing in `ModFileSystem` — because it is what stops the GTK head installing mods for any
 game but Minecraft. That is a capability, not a tidy-up.
+
+## 23. The archive pipeline moved to the core, 2026-09-14
+
+§22 named this as the one thing worth doing next, on the grounds that it is a capability rather than a
+tidy-up. It is done, and it turned out to be three things rather than one.
+
+### What moved
+
+`Kinetix.Core/ModArchive.cs`, 399 lines, and with it everything underneath an install that is about
+*containers* rather than about *layouts*:
+
+| | |
+|---|---|
+| `DetectFormat` / `FormatOf` | signature sniffing, with the extension as the fallback it always was |
+| `Extract` | one entry point; routes zip / 7z / rar and reports 0–100 |
+| `GuardAgainstEscapedEntries` | the post-extraction check, now link-aware (below) |
+| `ExtractNested` | one level of archives-inside-archives |
+| `TempRootFor` | staging on the destination's own filesystem |
+| `ReadModIds` | the Stardew ids inside a zip, without extracting it |
+| `ModArchiveContentException`, `DescribeMissingManifest` | what the user is told when the download is the wrong one |
+
+`ModFileSystem` is down from 2,917 lines to 2,502, and has lost four different ways of deciding how to unpack something. It now calls
+`ModArchive.Extract` from all four of its install paths, which is itself a fix: three of them routed on the
+file extension alone, so a `.7z` named `.zip` — which is exactly what the NXM resolver produces when the CDN
+gives no filename — reached `ZipFile` and failed with "End of Central Directory record could not be found".
+Only `ExtractModAsync` had been taught to sniff the bytes.
+
+### 7za.exe is gone
+
+The Windows app unpacked `.7z` by downloading `7za920.zip` from 7-zip.org on first use, extracting
+`7za.exe` from it, and shelling out. That is a 2010 binary, unsigned, fetched over the network in the middle
+of an install, and absent by definition on Linux — one of the reasons the GTK head could only install a mod
+that arrives as a single `.jar`.
+
+SharpCompress 0.49.1 reads the same archives in-process, including the LZMA2 and BCJ2 filters 7za920
+predates. Removing the download removes a platform dependency, a supply-chain surface and a failure mode
+("the install just stopped") that no log would have explained, and it very likely fixes more archives than
+it breaks: 7za920 cannot read some of what modern 7-Zip writes.
+
+One detail is worth recording because it was a deliberate choice rather than an accident. Both 7z and RAR
+are commonly **solid** — every file in one compressed block — and asking SharpCompress for entry 200 off an
+`IArchive` decompresses the 199 before it again. A hundred-file mod extracted that way takes minutes.
+`ModArchive` reads forwards through a single `IReader` instead, which is the difference between an install
+and something the user reports as a hang.
+
+### The escape guard was checking the wrong thing
+
+The old check walked the extracted tree and compared each entry's *path* against the extraction root. That
+catches `../../autoexec` in an entry name. It does not catch a **symlink** whose name is entirely innocent
+and whose target is the user's home directory — and what happens immediately after extraction is a copy,
+hard-link or move into the game folder.
+
+The guard now resolves links and refuses one leading outside, follows none of them (so two links pointing at
+each other cannot loop), and runs on every install path rather than one. Entry names are also rejected
+*before* any byte is written rather than after, on both the zip and the SharpCompress paths.
+
+No archive has been seen doing this. It was reachable, which was the point.
+
+### Two portability defects fixed on the way
+
+- **Backslashes in zip entry names.** An archive written on Windows stores `ExampleMod\manifest.json`. On
+  Linux that is one file with an odd name at the top level, and a mod whose folder structure has been
+  flattened — an install that reports success and does nothing. Now read as the separator it is.
+- **`TempRootFor` on a machine without drive letters.** The old rule was "the destination drive's root plus
+  `KinetixModManager.tmp`", which off Windows means trying to create a directory in `/` every single time,
+  failing, logging it, and falling back to the system temp folder — losing the same-filesystem guarantee the
+  whole thing exists for, so the final move became a full copy. Elsewhere it now stages beside the mods
+  folder, which is the same filesystem by construction.
+
+### Tests
+
+**1,117 → 1,143.** The 26 cover format detection (including the mislabelled `.7z` that is the commonest real
+failure), extraction with folders intact, progress reaching 100, all three escape cases, nested archives,
+reading ids without extracting, and where staging lands.
+
+One fixture is a **real solid LZMA2 7z**, made with 7-Zip 23.01 and committed at 4.8 KB. That is the whole
+point of it: the change being tested is that a genuine 7z can be read without `7za.exe`, and a hand-built
+container would only have tested the assumptions the code already makes.
+
+### What this does not do
+
+It does not move `ExtractModAsync`. What is left in that method after the archive work is *layout*: what an
+unpacked Stardew manifest folder, Bethesda staging tree, BepInEx plugin or Witcher `mod…` folder means, and
+where its files belong. That is the next thing, and the Stardew branch is the piece to take first — it is
+self-contained, entirely portable, and the GTK head's next stated goal. Two real defects are sitting in it:
+
+- The common-prefix search for a multi-mod download compares path *strings*, so `Mods/Auto` is treated as a
+  parent of `Mods/AutoFish`.
+- The copy rebases every path with `string.Replace(source, destination)`, which replaces **every** occurrence
+  rather than the leading one — so a mod with its own name repeated deeper in the tree lands in the wrong place.
+
+Neither is reachable from the archive layer, and neither should be fixed without the tests that come from
+moving the code.

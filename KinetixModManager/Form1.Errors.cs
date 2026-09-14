@@ -34,7 +34,7 @@ public partial class Form1
 
 		switch (ex)
 		{
-			case ModFileSystem.ModArchiveContentException:
+			case ModArchiveContentException:
 				return Loc.T("err.noModInArchive");
 			case UnauthorizedAccessException:
 				return Loc.T("err.accessDenied");
