@@ -1562,3 +1562,97 @@ and a stable choice between several files — and a guard that fails the build i
 is not there or a theme is missing an event folder. Twenty on the Minecraft cue: singleplayer, chat, server
 hopping, rejoining after a drop, quitting from inside a server, and the tail's own awkward cases — a
 half-written line, a rolled-over log, CRLF, and a log that does not exist yet.
+
+## 25. Where mods come from — one per game, or the user's pick? 2026-09-14
+
+Sean asked for a mod source chooser: for any game whose mods live in more places than Nexus or Modrinth, let
+the user say where they want to search and download from. This section is the research behind the answer,
+because the answer is "yes, and for two of the six games" rather than a flat yes or no.
+
+### A source is four jobs, not one
+
+The reason this looks harder than it is, and also the reason it is less complete than it looks:
+
+| Job | What it needs | What it costs if missing |
+|---|---|---|
+| **Search** | a catalogue API | no discovery from that source |
+| **Download** | a direct file URL the app may fetch | the user downloads by hand |
+| **Update check** | "what is the newest version of this mod" | the mod silently never updates |
+| **Open the page** | a URL | nothing — a browser does it |
+
+Nexus and Modrinth do all four, which is why they are the two that got built in. Almost every alternative does
+some and not others, and lumping them together as "sources" is what makes the feature look like more work than
+it is.
+
+### What is already true
+
+Worth saying plainly, because three things Sean is asking for already work:
+
+- **The manager already downloads from three places**, not two: Nexus, Modrinth and **GitHub releases**. The
+  Accessibility Suite, SMAPI and BepInEx all come from GitHub, and `GameMod.GitHubRepo` is threaded through
+  install and update. GitHub is a first-class origin that simply has no search, because it has no per-game
+  catalogue to search.
+- **For Stardew Valley, updates already resolve across every source a mod declares.** `GetSmapiUpdatesAsync`
+  posts to smapi.io, which understands `Nexus:`, `GitHub:`, `ModDrop:`, `CurseForge:`, `Chucklefish:` and
+  `UpdateManifest:` update keys and answers with the newest version and the mod's page. The versions are
+  already coming back.
+- **There is already one place that decides where to search** — `SearchActiveGameCatalogueAsync` — and one
+  flag that decides it, `GameProfile.ModSource`. Going from one source per game to several with the user's
+  pick is a change to those two and a Settings control, not a rewrite.
+
+### A defect this turned up
+
+A Stardew mod hosted on **ModDrop or CurseForge** has its update found by smapi.io and then dropped on the
+floor. `Form1.Updates.cs` takes the page URL it is given and regex-matches it for `nexusmods.com` or
+`github.com`; anything else falls through, so the mod keeps no link at all. `UpdateCoverage.HasUpdateLink`
+then counts it as **unlinked** — reported to the user as a mod the manager cannot track — when the manager was
+told its exact version and its exact page moments earlier. The user cannot open it, cannot download it, and is
+told the gap is theirs to fix.
+
+Keeping the URL is a small change and is worth making whether or not the chooser is ever built. It is the
+"open the page" column above, which costs nothing and works for every source that will ever exist.
+
+### What is actually out there, per game
+
+Checked rather than assumed. The Thunderstore figure comes from its own community list, fetched today.
+
+| Source | Search | Download | Updates | Notes |
+|---|:--:|:--:|:--:|---|
+| **Nexus** | ✓ | ✓ | ✓ | Built in. Key required; non-premium downloads go through NXM. |
+| **Modrinth** | ✓ | ✓ | ✓ | Built in. Open API, no account. Minecraft only. |
+| **GitHub releases** | ✗ | ✓ | ✓ | **Already wired in.** No catalogue to search, so it can only ever be "install from `owner/repo`". |
+| **CurseForge** | ✓ | ~ | ✓ | Needs an **approved API key** — the same kind of conversation as the Nexus SSO slug. Authors can opt out of third-party downloads per mod, and the API then deliberately returns no URL: those have to open in a browser. |
+| **ModDrop** | ~ | ✗ | ✓ | Undocumented POST API, which is what smapi.io itself queries. No public file endpoint, so download means opening the page. |
+| **Thunderstore** | ✓ | ✓ | ✓ | Open API and the natural home for BepInEx games — but **checked: no Moonlight Peaks community exists** among its 326. Nothing to connect to. |
+| **Bethesda.net / Creations** | ✗ | ✗ | ✗ | No public API. Requires the game client. |
+| **ModDB, LoversLab, Schaken** | ✗ | ✗ | ✗ | No API of any kind. |
+
+Which gives, per game:
+
+- **Minecraft** — Modrinth today; **CurseForge** is a real second catalogue, and a large one.
+- **Stardew Valley** — Nexus today; **ModDrop** and **CurseForge** both host real mods, and smapi.io already
+  knows about them.
+- **Skyrim SE, Fallout 4, The Witcher 3, Moonlight Peaks** — **Nexus is genuinely the only searchable
+  catalogue that exists.** A chooser for these four would be a dropdown with one item in it. Saying so is
+  better than shipping one.
+
+So the feature is worth building, for Minecraft and Stardew Valley, and the honest version of it does not
+pretend the other four have a choice to make.
+
+### What it needs, in order
+
+1. **`IModSource`, and adapters for the two that exist.** No new source, no behaviour change. This is the
+   interface §15 deferred and the one the TODO already calls the most worthwhile of the four; the chooser is
+   simply the reason to stop deferring it. The work in it is reconciling `NexusService` — 1,387 lines, an
+   instance, stateful, carrying a key and rate-limit counters — with `ModrinthService`, 281 lines and static.
+2. **Sources as an ordered per-game setting**, defaulting to exactly what is baked in today, so nobody's
+   install changes until they ask it to. A search result has to say which source it came from, out loud: two
+   catalogues will return the same mod, and a blind user choosing between two identically-named rows with no
+   way to tell them apart is worse than having one row.
+3. **The sources worth adding**, and only those: CurseForge (blocked on their key), GitHub promoted from
+   plumbing to a source the user can install from by name, and for the ones with no API at all, an honest
+   "search the web for this mod" that opens the in-app browser rather than impersonating a catalogue.
+
+Steps 1 and 2 ship on their own and are useful on their own — step 1 is a refactor the codebase already wants,
+and step 2 is what lets a user say "Modrinth first, then CurseForge". Step 3 is where the external
+dependencies are, and it is the only part that has to wait on somebody else.

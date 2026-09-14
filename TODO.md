@@ -153,6 +153,26 @@ These stand on their own merits. None is urgent.
 
 ## Decisions
 
+**0. A mod source chooser — Sean's ask, 2026-09-14. Researched in ARCHITECTURE_REVIEW §25; needs a scope.**
+
+Yes, and for two of the six games. Minecraft has CurseForge beside Modrinth; Stardew has ModDrop and
+CurseForge beside Nexus, and smapi.io already resolves their versions. For Skyrim, Fallout 4, The Witcher 3
+and Moonlight Peaks, **Nexus is the only searchable catalogue that exists** — Bethesda.net, ModDB and
+LoversLab have no API, and Thunderstore has no Moonlight Peaks community (checked: 326, not among them).
+
+- [ ] **Keep a mod's page URL whatever host it is on.** Worth doing on its own merits, today. A Stardew mod on
+      ModDrop or CurseForge has its update found by smapi.io and then dropped, because `Form1.Updates.cs`
+      only recognises `nexusmods.com` and `github.com` URLs — so `UpdateCoverage` reports it as unlinked, and
+      the user is told the gap is theirs, moments after the manager was given the exact page.
+- [ ] **`IModSource` and adapters for Nexus and Modrinth.** No new source, no behaviour change. See item 1
+      below — this is that interface, and the chooser is the reason to stop deferring it.
+- [ ] **Sources as an ordered per-game setting**, defaulting to what is baked in now. A result must say which
+      catalogue it came from *out loud*: two sources will return the same mod, and two identically-named rows
+      a blind user cannot tell apart is worse than one row.
+- [ ] **CurseForge needs an approved API key** — the same kind of conversation as the Nexus SSO slug, and
+      blocked the same way. Authors can also opt out of third-party downloads per mod, and the API then
+      returns no URL by design; those must open in a browser rather than fail.
+
 **1. Proton or native? — ANSWERED: all six games. See ARCHITECTURE_REVIEW §20.**
 
 This is an accessible mod manager for games in general. Managing a game's mods on Linux works for all
