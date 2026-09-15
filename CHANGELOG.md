@@ -22,6 +22,26 @@
 *   Still not found: games managed by **Lutris**. Reading its library needs something the manager cannot do
     yet, and guessing at it would be worse than saying so.
 
+## 🐛 A mod could be deleted when its backup had failed
+
+*   **Windows and Linux both.** Deleting a mod takes a backup first — that is the whole reason deleting is
+    offered at all. If that backup failed, for any reason at all (a backups folder that cannot be written to,
+    a full disk, a file another program has open), the failure went into the log and **the mod was deleted
+    anyway, with the manager reporting that a copy had been kept**. Nothing was thrown and nothing was said.
+    Deleting now stops when the backup does, and tells you why.
+*   **Two backups of the same mod in the same second** used to collide, and the second one failed — which,
+    with the fix above, is now enough to refuse a delete. They no longer collide, however many happen at once.
+
+## ✨ Linux: Backups and a Log screen
+
+*   **A Backups screen.** The copies kept before anything was overwritten or deleted, newest first — which is
+    what you want, because you are looking at this list after something went wrong and the copy you want is
+    almost always the last one taken before it. Restoring asks twice and tells you first whether it would
+    replace what you have installed.
+*   **A Log screen**, showing what your game's mod loader said last time it ran. It opens on **errors and
+    warnings** rather than the whole log, because a SMAPI log is thousands of lines of a game starting
+    normally, and each line carries its suggested fix with it rather than hiding it behind another keypress.
+
 ## 🐛 Deleting a Minecraft mod kept no backup, and said it had
 
 *   **This one affects Windows too.** The manager backs a mod up before deleting it, and that backup is made
@@ -194,7 +214,7 @@
 
 ## ✅ Tests
 
-*   **1,371 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
+*   **1,398 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
 *   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 *   Twenty-six of them cover unpacking a downloaded mod, including one that extracts a **real .7z** rather than a stand-in — the only way to know that reading one without `7za.exe` actually works.

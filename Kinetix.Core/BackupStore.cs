@@ -80,13 +80,18 @@ public static class BackupStore
 		if (!Directory.Exists(folderPath) && !oneFile) return;
 
 		Directory.CreateDirectory(backupsPath);
-		string dest = Path.Combine(backupsPath, $"{modName}_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+
+		// The destination is CLAIMED rather than chosen: the file is created as part of picking its name, so
+		// two backups started at the same instant cannot settle on the same one. Checking File.Exists first
+		// and opening afterwards is the obvious spelling and is a race — six threads all see nothing there,
+		// all pick the same name, and five of them fail. Found by running six at once.
+		using FileStream target = ClaimName(backupsPath, modName);
 
 		if (oneFile)
 		{
 			// Zipped rather than copied, so a backup is one kind of thing whatever the mod is shaped like and
 			// List() below finds it the same way.
-			using (var zip = ZipFile.Open(dest, ZipArchiveMode.Create))
+			using (var zip = new ZipArchive(target, ZipArchiveMode.Create))
 				zip.CreateEntryFromFile(folderPath, Path.GetFileName(folderPath));
 
 			progress?.Report(100.0);
@@ -95,7 +100,7 @@ public static class BackupStore
 
 		if (progress == null)
 		{
-			ZipFile.CreateFromDirectory(folderPath, dest);
+			ZipFile.CreateFromDirectory(folderPath, target);
 			return;
 		}
 
@@ -114,7 +119,7 @@ public static class BackupStore
 		string root = Path.GetFullPath(folderPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
 		long done = 0;
 
-		using (var zip = ZipFile.Open(dest, ZipArchiveMode.Create))
+		using (var zip = new ZipArchive(target, ZipArchiveMode.Create))
 		{
 			foreach (string file in files)
 			{
@@ -136,6 +141,32 @@ public static class BackupStore
 		}
 
 		progress.Report(100.0);
+	}
+
+	/// <summary>
+	/// A backup file name nothing is using yet.
+	///
+	/// The stamp is only accurate to the second, so two backups of the same mod inside one second collided
+	/// and the second threw "the file already exists" — which the caller reports as a failed backup, and a
+	/// delete that depends on one then refuses to go ahead. Rare, but entirely reachable from a batch that
+	/// touches a mod twice, and the failure is indistinguishable from a real one.
+	/// </summary>
+	private static FileStream ClaimName(string backupsPath, string modName)
+	{
+		string stamp = $"{modName}_{DateTime.Now:yyyyMMdd_HHmmss}";
+
+		// CreateNew is the whole point: it fails rather than overwrites, so whichever caller wins the race
+		// keeps the name and the others move on to the next one. Bounded, because past a handful in the same
+		// second something else is wrong and looping for ever would be a worse answer than surfacing it.
+		for (int attempt = 1; attempt <= 50; attempt++)
+		{
+			string dest = Path.Combine(backupsPath, attempt == 1 ? stamp + ".zip" : $"{stamp}_{attempt}.zip");
+
+			try { return new FileStream(dest, FileMode.CreateNew, FileAccess.Write, FileShare.None); }
+			catch (IOException) when (File.Exists(dest)) { /* somebody else has it; try the next */ }
+		}
+
+		throw new IOException($"Could not find a free backup name for {modName} in {backupsPath}.");
 	}
 
 	/// <summary>

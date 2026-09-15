@@ -51,8 +51,26 @@ public static class ModSourceCredentials
 	/// </summary>
 	public static IReadOnlyList<ModSourceKeyRow> Rows(Func<string, string?> keyFor) =>
 		ModSources.NeedingCredentials()
-			.Select(s => new ModSourceKeyRow(s, !string.IsNullOrWhiteSpace(keyFor(s.Id))))
+			.Select(s => new ModSourceKeyRow(s, !string.IsNullOrWhiteSpace(Safely(keyFor, s.Id))))
 			.ToList();
+
+	/// <summary>
+	/// Asks for one site's key without letting a failure cost the screen.
+	///
+	/// Reading a key can mean reaching a keyring, which can be locked, absent or slow. A site whose key
+	/// cannot be read is shown as not having one — which is both true from the user's side and actionable —
+	/// rather than taking down the one screen they came to to fix it. <see cref="GamesView"/> guards its own
+	/// callback for the same reason; this one did not, and a sabotage pass found the inconsistency.
+	/// </summary>
+	private static string? Safely(Func<string, string?> keyFor, string sourceId)
+	{
+		try { return keyFor(sourceId); }
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Secrets", $"reading the stored key for {sourceId}", ex);
+			return null;
+		}
+	}
 
 	/// <summary>How many of them are still waiting for one, for the line at the top of the screen.</summary>
 	public static int Missing(IReadOnlyList<ModSourceKeyRow> rows) => rows.Count(r => !r.HasKey);

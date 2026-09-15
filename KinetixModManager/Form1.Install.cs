@@ -212,7 +212,18 @@ public partial class Form1
 	/// is what the progress announcement calls the mod, so it is the mod's name rather than the backup's
 	/// internal file stem.
 	/// </summary>
-	private async Task BackupModWithProgressAsync(string folderPath, string modName, string displayName)
+	/// <summary>
+	/// Backs a mod up, and says whether it worked.
+	///
+	/// <para>
+	/// ⚠️ The answer matters and used to be thrown away. This swallowed every failure into the log and
+	/// returned as though it had succeeded — so a delete, which backs up first precisely so the mod can be
+	/// got back, carried on and removed it anyway while telling the user a copy had been kept. An unwritable
+	/// backups folder, a full disk or a locked file were all enough. Found by deliberately making the folder
+	/// unwritable and watching the delete go ahead.
+	/// </para>
+	/// </summary>
+	private async Task<bool> BackupModWithProgressAsync(string folderPath, string modName, string displayName)
 	{
 		try
 		{
@@ -222,10 +233,12 @@ public partial class Form1
 
 			BackupStore.PruneBackups(modName, backupsPath, _settings.MaxBackupsPerMod);
 			RefreshBackupsList();
+			return true;
 		}
 		catch (Exception ex)
 		{
 			LogFailure(modName, "Backup Error", ex);
+			return false;
 		}
 	}
 

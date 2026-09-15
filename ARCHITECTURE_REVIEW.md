@@ -2401,3 +2401,71 @@ five of them implemented on Linux. What remains in the app is, at last, genuinel
 (2,513 lines of per-game layout work) and 27,000-odd lines of `Form1` partials that are windows.
 
 **1,371 tests**, all passing on both platforms.
+
+## 36. Two more screens, and a sabotage campaign — 2026-09-15
+
+### Backups and the log
+
+Eleven tabs now. Both were almost entirely core-backed, which is the pattern every screen has followed since
+Phase 4, and both exist because of what a user is doing when they open them.
+
+**Backups** closes the loop the delete action opened in §31. Taking a copy before deleting is only worth
+doing if the copy can be got at again, and until now the Linux build could make backups and never restore
+one — the shape of a promise rather than a feature. Restoring asks twice, inline, exactly as deleting does,
+and says whether it would overwrite something before it does it: "restore this" and "replace what you have
+with this" are the same action, and only the second is honest. The list is **newest first**, which is not
+taste — a backups list is opened after something went wrong, and the copy wanted is almost always the one
+taken just before the thing that broke it.
+
+**The log** opens on problems rather than on everything, which is the single decision that makes it usable by
+ear. A SMAPI log is thousands of lines of a game starting normally; a list beginning at line one asks a blind
+user to arrow through all of it to reach the four lines explaining the crash. Rows drop the timestamp — it is
+at the front of every line and the same on most of them — and each carries its suggested fix **on the row**
+rather than behind a keypress, because a fix one interaction away is never heard by the person working
+through forty lines to find out why their game will not start.
+
+### The sabotage campaign
+
+Deliberately hostile input against the shared core, which is what both heads run: nulls into every view,
+strings that are empty, whitespace, 100,000 characters, embedded nulls, right-to-left overrides and format
+specifiers; paths that climb out; archives that are not archives; a read-only destination; a symlink loop; a
+file where a folder was expected; and the same operation from several threads at once.
+
+It found five things. Two were mine from this week; three were in code that has been shipping.
+
+**1. `BackupsView` fell over on a null path, and `ModSourceCredentials` let a throwing callback out.** Both
+mine, both trivial, both fixed — and the second was an *inconsistency* worth more than the bug: `GamesView`
+already guarded its callback and this one did not.
+
+**2. `file.Replace(sourceFolder, destinationFolder)` in four places, not one.** §34 recorded this as a single
+defect in the Stardew branch. Grepping for the *pattern* rather than the instance found it in the Bethesda
+finaliser twice more and in the code that **moves a user's entire mods folder**. It is a string operation on
+something that is not a string: it rewrites every occurrence rather than the leading one, and silently
+rewrites nothing at all when the two spellings differ by a trailing separator. Neither failure throws, and
+both produce a mod that installed "successfully" into the wrong place. Now one tested `PathRebase.To` in the
+core, used at all eight call sites.
+
+**3. The multi-mod common-prefix search**, also recorded in §34, fixed in place with the same reasoning —
+whole path segments rather than characters, so `Mods/Auto` stops looking like a parent of `Mods/AutoFish`.
+
+**4. ⚠️ A failed backup did not stop a delete.** `BackupModWithProgressAsync` swallowed every failure into
+the log and returned as though it had worked, and `DeleteSelectedMod` carried straight on — so an unwritable
+backups folder, a full disk or a locked file meant the mod was **deleted with no copy anywhere, while the
+user was told a backup had been kept**. This is the same class as the Minecraft `.jar` backup hole found in
+§31 and it affects every game. It now returns whether it worked, and the delete stops and says so.
+
+**5. Backups of the same mod in the same second collided** — the stamp is only accurate to the second, and
+the second backup threw "the file already exists", which reads to the caller as a failed backup and now, post
+fix 4, refuses a delete.
+
+Fix 5 is worth recording twice over, because **the first fix for it was wrong and the campaign caught that
+too**. Picking a free name with `File.Exists` and opening afterwards is a race: run twelve at once and every
+one sees nothing there, every one picks the same name, and eleven fail. The test written alongside it passed
+by luck, because a loose `Parallel.For` did not actually overlap. The name is now *claimed* with
+`FileMode.CreateNew` — whichever caller wins keeps it and the rest move on — and the test starts every thread
+on a barrier so the race is real.
+
+The one remaining throw is `CreateBackup` into an unwritable folder, and it is **correct**: a backup that
+could not be written must be loud, or fix 4 has nothing to detect.
+
+**1,386 → 1,398 tests.**

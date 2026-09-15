@@ -160,10 +160,10 @@ public partial class Form1
 		if (string.IsNullOrEmpty(source) || !Directory.Exists(source)) return;
 
 		foreach (string dir in Directory.GetDirectories(source, "*", SearchOption.AllDirectories))
-			Directory.CreateDirectory(dir.Replace(source, destination));
+			Directory.CreateDirectory(PathRebase.To(source, dir, destination));
 
 		foreach (string file in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
-			File.Copy(file, file.Replace(source, destination), overwrite: true);
+			File.Copy(file, PathRebase.To(source, file, destination), overwrite: true);
 
 		int copied = Directory.GetFiles(destination, "*", SearchOption.AllDirectories).Length;
 		int expected = Directory.GetFiles(source, "*", SearchOption.AllDirectories).Length;

@@ -973,6 +973,21 @@ public static class ModFileSystem
 	}
 
 	/// <summary>
+	/// Whether <paramref name="path"/> sits inside <paramref name="folder"/>, by path segments rather than by
+	/// characters — so a folder is not mistaken for a parent of a sibling whose name merely begins the same
+	/// way. See PathRebase, which exists for the same class of mistake.
+	/// </summary>
+	private static bool IsUnder(string folder, string path)
+	{
+		if (string.IsNullOrEmpty(folder) || string.IsNullOrEmpty(path)) return false;
+
+		string root = Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+		string full = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+		return full.StartsWith(root, StringComparison.OrdinalIgnoreCase);
+	}
+
+	/// <summary>
 	/// Extracts a .zip archive, backs up older version, and creates manifests for non-Stardew games.
 	/// </summary>
 	public static async Task<string> ExtractModAsync(
@@ -1160,11 +1175,15 @@ public static class ModFileSystem
 
 			if (isGroup)
 			{
+				// Climbs until every manifest is genuinely underneath, comparing whole path SEGMENTS rather
+				// than characters. A plain StartsWith made "Mods/Auto" look like a parent of "Mods/AutoFish",
+				// so a download holding both landed a level too high — every file in the wrong folder, and
+				// nothing to say so.
 				string commonPath = Path.GetDirectoryName(manifests[0]) ?? tempDir;
 				foreach (string m in manifests)
 				{
 					string dir = Path.GetDirectoryName(m) ?? tempDir;
-					while (!dir.StartsWith(commonPath))
+					while (!IsUnder(commonPath, dir))
 						commonPath = Path.GetDirectoryName(commonPath) ?? tempDir;
 				}
 				sourceFolderStardew    = commonPath;
@@ -1188,9 +1207,9 @@ public static class ModFileSystem
 
 			Directory.CreateDirectory(destModFolderStardew);
 			foreach (string dir in Directory.GetDirectories(sourceFolderStardew, "*", SearchOption.AllDirectories))
-				Directory.CreateDirectory(dir.Replace(sourceFolderStardew, destModFolderStardew));
+				Directory.CreateDirectory(PathRebase.To(sourceFolderStardew, dir, destModFolderStardew));
 			foreach (string file in Directory.GetFiles(sourceFolderStardew, "*.*", SearchOption.AllDirectories))
-				File.Copy(file, file.Replace(sourceFolderStardew, destModFolderStardew), overwrite: true);
+				File.Copy(file, PathRebase.To(sourceFolderStardew, file, destModFolderStardew), overwrite: true);
 
 			return (isGroup ? "Mod Group " : "") + targetFolderNameStardew;
 		}
@@ -1326,16 +1345,16 @@ public static class ModFileSystem
 			string rootDest = Path.Combine(destModFolder, "Root");
 			Directory.CreateDirectory(rootDest);
 			foreach (string dir in Directory.GetDirectories(sourceFolder, "*", SearchOption.AllDirectories))
-				Directory.CreateDirectory(dir.Replace(sourceFolder, rootDest));
+				Directory.CreateDirectory(PathRebase.To(sourceFolder, dir, rootDest));
 			foreach (string file in Directory.GetFiles(sourceFolder, "*.*", SearchOption.AllDirectories))
-				RobustCopy(file, file.Replace(sourceFolder, rootDest));
+				RobustCopy(file, PathRebase.To(sourceFolder, file, rootDest));
 		}
 		else
 		{
 			foreach (string dir in Directory.GetDirectories(sourceFolder, "*", SearchOption.AllDirectories))
-				Directory.CreateDirectory(dir.Replace(sourceFolder, destModFolder));
+				Directory.CreateDirectory(PathRebase.To(sourceFolder, dir, destModFolder));
 			foreach (string file in Directory.GetFiles(sourceFolder, "*.*", SearchOption.AllDirectories))
-				RobustCopy(file, file.Replace(sourceFolder, destModFolder));
+				RobustCopy(file, PathRebase.To(sourceFolder, file, destModFolder));
 		}
 
 		// Preserve the mod's documentation (README/guide/keybind files) so the accessibility-controls

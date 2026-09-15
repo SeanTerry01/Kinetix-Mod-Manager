@@ -554,7 +554,17 @@ public partial class Form1
 			// Deleting keeps a backup first, and zipping a large mod is not instant. Say what is happening and
 			// report progress the way downloads and installs do, so a long pause is never mistaken for a hang.
 			SetStatus(Loc.T("modactions.deletingStatus", stardewMod.Name));
-			await BackupModWithProgressAsync(stardewMod.FolderPath, stardewMod.Name + "_Delete", stardewMod.Name);
+			if (!await BackupModWithProgressAsync(stardewMod.FolderPath, stardewMod.Name + "_Delete", stardewMod.Name))
+			{
+				// The whole point of backing up first is that the mod can be got back. If that did not work,
+				// deleting it destroys something with no copy anywhere — so it stops here and says so, rather
+				// than going ahead and reporting that a backup was kept.
+				ResetStatus();
+				_soundEngine.Play("error");
+				SpeakBox(Loc.T("modactions.deleteNoBackupBox", stardewMod.Name), Loc.T("modactions.deleteNoBackupTitle"),
+					MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				return;
+			}
 
 			// ForceDelete (via ModFileSystem) clears read-only attributes first; a plain Directory.Delete throws
 			// "Access to the path '…' is denied" on mods that ship a read-only file such as SkyPatcher's DLL.
