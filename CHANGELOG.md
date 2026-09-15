@@ -1,5 +1,21 @@
 ﻿# Unreleased
 
+## 🐧 Linux: Updates and Profiles, and Minecraft is just a game in the list
+
+*   **Minecraft is no longer written into the Linux build.** It was the version number (fixed at 1.21.1, which
+    was quietly wrong for anybody on a different one), the game the window opened on, the only place it knew
+    how to search, and the only game it would install for. All four now come from the game you have loaded and
+    the settings you have chosen — Minecraft is an entry in the list like the other five.
+*   **An Updates screen.** It checks your mods by their file contents rather than by a link stored somewhere,
+    so nothing has to have been matched to a mod page first, and a mod it has never seen is simply not
+    mentioned rather than reported as a problem. It tells "everything is up to date" apart from "nothing here
+    could be checked", which look the same on screen and mean very different things.
+*   **A Profiles screen.** Save the mods you have switched on as a named setup and switch between them. Before
+    it changes anything it says what it would do — how many mods would go on, and how many off.
+*   **What it still cannot do, and now says so:** mods for Skyrim, Fallout 4, The Witcher 3, Moonlight Peaks
+    and Stardew Valley come from Nexus Mods, and that part of the manager is still Windows-only. The Linux
+    build tells you that in a sentence rather than showing you an empty list.
+
 ## 🐧 Linux: settings, a Settings screen, and a warning that matters
 
 *   Still nothing that changes the Windows build, except one thing worth knowing: **your shortcuts are stored
@@ -137,7 +153,7 @@
 
 ## ✅ Tests
 
-*   **1,309 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
+*   **1,327 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
 *   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 *   Twenty-six of them cover unpacking a downloaded mod, including one that extracts a **real .7z** rather than a stand-in — the only way to know that reading one without `7za.exe` actually works.

@@ -5,8 +5,8 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-09-15, after settings moved to the core and the GTK head got its first screen.
-**State:** 1,309 tests passing on Windows and Linux; all five projects build clean, zero warnings.
+**Last updated:** 2026-09-15, after Updates and Profiles, and Minecraft stopped being hard-coded.
+**State:** 1,327 tests passing on Windows and Linux; all five projects build clean, zero warnings.
 
 ---
 
@@ -261,11 +261,16 @@ It cannot work yet, for one reason that is not a code problem:
 - [ ] **Say it somewhere harder to miss than Settings.** The warning is on the Settings tab, which is where a
       user goes once. It belongs on the Games list too, beside "not installed", so it is heard while choosing
       rather than after.
-- [ ] **The Minecraft version is hard-coded to 1.21.1** in the GTK head's search.
-- [ ] **Screens, cheapest first.** Settings is done (§29); six tabs now against the Windows head's sixty-odd
-      feature areas. **Updates next**, then Profiles, then the mod list's own actions (delete, backup, notes).
-      Nothing structural stands in front of any of them any more — each is: check the decision is in the core,
-      then draw it in GTK.
+- ~~The Minecraft version is hard-coded to 1.21.1~~ — done (§30), along with three other places Minecraft
+  was written into the GTK head rather than being an entry in its list.
+- [ ] **Screens, cheapest first.** Settings, Updates and Profiles are done (§29, §30) — eight tabs now against
+      the Windows head's sixty-odd feature areas. **Next: the mod list's own actions** (delete, backup, notes),
+      then Dependencies, then the SMAPI log once Stardew installs work. Each is the same shape: check the
+      decision is in the core, then draw it in GTK.
+- [ ] **⚠️ Nexus search and updates are unavailable in the GTK head**, because `NexusService` is 1,387 lines in
+      the WinForms project. Five of the six games get a plain sentence saying so rather than an empty list. It
+      is the largest remaining thing keeping the two heads apart, and moving it is the same shape of job
+      `AppSettings` was — probably smaller than it looks, for the same reason.
 - [ ] **The GTK head installs Minecraft mods only.** `InstallSelectedAsync` says so plainly for other games.
       Stardew is the one worth adding next and needs the layout half of `ExtractModAsync` (above).
 - [ ] **A reader started *after* the app is not noticed.** `ScreenReaderPresence` asks once at startup. A

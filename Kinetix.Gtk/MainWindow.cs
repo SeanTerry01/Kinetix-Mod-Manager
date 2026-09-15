@@ -65,6 +65,13 @@ public sealed partial class MainWindow
 	private InstalledModsView _view = InstalledModsView.NotInstalled(null);
 	private readonly List<GameMod> _found = new();
 	private readonly List<GameProfile> _gameList = new();
+
+	/// <summary>
+	/// The catalogues this head can search. Modrinth and CurseForge only, because Nexus's service is 1,387
+	/// lines living in the WinForms project — so the five games whose mods come from there cannot be searched
+	/// from here yet, and <see cref="SearchAsync"/> says so rather than returning nothing.
+	/// </summary>
+	private readonly IReadOnlyList<IModSource> _modSources;
 	private WebKitView? _web;
 
 	/// <summary>Named rather than written as 3, because the last time a tab was inserted every number
@@ -72,13 +79,23 @@ public sealed partial class MainWindow
 	private const int WikiTabIndex = 3;
 
 	/// <summary>
-	/// The Minecraft version searched and installed for.
+	/// The Minecraft version to search and install for: the one the user pinned, or the one Fabric is
+	/// actually installed for.
 	///
-	/// Hard-coded, and it should not stay that way: it ought to come from the installed Fabric profile, or
-	/// be chosen by the user. Written down here rather than buried in two string literals so that when it is
-	/// fixed there is one place to fix.
+	/// It was a constant — 1.21.1 — which made every search and every install quietly wrong for anybody on a
+	/// different version, and a mod built for another version installs perfectly and then loads nothing. The
+	/// same pair the Windows head uses, and both halves of it are in the core.
 	/// </summary>
-	private const string MinecraftVersion = "1.21.1";
+	private string GameVersionInUse()
+	{
+		if (!_game.IsMinecraft) return "";
+
+		string pinned = _settings.MinecraftGameVersion;
+		if (pinned.Length > 0) return pinned;
+
+		string root = _locator.InstallFolder(_game) ?? MinecraftLayout.DefaultRootFolder;
+		return FabricInstaller.DetectInstalledGameVersion(root);
+	}
 
 	/// <summary>Where the search box lives. Named for the same reason as <see cref="WikiTabIndex"/>.</summary>
 	private const int FindModsTabIndex = 2;
@@ -87,17 +104,31 @@ public sealed partial class MainWindow
 
 	private readonly AppSettings _settings;
 
-	private GameProfile _game = GameProfiles.Require(GameProfiles.Minecraft);
+	/// <summary>
+	/// The game in hand. Not defaulted to any particular one: Minecraft is an entry in the list like every
+	/// other game, and a manager that always opened on it was telling five-sixths of its users they had
+	/// started somewhere wrong.
+	/// </summary>
+	private GameProfile _game = GameProfiles.All[0];
 	private string _modsFolder = "";
 
 	public MainWindow(Gtk.Application app, AppSettings settings)
 	{
 		_settings = settings;
+		_modSources = new IModSource[]
+		{
+			new ModrinthModSource(),
+			new CurseForgeModSource(() => _settings.ModSourceApiKey(ModSources.CurseForge)),
+		};
 
 		// The game the user was on last time. Before settings reached this head every run started on
 		// Minecraft whatever you had been doing, which for anyone managing another game meant two keypresses
 		// before the window was about what they opened it for.
-		if (GameProfiles.Find(_settings.ActiveGame) is { } remembered) _game = remembered;
+		// What you were last using, or failing that the first game actually on this machine — which beats
+		// opening on one that is not installed and reporting it as empty.
+		_game = GameProfiles.Find(_settings.ActiveGame)
+			?? GameProfiles.All.FirstOrDefault(g => !string.IsNullOrEmpty(_locator.InstallFolder(g)))
+			?? GameProfiles.All[0];
 
 		_window = Gtk.ApplicationWindow.New(app);
 		// Announcements go to the user's screen reader, with speech-dispatcher only as the fallback for
@@ -122,6 +153,8 @@ public sealed partial class MainWindow
 		_tabs.AppendPage(BuildInstalledTab(), Gtk.Label.New(Loc.T("gtk.tabInstalled")));
 		_tabs.AppendPage(BuildDiscoverTab(), Gtk.Label.New(Loc.T("gtk.tabFind")));
 		_tabs.AppendPage(BuildWikiTab(), Gtk.Label.New(Loc.T("gtk.tabWiki")));
+		_tabs.AppendPage(BuildUpdatesTab(), Gtk.Label.New(Loc.T("gtk.tabUpdates")));
+		_tabs.AppendPage(BuildProfilesTab(), Gtk.Label.New(Loc.T("gtk.tabProfiles")));
 		_tabs.AppendPage(BuildCheckTab(), Gtk.Label.New(Loc.T("gtk.tabCheck")));
 		_tabs.AppendPage(BuildSettingsTab(), Gtk.Label.New(Loc.T("gtk.tabSettings")));
 		root.Append(_tabs);
@@ -484,9 +517,11 @@ public sealed partial class MainWindow
 	/// <summary>
 	/// Installs the selected search result.
 	///
-	/// Only the file-per-mod games for now, which today means Minecraft. The folder-shaped layouts still go
-	/// through the archive pipeline in the WinForms app, and claiming otherwise here would install nothing
-	/// and say it had worked.
+	/// Judged by what the result's catalogue can hand over rather than by which game is loaded — the same
+	/// question the Windows head asks. Today that means a Modrinth result, because the folder-shaped layouts
+	/// still go through the archive pipeline in the WinForms app; claiming otherwise here would install
+	/// nothing and say it had worked. A result the manager cannot fetch opens its page instead, which is the
+	/// one thing every catalogue can do.
 	/// </summary>
 	private async Task InstallSelectedAsync()
 	{
@@ -495,14 +530,24 @@ public sealed partial class MainWindow
 
 		GameMod mod = _found[i];
 
-		if (!_game.IsMinecraft)
+		if (string.IsNullOrEmpty(mod.ModrinthId))
 		{
-			Say(Loc.T("gtk.installMinecraftOnly", _game.DisplayName), interrupt: true);
+			Say(Loc.T("gtk.installNotFromHere", mod.Name), interrupt: true);
+			OpenModPage(mod);
 			return;
 		}
 
 		string mods = ModsFolderFor(_game);
 		if (string.IsNullOrEmpty(mods)) { Say(Loc.T("gtk.noModsFolder"), interrupt: true); return; }
+
+		string version = GameVersionInUse();
+		if (version.Length == 0)
+		{
+			// Modrinth cannot be asked without one, and guessing would install a mod built for another
+			// version — which installs perfectly and then loads nothing at all.
+			Say(Loc.T("gtk.noGameVersion"), interrupt: true);
+			return;
+		}
 
 		SetStatus(Loc.T("gtk.installingStatus", mod.Name));
 		Say(Loc.T("gtk.installing", mod.Name));
@@ -512,7 +557,7 @@ public sealed partial class MainWindow
 			string downloads = Path.Combine(Path.GetTempPath(), "kinetix-downloads");
 
 			ModInstaller.InstallResult? result = await ModInstaller.InstallFromModrinthAsync(
-				mod.ModrinthId ?? "", MinecraftVersion, mods, downloads);
+				mod.ModrinthId ?? "", version, mods, downloads);
 
 			_ui.Post(() =>
 			{
@@ -520,8 +565,8 @@ public sealed partial class MainWindow
 				{
 					// A normal answer rather than a failure, and one the user has to hear plainly: a mod
 					// built for another Minecraft version installs perfectly and then loads nothing at all.
-					SetStatus(Loc.T("gtk.noBuildStatus", mod.Name, MinecraftVersion));
-					Say(Loc.T("gtk.noBuild", mod.Name, MinecraftVersion), interrupt: true);
+					SetStatus(Loc.T("gtk.noBuildStatus", mod.Name, version));
+					Say(Loc.T("gtk.noBuild", mod.Name, version), interrupt: true);
 					return;
 				}
 
@@ -609,31 +654,49 @@ public sealed partial class MainWindow
 
 	private async Task SearchAsync()
 	{
-		string term = _search.GetBuffer().GetText();
+		string term = _search.GetBuffer().GetText().Trim();
 		if (string.IsNullOrWhiteSpace(term)) { Say(Loc.T("gtk.searchEmpty"), interrupt: true); return; }
+
+		// Whichever catalogues the user has chosen for this game, decided the same way the Windows head
+		// decides it. This used to call Modrinth directly, which is why searching read as Minecraft-only —
+		// not because the other games have nowhere to search, but because this window knew one place.
+		IReadOnlyList<IModSource> asking = ModSearchPlan.Choose(
+			_modSources, _game.Id, _settings.ModSearchMode, _settings.PreferredModSourceFor(_game.Id));
+
+		if (asking.Count == 0)
+		{
+			// Honest rather than empty. Nexus's service is in the WinForms project, so the five games whose
+			// mods come from there cannot be searched from here yet — and a blind user cannot tell an empty
+			// result list from a search that never happened.
+			SetStatus(Loc.T("gtk.searchNoSourceHere", _game.DisplayName));
+			Say(Loc.T("gtk.searchNoSourceHere", _game.DisplayName), interrupt: true);
+			return;
+		}
 
 		SetStatus(Loc.T("gtk.searchingStatus", term));
 		Say(Loc.T("gtk.searching", term));
 
 		try
 		{
-			// Live, from the core, with no API key — which is the reason Minecraft is the sensible first
-			// game for a Linux build. Every other supported game needs a Nexus key.
-			var (results, total) = await ModrinthService.SearchAsync(term, MinecraftVersion, 0, 25);
+			var query = new ModSearchQuery(_game.Id, term, 1, 25) { GameVersion = GameVersionInUse() };
+			ModSearchResults found = await ModSearchPlan.SearchAsync(asking, query);
 
 			_ui.Post(() =>
 			{
-				_found.Clear(); _found.AddRange(results);
+				_found.Clear(); _found.AddRange(found.Results);
 				while (_results.GetFirstChild() is { } child) _results.Remove(child);
-				foreach (GameMod m in _found) _results.Append(RowLabel($"{m.Name} — {Trim(m.Description)}"));
+				foreach (GameMod m in _found) _results.Append(RowLabel(Trim(m.ToString())));
 
-				SetStatus(Loc.T("gtk.resultsStatus", _found.Count, total, term));
+				// A catalogue that could not answer says so out loud rather than leaving a quiet gap.
+				foreach (string note in found.Notes) Say(note);
+
+				SetStatus(Loc.T("gtk.resultsStatus", _found.Count, found.Total, term));
 				Say(Loc.T("gtk.results", _found.Count));
 			});
 		}
 		catch (Exception ex)
 		{
-			DiagnosticLog.WriteException("Modrinth", $"searching for {term}", ex);
+			DiagnosticLog.WriteException("Search", $"searching for {term}", ex);
 			_ui.Post(() =>
 			{
 				_sound.Play("error");

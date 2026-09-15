@@ -2067,3 +2067,67 @@ it is in the core, and draw it in GTK. Nothing structural stands in front of Upd
 or the mod list's own actions.
 
 **1,298 → 1,309 tests.**
+
+## 30. Minecraft stops being special, and two more screens — 2026-09-15
+
+Sean's note: Minecraft is the first game he wants to play, and that is not a reason for it to be written into
+the code. It should sit in the list like any other game. He was right, and it was in deeper than the Games
+tab suggested.
+
+### What "hard-coded" actually meant
+
+Four things, none of them in the list itself:
+
+- **The Minecraft version was a constant**, `1.21.1`, used by both search and install. Wrong for anybody on
+  another version, and wrong in the worst way: a mod built for a different version installs perfectly and
+  then loads nothing. It now asks the same pair the Windows head asks — the pinned setting, then the version
+  Fabric is actually installed for, both already in the core.
+- **The window opened on Minecraft** whatever you had been doing. It now opens on the game you were last
+  using, or failing that the first game actually installed on the machine, which beats opening on one that
+  is not there and reporting it as empty.
+- **Search called `ModrinthService` directly**, which is why searching read as Minecraft-only — not because
+  the other games have nowhere to search, but because this window knew one place. It goes through
+  `ModSearchPlan` now, with the user's own source preference, exactly as the Windows head does.
+- **Install branched on `IsMinecraft`.** It asks what the result's catalogue can hand over instead, which is
+  the same question `CanFetchDirectly` asks on the other side. A result the manager cannot fetch opens its
+  page, which is the one thing every catalogue can do.
+
+The honest part is what is left: Nexus's service is 1,387 lines in the WinForms project, so the five games
+whose mods come from there still cannot be searched from this head. That is now *said* — "its catalogue is
+Nexus Mods, and that part of the manager is still Windows-only" — rather than shown as an empty list. A blind
+user cannot tell an empty result from a search that never happened.
+
+### Updates
+
+Checked by the **hash of each file** rather than by a stored mod id, which is the reason it works at all on a
+head with no Nexus: Modrinth takes a list of SHA-1s and answers with the newest build of whatever it
+recognises. Nothing has to have been linked to a mod page first, and a mod the catalogue has never seen is
+simply not mentioned — the right answer for a hand-built mod rather than an error.
+
+`ModUpdatesView` in the core holds the one distinction an empty list cannot make by itself: **"everything is
+up to date" and "nothing here could be checked" are different answers**, and only one means the user has
+nothing left to do. Hearing the wrong one either sends somebody hunting for an update that is not there, or
+leaves them sitting on an out-of-date accessibility mod believing it was checked. The up-to-date sentence
+also says how many mods were actually checked, because the same words over a folder where nothing could be
+read would be a lie of omission.
+
+### Profiles
+
+Almost nothing to write, and that is the point: `ProfileStore` and `ModProfile` went to the core in Phase 4,
+before there was a second front end to use them. The screen is a list, three buttons and no rules of its own
+— the clearest evidence so far that Phase 4 was worth doing.
+
+`ProfilesView` adds two things. A profile is marked **current** when the mods on disk match it, not when it
+was selected last: one applied and then departed from by hand is not the one you are on, and saying otherwise
+would be the manager's bookkeeping contradicting the user's own folder. And switching says **what it would
+do before it does it** — how many mods would go on and how many off, counted separately, because two
+different things are about to happen to a game the user is about to play and one number covering both tells
+them less than either.
+
+### The guard earned its keep again
+
+Removing the `IsMinecraft` branch orphaned the phrase that went with it, and `SpokenStringGuardTests` failed
+on the unused key. That is the check working exactly as intended in the direction that is easy to forget: not
+a missing phrase, but one left behind after the code that said it went away.
+
+**1,309 → 1,327 tests.** Eight tabs now, against the Windows head's sixty-odd feature areas.
