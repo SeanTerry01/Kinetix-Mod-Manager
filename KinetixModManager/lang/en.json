@@ -1079,6 +1079,7 @@
   "coverage.gathering": "Working out which mods can be checked for updates.",
   "coverage.header": "{0} of {1} installed mods can be checked for updates. {2} cannot.",
   "coverage.allCovered": "Every installed mod can be checked for updates. Nothing needs your attention.",
+  "coverage.allNowCovered": "That was the last one. Every installed mod can now be checked for updates.",
   "coverage.actionHint": "Press Enter on a mod to give it a Nexus mod ID or GitHub repository. The full list is also in the error log.",
   "coverage.loggedHint": "The full list has also been written to the error log.",
   "coverage.rowUnchecked": "Not checked: {0}, version {1}. {2} Unique ID {3}. Folder: {4}.",

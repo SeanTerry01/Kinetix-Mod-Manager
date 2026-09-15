@@ -86,7 +86,8 @@ public partial class Form1
 		}
 
 		ShowReportDialog(Loc.T("coverage.parentTitle", child.Name), Loc.T("coverage.parentHeader", child.Name),
-			Loc.T("coverage.parentNone"), rows, Loc.T("coverage.parentHint"), null, Loc.T("coverage.parentListName"));
+			Loc.T("coverage.parentNone"), rows, Loc.T("coverage.parentHint"), null, Loc.T("coverage.parentListName"),
+			closeAfterAction: () => CoverageSettled(child));
 	}
 
 	/// <summary>
@@ -109,9 +110,28 @@ public partial class Form1
 		if (recovered > 0)
 			Speak(Loc.T(recovered == 1 ? "coverage.recoveredOne" : "coverage.recovered", recovered));
 
+		int notCheckedCount = coverage.Count(c => c.Kind == UpdateCoverageKind.Unchecked);
+		WriteCoverageToLog(coverage);
+
+		string header = Loc.T("coverage.header", coverage.Count - notCheckedCount, coverage.Count, notCheckedCount);
+		string hint = notCheckedCount > 0 ? Loc.T("coverage.actionHint") : Loc.T("coverage.loggedHint");
+		// Stays open while mods are being linked, one after another, and is rebuilt after each: a mod that has just
+		// been given a page leaves the list. Once nothing is left to fix it closes and says so.
+		ShowReportDialog(Loc.T("coverage.title"), header, Loc.T("coverage.allCovered"), CoverageRows(coverage), hint,
+			null, Loc.T("coverage.listName"),
+			rebuildRows: () =>
+			{
+				List<UpdateCoverageEntry> now = ClassifyUpdateCoverage(known);
+				return now.Any(c => c.Kind == UpdateCoverageKind.Unchecked) ? CoverageRows(now) : new List<ReportRow>();
+			},
+			doneMessage: Loc.T("coverage.allNowCovered"));
+	}
+
+	/// <summary>The report's rows: the mods that cannot be checked, each with how to fix it, then the covered ones.</summary>
+	private List<ReportRow> CoverageRows(List<UpdateCoverageEntry> coverage)
+	{
 		var notChecked = coverage.Where(c => c.Kind == UpdateCoverageKind.Unchecked).OrderBy(c => c.Mod.Name).ToList();
 		var bundled = coverage.Where(c => c.Kind == UpdateCoverageKind.Bundled).OrderBy(c => c.Mod.Name).ToList();
-		int covered = coverage.Count - notChecked.Count;
 
 		var rows = new List<ReportRow>();
 		foreach (UpdateCoverageEntry info in notChecked)
@@ -151,13 +171,16 @@ public partial class Form1
 					 .OrderBy(c => c.Mod.Name))
 			rows.Add(new ReportRow { Text = Loc.T("coverage.rowSmapi", info.Mod.Name, info.Mod.Version) });
 
-		WriteCoverageToLog(coverage);
-
-		string header = Loc.T("coverage.header", covered, coverage.Count, notChecked.Count);
-		string hint = notChecked.Count > 0 ? Loc.T("coverage.actionHint") : Loc.T("coverage.loggedHint");
-		ShowReportDialog(Loc.T("coverage.title"), header, Loc.T("coverage.allCovered"), rows, hint,
-			null, Loc.T("coverage.listName"));
+		return rows;
 	}
+
+	/// <summary>
+	/// Whether <paramref name="mod"/> has been dealt with: given a page to check, or said to come with another mod.
+	/// The pickers reached from the coverage report close once it is, and the report drops the mod.
+	/// </summary>
+	private bool CoverageSettled(StardewMod mod) =>
+		UpdateCoverage.HasUpdateLink(mod) ||
+		(!string.IsNullOrEmpty(mod.UniqueId) && BundledWithMap().ContainsKey(mod.UniqueId));
 
 	/// <summary>
 	/// Searches Nexus for the mod and offers the results as an accessible list to pick from, so a mod the
@@ -211,7 +234,7 @@ public partial class Form1
 			{
 				Text = Loc.T(likely ? "coverage.candidateLikely" : "coverage.candidate",
 					candidate.Name, candidate.Author, candidate.NexusID ?? ""),
-				OnEnter = () => { ApplyNexusLink(mod, chosen.NexusID!, chosen.Name); return Task.CompletedTask; }
+				OnEnter = () => ApplyNexusLink(mod, chosen.NexusID!, chosen.Name)
 			});
 		}
 		rows.Add(new ReportRow { Text = Loc.T("coverage.enterIdManually"), OnEnter = () => LinkModUpdateSource(mod) });
@@ -223,15 +246,18 @@ public partial class Form1
 			OnEnter = () => { ShowBundleParentPicker(mod); return Task.CompletedTask; }
 		});
 
+		// A picker: once the mod has a page, or has been said to come with another mod, there is nothing more to
+		// choose here, and closing it goes straight back to the coverage report.
 		ShowReportDialog(Loc.T("coverage.linkTitle", mod.Name), Loc.T("coverage.linkHeader", mod.Name),
-			Loc.T("coverage.linkNoResults"), rows, Loc.T("coverage.linkHint"), null, Loc.T("coverage.linkListName"));
+			Loc.T("coverage.linkNoResults"), rows, Loc.T("coverage.linkHint"), null, Loc.T("coverage.linkListName"),
+			closeAfterAction: () => CoverageSettled(mod));
 	}
 
 	/// <summary>
 	/// Links a mod to a Nexus page the user picked, remembering it in the manager's own map rather than editing
 	/// the author's manifest, then re-scans so the mod is immediately checkable.
 	/// </summary>
-	private async void ApplyNexusLink(StardewMod mod, string nexusId, string pageName)
+	private async Task ApplyNexusLink(StardewMod mod, string nexusId, string pageName)
 	{
 		mod.NexusID = nexusId;
 		mod.GitHubRepo = null;

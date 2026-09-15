@@ -108,8 +108,23 @@ public partial class Form1
 		bool anyAction = rows.Any(r => !string.IsNullOrEmpty(r.SearchTerm) || !string.IsNullOrEmpty(r.OpenUrl));
 		string? hint = anyAction ? Loc.T("reports.reqActionHint") : null;
 
+		// The mod-part rows are the ones fixed from inside this list — Enter fetches a missing part or removes a
+		// leftover one — so after each action they are checked again, and a fixed one leaves. Everything else here
+		// either opens a page or goes off to search, and needs the network to re-check, so it is left as found.
+		var partTexts = new HashSet<string>(partRows.Concat(leftoverRows).Select(r => r.Text));
+		List<ReportRow> RebuildAfterAction()
+		{
+			var stillThere = new HashSet<string>(
+				GatherMissingPartFindings().Select(r => Loc.T("health.rowParts", r.Text))
+					.Concat(GatherSupersededPartFindings().Select(r => Loc.T("health.rowLeftover", r.Text))));
+			rows.RemoveAll(r => partTexts.Contains(r.Text) && !stillThere.Contains(r.Text));
+			return rows.ToList();
+		}
+
 		ShowReportDialog(Loc.T("health.title"), header, Loc.T("health.none"), rows, hint,
-			IgnoreRequirementRow, listName: Loc.T("health.listName"));
+			// Hidden rows must leave the copy the rebuild works from too, or the next rebuild would bring them back.
+			r => { IgnoreRequirementRow(r); rows.Remove(r); },
+			listName: Loc.T("health.listName"), rebuildRows: RebuildAfterAction);
 	}
 
 	/// <summary>

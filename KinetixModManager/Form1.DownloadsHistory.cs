@@ -74,18 +74,26 @@ public partial class Form1
 			container.Controls.Add(layout);
 
 			WireAccessibleDialogList(list);
+			bool busy = false;
 			// Escape is handled by the view itself (see Form1.InlineView).
-			list.KeyDown += (_, e) =>
+			list.KeyDown += async (_, e) =>
 			{
 				if (list.SelectedItem is not DownloadItem item) return;
+				if (busy && (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Delete))
+				{
+					// One at a time: the install in progress still has this list under it.
+					e.Handled = e.SuppressKeyPress = true;
+					return;
+				}
 
 				if (e.KeyCode == Keys.Enter)
 				{
 					e.Handled = e.SuppressKeyPress = true;
-					string path = item.FullPath;
-					closeView();
-					// Same route as picking an archive by hand; it runs its own progress and overwrite prompt.
-					Fire(InstallFromZip(path, confirmReinstall: true), "InstallFromZip");
+					// Same route as picking an archive by hand; it runs its own progress and overwrite prompt. The list
+					// stays open, and every download is still in it afterwards, so the user can go on to the next.
+					busy = true;
+					try { await InstallFromZip(item.FullPath, confirmReinstall: true); }
+					finally { busy = false; }
 				}
 				else if (e.KeyCode == Keys.Delete)
 				{

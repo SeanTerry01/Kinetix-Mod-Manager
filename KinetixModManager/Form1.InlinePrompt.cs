@@ -242,7 +242,11 @@ public partial class Form1
 					host.AcceptButton = acceptBefore;
 					host.CancelButton = cancelBefore;
 
-					if (focusBefore != null && !focusBefore.IsDisposed && focusBefore.CanFocus)
+					// A list being worked through is brought up to date before focus goes back to it, or the row read
+					// out would be the one just dealt with. It may instead close itself, having nothing left in it,
+					// and then there is nowhere here to return to. See Form1.StayingLists.
+					if (focusBefore != null && !focusBefore.IsDisposed && RefreshListFocusReturnsTo(focusBefore) &&
+						!focusBefore.IsDisposed && focusBefore.CanFocus)
 					{
 						// Going back to a list is a focus change the user did not make, and a screen reader
 						// announces nothing for those — it sees focus as never having left. Without this, closing

@@ -333,17 +333,33 @@ public partial class Form1
 	/// along with the item count; Escape closes; Enter on a row runs its action (search Discovery for a missing
 	/// mod, or open a page). When <paramref name="onIgnore"/> is supplied, Delete on a row with an IgnoreKey hides
 	/// it (used by the requirements report). An empty result shows <paramref name="emptyMessage"/> as the only row.
+	///
+	/// <para>
+	/// A row's <see cref="ReportRow.OnEnter"/> runs with the report still open, and the user is left in it afterwards
+	/// — see Form1.StayingLists. What happens to the list then is up to the caller:
+	/// </para>
+	/// <list type="bullet">
+	/// <item><paramref name="rebuildRows"/> — a report being worked through. Its rows are rebuilt after every action,
+	/// keeping the cursor in place, and it closes once nothing is left, saying <paramref name="doneMessage"/>.</item>
+	/// <item><paramref name="closeAfterAction"/> — a report you pick one thing from. It closes once that answers true,
+	/// so a picker whose choice has been made does not linger.</item>
+	/// <item>Neither — the rows stay as they are (a list of log files to read one after another).</item>
+	/// </list>
 	/// </summary>
 	private void ShowReportDialog(string title, string header, string emptyMessage, List<ReportRow> rows, string? actionHint,
-			Action<ReportRow>? onIgnore = null, string? listName = null, string? openingNote = null)
+			Action<ReportRow>? onIgnore = null, string? listName = null, string? openingNote = null,
+			Func<List<ReportRow>>? rebuildRows = null, Func<bool>? closeAfterAction = null, string? doneMessage = null)
 		{
-			// What a chosen row asks for, run once the report is off the screen rather than while it is still
-			// up. closeView() only raises a flag — the panel is taken down by the loop that follows — so
-			// anything done straight after it is done UNDER a view that is still there and still holds the
-			// keyboard. Switching tabs from that position moved focus into a control inside a panel about to be
-			// removed, and WinForms parked the handle on its hidden holding window: the screen reader announced
-			// "WindowsFormsParkingWindow" and the user was left nowhere.
+			// What a chosen row asks for, when it takes the user somewhere else, run once the report is off the
+			// screen rather than while it is still up. closeView() only raises a flag — the panel is taken down by
+			// the loop that follows — so anything done straight after it is done UNDER a view that is still there and
+			// still holds the keyboard. Switching tabs from that position moved focus into a control inside a panel
+			// about to be removed, and WinForms parked the handle on its hidden holding window: the screen reader
+			// announced "WindowsFormsParkingWindow" and the user was left nowhere. Only the Discovery search goes
+			// this way now; every other row action runs in place.
 			Func<Task>? afterClose = null;
+			string? sayAfterClosing = null;
+			bool viewGone = false;
 
 			// Shown inside the main window rather than as one of its own — see Form1.InlineView.
 			ShowInlineView(title, (container, closeView) =>
@@ -374,16 +390,47 @@ public partial class Form1
 			container.Controls.Add(layout);
 
 			WireAccessibleDialogList(list);
+
+			// Brings the report up to date after an action, and answers whether the user should be put back in it.
+			// Run just before focus returns from anything the action opened (so the row read out is the right one),
+			// and again when the action finishes. Harmless to run twice: it rebuilds from the current state.
+			bool Refresh()
+			{
+				if (viewGone || list.IsDisposed) return false;
+				if (closeAfterAction?.Invoke() == true) { closeView(); return false; }
+				if (rebuildRows == null) return true;
+
+				List<ReportRow> fresh = rebuildRows();
+				if (fresh.Count == 0)
+				{
+					sayAfterClosing = doneMessage ?? emptyMessage;
+					closeView();
+					return false;
+				}
+				ReplaceRowsSilently(list, fresh, (a, b) => a.Text == b.Text);
+				return true;
+			}
+			if (rebuildRows != null || closeAfterAction != null) RefreshBeforeFocusReturns(list, Refresh);
+
+			// One action at a time: a second Enter while an install is still running would start another on
+			// whichever row the first one left the cursor on.
+			bool busy = false;
+
 			// Escape is handled by the view itself (see Form1.InlineView).
-			list.KeyDown += (_, e) =>
+			list.KeyDown += async (_, e) =>
 			{
 				if (list.SelectedItem is not ReportRow row) return;
+				if (busy && (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Delete || e.KeyCode == Keys.F9))
+				{
+					e.Handled = e.SuppressKeyPress = true;
+					return;
+				}
 
-				// F9 asks the configured AI provider about the selected finding.
+				// F9 asks the configured AI provider about the selected finding. The answer opens over the report,
+				// and closing it comes back here.
 				if (e.KeyCode == Keys.F9 && hasRows && _aiService.IsConfigured)
 				{
 					e.Handled = e.SuppressKeyPress = true;
-					closeView();
 					AskAiAbout(title, Loc.T("ai.aboutReportRow", title, row.Text));
 					return;
 				}
@@ -406,11 +453,23 @@ public partial class Form1
 				if (e.KeyCode != Keys.Enter) return;
 				if (row.OnEnter != null)
 				{
-					// The action opens its own dialog and may rebuild the lists behind this one, so it waits
-					// until this view has actually been taken down.
+					// In place, with the report still up. Anything the action opens sits over the report and returns
+					// to it; see Refresh above for how the list is put right before that happens.
 					e.Handled = e.SuppressKeyPress = true;
-					afterClose = row.OnEnter;
-					closeView();
+					busy = true;
+					try { await row.OnEnter(); }
+					catch (Exception ex) { LogFailure(title, "A report row's action failed", ex); }
+					finally { busy = false; }
+
+					if (viewGone || list.IsDisposed) return;
+					string before = string.Join("\n", list.Items.Cast<ReportRow>().Select(r => r.Text));
+					if (!Refresh()) return;
+
+					// The action finished without opening anything, so focus never left and nothing has read the
+					// list since it changed. Say where the cursor is now. The action has already said what it did.
+					if (list.Focused && list.SelectedItem != null &&
+						before != string.Join("\n", list.Items.Cast<ReportRow>().Select(r => r.Text)))
+						Speak(RowThenPosition(list.SelectedItem, PositionTextFor(list)));
 					return;
 				}
 				if (!string.IsNullOrEmpty(row.SearchTerm))
@@ -438,7 +497,12 @@ public partial class Form1
 			return list;
 			},
 			// Whatever the chosen row asked for, now that the view is really gone and focus has been put back.
-			onClosed: () => { if (afterClose != null) Fire(afterClose(), "report row action"); },
+			onClosed: () =>
+			{
+				viewGone = true;
+				if (sayAfterClosing != null) Speak(sayAfterClosing);
+				if (afterClose != null) Fire(afterClose(), "report row action");
+			},
 			// Through the hint, so it follows the title rather than arriving ahead of it. A report's header
 			// describes its findings rather than repeating its title, so unlike the other views it is kept whole.
 			hint: ReportOpening(header, emptyMessage, rows, actionHint, openingNote));

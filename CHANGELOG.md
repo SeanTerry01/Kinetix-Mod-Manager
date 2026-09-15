@@ -1,5 +1,20 @@
 ﻿# Unreleased
 
+## ✨ Lists you work through keep you in them
+
+*   **Doing something in a list no longer throws you out of it.** Installing a download, linking a mod in the
+    Update Coverage Report, or fetching a missing part in Check My Setup used to close the list first, so
+    every mod fixed meant opening the list again and finding your place. Now you stay where you were. The
+    item you dealt with leaves the list, you land on the one that took its place, and the list closes by
+    itself once nothing is left, saying so.
+*   **Where this applies:** Reinstall a Downloaded Mod (**Ctrl + Shift + W**), the Update Coverage Report,
+    Check My Setup and the other reports, and the list of log files. Asking the AI about a report finding
+    with **F9** also comes back to the report.
+*   Lists where you pick one thing, such as a search result, a value or a saved search, still close once
+    you have picked. Choosing is what they are for.
+*   The row read out when you come back is the right one. The list is brought up to date before focus returns
+    to it, not after, so you never hear the mod you just fixed read out as if it were still there.
+
 ## 🐧 Linux: every game can be searched and update-checked now
 
 *   **Nexus Mods works from the Linux build.** It was the last thing keeping five of the six games at arm's
