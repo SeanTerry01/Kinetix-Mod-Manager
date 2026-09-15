@@ -196,6 +196,10 @@ public partial class Form1
 			return;
 		}
 
+		// Where each mod's page is, from whatever earlier check learned it. Applied here rather than inside the
+		// scan because it is a convenience the scan does not need: a mod list still builds without it.
+		ModPageLinks.Apply(scanned, ModPageLinks.Load(AppSettings.AppDataFolder));
+
 		_allInstalledMods = scanned;
 		ModHealth.ResolveDependencies(_allInstalledMods, IsNewerVersion);
 		// Reconcile Skyrim/Fallout 4 asset deployment to the current enabled set and priority order, and

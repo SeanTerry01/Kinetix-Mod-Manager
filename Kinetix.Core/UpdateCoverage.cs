@@ -64,8 +64,17 @@ public sealed class UpdateCoverageEntry
 /// </summary>
 public static class UpdateCoverage
 {
+	/// <summary>
+	/// Whether the manager knows where this mod came from well enough to act on it.
+	///
+	/// A page counts. It is less than a Nexus id — the manager cannot fetch the file itself — but it is the
+	/// difference between "here is where your update is" and telling the user their mod is untrackable. A
+	/// Stardew mod on ModDrop or CurseForge has exactly this and nothing more, and used to be counted as a
+	/// gap in the user's setup that they had no way to close.
+	/// </summary>
 	public static bool HasUpdateLink(GameMod mod) =>
-		!string.IsNullOrEmpty(mod.NexusID) || !string.IsNullOrEmpty(mod.GitHubRepo);
+		!string.IsNullOrEmpty(mod.NexusID) || !string.IsNullOrEmpty(mod.GitHubRepo) ||
+		!string.IsNullOrEmpty(mod.PageUrl);
 
 	/// <summary>
 	/// The mods SMAPI installs alongside itself. They live in the Mods folder like any other mod but are not

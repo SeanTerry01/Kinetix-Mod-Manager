@@ -74,7 +74,10 @@ public partial class Form1
 				result.Rows.Add(new ReportRow
 				{
 					Text = Loc.T("broken.stardewRow", mod.Name, r.Status, summary),
-					OpenUrl = string.IsNullOrEmpty(mod.NexusID) ? null : $"https://www.nexusmods.com/{domain}/mods/{mod.NexusID}"
+					// Whichever site the mod is actually on. Built from a Nexus id when that is all there is,
+					// but a page the manager was told about wins — it is the only thing a mod hosted somewhere
+					// the manager cannot otherwise reach will ever have.
+					OpenUrl = ModSources.PageUrlFor(mod, domain)
 				});
 			}
 			return result;

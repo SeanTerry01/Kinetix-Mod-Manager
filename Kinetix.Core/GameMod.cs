@@ -65,6 +65,28 @@ public class GameMod
 	/// <summary>GitHub repository path in 'owner/repo' format, or <c>null</c> if not mapped.</summary>
 	public string? GitHubRepo { get; set; }
 
+	/// <summary>
+	/// The mod's page, wherever it lives — Nexus, Modrinth, ModDrop, CurseForge, a GitHub repository — or
+	/// <c>null</c> when nothing has told the manager where that is.
+	///
+	/// <para>
+	/// Kept because the manager is often told where a mod lives on a site it cannot otherwise do anything
+	/// with, and used to throw that away. A Stardew mod hosted on ModDrop has its page and its newest version
+	/// handed over by smapi.io; recognising only Nexus and GitHub URLs meant the mod was then reported as one
+	/// the manager could not track. Opening a page is the one thing that works for every site there will ever
+	/// be, so it is worth keeping even when nothing else about the site is known.
+	/// </para>
+	/// </summary>
+	public string? PageUrl { get; set; }
+
+	/// <summary>
+	/// Which site this mod came from, as a <see cref="ModSources"/> id, or <c>""</c> when it is not known.
+	///
+	/// Set on a search result so the row can say where it came from — two catalogues will return the same mod,
+	/// and two rows a listener cannot tell apart are worse than one.
+	/// </summary>
+	public string SourceId { get; set; } = "";
+
 	/// <summary>Absolute path to the mod's folder on disk.</summary>
 	public string FolderPath { get; set; } = "";
 

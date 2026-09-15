@@ -366,6 +366,7 @@ public partial class Form1
 			}
 
 			var linked = new Dictionary<string, string>();
+			var pages = new Dictionary<string, string>();
 			foreach (StardewMod mod in installed)
 			{
 				if (mod.IsGroup || string.IsNullOrEmpty(mod.UniqueId)) continue;
@@ -393,17 +394,28 @@ public partial class Form1
 					}
 					else if (!string.IsNullOrEmpty(upd.Url))
 					{
-						var nexus = Regex.Match(upd.Url!, @"nexusmods\.com/stardewvalley/mods/(\d+)", RegexOptions.IgnoreCase);
-						if (nexus.Success)
+						// Whichever site smapi.io names. It understands ModDrop, CurseForge and Chucklefish
+						// update keys as well as Nexus and GitHub, and this used to recognise two of them and
+						// drop the rest — so a mod hosted anywhere else was reported to the user as one the
+						// manager could not track, moments after being handed its exact page.
+						ModPageLink? link = ModSources.ParsePage(upd.Url);
+						switch (link?.SourceId)
 						{
-							mod.NexusID = nexus.Groups[1].Value;
-							linked[mod.UniqueId] = mod.NexusID;
+							case ModSources.Nexus:
+								mod.NexusID = link!.Id;
+								linked[mod.UniqueId] = mod.NexusID;
+								break;
+
+							case ModSources.GitHub:
+								mod.GitHubRepo = link!.Id;
+								break;
 						}
-						else
-						{
-							var gh = Regex.Match(upd.Url!, @"github\.com/([^/]+/[^/]+?)(?:/|$)", RegexOptions.IgnoreCase);
-							if (gh.Success) mod.GitHubRepo = gh.Groups[1].Value;
-						}
+
+						// Kept whatever the site, and kept even when one of the two above matched: opening the
+						// page is the one thing that works for every site there will ever be.
+						mod.PageUrl = upd.Url;
+						mod.SourceId = link?.SourceId ?? "";
+						pages[mod.UniqueId] = upd.Url!;
 					}
 				}
 
@@ -441,6 +453,7 @@ public partial class Form1
 			}
 
 			PersistNexusIdLinks(linked);
+			ModPageLinks.Save(AppSettings.AppDataFolder, pages);
 		}
 		catch (Exception ex)
 		{
