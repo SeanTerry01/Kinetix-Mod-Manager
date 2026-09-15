@@ -1,18 +1,5 @@
 ﻿# Unreleased
 
-## ✨ Install a download you skipped (Ctrl + Shift + P)
-
-*   **Saying "not now" to an install no longer leaves the mod stranded.** When a download finished and you
-    declined to install it, the file sat in your downloads folder, and the only way back was the Reinstall list,
-    which shows every download you have ever made. **Ctrl + Shift + P** (also in **Mods → Install and Update
-    Mods**) lists only the downloads that were never installed. Enter installs one; Delete removes the file.
-*   Downloads you did install are left out, even though they are still in the folder. From this version on the
-    manager notes each download as it installs it, so a skipped optional file from the page of a mod you
-    already have is still listed. Older downloads are judged against what you have installed.
-*   **You stay in the list as you work through it.** An installed mod leaves the list and you land on the
-    one that took its place; the list closes itself once the last one is installed.
-*   Works for all six games; for Minecraft it lists mod `.jar` files.
-
 ## ✨ Lists you work through keep you in them
 
 *   **Doing something in a list no longer throws you out of it.** Installing a download, linking a mod in the
@@ -27,6 +14,28 @@
     you have picked. Choosing is what they are for.
 *   The row read out when you come back is the right one. The list is brought up to date before focus returns
     to it, not after, so you never hear the mod you just fixed read out as if it were still there.
+
+## ✨ Install a download you skipped (Ctrl + Shift + P)
+
+*   **Saying "not now" to an install no longer leaves the mod stranded.** When a download finished and you
+    declined to install it, the file sat in your downloads folder, and the only way back was the Reinstall list,
+    which shows every download you have ever made. **Ctrl + Shift + P** (also in **Mods → Install and Update
+    Mods**) lists only the downloads that were never installed. Enter installs one; Delete removes the file.
+*   Downloads you did install are left out, even though they are still in the folder. From this version on the
+    manager notes each download as it installs it, so a skipped optional file from the page of a mod you
+    already have is still listed. Older downloads are judged against what you have installed.
+*   **You stay in the list as you work through it.** An installed mod leaves the list and you land on the
+    one that took its place; the list closes itself once the last one is installed.
+*   Works for all six games; for Minecraft it lists mod `.jar` files.
+
+## ✨ Shortcut Customization reads each command by its name
+
+*   **The list used to show each command's internal code name**, run together — "ViewDescription",
+    "PluginSlots", "QuickFix". Several did not even say what they do: "ViewDescription" opens the mod's full
+    Nexus page, and "QuickFix" resolves missing requirements. Every command now reads by the same name as its
+    menu item, such as **View Selected Mod's Full Description** and **View Selected Mod's Changelog**.
+*   Your saved shortcuts are untouched. Only the words shown changed. The "Current Key Mappings" page at the end
+    of the User Manual uses the same names.
 
 ## 🐧 Linux: every game can be searched and update-checked now
 

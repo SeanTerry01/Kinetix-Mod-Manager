@@ -327,9 +327,9 @@ public partial class Form1
 
 		void BeginRemap()
 		{
-			if (lb.SelectedItem == null) return;
-			awaitingFor = (lb.SelectedItem.ToString() ?? "").Split(':')[0].Trim();
-			Speak(Loc.T("shortcutMgr.pressFor", awaitingFor));
+			awaitingFor = ActionOfSelectedRow();
+			if (awaitingFor == null) return;
+			Speak(Loc.T("shortcutMgr.pressFor", ShortcutNames.For(awaitingFor)));
 		}
 
 		Button button = new Button
@@ -369,7 +369,7 @@ public partial class Form1
 			// handler stands down because this one has already marked the key handled.
 			if (e.KeyCode == Keys.Escape)
 			{
-				Speak(Loc.T("shortcutMgr.remapCancelled", action));
+				Speak(Loc.T("shortcutMgr.remapCancelled", ShortcutNames.For(action)));
 				return;
 			}
 
@@ -378,7 +378,7 @@ public partial class Form1
 			RefreshList(action);
 			// Read the key back from the same formatter the list rows use, so what is spoken is exactly what is
 			// now shown against the action — and you can hear whether the combination you meant is what landed.
-			Speak(Loc.T("shortcutMgr.remapped", action, GetShortcutStringForMap(tempShortcuts, action)));
+			Speak(Loc.T("shortcutMgr.remapped", ShortcutNames.For(action), GetShortcutStringForMap(tempShortcuts, action)));
 		};
 		Button button2 = new Button
 		{
@@ -460,7 +460,7 @@ public partial class Form1
 			lb.Items.Clear();
 			foreach (KeyValuePair<string, int> item in tempShortcuts)
 			{
-				lb.Items.Add(item.Key + ": " + GetShortcutStringForMap(tempShortcuts, item.Key));
+				lb.Items.Add(new ShortcutRow(item.Key, ShortcutNames.For(item.Key) + ": " + GetShortcutStringForMap(tempShortcuts, item.Key)));
 			}
 			lb.EndUpdate();
 
@@ -473,11 +473,20 @@ public partial class Form1
 			}
 		}
 
-		/// <summary>The action name from a row, which is stored as "Action: Key".</summary>
-		string ActionOfRow(object? row) => (row?.ToString() ?? "").Split(':')[0].Trim();
+		/// <summary>The action identifier behind a row; what the row shows is its plain name, not the identifier.</summary>
+		string ActionOfRow(object? row) => (row as ShortcutRow)?.Action ?? "";
 
 		/// <summary>The action currently selected in the list, or null when nothing is.</summary>
 		string? ActionOfSelectedRow() => lb.SelectedItem == null ? null : ActionOfRow(lb.SelectedItem);
+	}
+
+	/// <summary>
+	/// One row of the Shortcut Customization list: the action it remaps, and what it reads as. The two used to be one
+	/// string, "Action: Key", split back apart on the colon — which only worked while the row showed the identifier.
+	/// </summary>
+	private sealed record ShortcutRow(string Action, string Text)
+	{
+		public override string ToString() => Text;
 	}
 
 	/// <summary>

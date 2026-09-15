@@ -32,7 +32,9 @@ public class SpokenStringGuardTests
         "settings.textSize.",
         "sound.",
         // Built as "curator.category" + the category's id; see EveryBuiltInSuggestionCategoryHasAName.
-        "curator.category"
+        "curator.category",
+        // Built as "shortcutName." + the action; see EveryShortcutHasAPlainName.
+        ShortcutNames.KeyPrefix
     };
 
     [Fact]
@@ -92,6 +94,32 @@ public class SpokenStringGuardTests
         Assert.True(missing.Count == 0,
             "These built-in suggestion categories have no name in lang/en.json, so the category picker would read " +
             "the key itself aloud. Add each one, or put the id back:\n  " + string.Join("\n  ", missing));
+    }
+
+    [Fact]
+    public void EveryShortcutHasAPlainName()
+    {
+        // The Shortcut Customization list reads each command by "shortcutName." + its identifier. A command added
+        // to the defaults without a name would not read its key aloud — ShortcutNames spells the identifier out
+        // instead — but it would be back to "View Description" for a command that opens a Nexus page, which is
+        // the thing this list was fixed for. And a name left behind by a renamed command is a name for nothing.
+        HashSet<string> known = EnglishKeys();
+        var settings = new KinetixModManager.AppSettings();
+        settings.InitializeDefaults();
+        HashSet<string> actions = settings.Shortcuts.Keys.ToHashSet(StringComparer.Ordinal);
+
+        var unnamed = actions.Where(a => !known.Contains(ShortcutNames.KeyPrefix + a)).OrderBy(a => a).ToList();
+        var orphaned = known
+            .Where(k => k.StartsWith(ShortcutNames.KeyPrefix, StringComparison.Ordinal))
+            .Select(k => k.Substring(ShortcutNames.KeyPrefix.Length))
+            .Where(a => !actions.Contains(a))
+            .OrderBy(a => a)
+            .ToList();
+
+        Assert.True(unnamed.Count == 0 && orphaned.Count == 0,
+            "Every default shortcut needs a \"" + ShortcutNames.KeyPrefix + "<Action>\" name in lang/en.json, and every " +
+            "such name needs a shortcut.\n  No name: " + string.Join(", ", unnamed) +
+            "\n  No shortcut: " + string.Join(", ", orphaned));
     }
 
     [Fact]

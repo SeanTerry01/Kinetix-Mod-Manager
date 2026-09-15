@@ -267,8 +267,8 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Ctrl + Shift + N**: **Install Collection** - Install a Collection file (see "Mod Collections" below).
 *   **Ctrl + G**: Open the mod's page on Nexus Mods.
 *   **Ctrl + Shift + E**: **Endorse or un-endorse** the selected mod on Nexus Mods (see "Endorsing Mods" below).
-*   **Ctrl + Shift + G**: **View Changelog** - the selected mod's version history from Nexus (see "Mod Changelog and Full Description" below).
-*   **Ctrl + Shift + I**: **View Full Description** - the selected mod's complete Nexus page description (see below). Both also work in the Updates and Find New Mods lists.
+*   **Ctrl + Shift + G**: **View Selected Mod's Changelog** - the selected mod's version history from Nexus (see "Mod Changelog and Full Description" below).
+*   **Ctrl + Shift + I**: **View Selected Mod's Full Description** - the selected mod's complete Nexus page description (see below). Both also work in the Updates and Find New Mods lists.
 *   **Ctrl + Y**: **View Dependencies** - Opens the dependency view for the selected mod: what it *requires* (and whether each is installed) and what is *required by* it (other installed mods that depend on it). See "Dependency View and Resolver" below.
 *   **Ctrl + Q**: **Resolve Missing Requirements** - Finds every missing required mod for the selected mod and, on Skyrim/Fallout 4, offers to download and install them automatically. See "Dependency View and Resolver" below.
 *   **Ctrl + Shift + B**: **Check for Broken Mods** - Cross-references your installed mods against the community compatibility list and reports any known to be broken, abandoned, obsolete, or incompatible. See "Checking Your Mods" below.

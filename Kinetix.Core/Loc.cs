@@ -88,6 +88,12 @@ public static class Loc
 	}
 
 	/// <summary>
+	/// Whether <paramref name="key"/> has text in the active language or English. For the few places that build a
+	/// key at runtime and have a better answer than <see cref="T"/>'s fallback of reading the key itself aloud.
+	/// </summary>
+	public static bool Has(string key) => _strings.ContainsKey(key) || _fallback.ContainsKey(key);
+
+	/// <summary>
 	/// The languages shipped in <c>lang/</c>, as (code, display name) pairs for the Settings picker.
 	/// The display name is read from each file's optional <c>"_name"</c> entry, falling back to the code.
 	/// </summary>
