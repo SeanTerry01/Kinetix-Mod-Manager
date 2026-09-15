@@ -1,8 +1,8 @@
 # Pre-release checklist
 
 Written 2026-08-08 for the release that followed v1.4.5, and kept up since. **Now for v1.6.0**, on branch
-`refactor/kinetix-core-split`, **71 commits ahead of `origin/master`, unpushed**, version 1.6.0 in both
-`KinetixModManager.csproj` and `KinetixModManager\setup.iss`. **1,260 tests**, all five projects build clean
+`refactor/kinetix-core-split`, **many commits ahead of `origin/master`, unpushed**, version 1.6.0 in both
+`KinetixModManager.csproj` and `KinetixModManager\setup.iss`. **1,398 tests**, all five projects build clean
 with no warnings.
 
 ⚠️ The branch name describes the first thing done on it, not the whole of it. It now carries the core split,
@@ -16,7 +16,7 @@ test those areas, not because they are outstanding. **§1.0b is the newest work 
 rest of v1.6.0; §1.0a is what is still outstanding from v1.5.2.**
 
 This is what has **not** been confirmed by ear, what is known to be unverified, and what is deliberately not in
-this release. Everything here builds clean, passes 1,260 tests, and publishes a complete Release folder — none of
+this release. Everything here builds clean, passes 1,398 tests, and publishes a complete Release folder — none of
 it is unfinished work. It is untested work, which is a different thing.
 
 ---

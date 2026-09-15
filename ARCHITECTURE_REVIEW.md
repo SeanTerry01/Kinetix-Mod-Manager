@@ -2396,6 +2396,8 @@ the entry that lifted it rather than contradicting it.
 | `Kinetix.Gtk` | 12 | 2,085 |
 | `Kinetix.Platform.Linux` | 4 | 844 |
 
+*(Measured at §35. The core is 118 files / 22,224 lines after §36.)*
+
 The core has gone from nothing to 21,825 lines in a week, and six of the eight platform seams are closed with
 five of them implemented on Linux. What remains in the app is, at last, genuinely the app: `ModFileSystem`
 (2,513 lines of per-game layout work) and 27,000-odd lines of `Form1` partials that are windows.

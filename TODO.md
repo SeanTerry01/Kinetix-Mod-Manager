@@ -87,7 +87,7 @@ presenters the WinForms head uses.
 
 These stand on their own merits. None is urgent.
 
-- [ ] **`ModFileSystem.cs` is still a god object** — 2,513 lines (was 3,825). What remains is per-game layout
+- [ ] **`ModFileSystem.cs` is still a god object** — 2,532 lines (was 3,825). What remains is per-game layout
       work: hard links, deployment, `plugins.txt`, INI editing, per-game finalisation, FOMOD finalisation,
       uninstaller registry lookup. Should be about five more classes, and the Stardew branch (§34) is the
       first of them.
@@ -124,7 +124,7 @@ These stand on their own merits. None is urgent.
 
 ## Accessibility
 
-- [ ] **`health.mcVanilla` is the only string of 1,790 that opens with an emoji** (`⚠️`). It is a
+- [ ] **`health.mcVanilla` is the only string of 1,979 that opens with an emoji** (`⚠️`). It is a
       Health Dashboard row, so it is read aloud — announced as "warning sign" or dropped entirely
       depending on the reader's symbol level. The sentence already carries the warning in words.
       **Sean's call**, since it is wording rather than a defect.
@@ -140,8 +140,8 @@ These stand on their own merits. None is urgent.
 
 ## Docs and housekeeping
 
-- [ ] **`MANUAL.md` is 180 KB and `CHANGELOG.md` is 212 KB**, both copied into the build output.
-      Worth splitting per version before they stop being maintainable. `ARCHITECTURE_REVIEW.md` is 112 KB and
+- [ ] **`MANUAL.md` is 180 KB and `CHANGELOG.md` is 224 KB**, both copied into the build output.
+      Worth splitting per version before they stop being maintainable. `ARCHITECTURE_REVIEW.md` is 148 KB and
       is append-only by design, so it grows too — but nothing ships it.
 - [ ] **Mixed line endings** — the tree holds both CRLF and LF `.cs` files (73 LF / 25 CRLF in
       `Kinetix.Core`, 37 / 37 in the tests, 68 / 18 in the app). `.gitattributes` normalises on commit so it
