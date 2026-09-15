@@ -52,7 +52,7 @@ made. Writing the interface first would be guessing.
 | `IModSource` | `NexusService` / `ModrinthService` | Nothing — just the largest. Reconciling an instance, stateful, key-carrying service with a static stateless one. The most worthwhile of the four. |
 | `IPrompts` | `SpeakBox` (177) / `ShowDialog` (12) | The shape follows from draining those screens in Phase 4, and from the inline-prompt system that deliberately avoids modal dialogs. |
 | `IBrowserHost` | WebView2 (18 files) | Decision 3 below — embedding WebKitGTK and opening the system browser need different contracts. |
-| `IGameLocator` | `Microsoft.Win32.Registry` (19 files) | Decision 1 below — resolving into a Proton prefix is a different contract from finding a native install. |
+| `IGameLocator` | `Microsoft.Win32.Registry` (3 files) | Decision 1 below — resolving into a Proton prefix is a different contract from finding a native install. |
 
 ### 2. Phase 4 — drain `Form1`  ◐ six screens done, and paused on purpose
 
@@ -230,6 +230,31 @@ It cannot work yet, for one reason that is not a code problem:
       "simplify" it later by scraping the form.
 
 ## The GTK head, from here
+
+### Defects found by probing it, 2026-09-15
+
+Not speculation — these came out of running the Linux layer against a machine with no games and no Steam,
+and reading the paths that then run.
+
+- [ ] **The installed list reads every game's mods with Minecraft's rule.** `LoadInstalled` sets a row's
+      enabled state from `MinecraftLayout.IsEnabledModFile`, while `ToggleSelected` correctly writes through
+      `ModEnableState.TargetPath(..., game.Id)`. So for Stardew a disabled mod (a leading dot) reads back as
+      *enabled*, and switching it on moves it to the name it already has. The read must go through
+      `ModEnableState.IsEnabled(path, game.Id)` — the same rule as the write. **This is the one to fix first**:
+      it is a wrong answer, not a missing feature, and §20 records the write side being fixed while the read
+      side was missed.
+- [ ] **A game that is not installed is announced as "0 mods installed".** `LoadInstalled` puts the real
+      reason in the status label, and `SelectGame` then speaks a mod count. A blind user hears "Skyrim Special
+      Edition. 0 mods installed" for a game that is not there at all — which is exactly the "cannot tell
+      unsupported from not-installed" failure §20 exists to prevent. Say what the status label says.
+- [ ] **Nothing tests either Linux project.** `KinetixModManager.Tests` references `Kinetix.Core` only, so
+      `Kinetix.Gtk` and `Kinetix.Platform.Linux` have no tests at all and are not in the test build's
+      reference graph. `LinuxGameLocator` is pure logic over a filesystem layout and is entirely testable
+      against a fake Steam tree; so is the "what does this row say" half of the GTK head.
+- [ ] **⚠️ `ISecretStore` must exist before the GTK head stores any key.** `AppSettings.Secrets` defaults to
+      `PlainTextSecretStore`, and only the WinForms `Program.cs` replaces it. The GTK head does not touch
+      `AppSettings` at all today, so nothing is at risk *yet* — but the moment it grows a Nexus or CurseForge
+      key field, that key is written to `settings.json` in clear text. libsecret first, then the field.
 
 - [ ] **Stardew Valley support** — the scanner is in the core (§19) and so is unpacking a download (§23), so
       what stands between here and a Stardew install on Linux is the layout half of `ExtractModAsync` above,
