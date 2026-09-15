@@ -111,6 +111,11 @@ public partial class Form1
 		{
 			ManualInstall();
 		});
+		// Beside "install a file", because it is the same act with the finding-the-file part done for you.
+		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.installGitHub"), null, delegate
+		{
+			Fire(InstallFromGitHubAsync(), "InstallFromGitHubAsync");
+		}).Name = "menuInstallGitHub";
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.markVersionInstalled", GetShortcutString("MarkVersionInstalled")), null,
 			delegate { MarkSelectedUpdateAsInstalled(); }).Name = "menuMarkVersionInstalled";
 		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.updateAll", GetShortcutString("UpdateAll")), null, async delegate

@@ -9,6 +9,13 @@
 
 *   Profiles were saved to a file named after whatever you typed, with nothing checked. A profile called **"Mage/Thief"** failed to save at all; one ending in a dot or a space saved under a name Windows then refused to open. Worst of the three, saving and deleting disagreed about the name — so a profile could appear in the list and then refuse to be deleted. All three are fixed, and the same rule is now used everywhere a name becomes a file.
 
+## ✨ Install a mod straight from GitHub
+
+*   **Mods → "Install a mod from a GitHub repository..."** Type `owner/repo`, or just **paste the address** of the repository's page from your browser — the clone command and the releases page work too. The manager finds the newest release, downloads the right file and installs it exactly as it would a file you picked yourself: backups, the FOMOD wizard, and a record of which release went on so it can tell you about the next one.
+*   GitHub is not in the source dropdown, and that is deliberate — there is no catalogue to search. You cannot ask GitHub for "Stardew mods about fishing". What you can do is name a repository, and plenty of mods are released there and nowhere else.
+*   **It knows which file is the mod.** A Fabric mod publishes `sodium-0.6.0.jar` and `sodium-0.6.0-sources.jar` side by side, and installing the second gives you a mods folder that looks right, a game that starts and no mod at all. Release notes, checksums and signatures are skipped, and a `.zip` is preferred to a `.7z` or `.rar` when a release offers all three.
+*   When there is nothing installable, it says which of the two reasons applies: no such repository, or a repository whose author has never published a release.
+
 ## ✨ You choose where your mods come from
 
 *   **A new setting on the Paths tab: "When searching for mods."** Three options — search **every** source and merge the results, search **one** source only, or search your **preferred** source with the others available on request. Choosing one of the last two shows a second dropdown naming which source that is, and it is remembered **per game**, because the sites are: Minecraft's mods live on Modrinth and CurseForge, Stardew's on Nexus, ModDrop and CurseForge.
@@ -79,7 +86,7 @@
 
 ## ✅ Tests
 
-*   **1,222 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
+*   **1,245 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
 *   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 *   Twenty-six of them cover unpacking a downloaded mod, including one that extracts a **real .7z** rather than a stand-in — the only way to know that reading one without `7za.exe` actually works.

@@ -1732,3 +1732,32 @@ falling back quietly, results arriving in the order asked rather than the order 
 on two sites collapsing to one, two different mods sharing a name both surviving, a row saying where it came
 from only when more than one answered, and a site that is down or unavailable still leaving the others'
 results intact.
+
+### GitHub, as a repository the user can name — the same day
+
+Not a catalogue, and deliberately not in the chooser: there is nothing to search, because you cannot ask
+GitHub for "Stardew mods about fishing". What a user can do is name a repository, and a great many mods are
+released there and nowhere else — which is why the manager has downloaded from GitHub for years for mods it
+already knew about, and why being unable to do it for a mod the user found themselves was a gap rather than a
+missing feature.
+
+`GitHubReleases` is the whole of it, and the work is in two places rather than the HTTP:
+
+- **Saying which repository.** The prompt takes `owner/repo`, the page address, the releases page, a link to
+  one release, the API URL and the ssh clone form. The user is coming from a browser; asking them to read an
+  address aloud to themselves and retype two words out of the middle of it is asking them to do by hand what a
+  pattern does exactly.
+- **Picking the file.** A release commonly publishes several and the wrong one installs perfectly and does
+  nothing. A Fabric mod ships `sodium-0.6.0.jar` and `sodium-0.6.0-sources.jar` side by side, and the sources
+  jar gives a mods folder that looks correct, a game that starts, and no mod — the exact failure the whole of
+  Minecraft support exists to prevent. Release notes, checksums and signatures are never the mod, a jar is not
+  a mod for a game that does not load jars, and a `.zip` beats a `.7z` or `.rar` when a release offers all
+  three.
+
+Once a file is on disk it is an ordinary install, on purpose: a mod from GitHub is the same mod, and
+everything the install path does — backing up what it replaces, the FOMOD wizard, recording which release went
+on — should happen for it too. `InstallFromZip` gained the `owner/repo` so the mod can be checked for updates
+afterwards; without it, a mod installed from a repository the user named is one the manager could never tell
+them about again.
+
+**1,222 → 1,245 tests.**

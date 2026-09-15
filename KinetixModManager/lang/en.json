@@ -1751,5 +1751,18 @@
   "settings.searchModePreferred": "Search my preferred source, and the others on request",
   "settings.preferredSourceLabel": "Preferred mod source",
   "settings.sourceUnavailable": "{0} (not available yet: {1})",
-  "settings.oneSourceOnly": "{0} is the only place with a searchable catalogue of {1} mods."
+  "settings.oneSourceOnly": "{0} is the only place with a searchable catalogue of {1} mods.",
+  "menu.installGitHub": "Install a mod from a GitHub repository...",
+  "github.installTitle": "Install from GitHub",
+  "github.installPrompt": "Type the repository as owner slash repo, or paste the address of its page. The newest release will be downloaded and installed.",
+  "github.notARepoTitle": "Not a repository",
+  "github.notARepoBox": "\"{0}\" is not a GitHub repository.\n\nType it as owner/repo, for example Pathoschild/SMAPI, or paste the address of the repository's page from your browser.",
+  "github.looking": "Asking GitHub about {0}...",
+  "github.noReleaseTitle": "No release to install",
+  "github.noReleaseBox": "GitHub has no published release for {0}.\n\nEither the repository does not exist, or its author has never published a release. Some mods are only distributed as source code, which is not something the manager can install.",
+  "github.nothingUsableTitle": "Nothing to install",
+  "github.nothingUsableBox": "The newest release of {0} publishes no file the manager can install.\n\nIts files may be source code, documentation, or an installer the author expects you to run yourself. Open the release page to see what is there.",
+  "github.downloaded": "Downloaded {0}, release {1}. Installing.",
+  "github.failedTitle": "GitHub install failed",
+  "github.failedBox": "The mod could not be installed from GitHub.\n\n{0}"
 }

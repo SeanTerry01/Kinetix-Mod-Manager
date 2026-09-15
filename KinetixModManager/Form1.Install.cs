@@ -696,8 +696,14 @@ public partial class Form1
 	/// an opaque id, so the name came from the mod's page instead. Left null, the name is read out of the archive's
 	/// own name, which is right for a mod picked off disk.
 	/// </param>
+	/// <param name="gitHubRepo">
+	/// The <c>owner/repo</c> this archive came from, when it came from GitHub rather than a mod site. Recorded
+	/// with the install so the mod can be checked for updates afterwards — without it a mod installed from a
+	/// repository the user named is one the manager can never tell them about again.
+	/// </param>
 	private async Task InstallFromZip(string zipPath, string? nexusId = null, bool silent = false,
-		bool confirmReinstall = false, bool partOfMultiPartMod = false, string? displayName = null)
+		bool confirmReinstall = false, bool partOfMultiPartMod = false, string? displayName = null,
+		string? gitHubRepo = null)
 	{
 		// Never the raw file name: a Nexus download is called "Skyrim Access-181131-1-2-3-1723456789.7z", and the
 		// mod id, version and timestamp on the end of that are not part of what the mod is called. See ModDisplayName.
@@ -716,7 +722,7 @@ public partial class Form1
 		{
 			string name = await ModFileSystem.ExtractModAsync(
 				zipPath, _settings.CurrentModsPath, _allInstalledMods,
-				backupsPath, _settings.MaxBackupsPerMod, _settings.ActiveGame, LogError, nexusId, _nexusService, null, _settings.CurrentGamePath,
+				backupsPath, _settings.MaxBackupsPerMod, _settings.ActiveGame, LogError, nexusId, _nexusService, gitHubRepo, _settings.CurrentGamePath,
 				ShowFomodWizardAsync, installProgress, confirmOverwrite, RunModInstallerAsync,
 				matchExistingByNexusId: !partOfMultiPartMod);
 			installProgress?.Complete();
