@@ -9,6 +9,19 @@
 
 *   Profiles were saved to a file named after whatever you typed, with nothing checked. A profile called **"Mage/Thief"** failed to save at all; one ending in a dot or a space saved under a name Windows then refused to open. Worst of the three, saving and deleting disagreed about the name — so a profile could appear in the list and then refuse to be deleted. All three are fixed, and the same rule is now used everywhere a name becomes a file.
 
+## ✨ One place for your mod site keys
+
+*   **File → "Mod source API keys..."** lists every site that asks for one and whether you have given it. Press **Enter** on a site: if it has no key, you are asked to type one; if it has, the key is shown in a **read-only box** so you can check it against what you meant to type. **Edit key** asks for a new one either way — which is the point, because a key typed wrongly months ago cannot be fixed by a screen that only shows it back to you. **Delete** forgets one, after asking.
+*   **Arrowing down the list never reads your keys out loud.** A row says the site's name and whether a key is saved, nothing more. The key itself is only spoken on the one row you open — a credential read out in passing is read out in whatever room you are sitting in.
+*   There is also a button that **opens the site's page for getting a key**, so you are not left to find it.
+*   **Sites that need nothing are not listed.** Modrinth and GitHub need no account at all, so three rows saying "nothing to do here" would only be in the way.
+*   **Keys are stored encrypted**, the same way your Nexus key and your AI provider key already were.
+*   **Sites with a login rather than a key end up with a key too** — that is what a login is for. Nexus can sign you in on its own website and hand the manager a key without you typing one, which is better because the manager never sees your password and you can cancel the key without changing it. That is built and waiting on Nexus approving the manager as an application; until then the screen says so plainly rather than offering a button that cannot work.
+
+## 🐛 A mod from a site the manager could not download from did nothing at all
+
+*   Pressing **Enter** on a search result decided what to do by asking "does this have a Modrinth id", which really meant "is this Minecraft". A result from anywhere else fell through to opening its page, and opening the page only knew about Nexus and Modrinth — so a result from any other site did nothing. Enter now asks what the site can actually do, and anything the manager cannot fetch itself opens its page, which is the one thing every site can do.
+
 ## ✨ Install a mod straight from GitHub
 
 *   **Mods → "Install a mod from a GitHub repository..."** Type `owner/repo`, or just **paste the address** of the repository's page from your browser — the clone command and the releases page work too. The manager finds the newest release, downloads the right file and installs it exactly as it would a file you picked yourself: backups, the FOMOD wizard, and a record of which release went on so it can tell you about the next one.
@@ -86,7 +99,7 @@
 
 ## ✅ Tests
 
-*   **1,245 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
+*   **1,260 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
 *   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 *   Twenty-six of them cover unpacking a downloaded mod, including one that extracts a **real .7z** rather than a stand-in — the only way to know that reading one without `7za.exe` actually works.

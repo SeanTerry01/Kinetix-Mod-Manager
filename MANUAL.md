@@ -106,6 +106,20 @@ Different games keep their mods in different places, and some keep them in more 
 *   **Skyrim, Fallout 4, The Witcher 3 and Moonlight Peaks have no dropdown**, and one line saying why: Nexus is the only place with a searchable catalogue of their mods. Bethesda.net, ModDB and similar sites have no way in for a program like this one.
 *   **CurseForge is listed but cannot be used yet.** It needs an API key that CurseForge issues to approved applications — a conversation with them rather than a setting. It is shown, with the reason, so you can see that the manager knows about it.
 
+### Your mod site keys, all in one place
+
+Some mod sites want an API key before they will answer. From the **File** menu, choose **"Mod source API keys..."** — it lists every site that asks for one and whether you have given it.
+
+*   **Press Enter on a site.** If it has no key, you are asked to type or paste one. If it already has one, the key appears in a **read-only box** so you can read it back and check it against what you meant to type.
+*   **"Edit key"** asks for a new one whichever the case — which is the point of it. A key you typed wrongly months ago cannot be put right by a screen that only ever shows it back to you.
+*   **"Forget key"** (or the **Delete** key on a row) removes one, after asking. The manager cannot get it back for you.
+*   **"Open the site to get a key"** takes you straight to the page where that site issues them.
+*   **Arrowing down the list never reads your keys out loud.** Each row says the site's name and whether a key is saved, and nothing else. The key is only spoken on the one row you open, because a credential read out in passing is read out in whatever room you happen to be in.
+*   **Keys are stored encrypted on your computer**, the same way your Nexus key and your AI provider key already were, and they are never sent anywhere except to the site they belong to.
+*   **Sites that need nothing are not listed at all.** Modrinth and GitHub need no account to search or download, so there is nothing for you to do about them.
+
+**What about a site with a login rather than a key?** A login ends in a key too — that is what it is for. Nexus can sign you in on its own website and hand the manager a key without you ever typing one, which is better: the manager never sees your password, and you can cancel that key later without changing it. That is built and waiting on Nexus approving the manager as an application, and until then the screen tells you so rather than offering you a button that cannot work.
+
 ### Installing a mod straight from GitHub
 
 Some mods are only ever published on GitHub. From the **Mods** menu, choose **"Install a mod from a GitHub repository..."**, then type `owner/repo` — or simply **paste the address** of the repository's page out of your browser. The releases page, a link to a single release and the clone command all work too.

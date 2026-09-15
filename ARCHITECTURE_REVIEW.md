@@ -1761,3 +1761,93 @@ afterwards; without it, a mod installed from a repository the user named is one 
 them about again.
 
 **1,222 → 1,245 tests.**
+
+## 27. Mod source keys, and an honest answer about downloading — 2026-09-14
+
+Two questions from Sean, and the second is the more important one.
+
+### The keys screen
+
+A screen of its own, off the File menu, rather than a row on a settings tab. A key belongs to the user's
+account with a site; the game they happen to have open has nothing to do with it, and burying each key in the
+settings of the games that use it would mean somebody who plays Minecraft could not find the Nexus key they
+set up a year ago. `ModSources.NeedingCredentials()` is therefore not filtered by the loaded game.
+
+One list, and Enter does the obvious thing to the row it is on: add a key where there is none, show the one
+there is where there is. An **Edit key** button forces the asking either way, because the case people actually
+come to this screen for is a key typed wrongly months ago — and a screen that will only ever show it back to
+you cannot fix that. Delete forgets one, after asking.
+
+Two decisions about what is spoken:
+
+- **A row never contains the key.** The list is arrowed through, so every row is read in passing, and a
+  credential read aloud on the way past is read aloud in whatever room the user is in. The row says whether
+  one is stored; the key itself appears only on the row the user asks about. There is a test that holds this.
+- **The key, when shown, is shown in full** in a read-only box rather than masked. The user is on their own
+  machine looking at their own key, and reading it back is the entire reason for opening the screen. Masking
+  it would make the screen useless for the one job it has.
+
+Keys are stored the way the Nexus key and the AI provider keys already are: a runtime dictionary and an
+encrypted one, through `AppSettings.Secrets`. The `CurseForgeApiKey` field added earlier in the day was plain
+text and is gone. `ModSourceApiKey(id)` and `SetModSourceApiKey(id, key)` hide the fact that Nexus keeps its
+own long-standing field, so nothing outside has to know.
+
+### "What about sites with a login rather than a key?"
+
+They end in a key too — that is the answer. What differs is how you come by one. CurseForge issues one to an
+approved application and you paste it in. Nexus will also sign you in on its own website and hand the manager
+a key at the end, which is the better way round, because the manager never sees a password and the user can
+revoke the key without changing one. `ModSourceCredential` says which of the two a site offers, so the prompt
+can mention signing in where it is real — and for Nexus it says plainly that it is not available yet, because
+it needs Nexus to approve the manager as an application first (§ the Nexus sign-in item in TODO).
+
+A site with neither — Modrinth, GitHub, ModDrop — is simply not on this screen. Three rows saying "nothing to
+do here" is worse than no rows.
+
+### Is downloading and installing done for every source and every game?
+
+**Downloading: yes for every source that exists today, and it is not generic.** Installing: yes, and it
+genuinely is generic. The two halves are worth separating, because they are separate:
+
+| | Decided by | State |
+|---|---|---|
+| How the file arrives | the **source** | Per source, and hand-written each time |
+| What happens to the file | the **game** | One pipeline, source-agnostic, all six games |
+
+The second half is the larger one and is done. `ModArchive` unpacks whatever arrived (§23), and
+`ExtractModAsync` puts it where the game wants it — a Stardew manifest folder, a Bethesda staging tree, a
+BepInEx plugin, a Witcher `mod…` folder, a Minecraft jar. None of that cares who sent the file, and it should
+not: a mod from CurseForge is the same mod.
+
+The first half is per source and, today, three hand-written paths:
+
+- **Nexus** — the NXM handler for everyone, or a direct link for premium accounts. A search result opens the
+  Files tab, because that is the only way in for a non-premium user.
+- **Modrinth** — fetched straight from a search result. No browser, no account, no protocol handler.
+- **GitHub** — the release picker added today.
+
+So every supported game can download and install: the five Nexus games through NXM, Minecraft through
+Modrinth, and any of them from GitHub. What does **not** exist is an `IModSource.DownloadAsync`, and that is
+deliberate rather than an oversight. §15's rule applies — an interface written before there is a second real
+implementation to check its shape against is a guess, and the shapes here are genuinely unalike: one is a
+protocol handler that arrives from a browser, one is a URL, one is picking an asset out of a release. The
+moment CurseForge has a key there will be a fourth to design against, and that is when the seam is worth
+cutting.
+
+What was worth doing now is the routing, so that adding a source does not mean hunting for the places that
+each decided this for themselves. `CanFetchDirectly` is one method and asks two questions: does the site say
+it hands files over, and does the manager actually have a way to talk to it. Anything else opens its page —
+and `OpenModPage` now asks `ModSources.PageUrlFor` rather than knowing about Nexus and Modrinth by hand, so a
+CurseForge or ModDrop result degrades to the one thing every site can do instead of doing nothing.
+
+### Tests
+
+**1,245 → 1,260.** Fifteen on the keys screen: which sites are listed and which are deliberately not, that a
+row never contains the key, that a row says what Enter will do to it, the summary line, and what is accepted
+as a key — which is deliberately shallow, because a pattern guessed at here would one day reject a perfectly
+good key that the site had started issuing in a new shape, with the user having no way to argue.
+
+The test project now copies the shipped phrase catalogue, so a test can assert the sentence the user actually
+hears rather than the key that stands in for one. `Loc.T` returns the key itself when nothing is loaded, which
+is useful for spotting a gap and useless for checking a sentence — and "this row must not contain the
+credential" is a sentence worth checking.

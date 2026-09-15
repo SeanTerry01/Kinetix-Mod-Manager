@@ -397,13 +397,48 @@ public class AppSettings : IModScanContext
 			: ModSources.DefaultFor(game);
 
 	/// <summary>
-	/// The user's CurseForge API key, or <c>""</c> while there is none.
+	/// Runtime-only API keys for the mod sites that want one, keyed by <see cref="ModSources"/> id. Never
+	/// serialized directly — stored encrypted via <see cref="ModSourceApiKeysEncrypted"/>, the same way the
+	/// Nexus key and the AI provider keys are.
 	///
-	/// Empty for everyone today, and the reason CurseForge is listed as a source and reported as unavailable:
-	/// CurseForge issues keys to approved applications, which is a conversation with them rather than a
-	/// setting. Stored here so that the day a key exists, nothing else has to change to use it.
+	/// <para>
+	/// Nexus keeps its own field rather than living in here, because <see cref="ApiKey"/> is read in a hundred
+	/// places and moving it would be a change to all of them for no gain. <see cref="ModSourceApiKey"/> and
+	/// <see cref="SetModSourceApiKey"/> are the pair that make that invisible from outside: ask for a site's
+	/// key by its id and the right one comes back.
+	/// </para>
 	/// </summary>
-	public string CurseForgeApiKey { get; set; } = "";
+	[JsonIgnore]
+	public Dictionary<string, string> ModSourceApiKeys { get; set; } =
+		new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+	/// <summary>Serialized field: per-site encrypted keys. Use <see cref="ModSourceApiKeys"/> at runtime.</summary>
+	public Dictionary<string, string> ModSourceApiKeysEncrypted { get; set; } =
+		new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+	/// <summary>The stored key for one mod site, or <c>""</c> when there is none.</summary>
+	public string ModSourceApiKey(string sourceId) =>
+		string.Equals(sourceId, ModSources.Nexus, StringComparison.OrdinalIgnoreCase)
+			? ApiKey
+			: ModSourceApiKeys.TryGetValue(sourceId, out string? key) ? key : "";
+
+	/// <summary>
+	/// Stores (or clears) one mod site's key. Clearing removes the entry rather than storing an empty string,
+	/// so "has the user set this up" stays a question about whether the key is there.
+	/// </summary>
+	public void SetModSourceApiKey(string sourceId, string? key)
+	{
+		string value = (key ?? "").Trim();
+
+		if (string.Equals(sourceId, ModSources.Nexus, StringComparison.OrdinalIgnoreCase))
+		{
+			ApiKey = value;
+			return;
+		}
+
+		if (value.Length == 0) ModSourceApiKeys.Remove(sourceId);
+		else ModSourceApiKeys[sourceId] = value;
+	}
 
 	public string CurrentTheme { get; set; } = "Default";
 
@@ -585,6 +620,14 @@ public class AppSettings : IModScanContext
 
 				// Decrypt per-provider AI keys into the runtime dictionary (deserialization loses the
 				// case-insensitive comparer, so rebuild it).
+				settings.ModSourceApiKeysEncrypted ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+				settings.ModSourceApiKeys = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+				foreach (var kv in settings.ModSourceApiKeysEncrypted)
+				{
+					string plain = DecryptApiKey(kv.Value);
+					if (!string.IsNullOrEmpty(plain)) settings.ModSourceApiKeys[kv.Key] = plain;
+				}
+
 				settings.AiApiKeysEncrypted ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 				settings.AiApiKeys = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 				foreach (var kv in settings.AiApiKeysEncrypted)
@@ -933,6 +976,11 @@ public class AppSettings : IModScanContext
 			foreach (var kv in AiApiKeys)
 				if (!string.IsNullOrEmpty(kv.Value))
 					AiApiKeysEncrypted[kv.Key] = EncryptApiKey(kv.Value);
+			// And each mod site's key. A key is a credential like any other and is never written in the clear.
+			ModSourceApiKeysEncrypted = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+			foreach (var kv in ModSourceApiKeys)
+				if (!string.IsNullOrEmpty(kv.Value))
+					ModSourceApiKeysEncrypted[kv.Key] = EncryptApiKey(kv.Value);
 			string contents = JsonConvert.SerializeObject(this, Formatting.Indented);
 			File.WriteAllText(SettingsPath, contents);
 		}

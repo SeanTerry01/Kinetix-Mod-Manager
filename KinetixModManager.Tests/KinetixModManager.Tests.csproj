@@ -42,4 +42,15 @@
     <None Include="fixtures\*.7z" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The shipped phrase catalogue, so a test can assert what the user actually HEARS rather than the key
+       that stands in for it. Loc.T returns the key itself when no catalogue is loaded, which is useful for
+       spotting a gap and useless for checking a sentence - and some of these sentences have rules worth
+       holding, such as a credentials row never containing the credential. -->
+  <ItemGroup>
+    <None Include="..\KinetixModManager\lang\**">
+      <Link>lang\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

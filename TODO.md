@@ -6,7 +6,7 @@ which has the reasoning behind each; this file is the list, not the argument.
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
 **Last updated:** 2026-09-14, after the mod source chooser. No unknowns left, only work.
-**State:** 1,245 tests passing on Windows and Linux; all five projects build clean, zero warnings.
+**State:** 1,260 tests passing on Windows and Linux; all five projects build clean, zero warnings.
 
 ---
 
@@ -164,9 +164,15 @@ Done: the page URL is kept whatever host names it, `IModSource` and its three co
 search modes are a setting with a per-game preferred source (§26).
 
 - [ ] **CurseForge needs an approved API key** — the same kind of conversation as the Nexus SSO slug, and
-      blocked the same way. It is listed in the chooser today and says why it cannot be used. Authors can also
-      opt out of third-party downloads per mod, and the API then returns no URL by design; those must open in
-      a browser rather than fail.
+      blocked the same way. It is listed in the chooser and in the keys screen today, and says why it cannot be
+      used; the moment a key exists it can be pasted in and nothing else has to change to store it. Authors can
+      also opt out of third-party downloads per mod, and the API then returns no URL by design; those must open
+      in a browser rather than fail.
+- [ ] **`IModSource` has no download seam, on purpose.** How a file arrives is per source and there are three
+      hand-written paths — Nexus's NXM handler, a Modrinth URL, a GitHub release asset. What happens to the file
+      afterwards is per *game* and already generic for all six. §15's rule applies to the missing half: three
+      shapes this unalike are not enough to design an interface against. CurseForge would be the fourth, and
+      that is when to cut it. See §27.
 - [ ] **ModDrop can only ever open a page**, having no public file endpoint. Worth saying in the UI once a
       mod is known to live there, rather than offering a download that cannot happen.
 

@@ -754,14 +754,13 @@ public partial class Form1
 			{
 				Fire(RunDiscovery(loadMore: true), "RunDiscovery");
 			}
-			// A Modrinth mod can be fetched directly — no browser, no premium account, no download protocol to
-			// register — so Enter offers to do it rather than handing the user to a web page whose download
-			// button they then have to find. Every other catalogue still opens the page, because for those
-			// that IS the only way in.
-			else if (list.SelectedItem is StardewMod modrinthResult &&
-					 !string.IsNullOrEmpty(modrinthResult.ModrinthId))
+			// A result the manager can fetch itself gets an offer to do so, rather than handing the user to a
+			// web page whose download button they then have to find. Everything else opens its page, because
+			// for those that IS the only way in — and that is the answer for every site added later too:
+			// worst case it degrades to the page, which every site has.
+			else if (list.SelectedItem is StardewMod result && CanFetchDirectly(result))
 			{
-				Fire(OfferMinecraftSearchResultAsync(modrinthResult), "OfferMinecraftSearchResultAsync");
+				Fire(OfferMinecraftSearchResultAsync(result), "OfferMinecraftSearchResultAsync");
 			}
 			else
 			{

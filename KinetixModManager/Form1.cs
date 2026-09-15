@@ -597,7 +597,7 @@ public partial class Form1 : Form, IMessageFilter
 		{
 			new NexusModSource(_nexusService, _settings),
 			new ModrinthModSource(),
-			new CurseForgeModSource(() => _settings.CurseForgeApiKey),
+			new CurseForgeModSource(() => _settings.ModSourceApiKey(ModSources.CurseForge)),
 		};
 		if (string.IsNullOrEmpty(_settings.ApiKey) && File.Exists("nexus_key.txt"))
 		{

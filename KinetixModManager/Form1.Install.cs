@@ -138,19 +138,47 @@ public partial class Form1
 	}
 
 	/// <summary>Opens the Nexus Mods page for the selected mod in the default browser.</summary>
+	/// <summary>
+	/// Whether the manager can fetch this search result itself, rather than sending the user to its page.
+	///
+	/// <para>
+	/// Two questions, and both have to be yes. The site must say it hands files over
+	/// (<see cref="ModSourceAbilities.Download"/>), and the manager must actually have a way to talk to it —
+	/// which is not the same thing, and is the honest state of affairs today: CurseForge hands files over and
+	/// the manager has no key for it, so a CurseForge result opens its page.
+	/// </para>
+	///
+	/// <para>
+	/// One method so that adding a site means adding a case here, rather than finding the three places that
+	/// each decided this for themselves. It used to be "does this result carry a Modrinth id", which quietly
+	/// meant "is this Minecraft".
+	/// </para>
+	/// </summary>
+	private bool CanFetchDirectly(GameMod mod)
+	{
+		if (ModSources.Find(mod.SourceId) is { } source && !source.Can(ModSourceAbilities.Download))
+			return false;
+
+		// Modrinth is the one the manager fetches straight from: no browser, no premium account, no download
+		// protocol to register. Nexus can hand a file over too, but only through the NXM handler or a premium
+		// account, which is why its results still open the Files tab.
+		return !string.IsNullOrEmpty(mod.ModrinthId);
+	}
+
 	private void OpenModPage()
 	{
 		if (SelectedNexusMod() is not StardewMod stardewMod) return;
 
-		// Whichever catalogue the mod came from. Before this the key did nothing at all on a Minecraft
-		// result: it required a Nexus id, and a Modrinth mod has none — so the one action available on a
-		// search result was silently unavailable for a whole game.
-		string url =
-			!string.IsNullOrEmpty(stardewMod.ModrinthId)
-				? $"https://modrinth.com/mod/{stardewMod.ModrinthId}"
-			: !string.IsNullOrEmpty(stardewMod.NexusID)
-				? $"https://www.nexusmods.com/{_nexusService.CurrentGameDomain}/mods/{stardewMod.NexusID}?tab=files"
-			: "";
+		// Whichever catalogue the mod came from. This used to know about two of them and require a Nexus id,
+		// so the one action available on a search result was silently unavailable for a whole game — and it
+		// would have gone the same way for every source added since. ModSources answers for all of them, and
+		// for a site the manager can do nothing else with, opening the page is the whole of what it offers.
+		string url = ModSources.PageUrlFor(stardewMod, _nexusService.CurrentGameDomain) ?? "";
+
+		// Nexus's Files tab rather than its front page, which is where somebody who pressed Enter on a search
+		// result is trying to get to.
+		if (url.Contains("nexusmods.com/", StringComparison.OrdinalIgnoreCase) && !url.Contains("?tab=", StringComparison.OrdinalIgnoreCase))
+			url += "?tab=files";
 
 		if (url.Length == 0) { Speak(Loc.T("modpage.noPage", stardewMod.Name)); return; }
 

@@ -35,6 +35,30 @@ public enum ModSourceAbilities
 	Page = 8,
 }
 
+/// <summary>
+/// What a site wants before it will answer, and how the user gets it.
+///
+/// <para>
+/// The stored thing is always a key. What differs is how you come by one, and that is the whole of the
+/// distinction here: CurseForge issues one to an approved application and you paste it in, while Nexus will
+/// also let you sign in on its own site and hand the manager a key at the end — which is better, because the
+/// manager then never sees the password and the user can revoke it without changing one. A site offering both
+/// is <see cref="ApiKeyOrSignIn"/> so the screen can offer both and the user can take whichever they can
+/// actually complete.
+/// </para>
+/// </summary>
+public enum ModSourceCredential
+{
+	/// <summary>Nothing to set up. Search it and download from it.</summary>
+	None,
+
+	/// <summary>A key the user obtains themselves and types in.</summary>
+	ApiKey,
+
+	/// <summary>A key, or a sign-in on the site that ends with the manager being given one.</summary>
+	ApiKeyOrSignIn,
+}
+
 /// <summary>Whether a source can be used right now, and if not, a sentence saying why.</summary>
 public sealed record ModSourceStatus(bool Ready, string Reason)
 {
@@ -64,6 +88,18 @@ public sealed class ModSourceInfo
 
 	/// <summary>What this site can do. See <see cref="ModSourceAbilities"/>.</summary>
 	public ModSourceAbilities Abilities { get; init; } = ModSourceAbilities.Page;
+
+	/// <summary>What it wants before it will answer. See <see cref="ModSourceCredential"/>.</summary>
+	public ModSourceCredential Credential { get; init; } = ModSourceCredential.None;
+
+	/// <summary>
+	/// Where a user goes to get a key, or <c>""</c> for a site that needs none. Shown beside the source in
+	/// the credentials screen, because "you need an API key" is not useful without saying where from.
+	/// </summary>
+	public string ApiKeyUrl { get; init; } = "";
+
+	/// <summary>True when the user has to set something up before this site will answer.</summary>
+	public bool NeedsCredential => Credential != ModSourceCredential.None;
 
 	/// <summary>
 	/// The games whose mods this site carries, by <see cref="GameProfiles"/> id. Empty means "any game" —
@@ -128,6 +164,10 @@ public static class ModSources
 				GameProfiles.StardewValley, GameProfiles.SkyrimSE, GameProfiles.Fallout4,
 				GameProfiles.MoonlightPeaks, GameProfiles.Witcher3,
 			},
+			// Both, because the sign-in flow is built and waiting on Nexus approving the manager as an
+			// application. Until it is, the typed key is the one that works. See NexusSso.
+			Credential = ModSourceCredential.ApiKeyOrSignIn,
+			ApiKeyUrl = "https://www.nexusmods.com/users/myaccount?tab=api",
 			// Any game domain, not only stardewvalley — the update reader used to hard-code that one.
 			PageUrl = new Regex(@"nexusmods\.com/(?:[^/]+/)?mods/(?<id>\d+)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
 		},
@@ -159,6 +199,8 @@ public static class ModSources
 			HomeUrl = "https://www.curseforge.com/",
 			Abilities = ModSourceAbilities.Search | ModSourceAbilities.Download | ModSourceAbilities.Updates | ModSourceAbilities.Page,
 			Games = new[] { GameProfiles.Minecraft, GameProfiles.StardewValley },
+			Credential = ModSourceCredential.ApiKey,
+			ApiKeyUrl = "https://console.curseforge.com/",
 			PageUrl = new Regex(@"curseforge\.com/(?<game>[^/]+)/(?:[^/]+/)?(?<id>[^/\s?#]+)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
 		},
 		new()
@@ -177,6 +219,16 @@ public static class ModSources
 
 	/// <summary>Every site the manager knows about, in the order a list should show them.</summary>
 	public static IReadOnlyList<ModSourceInfo> Known => _known;
+
+	/// <summary>
+	/// The sites that want setting up before they will answer — what the credentials screen lists.
+	///
+	/// Every site, not only the ones carrying the loaded game: a key is a thing about the user's account
+	/// rather than about the game they happen to have open, and a screen that hid Nexus because you were
+	/// playing Minecraft would be a screen you could not find your way back to.
+	/// </summary>
+	public static IReadOnlyList<ModSourceInfo> NeedingCredentials() =>
+		_known.Where(s => s.NeedsCredential).ToList();
 
 	/// <summary>One site by id, or null.</summary>
 	public static ModSourceInfo? Find(string? id) =>

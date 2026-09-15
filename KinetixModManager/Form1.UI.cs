@@ -74,6 +74,12 @@ public partial class Form1
 		{
 			await CheckForAppUpdates(manual: true);
 		});
+		// Beside Settings rather than inside it: a key belongs to the user's account with a mod site, not to
+		// the game they happen to have open, and the settings window is organised per game.
+		_menuFile.DropDownItems.Add(Loc.T("menu.modSourceKeys"), null, delegate
+		{
+			ShowModSourceKeys();
+		}).Name = "menuModSourceKeys";
 		_menuFile.DropDownItems.Add(Loc.T("menu.settings", GetShortcutString("Settings")), null, delegate
 		{
 			ShowSettings();
