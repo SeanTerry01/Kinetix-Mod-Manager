@@ -2131,3 +2131,55 @@ on the unused key. That is the check working exactly as intended in the directio
 a missing phrase, but one left behind after the code that said it went away.
 
 **1,309 → 1,327 tests.** Eight tabs now, against the Windows head's sixty-odd feature areas.
+
+## 31. Mod actions, and the warning moves to where it is heard — 2026-09-15
+
+Two small ones, and a defect that had been shipping.
+
+### Backing up a mod that is a file
+
+`BackupStore.CreateBackup` opened with `if (!Directory.Exists(folderPath)) return;`. Minecraft's mods are
+single `.jar` files, so **deleting one kept no backup at all while the manager reported that it had** — on
+Windows as much as Linux. Nothing threw, nothing was logged, and the only way to find it is to want the mod
+back.
+
+It now zips a lone file as readily as a folder. Zipped rather than copied, deliberately: a backup is then one
+kind of thing whatever shape the mod was, and `BackupStore.List` finds it the same way for every game.
+
+### Deleting, without a dialog
+
+Deleting is the only thing in the program that destroys something the user cannot recover from inside it, so
+it is the only action here that asks twice — and it asks **inline**. That is the same choice the Windows head
+made when it replaced its message boxes: a modal window takes the reader somewhere else and brings it back,
+which for a confirmation is more disruption than the question is worth.
+
+Delete arms and says what would go; Delete again goes ahead; **any other key cancels**, and so does moving to
+another mod. That last one matters more than it looks — the mod being confirmed is no longer the one under
+the cursor, and going ahead would remove something the user never pointed at.
+
+A backup is taken first and **awaited**, not started: a backup still being written when the original is
+deleted is not a backup.
+
+Ctrl+B backs up without deleting, and Ctrl+N reads out the note attached to a mod — notes are kept by unique
+id in settings, so one written on Windows is the same note here, which is the sort of thing that only starts
+being true once settings are shared (§29).
+
+### The warning, where it is actually heard
+
+§29 put "this game will not speak on Linux" on the Settings tab, and the TODO immediately said that was the
+wrong place. Settings is somewhere a user visits once; the **games list** is where they choose what to spend
+an evening on. Being told afterwards that the game was never going to talk is being told too late.
+
+`GamesView` in the core now builds each row's sentence, including the note, and there are tests for it —
+including that the note says the mods are **still managed**. Without that clause it reads as "this game is not
+supported", which is not what it means and would send somebody away from a game the manager handles perfectly
+well.
+
+It also takes `warnWhereItWillNotSpeak` rather than asking the platform itself, so the Windows head gets no
+note on any row — every supported game speaks there, and six warnings would be noise as well as wrong.
+
+One more thing fell out of building it: looking for a game touches the disk, and a library on a disconnected
+drive throws rather than answering. One game that cannot be looked for now costs that row rather than the
+whole list.
+
+**1,327 → 1,343 tests.**

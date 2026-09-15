@@ -202,14 +202,18 @@ public sealed partial class MainWindow
 			if (i >= 0 && i < _gameList.Count) SelectGame(_gameList[i]);
 		};
 
-		foreach (GameProfile game in GameProfiles.All)
+		// Built in the core so the sentence — including the note about a game that will not speak here — is
+		// decided once and can be tested. warnWhereItWillNotSpeak is true because this is the Linux head;
+		// on Windows every supported game speaks and the note would be noise on all six rows.
+		IReadOnlyList<GameRow> rows = GamesView.Of(GameProfiles.All, _locator.InstallFolder, warnWhereItWillNotSpeak: true);
+
+		foreach (GameRow row in rows)
 		{
-			_gameList.Add(game);
-			string? install = _locator.InstallFolder(game);
-			_games.Append(RowLabel(install is null
-				? Loc.T("gtk.gameNotInstalled", game.DisplayName)
-				: Loc.T("gtk.gameInstalledAt", game.DisplayName, install)));
+			_gameList.Add(row.Game);
+			_games.Append(RowLabel(row.Spoken));
 		}
+
+		SetStatus(GamesView.Summarise(rows));
 
 		var scroller = Gtk.ScrolledWindow.New();
 		scroller.SetChild(_games);
@@ -252,6 +256,9 @@ public sealed partial class MainWindow
 		box.Append(buttons);
 
 		_installed.SetVexpand(true);
+		// Moving to another mod calls off an armed delete too — the mod being confirmed is no longer the one
+		// under the cursor, and going ahead would remove something the user never pointed at.
+		_installed.OnRowSelected += (_, _) => CancelArmedDelete();
 		// Nothing is announced on selection, deliberately. Orca reads the row that takes focus already, and
 		// the row is a single label carrying the whole sentence precisely so that what it reads is the
 		// right thing. Saying it again here would be the same sentence twice. The Windows build has to
@@ -797,7 +804,20 @@ public sealed partial class MainWindow
 				case 0x020 when _installed.HasFocus:   // Space
 					ToggleSelected();
 					return true;
+				case 0xFFFF when _installed.HasFocus:   // Delete — arms, then confirms. See ModActions.
+					DeletePressed();
+					return true;
+				case 0x062 when ctrl && _installed.HasFocus:   // Ctrl+B, back up the selected mod
+					_ = BackupSelectedAsync();
+					return true;
+				case 0x06E when ctrl && _installed.HasFocus:   // Ctrl+N, read this mod's note
+					SpeakNoteForSelected();
+					return true;
 			}
+
+			// Anything else calls off an armed delete. Deliberately here rather than on each case above: the
+			// point is that ONLY a second Delete goes ahead, so every other key has to be a way out.
+			CancelArmedDelete();
 			return false;
 		};
 		_window.AddController(keys);

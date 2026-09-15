@@ -72,9 +72,26 @@ public static class BackupStore
 	public static void CreateBackup(string folderPath, string modName, string backupsPath,
 		IProgress<double>? progress = null)
 	{
-		if (!Directory.Exists(folderPath)) return;
+		// A mod is not always a folder. Minecraft's are single .jar files, and this used to return here
+		// without a word for anything that was not a directory — so deleting a Minecraft mod kept no backup
+		// at all while the manager said it had made one. Silent, and only discovered when somebody wants the
+		// mod back.
+		bool oneFile = !Directory.Exists(folderPath) && File.Exists(folderPath);
+		if (!Directory.Exists(folderPath) && !oneFile) return;
+
 		Directory.CreateDirectory(backupsPath);
 		string dest = Path.Combine(backupsPath, $"{modName}_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+
+		if (oneFile)
+		{
+			// Zipped rather than copied, so a backup is one kind of thing whatever the mod is shaped like and
+			// List() below finds it the same way.
+			using (var zip = ZipFile.Open(dest, ZipArchiveMode.Create))
+				zip.CreateEntryFromFile(folderPath, Path.GetFileName(folderPath));
+
+			progress?.Report(100.0);
+			return;
+		}
 
 		if (progress == null)
 		{

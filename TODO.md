@@ -263,10 +263,11 @@ It cannot work yet, for one reason that is not a code problem:
       rather than after.
 - ~~The Minecraft version is hard-coded to 1.21.1~~ — done (§30), along with three other places Minecraft
   was written into the GTK head rather than being an entry in its list.
-- [ ] **Screens, cheapest first.** Settings, Updates and Profiles are done (§29, §30) — eight tabs now against
-      the Windows head's sixty-odd feature areas. **Next: the mod list's own actions** (delete, backup, notes),
-      then Dependencies, then the SMAPI log once Stardew installs work. Each is the same shape: check the
-      decision is in the core, then draw it in GTK.
+- [ ] **Screens, cheapest first.** Settings, Updates and Profiles are done (§29, §30), and the mod list's own
+      actions — delete, back up, read a note — are in (§31). Eight tabs against the Windows head's sixty-odd
+      feature areas. **Next: Dependencies**, then Check My Setup's remaining per-game branches, then the SMAPI
+      log once Stardew installs work. Each is the same shape: check the decision is in the core, then draw it
+      in GTK.
 - [ ] **⚠️ Nexus search and updates are unavailable in the GTK head**, because `NexusService` is 1,387 lines in
       the WinForms project. Five of the six games get a plain sentence saying so rather than an empty list. It
       is the largest remaining thing keeping the two heads apart, and moving it is the same shape of job

@@ -1,5 +1,25 @@
 ﻿# Unreleased
 
+## 🐛 Deleting a Minecraft mod kept no backup, and said it had
+
+*   **This one affects Windows too.** The manager backs a mod up before deleting it, and that backup is made
+    by zipping the mod's **folder**. A Minecraft mod is not a folder — it is a single `.jar` file — so the
+    backup step quietly did nothing and the delete went ahead reporting that a copy had been kept. Nothing
+    failed and nothing was logged; the only way to find out was to want the mod back. Mods that are a single
+    file are now backed up properly.
+
+## 🐧 Linux: deleting, backing up, notes, and a warning where you will hear it
+
+*   **Delete a mod from the installed list.** It asks twice, in the list rather than in a pop-up window:
+    Delete once says what would go, Delete again does it, and any other key — or simply moving to another mod
+    — calls it off. A backup is taken first and finished before anything is removed.
+*   **Ctrl+B** backs up the selected mod without deleting it, and **Ctrl+N** reads out any note you have
+    written for it. Notes are shared with the Windows build, so one written there is the same note here.
+*   **The games list now tells you which games will not talk to you**, instead of only mentioning it in
+    Settings. Settings is somewhere you go once; the games list is where you choose what to spend an evening
+    on. It also says plainly that the mods for those games are still managed — the warning is about the game
+    being silent, not about the manager refusing to help.
+
 ## 🐧 Linux: Updates and Profiles, and Minecraft is just a game in the list
 
 *   **Minecraft is no longer written into the Linux build.** It was the version number (fixed at 1.21.1, which
@@ -153,7 +173,7 @@
 
 ## ✅ Tests
 
-*   **1,327 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
+*   **1,343 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
 *   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 *   Twenty-six of them cover unpacking a downloaded mod, including one that extracts a **real .7z** rather than a stand-in — the only way to know that reading one without `7za.exe` actually works.
