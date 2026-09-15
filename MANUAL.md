@@ -85,13 +85,34 @@ Open the Settings Dashboard at any time with **Ctrl + P**. Everything you can co
 
 ### What's on each tab
 
-*   **Paths & Account** — Choose which game you're configuring, set its mods and game folders (with **Browse** buttons), and enter your **Nexus API Key**. If you own the same game twice, each copy is listed separately here so you can set each one's folders — see "Owning the Same Game Twice" below. For Skyrim and Fallout 4 there is also a **"Store this copy's mods inside the game folder"** checkbox, described in that same section.
+*   **Paths & Account** — Choose which game you're configuring, set its mods and game folders (with **Browse** buttons), and enter your **Nexus API Key**. This is also where you say **where your mods are searched for** — see "Choosing where your mods come from" below. If you own the same game twice, each copy is listed separately here so you can set each one's folders — see "Owning the Same Game Twice" below. For Skyrim and Fallout 4 there is also a **"Store this copy's mods inside the game folder"** checkbox, described in that same section.
 *   **Startup** — Show or hide the splash screen, choose whether to check for mod and manager updates at launch, and turn the spoken **welcome** and **goodbye** messages on or off.
 *   **Audio** — All sound options (see below).
 *   **Display** — Low-vision visual options: a **high-contrast colour scheme** (white-on-black, yellow-on-black, or black-on-yellow) and a **text size** (Normal, Large, or Extra Large). Both apply across the whole program and take effect as soon as you save — no restart needed. They change only what's drawn on screen and never affect screen-reader speech, so leaving them at their defaults keeps the normal appearance.
 *   **Mods & Search** — Search results per load, maximum backups kept per mod, whether to save your search history, **"When a download is for another game"** (see "Downloading a Mod for a Game You Don't Have Open" below), and (for Skyrim and Fallout 4) **Protect Plugin Order and Creations**, which stops the game switching your Creations off when you start a new game — see "Keeping Your Creations On and Your Plugins in Order" below.
 *   **AI** — Turn on optional AI features, pick an AI provider and model, and enter your own API key (see "AI Log Diagnosis" below).
 *   **Language** — Pick the manager's display language, or leave it on **Automatic** to follow Windows.
+
+### Choosing where your mods come from
+
+Different games keep their mods in different places, and some keep them in more than one. On the **Paths & Account** tab:
+
+*   **"When searching for mods"** offers three ways to work, and you pick the one you like:
+    *   **Search every source and merge the results** — the most thorough. A mod on a site you never visit can still turn up.
+    *   **Search one source only** — the quietest to listen to. No duplicates, nothing merged.
+    *   **Search my preferred source, and the others on request** — the default, and what the manager has always done. When there is somewhere else worth asking, it says so, and **Alt + O** in the Discovery list searches those too.
+*   **"Preferred mod source"** appears whenever the first setting needs one, and it is remembered **per game** — because the sites differ per game. Minecraft's mods are on Modrinth and CurseForge; Stardew Valley's are on Nexus, ModDrop and CurseForge.
+*   **When more than one source answers, each result says which one it came from.** When only one was asked it does not, because the same three words on every row of a hundred tell you nothing. A mod that appears on two sites is listed once, from whichever you prefer.
+*   **Skyrim, Fallout 4, The Witcher 3 and Moonlight Peaks have no dropdown**, and one line saying why: Nexus is the only place with a searchable catalogue of their mods. Bethesda.net, ModDB and similar sites have no way in for a program like this one.
+*   **CurseForge is listed but cannot be used yet.** It needs an API key that CurseForge issues to approved applications — a conversation with them rather than a setting. It is shown, with the reason, so you can see that the manager knows about it.
+
+### Installing a mod straight from GitHub
+
+Some mods are only ever published on GitHub. From the **Mods** menu, choose **"Install a mod from a GitHub repository..."**, then type `owner/repo` — or simply **paste the address** of the repository's page out of your browser. The releases page, a link to a single release and the clone command all work too.
+
+The manager finds the newest release, works out which of its files is the actual mod, downloads it and installs it exactly as it would a file you had picked yourself — backing up what it replaces, running the FOMOD wizard if there is one, and recording which release went on so it can tell you when the next one appears.
+
+GitHub is not one of the sources in the dropdown above, and that is on purpose: there is no catalogue to search. You cannot ask GitHub for "Stardew mods about fishing". You can name a repository, which is what this does.
 
 ### The Audio tab in detail
 
