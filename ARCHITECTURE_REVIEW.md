@@ -1656,3 +1656,79 @@ pretend the other four have a choice to make.
 Steps 1 and 2 ship on their own and are useful on their own — step 1 is a refactor the codebase already wants,
 and step 2 is what lets a user say "Modrinth first, then CurseForge". Step 3 is where the external
 dependencies are, and it is the only part that has to wait on somebody else.
+
+## 26. The mod source chooser, built — 2026-09-14
+
+§25 said yes and for two of the six games. This is that, with the shape of the choosing decided by Sean: a
+dropdown for *how* to search, and a second one naming *where* when the first needs it.
+
+### Three modes, and what each is for
+
+`ModSearchMode` is the user's habit rather than anything about a game, so it is one setting for the app:
+
+- **Every source, merged.** Most results, and the only mode where a mod on a site the user never visits can
+  turn up at all.
+- **One source.** The quietest to listen to — no duplicates, no merging — at the cost of not knowing a mod
+  exists elsewhere.
+- **Preferred source, the rest on request.** The default, and identical to what the manager did before any of
+  this existed. Alt+O in the Discovery list runs the same search again against the catalogues it left out.
+
+The preferred source is per game, because the catalogues are: Minecraft's mods are on Modrinth and
+CurseForge, Stardew's on Nexus, ModDrop and CurseForge, and the other four have Nexus and nothing else with an
+API. A game with one searchable catalogue gets neither dropdown and one sentence saying so — a dropdown with
+one item in it is not a choice, and offering one suggests the user is missing something.
+
+### The interface is narrow on purpose
+
+`NexusService` has thirty-odd public methods: endorsements, rate limits, NXM links, tracked mods, changelogs.
+Not one of them belongs in an interface that exists so a user can choose where to search, and an `IModSource`
+that tried to cover them would have been a reason not to have one. It asks for what every catalogue can
+answer — *what mods match this* — and nothing else. Nexus's own surface stays on `NexusService` and is reached
+when the source in hand is Nexus.
+
+`NexusModSource` lives in the app rather than the core, and that is honest rather than tidy: `NexusService`
+does, being stateful, key-carrying and reaching into `AppSettings`. `ModrinthModSource` and
+`CurseForgeModSource` are in the core, which is where a Linux head will look for them.
+
+### Two rules that are accessibility rules, not plumbing
+
+- **A row says which catalogue it came from only when more than one was asked.** On a single-source search
+  that phrase would land on every one of a hundred rows to no purpose; when two answered it is the only thing
+  separating two results that otherwise read out identically. The id is recorded either way — that is how the
+  manager later knows where to fetch from — and `GameMod.ShowSource` decides whether it is spoken.
+- **A catalogue that could not answer becomes a sentence the user hears.** Carried on the results rather than
+  thrown, because one site being down is not a failed search: the user still wants what the others found, and
+  still needs telling that a source they asked for was not among them. Silence reads as "there is nothing
+  there".
+
+Duplicates collapse on name and author, which is the only thing two catalogues agree about. It errs towards
+keeping both: showing a mod twice is untidy, while hiding a genuinely different mod because it shares a name
+is a mod the user cannot find at all.
+
+### CurseForge is listed and says why it cannot be used
+
+It is a real second catalogue for both Minecraft and Stardew, so hiding it would leave a user who knows it
+exists wondering whether the manager has heard of it. It appears in the dropdown reading "CurseForge (not
+available yet: …)", and picking it returns that sentence rather than nothing. Two things are needed and only
+one is code: CurseForge issues API keys to approved applications, which is a conversation with them, and a
+mod's author may opt out of third-party downloads — in which case the API deliberately returns no file URL,
+so some results can only ever open in a browser.
+
+It is also left out of the Alt+O offer while it is unusable. Telling a user they can press a key to search
+somewhere and answering "not available yet" when they do is worse than not mentioning it.
+
+### A second Minecraft defect of the same shape as the first
+
+§24 found `RefreshModList` demanding a Nexus key for a game whose mods come from Modrinth. `RunDiscovery` did
+the same thing and was missed: opening Discovery with Minecraft loaded and no Nexus key spoke "log in first"
+and searched nothing — sending a player away to sign in to a service their game has no relationship with.
+Both now ask whether the loaded game actually uses Nexus.
+
+### Tests
+
+**1,206 → 1,222.** Sixteen on the planner: which catalogues each mode asks, the preferred one coming first
+(which is also the order duplicates resolve in), a preference for a catalogue that does not carry the game
+falling back quietly, results arriving in the order asked rather than the order they answered, the same mod
+on two sites collapsing to one, two different mods sharing a name both surviving, a row saying where it came
+from only when more than one answered, and a site that is down or unavailable still leaving the others'
+results intact.

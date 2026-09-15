@@ -737,6 +737,15 @@ public partial class Form1
 			e.Handled = true;
 			e.SuppressKeyPress = true;
 		}
+		// Alt+O: run the same search again, this time asking the catalogues the preferred-source mode leaves
+		// out. Only offered when there is somewhere else to ask that would actually answer — see
+		// AnnounceOtherSources, which is what told the user the key was there.
+		if (list.Name == "listDiscovery" && e.Alt && e.KeyCode == Keys.O)
+		{
+			Fire(RunDiscovery(alsoTheOthers: true), "RunDiscovery");
+			e.Handled = true;
+			e.SuppressKeyPress = true;
+		}
 		if (e.KeyCode == Keys.Return && (list.Name == "listUpdates" || list.Name == "listDiscovery"))
 		{
 			// On the Discovery list's inline "Load more" row, Enter loads the next page of results;

@@ -1739,5 +1739,17 @@
   "mc.download.keptInDownloads": "Not installed. The file is in your downloads folder if you want it later.",
   "health.mcLoaded": "Your mods loaded. The last time Minecraft ran it was version {0} with Fabric Loader {1}, and Fabric accepted {2} mods.",
   "health.mcLoadedNoCount": "Your mods loaded. The last time Minecraft ran it was version {0} with Fabric Loader {1}.",
-  "health.mcVanilla": "⚠️ The last time Minecraft ran, it ran WITHOUT your mods. The log shows a plain Minecraft start with no Fabric and no mods, which is why the game would have said nothing. Start the game with F5 from here rather than through the Minecraft launcher: choosing an installation and launching a world are separate things in the launcher, and the second quietly overrides the first."
+  "health.mcVanilla": "⚠️ The last time Minecraft ran, it ran WITHOUT your mods. The log shows a plain Minecraft start with no Fabric and no mods, which is why the game would have said nothing. Start the game with F5 from here rather than through the Minecraft launcher: choosing an installation and launching a world are separate things in the launcher, and the second quietly overrides the first.",
+  "search.modrinthNeedsVersion": "Modrinth needs to know which Minecraft version to search for, and Fabric is not installed yet.",
+  "search.curseforgeNeedsKey": "CurseForge is not available yet: the manager has no API key for it. CurseForge issues keys to approved applications, and that is a conversation rather than a setting.",
+  "search.curseforgeNotBuilt": "CurseForge is not available yet. The manager has a key but does not yet know how to search it.",
+  "search.noSourceForGame": "There is nowhere to search for {0} mods.",
+  "search.othersAvailable": "Press Alt+O to search {0} as well.",
+  "settings.searchModeLabel": "When searching for mods",
+  "settings.searchModeAll": "Search every source and merge the results",
+  "settings.searchModeOne": "Search one source only",
+  "settings.searchModePreferred": "Search my preferred source, and the others on request",
+  "settings.preferredSourceLabel": "Preferred mod source",
+  "settings.sourceUnavailable": "{0} (not available yet: {1})",
+  "settings.oneSourceOnly": "{0} is the only place with a searchable catalogue of {1} mods."
 }

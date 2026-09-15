@@ -833,13 +833,17 @@ public partial class Form1
 	};
 
 	/// <summary>
-	/// Queries the Nexus Mods GraphQL API for the current search text and populates
+	/// Searches whichever catalogues the user has chosen for the loaded game and populates
 	/// <c>listDiscovery</c>. Pass <paramref name="loadMore"/> as <c>true</c> to append the
-	/// next page of results instead of starting fresh.
+	/// next page of results instead of starting fresh, and <paramref name="alsoTheOthers"/>
+	/// to include the sources the preferred-source mode would otherwise have left out.
 	/// </summary>
-	private async Task RunDiscovery(bool loadMore = false)
+	private async Task RunDiscovery(bool loadMore = false, bool alsoTheOthers = false)
 	{
-		if (string.IsNullOrEmpty(_settings.ApiKey))
+		// Only a game whose mods come from Nexus needs a Nexus key to search. Minecraft's come from Modrinth,
+		// which has no accounts — and this used to send a Minecraft player away to log in to a service their
+		// game has nothing to do with, rather than searching.
+		if (_nexusService.UsesNexus && string.IsNullOrEmpty(_settings.ApiKey))
 		{
 			Speak(Loc.T("discovery.loginFirst"));
 			return;
@@ -889,7 +893,7 @@ public partial class Form1
 		{
 			int pageSize = _currentDiscoveryPageSize;
 			var (results, total) = await SearchActiveGameCatalogueAsync(
-				searchType, searchTerm, _currentDiscoveryPage, pageSize, language, category);
+				searchType, searchTerm, _currentDiscoveryPage, pageSize, language, category, alsoTheOthers);
 			int offset = (_currentDiscoveryPage - 1) * pageSize;
 
 			// Drop the old inline "Load more" row (always last) before appending; firstNewIndex is then

@@ -9,6 +9,24 @@
 
 *   Profiles were saved to a file named after whatever you typed, with nothing checked. A profile called **"Mage/Thief"** failed to save at all; one ending in a dot or a space saved under a name Windows then refused to open. Worst of the three, saving and deleting disagreed about the name — so a profile could appear in the list and then refuse to be deleted. All three are fixed, and the same rule is now used everywhere a name becomes a file.
 
+## ✨ You choose where your mods come from
+
+*   **A new setting on the Paths tab: "When searching for mods."** Three options — search **every** source and merge the results, search **one** source only, or search your **preferred** source with the others available on request. Choosing one of the last two shows a second dropdown naming which source that is, and it is remembered **per game**, because the sites are: Minecraft's mods live on Modrinth and CurseForge, Stardew's on Nexus, ModDrop and CurseForge.
+*   **Nothing changes until you ask it to.** The default searches your preferred source only, which is exactly what the manager did before — Modrinth for Minecraft, Nexus for everything else.
+*   In the preferred-source mode, when there is somewhere else worth asking, the manager says so and **Alt+O** in the Discovery list searches those too.
+*   **When more than one source answers, every result says which one it came from** — and when only one was asked, it does not, because the same three words on a hundred rows tell you nothing. A mod that turns up on two sites is shown once, from whichever you prefer.
+*   **A source that cannot answer says so out loud** instead of leaving a quiet gap in the results. A site being down or a missing key reads as what it is, not as "there are no mods".
+*   **Skyrim, Fallout 4, The Witcher 3 and Moonlight Peaks get no dropdown**, and one sentence saying why: Nexus is the only place with a searchable catalogue of their mods. Bethesda.net, ModDB and LoversLab have no way in for a program like this one. A choice with one option in it is not a choice.
+*   **CurseForge is listed, and says why it cannot be used yet.** It is a real second catalogue for Minecraft and Stardew, and it needs an API key that CurseForge issues to approved applications — a conversation rather than a setting, like the Nexus sign-in. It is there so you can see the manager knows about it and what is in the way.
+
+## 🐛 Minecraft mods could not be discovered without a Nexus account
+
+*   Opening the **Discovery** tab with Minecraft loaded and no Nexus API key said "log in first" and searched nothing — sending you off to sign in to a service your game has no relationship with. Minecraft's mods come from Modrinth, which has no accounts. It searches now.
+
+## 🐛 A mod hosted somewhere other than Nexus or GitHub went missing
+
+*   The manager asks SMAPI's mod database about your Stardew mods, and that database knows about **ModDrop**, **CurseForge** and **Chucklefish** as well as Nexus and GitHub. It would hand back a mod's newest version and its page, and the manager kept only the Nexus and GitHub ones — so a mod hosted anywhere else was then reported to you as one it **could not track**, moments after being told exactly where the mod was. Mods now keep their page whatever site it names, it is remembered between runs, and Check My Setup counts them as covered.
+
 ## ✨ Minecraft has its own sounds, and its connect cue means joining a server
 
 *   **The sound theme has always followed the game you load** — Skyrim sounds like Skyrim, Stardew sounds like Stardew, so you know which session you are in before anything is read out. Minecraft was the one supported game with no theme of its own. Its folder is now there: drop `.ogg` files into `sounds\Minecraft\connect\`, `\error\` and the rest and they are picked up, with **no setting to change and nothing to register**. Each folder has a note in it saying what belongs there, and `sounds\README.txt` explains the whole convention for anyone making a theme.
@@ -61,7 +79,7 @@
 
 ## ✅ Tests
 
-*   **1,175 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
+*   **1,222 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
 *   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 *   Twenty-six of them cover unpacking a downloaded mod, including one that extracts a **real .7z** rather than a stand-in — the only way to know that reading one without `7za.exe` actually works.

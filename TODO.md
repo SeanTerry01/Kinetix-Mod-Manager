@@ -5,8 +5,8 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-09-14, after per-game sounds and the Minecraft server cue. No unknowns left, only work.
-**State:** 1,175 tests passing on Windows and Linux; all five projects build clean, zero warnings.
+**Last updated:** 2026-09-14, after the mod source chooser. No unknowns left, only work.
+**State:** 1,222 tests passing on Windows and Linux; all five projects build clean, zero warnings.
 
 ---
 
@@ -160,18 +160,19 @@ CurseForge beside Nexus, and smapi.io already resolves their versions. For Skyri
 and Moonlight Peaks, **Nexus is the only searchable catalogue that exists** — Bethesda.net, ModDB and
 LoversLab have no API, and Thunderstore has no Moonlight Peaks community (checked: 326, not among them).
 
-- [ ] **Keep a mod's page URL whatever host it is on.** Worth doing on its own merits, today. A Stardew mod on
-      ModDrop or CurseForge has its update found by smapi.io and then dropped, because `Form1.Updates.cs`
-      only recognises `nexusmods.com` and `github.com` URLs — so `UpdateCoverage` reports it as unlinked, and
-      the user is told the gap is theirs, moments after the manager was given the exact page.
-- [ ] **`IModSource` and adapters for Nexus and Modrinth.** No new source, no behaviour change. See item 1
-      below — this is that interface, and the chooser is the reason to stop deferring it.
-- [ ] **Sources as an ordered per-game setting**, defaulting to what is baked in now. A result must say which
-      catalogue it came from *out loud*: two sources will return the same mod, and two identically-named rows
-      a blind user cannot tell apart is worse than one row.
+Done: the page URL is kept whatever host names it, `IModSource` and its three covers exist, and the three
+search modes are a setting with a per-game preferred source (§26).
+
 - [ ] **CurseForge needs an approved API key** — the same kind of conversation as the Nexus SSO slug, and
-      blocked the same way. Authors can also opt out of third-party downloads per mod, and the API then
-      returns no URL by design; those must open in a browser rather than fail.
+      blocked the same way. It is listed in the chooser today and says why it cannot be used. Authors can also
+      opt out of third-party downloads per mod, and the API then returns no URL by design; those must open in
+      a browser rather than fail.
+- [ ] **Install from a GitHub repository by name.** The plumbing has been there for years — the Accessibility
+      Suite, SMAPI and BepInEx all arrive this way — but only for repositories the manager already knows. There
+      is no catalogue to search, so this is an "install `owner/repo`" action rather than a source in the
+      chooser.
+- [ ] **ModDrop can only ever open a page**, having no public file endpoint. Worth saying in the UI once a
+      mod is known to live there, rather than offering a download that cannot happen.
 
 **1. Proton or native? — ANSWERED: all six games. See ARCHITECTURE_REVIEW §20.**
 

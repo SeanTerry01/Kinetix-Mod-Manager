@@ -367,6 +367,44 @@ public class AppSettings : IModScanContext
 	[JsonConverter(typeof(StringEnumConverter))]
 	public TextSize TextSize { get; set; } = TextSize.Normal;
 
+	/// <summary>
+	/// How a search treats more than one catalogue. See <see cref="ModSearchMode"/>.
+	///
+	/// One setting for the whole app rather than one per game, because it describes how the user likes to
+	/// search rather than anything about a particular game — unlike <see cref="PreferredModSource"/>, which is
+	/// per game because the catalogues are.
+	///
+	/// The default searches the preferred source only, which is exactly what the manager did before any of
+	/// this was configurable. Nobody's results change until they ask.
+	/// </summary>
+	[JsonConverter(typeof(StringEnumConverter))]
+	public ModSearchMode ModSearchMode { get; set; } = ModSearchMode.PreferredFirst;
+
+	/// <summary>
+	/// Where each game's mods are looked for first, by <see cref="ModSources"/> id, keyed by game id.
+	///
+	/// Absent means the game's built-in source — Modrinth for Minecraft, Nexus for the rest. A preference for
+	/// a catalogue that does not carry the game is ignored rather than corrected, because the user may simply
+	/// have switched games since setting it.
+	/// </summary>
+	public Dictionary<string, string> PreferredModSource { get; set; } =
+		new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+	/// <summary>The catalogue to search first for <paramref name="game"/>.</summary>
+	public string PreferredModSourceFor(string? game) =>
+		game != null && PreferredModSource.TryGetValue(game, out string? id) && !string.IsNullOrWhiteSpace(id)
+			? id
+			: ModSources.DefaultFor(game);
+
+	/// <summary>
+	/// The user's CurseForge API key, or <c>""</c> while there is none.
+	///
+	/// Empty for everyone today, and the reason CurseForge is listed as a source and reported as unavailable:
+	/// CurseForge issues keys to approved applications, which is a conversation with them rather than a
+	/// setting. Stored here so that the day a key exists, nothing else has to change to use it.
+	/// </summary>
+	public string CurseForgeApiKey { get; set; } = "";
+
 	public string CurrentTheme { get; set; } = "Default";
 
 	/// <summary>

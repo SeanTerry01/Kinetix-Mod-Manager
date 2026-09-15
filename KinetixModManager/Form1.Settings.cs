@@ -299,6 +299,98 @@ public partial class Form1
 			}, 0, pr++);
 		}
 
+		// Where mods are looked for.
+		//
+		// Two controls rather than one, because they answer different questions. The mode is a habit — how you
+		// like searching — and belongs to the user. The preferred source is about this game, because the
+		// catalogues are: Minecraft's mods are on Modrinth and CurseForge, Stardew's on Nexus, ModDrop and
+		// CurseForge, and the other four games genuinely have Nexus and nothing else with an API.
+		//
+		// A game with one searchable catalogue gets neither control and a sentence saying so. A dropdown with
+		// one item in it is not a choice, and offering one would suggest the user is missing something.
+		IReadOnlyList<ModSourceInfo> searchable = ModSources.SearchableFor(_settings.ActiveGame);
+
+		(ModSearchMode Mode, string Text)[] searchModes =
+		{
+			(ModSearchMode.PreferredFirst, Loc.T("settings.searchModePreferred")),
+			(ModSearchMode.OneSource,      Loc.T("settings.searchModeOne")),
+			(ModSearchMode.AllSources,     Loc.T("settings.searchModeAll")),
+		};
+
+		ComboBox? cSearchMode = null;
+		ComboBox? cPreferredSource = null;
+
+		if (searchable.Count > 1)
+		{
+			tabPaths.Controls.Add(new Label
+			{
+				Text = Loc.T("settings.searchModeLabel") + ":",
+				AutoSize = true,
+				Padding = new Padding(0, 10, 0, 0)
+			}, 0, pr++);
+
+			cSearchMode = new ComboBox
+			{
+				DropDownStyle = ComboBoxStyle.DropDownList,
+				Dock = DockStyle.Fill,
+				AccessibleName = Loc.T("settings.searchModeLabel")
+			};
+			cSearchMode.Items.AddRange(searchModes.Select(m => (object)m.Text).ToArray());
+			cSearchMode.SelectedIndex = Math.Max(0, Array.FindIndex(searchModes, m => m.Mode == _settings.ModSearchMode));
+			tabPaths.Controls.Add(cSearchMode, 0, pr++);
+
+			Label lblPreferred = new Label
+			{
+				Text = Loc.T("settings.preferredSourceLabel") + ":",
+				AutoSize = true,
+				Padding = new Padding(0, 10, 0, 0)
+			};
+			tabPaths.Controls.Add(lblPreferred, 0, pr++);
+
+			cPreferredSource = new ComboBox
+			{
+				DropDownStyle = ComboBoxStyle.DropDownList,
+				Dock = DockStyle.Fill,
+				AccessibleName = Loc.T("settings.preferredSourceLabel")
+			};
+
+			// A source the manager cannot use yet is listed WITH the reason, not hidden. Hiding CurseForge
+			// would leave a user who knows it exists wondering whether the manager has heard of it; saying
+			// "not available yet: it needs an API key from CurseForge" answers that in the place they looked.
+			foreach (ModSourceInfo source in searchable)
+			{
+				IModSource? live = _modSources.FirstOrDefault(m => m.Info.Id == source.Id);
+				cPreferredSource.Items.Add(live is { Status.Ready: false }
+					? Loc.T("settings.sourceUnavailable", source.DisplayName, live.Status.Reason)
+					: source.DisplayName);
+			}
+
+			string preferredNow = _settings.PreferredModSourceFor(_settings.ActiveGame);
+			cPreferredSource.SelectedIndex = Math.Max(0, searchable.ToList().FindIndex(
+				x => string.Equals(x.Id, preferredNow, StringComparison.OrdinalIgnoreCase)));
+			tabPaths.Controls.Add(cPreferredSource, 0, pr++);
+
+			// "Search everything" has no preferred source to pick, so the control goes rather than sitting
+			// there doing nothing.
+			void ShowPreferred()
+			{
+				bool wanted = searchModes[cSearchMode.SelectedIndex].Mode != ModSearchMode.AllSources;
+				lblPreferred.Visible = wanted;
+				cPreferredSource!.Visible = wanted;
+			}
+			cSearchMode.SelectedIndexChanged += delegate { ShowPreferred(); };
+			ShowPreferred();
+		}
+		else if (searchable.Count == 1 && sessionGame is not null)
+		{
+			tabPaths.Controls.Add(new Label
+			{
+				Text = Loc.T("settings.oneSourceOnly", searchable[0].DisplayName, sessionGame.DisplayName),
+				AutoSize = true,
+				Padding = new Padding(0, 10, 0, 0)
+			}, 0, pr++);
+		}
+
 		FlowLayoutPanel flowLayoutPanel = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Fill,
@@ -1145,6 +1237,11 @@ public partial class Form1
 				string chosenLang = (cmbLanguage.SelectedItem as LanguageChoice)?.Code ?? "";
 				bool langChanged = !chosenLang.Equals(_settings.Language, StringComparison.OrdinalIgnoreCase);
 				_settings.Language = chosenLang;
+				if (cSearchMode != null && cSearchMode.SelectedIndex >= 0)
+					_settings.ModSearchMode = searchModes[cSearchMode.SelectedIndex].Mode;
+				if (cPreferredSource != null && cPreferredSource.SelectedIndex >= 0)
+					_settings.PreferredModSource[_settings.ActiveGame] = searchable[cPreferredSource.SelectedIndex].Id;
+
 				_settings.AllowManualTheme = cManualTheme.Checked;
 				_settings.CurrentTheme = cManualTheme.Checked
 					? (cTheme.SelectedItem?.ToString() ?? "Default")

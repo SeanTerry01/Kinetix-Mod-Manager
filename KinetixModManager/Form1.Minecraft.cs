@@ -468,40 +468,73 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Searches whichever catalogue the loaded game's mods actually come from.
+	/// Searches wherever the user has said this game's mods should come from.
 	///
-	/// Every caller used to ask Nexus directly, which for Minecraft means asking about a game Nexus has no
-	/// Fabric mods for, using a domain that is empty. This is the one place that decides, so the discovery
-	/// list, the update checker and the coverage report cannot disagree about it.
+	/// <para>
+	/// One place decides, so the discovery list, the update checker and the coverage report cannot disagree
+	/// about it. It used to decide by asking the game — Modrinth for Minecraft, Nexus for everything else —
+	/// and now asks the user first, falling back to exactly that when they have said nothing.
+	/// </para>
+	///
+	/// <para>
+	/// <paramref name="alsoTheOthers"/> is the "search the rest as well" request, and only means anything in
+	/// the preferred-source mode. Notes from catalogues that could not answer are spoken rather than dropped:
+	/// a search that quietly left one out reads as "there is nothing there".
+	/// </para>
 	/// </summary>
 	private async Task<(List<GameMod> Results, int Total)> SearchActiveGameCatalogueAsync(
 		string searchType, string searchTerm, int page, int pageSize,
-		string? language = null, string? category = null)
+		string? language = null, string? category = null, bool alsoTheOthers = false)
 	{
-		if (GameProfiles.Find(_settings.ActiveGame)?.ModSource != ModSource.Modrinth)
-			return await _nexusService.SearchModsAsync(searchType, searchTerm, page, pageSize, language, category);
+		string game = _settings.ActiveGame;
 
-		// Modrinth needs to know which Minecraft version to filter to, and there is no sensible default: a
-		// mod built for another version installs cleanly and then loads nothing.
-		string gameVersion = MinecraftGameVersionInUse(MinecraftRootFolder());
-		if (gameVersion.Length == 0)
+		IReadOnlyList<IModSource> asking = ModSearchPlan.Choose(
+			_modSources, game, _settings.ModSearchMode, _settings.PreferredModSourceFor(game), alsoTheOthers);
+
+		if (asking.Count == 0)
 		{
-			Speak(Loc.T("mc.search.noVersionSpeak"));
+			Speak(Loc.T("search.noSourceForGame", GameProfiles.DisplayNameFor(game)));
 			return (new List<GameMod>(), 0);
 		}
 
-		try
+		var query = new ModSearchQuery(game, searchTerm, page, pageSize)
 		{
-			// Language and category are Nexus's filters and have no equivalent here; Modrinth's own categories
-			// are a different vocabulary entirely, so offering them would promise filtering that is not
-			// happening.
-			return await ModrinthService.SearchAsync(searchTerm, gameVersion, (page - 1) * pageSize, pageSize);
-		}
-		catch (Exception ex)
-		{
-			LogFailure("Modrinth", "Search failed", ex);
-			return (new List<GameMod>(), 0);
-		}
+			SearchType = searchType,
+			Language = language,
+			Category = category,
+			// Only Modrinth reads this, and it cannot search without one: a Minecraft mod built for another
+			// version installs perfectly and then loads nothing.
+			GameVersion = GameProfiles.Find(game)?.ModSource == ModSource.Modrinth
+				? MinecraftGameVersionInUse(MinecraftRootFolder())
+				: null,
+		};
+
+		ModSearchResults found = await ModSearchPlan.SearchAsync(asking, query);
+
+		foreach (string note in found.Notes) Speak(note);
+		AnnounceOtherSources(asking, game, alsoTheOthers);
+
+		return (found.Results.ToList(), found.Total);
+	}
+
+	/// <summary>
+	/// Mentions the catalogues this search did not ask, once, and only when asking them would actually work.
+	///
+	/// A source the manager cannot use yet — CurseForge, until it has a key — is left out of the offer
+	/// deliberately. Telling a user they can press a key to search somewhere, and answering "that is not
+	/// available yet" when they do, is worse than not mentioning it.
+	/// </summary>
+	private void AnnounceOtherSources(IReadOnlyList<IModSource> asked, string game, bool alsoTheOthers)
+	{
+		if (alsoTheOthers || _settings.ModSearchMode != ModSearchMode.PreferredFirst) return;
+
+		var ready = ModSearchPlan.Remaining(_modSources, game, asked)
+			.Where(s => s.Status.Ready)
+			.Select(s => s.Info.DisplayName)
+			.ToList();
+		if (ready.Count == 0) return;
+
+		Speak(Loc.T("search.othersAvailable", string.Join(", ", ready)));
 	}
 
 	/// <summary>

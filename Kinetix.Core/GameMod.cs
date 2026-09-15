@@ -87,6 +87,15 @@ public class GameMod
 	/// </summary>
 	public string SourceId { get; set; } = "";
 
+	/// <summary>
+	/// Whether this row should say which site it came from.
+	///
+	/// Set only when a search actually asked more than one, because otherwise it is a phrase repeated on every
+	/// one of a hundred rows to no purpose. When two catalogues did answer it is the opposite: it is the only
+	/// thing separating two results that are otherwise read out identically.
+	/// </summary>
+	public bool ShowSource { get; set; }
+
 	/// <summary>Absolute path to the mod's folder on disk.</summary>
 	public string FolderPath { get; set; } = "";
 
@@ -245,7 +254,16 @@ public class GameMod
 			// it differs by catalogue: a Nexus number, a Modrinth slug. A result with neither says neither,
 			// rather than reading "(ID: )" aloud at the start of every row.
 			string id = DisplayId.Length > 0 ? $" (ID: {DisplayId})" : "";
-			return $"{Name}{id}. {installed}{downloaded}{popularity}{updated}{Description}";
+
+			// Which catalogue answered, and only when more than one did -- see ShowSource. It sits with the
+			// counts rather than at the front because it is context for a result rather than a reason to skip
+			// one, but it comes before the description so that two similarly-named mods from different sites
+			// are told apart without listening to the end of both.
+			string from = "";
+			if (ShowSource && SourceId.Length > 0)
+				from = $"From {ModSources.Find(SourceId)?.DisplayName ?? SourceId}. ";
+
+			return $"{Name}{id}. {installed}{downloaded}{from}{popularity}{updated}{Description}";
 		}
 		string noteSuffix = string.IsNullOrEmpty(Note) ? "" : $" Note: {Note}.";
 		// Some mods genuinely carry no author or version — a Witcher 3 mod folder holds neither, because the

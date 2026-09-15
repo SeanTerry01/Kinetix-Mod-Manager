@@ -127,6 +127,15 @@ public partial class Form1 : Form, IMessageFilter
 	/// <summary>Nexus Mods and GitHub HTTP service.</summary>
 	private NexusService _nexusService = null!;
 
+	/// <summary>
+	/// Every catalogue the manager can search, in the order a list should offer them.
+	///
+	/// Built once, here, because Nexus's cover needs the live settings and the service that holds the user's
+	/// key. Which of them a given search actually asks is <see cref="ModSearchPlan"/>'s decision, from the
+	/// user's mode and their per-game preference.
+	/// </summary>
+	private IReadOnlyList<IModSource> _modSources = Array.Empty<IModSource>();
+
 	/// <summary>AI provider service for AI-assisted features (opt-in log diagnosis).</summary>
 	private AiService _aiService = null!;
 
@@ -583,6 +592,13 @@ public partial class Form1 : Form, IMessageFilter
 		_soundEngine    = new SoundEngine(themesPath, _settings);
 		_nexusService   = new NexusService(_settings);
 		_aiService      = new AiService(_settings);
+		// Ordered as ModSources lists them, so Settings and the search offer agree about what comes first.
+		_modSources = new IModSource[]
+		{
+			new NexusModSource(_nexusService, _settings),
+			new ModrinthModSource(),
+			new CurseForgeModSource(() => _settings.CurseForgeApiKey),
+		};
 		if (string.IsNullOrEmpty(_settings.ApiKey) && File.Exists("nexus_key.txt"))
 		{
 			_settings.ApiKey = File.ReadAllText("nexus_key.txt").Trim();
