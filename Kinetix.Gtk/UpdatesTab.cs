@@ -62,12 +62,12 @@ public sealed partial class MainWindow
 	/// </summary>
 	private async Task CheckForUpdatesAsync()
 	{
+		// Two ways of asking, because the catalogues answer different questions. Modrinth is asked what the
+		// newest build of THIS FILE is, by hash, so nothing has to have been linked first. Nexus is asked
+		// about a mod id, so only a mod carrying one can be checked — which is why the two are not one call.
 		if (!_game.IsMinecraft)
 		{
-			// Honest about the boundary rather than an empty list. Nexus's service is still in the WinForms
-			// project, so the games whose updates come from there cannot be checked from here yet.
-			_updatesView = ModUpdatesView.CannotCheck(_game, Loc.T("gtk.updatesNotHere", _game.DisplayName));
-			ShowUpdates();
+			await CheckNexusUpdatesAsync();
 			return;
 		}
 
@@ -197,6 +197,52 @@ public sealed partial class MainWindow
 				SetStatus(Loc.T("gtk.updatesFailed", ex.Message));
 				Say(Loc.T("gtk.updatesFailed", ex.Message), interrupt: true);
 			});
+		}
+	}
+}
+
+/// <summary>
+/// The Nexus half of the updates check, split out because the question it asks is a different one.
+/// </summary>
+public sealed partial class MainWindow
+{
+	private async Task CheckNexusUpdatesAsync()
+	{
+		if (string.IsNullOrWhiteSpace(_settings.ApiKey))
+		{
+			// The one thing a user can actually do about it, said plainly, rather than an empty list.
+			_updatesView = ModUpdatesView.CannotCheck(_game, Loc.T("gtk.updatesNeedKey", _game.DisplayName));
+			ShowUpdates();
+			return;
+		}
+
+		SetStatus(Loc.T("gtk.updatesChecking"));
+		Say(Loc.T("gtk.updatesChecking"));
+
+		try
+		{
+			List<GameMod> installed = InstalledAsMods();
+			var latestByPath = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+			foreach (GameMod mod in installed)
+			{
+				if (string.IsNullOrEmpty(mod.NexusID)) continue;
+
+				// One at a time, and that is what NexusService's own rate limiting expects — it holds a
+				// semaphore across these calls precisely so a folder of two hundred mods does not spend the
+				// user's hourly quota in one go.
+				string? latest = await _nexus.GetLatestVersionAsync(mod.NexusID!);
+				if (!string.IsNullOrWhiteSpace(latest)) latestByPath[mod.FolderPath] = latest!;
+			}
+
+			_updatesView = ModUpdatesView.Of(_game, installed, latestByPath);
+			_ui.Post(ShowUpdates);
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Updates", "asking Nexus for updates", ex);
+			_updatesView = ModUpdatesView.CannotCheck(_game, Loc.T("gtk.updatesFailed", ex.Message));
+			_ui.Post(() => { _sound.Play("error"); ShowUpdates(); });
 		}
 	}
 }

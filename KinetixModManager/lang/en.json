@@ -1876,7 +1876,6 @@
   "gtk.settingsWillNotSpeak": "Note: {0} mods are managed here, but the game itself will not speak on Linux. Its accessibility mod drives NVDA or JAWS, and neither runs inside a Proton prefix. That is a limitation of the game's mod, not of this manager.",
   "gtk.settingsSave": "Save settings",
   "gtk.settingsSaved": "Settings saved.",
-  "gtk.searchNoSourceHere": "{0} mods cannot be searched for from the Linux build yet — its catalogue is Nexus Mods, and that part of the manager is still Windows-only. Minecraft mods can be searched here.",
   "gtk.installNotFromHere": "{0} cannot be downloaded from here, so its page is opening instead.",
   "gtk.noGameVersion": "Install Fabric first, so the manager knows which Minecraft version to fetch a mod for.",
   "updatesview.row": "{0}. Installed {1}, available {2}.",
@@ -1895,7 +1894,6 @@
   "gtk.updatesCheck": "Check for updates",
   "gtk.updatesInstall": "Install the selected update",
   "gtk.updatesChecking": "Checking for updates…",
-  "gtk.updatesNotHere": "{0} updates cannot be checked from the Linux build yet — they come from Nexus Mods, and that part of the manager is still Windows-only.",
   "gtk.updatesFailed": "The update check failed. {0}",
   "gtk.updatesInstalling": "Updating {0}…",
   "gtk.updatesInstalled": "{0} updated to {1}.",
@@ -1938,5 +1936,6 @@
   "deps.rowFine": "{0} needs {1}, which is installed.",
   "deps.allFine": "Nothing is missing. {0} mods were checked.",
   "deps.optionalOnly": "Nothing is broken. {0} optional extras are not installed.",
-  "deps.trouble": "{0} mods are missing something they need."
+  "deps.trouble": "{0} mods are missing something they need.",
+  "gtk.updatesNeedKey": "{0} updates come from Nexus Mods, which needs your API key. Add one from File, Mod source API keys."
 }

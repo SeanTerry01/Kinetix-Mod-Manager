@@ -5,8 +5,8 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-09-15, after Dependencies and Heroic detection. Nexus is the one large item left.
-**State:** 1,356 tests passing on Windows and Linux; all five projects build clean, zero warnings.
+**Last updated:** 2026-09-15, after NexusService moved to the core. Stardew installs are the next real item.
+**State:** 1,371 tests passing on Windows and Linux; all five projects build clean, zero warnings.
 
 ---
 
@@ -266,12 +266,22 @@ It cannot work yet, for one reason that is not a code problem:
       are done (§29–§32) — nine tabs against the Windows head's sixty-odd feature areas. **Everything cheap is
       now done; what is left needs Nexus first** (below), or Stardew installs, or a design decision. After
       Nexus: Check My Setup's remaining per-game branches, the SMAPI log, and Collections.
-- [ ] **⚠️ Nexus search and updates are unavailable in the GTK head**, because `NexusService` is 1,387 lines in
-      the WinForms project. Five of the six games get a plain sentence saying so rather than an empty list. It
-      is the largest remaining thing keeping the two heads apart, and moving it is the same shape of job
-      `AppSettings` was — probably smaller than it looks, for the same reason.
-- [ ] **The GTK head installs Minecraft mods only.** `InstallSelectedAsync` says so plainly for other games.
-      Stardew is the one worth adding next and needs the layout half of `ExtractModAsync` (above).
+- ~~Nexus search and updates are unavailable in the GTK head~~ — done (§33), and it moved without a line
+  changing: 1,387 lines with zero Windows-only references. All six games can be searched and update-checked
+  from Linux now. **The lesson is worth keeping: measure the references before estimating a move.** Both large
+  moves this week were judged by how the file felt rather than by what it referenced, and both were wrong the
+  same way.
+- [ ] **⚠️ The GTK head installs Minecraft mods only — this is now the next real item.** Detailed in §34.
+      `ExtractModAsync` is 225 lines and its Stardew branch is 79 of them; that branch is the only one that is
+      entirely portable, and everything it leans on is already in the core except `ForceDeleteDirectory`. Split
+      it into a `StardewInstaller` with a pure `Plan` half and an I/O `Install` half, and fix the two known
+      defects with the tests the move brings: the multi-mod common-prefix search compares path strings (so
+      `Mods/Auto` looks like a parent of `Mods/AutoFish`), and the copy rebases paths with `string.Replace`,
+      which replaces every occurrence rather than the leading one.
+      **The other three branches should stay where they are.** BepInEx, Witcher 3 and the script extenders
+      serve games whose access mods will not speak under Proton, so installing their mods from Linux is a
+      feature for a game that cannot talk. Managing them is worth having; installing them is not worth the
+      port.
 - [ ] **A reader started *after* the app is not noticed.** `ScreenReaderPresence` asks once at startup. A
       D-Bus signal subscription would fix it; the fallback speaks in the meantime.
 - ~~Heroic is not searched~~ — done (§32). `HeroicLibraryLocator` reads its library, matches by executable

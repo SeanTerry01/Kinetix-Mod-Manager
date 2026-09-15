@@ -1,5 +1,15 @@
 ﻿# Unreleased
 
+## 🐧 Linux: every game can be searched and update-checked now
+
+*   **Nexus Mods works from the Linux build.** It was the last thing keeping five of the six games at arm's
+    length there — searching for a Skyrim or Stardew mod, and checking what you have installed for updates,
+    both needed a part of the manager that had never left the Windows side. It has now, and nothing about it
+    changed on the way: the code turned out to have been portable all along.
+*   Searching a Nexus game from Linux needs your API key, the same as on Windows, and says so if you have not
+    added one yet.
+*   **Nothing changes on Windows.** This is the same code in a different project.
+
 ## 🐧 Linux: a Dependencies screen, and games installed with Heroic are found
 
 *   **A Dependencies screen.** It lists only what is actually wrong — a mod whose requirements are all present
@@ -185,7 +195,7 @@
 
 ## ✅ Tests
 
-*   **1,356 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
+*   **1,371 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
 *   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 *   Twenty-six of them cover unpacking a downloaded mod, including one that extracts a **real .7z** rather than a stand-in — the only way to know that reading one without `7za.exe` actually works.

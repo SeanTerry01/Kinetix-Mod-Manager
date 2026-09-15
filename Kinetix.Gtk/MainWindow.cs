@@ -67,9 +67,9 @@ public sealed partial class MainWindow
 	private readonly List<GameProfile> _gameList = new();
 
 	/// <summary>
-	/// The catalogues this head can search. Modrinth and CurseForge only, because Nexus's service is 1,387
-	/// lines living in the WinForms project — so the five games whose mods come from there cannot be searched
-	/// from here yet, and <see cref="SearchAsync"/> says so rather than returning nothing.
+	/// Every catalogue this head can search — all of them, now that Nexus's service turned out to be portable
+	/// and moved to the core without a line changing. Which of them a given search asks is
+	/// <see cref="ModSearchPlan"/>'s decision, from the user's mode and their per-game preference.
 	/// </summary>
 	private readonly IReadOnlyList<IModSource> _modSources;
 	private WebKitView? _web;
@@ -105,6 +105,12 @@ public sealed partial class MainWindow
 	private readonly AppSettings _settings;
 
 	/// <summary>
+	/// Nexus, for the five games whose mods come from there. Built here rather than reached through a static
+	/// because it carries the user's key and their rate-limit counters — state that belongs to one session.
+	/// </summary>
+	private readonly NexusService _nexus;
+
+	/// <summary>
 	/// The game in hand. Not defaulted to any particular one: Minecraft is an entry in the list like every
 	/// other game, and a manager that always opened on it was telling five-sixths of its users they had
 	/// started somewhere wrong.
@@ -115,8 +121,10 @@ public sealed partial class MainWindow
 	public MainWindow(Gtk.Application app, AppSettings settings)
 	{
 		_settings = settings;
+		_nexus = new NexusService(_settings);
 		_modSources = new IModSource[]
 		{
+			new NexusModSource(_nexus, _settings),
 			new ModrinthModSource(),
 			new CurseForgeModSource(() => _settings.ModSourceApiKey(ModSources.CurseForge)),
 		};
@@ -673,11 +681,11 @@ public sealed partial class MainWindow
 
 		if (asking.Count == 0)
 		{
-			// Honest rather than empty. Nexus's service is in the WinForms project, so the five games whose
-			// mods come from there cannot be searched from here yet — and a blind user cannot tell an empty
-			// result list from a search that never happened.
-			SetStatus(Loc.T("gtk.searchNoSourceHere", _game.DisplayName));
-			Say(Loc.T("gtk.searchNoSourceHere", _game.DisplayName), interrupt: true);
+			// Every supported game has a catalogue now, so this is the "no game loaded" case rather than a
+			// missing front end. Said rather than shown as an empty list: a blind user cannot tell an empty
+			// result from a search that never happened.
+			SetStatus(Loc.T("search.noSourceForGame", _game.DisplayName));
+			Say(Loc.T("search.noSourceForGame", _game.DisplayName), interrupt: true);
 			return;
 		}
 

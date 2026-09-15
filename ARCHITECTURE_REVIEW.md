@@ -2241,3 +2241,114 @@ with each shape — not that those are the only shapes Heroic writes. That is ex
 forgiving rather than strict.
 
 **1,343 → 1,356 tests.** Nine tabs.
+
+## 33. NexusService was portable all along — 2026-09-15
+
+§32 named this as the one large item left and said it was probably smaller than it looked, for the same
+reason `AppSettings` had been. It was smaller than that.
+
+### It moved without a line changing
+
+1,387 lines, thirty-odd public methods, and **zero** Windows-only references — no `System.Windows.Forms`, no
+registry, no `Process.Start`, no message boxes. It is `HttpClient` and `Newtonsoft.Json` and has been for as
+long as anyone has looked at it. `git mv`, rebuild, done. `NexusModSource` followed it for the same reason.
+
+It is worth being plain about why this kept being described as a blocker, including by this document: the
+class is large, it carries the user's key and their rate-limit counters, and it lives at the centre of the
+Windows app. Every one of those is true and none of them is a *portability* problem. Size is not coupling,
+and "feels Windows-ish" is not a dependency. Both of the last two large moves — settings, then this — were
+judged by how the file felt rather than by what it referenced, and both were wrong in the same direction.
+
+**The lesson worth keeping: measure the references before estimating the move.** A two-minute grep would have
+answered this at any point in the last week.
+
+### What it unlocked immediately
+
+The GTK head registers `NexusModSource` alongside Modrinth and CurseForge, so **all six games can be searched
+from Linux** rather than five of them getting an apology. The Updates screen grew its Nexus half: Modrinth is
+asked what the newest build of *this file* is, by hash, while Nexus is asked about a mod id — two different
+questions, which is why they are two calls rather than one, and why a mod with no id is simply not checked
+rather than reported as broken.
+
+Two sentences were deleted as no longer true — the ones saying a game's catalogue "is still Windows-only".
+The phrase guard would have caught them being left behind; it is better that they went with the code.
+
+### Its first tests, ever
+
+Being in the WinForms project meant the test project could not reference it however portable it was. Fifteen
+tests now cover the part that decides rather than the part that calls out: which game it is talking about,
+and whether it should be talking at all.
+
+`UsesNexus` is the one that earned them. It answering wrongly is how Minecraft players were twice sent to log
+in to a service their game has no relationship with — once from the mod list, once from the Discovery tab,
+both fixed separately because nothing held the rule in place. It is held now.
+
+**1,356 → 1,371 tests.**
+
+---
+
+## 34. The Stardew install, in detail — what it needs, 2026-09-15
+
+Asked for as a plan rather than as code, so this is the plan. Measurements are from the current tree.
+
+### Where it sits
+
+`ExtractModAsync` is **225 lines**, and the Stardew branch at the end of it is **79** of those. The other
+146 are the shared opening — naming, the reinstall prompt, unpacking, the escape guard — and four sibling
+branches for BepInEx, Witcher 3, script extenders and FOMOD.
+
+The Stardew branch is the one worth taking first because it is the only one that is *entirely portable*: it
+reads `manifest.json`, works out which folder is the mod, backs up and removes any previous copy, and copies
+the result into the mods folder. Every piece it leans on is already in the core — `ModArchive` (§23),
+`BackupStore`, `GameMod`, `ModScanner` — with a single exception, below.
+
+### What has to move with it
+
+- **`ForceDeleteDirectory`** and its `ClearReadOnlyRecursive` helper. Private to `ModFileSystem`, used in six
+  places, and pure file I/O: clear the read-only attributes, then delete, retrying a few times. It belongs in
+  the core anyway — a mod that ships a read-only file is not a Windows-only phenomenon.
+- **Nothing else.** The branch's other references (`BackupStore`, `JObject`, `ModArchive`, `installedMods`,
+  the `confirmOverwrite` callback, the `logError` callback) are already portable.
+
+### Two defects to fix while it moves, not after
+
+Both were found by reading in §25 and are still there:
+
+1. **The multi-mod common-prefix search compares path strings.** A download containing several mods finds
+   their shared parent folder by trimming a string until one path starts with it — so `Mods/Auto` is treated
+   as a parent of `Mods/AutoFish`, and the install lands a level too high. Comparing path *segments* fixes
+   it, and the test is a two-mod archive whose folder names share a prefix.
+2. **The copy rebases every path with `string.Replace(source, destination)`**, which replaces *every*
+   occurrence rather than the leading one. A mod with its own folder name repeated deeper in its tree — which
+   is ordinary for a content pack — has files written to the wrong place. Rebasing on the relative path fixes
+   it.
+
+Neither is reachable from the archive layer, and neither should be fixed without the tests that come from
+moving the code, which is precisely why they are still open.
+
+### The shape to move it into
+
+A `StardewInstaller` in the core, taking the unpacked folder and answering with what was installed:
+
+- `Plan(extractedRoot, fallbackName)` → which folder is the mod, what it will be called, whether the download
+  holds several mods. Pure, and the home for both defects above.
+- `Install(plan, modsPath, installedMods, backupsPath, maxBackups, confirmOverwrite, logError)` → the
+  backup-and-copy half.
+
+Splitting it in two matters: the *deciding* half is where the bugs are and is testable against a folder tree
+built in a temp directory, while the copying half is ordinary I/O. `ExtractModAsync` then calls it in place of
+its own last 79 lines, and the GTK head calls it directly.
+
+### What it is worth
+
+It is the difference between the Linux build managing Stardew's mods and **installing** them, which is the
+second of the two games whose accessibility mod speaks natively on Linux. After it, the GTK head can do the
+whole job for both games that can actually be played with a screen reader on this platform — which is the
+point the port has been heading towards since §16.
+
+### What it does not unlock
+
+The other three branches. BepInEx, Witcher 3 and the script extenders stay where they are, and should: those
+games' accessibility mods drive NVDA or JAWS and do not speak under Proton (§16, and now
+`GameProfile.AccessModSpeaksOnLinux`), so installing their mods from Linux is a feature for a game that will
+not talk. Managing them is worth having. Installing them is not worth the port.
