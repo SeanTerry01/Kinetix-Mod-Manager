@@ -1461,13 +1461,18 @@ A few things to know:
 ## Sound Cues Explained
 The manager uses audio cues to provide feedback. Demo these under **Help -> Sound Demo**.
 
-1.  **Connect**: Played on successful login.
-2.  **Disconnect**: Played when the API key is invalid, you are logged out, or when the program closes.
+The sounds are kept short on purpose. They play while your screen reader is talking, so the sound tells you what happened without interrupting the sentence.
+
+1.  **Connect**: Played when you connect to where the game's mods come from, such as logging in to Nexus Mods. **For Minecraft** it plays when you join a multiplayer server instead, since Modrinth has no account to log in to. The manager reads this from the game's own log.
+2.  **Disconnect**: Played when the API key is invalid, you are logged out, or the program closes. **For Minecraft** it plays when you leave a multiplayer server.
 3.  **Enable**: Played when one or more mods are enabled.
 4.  **Disable**: Played when one or more mods are disabled or deleted.
-5.  **Error**: Played when a download fails or an installation error occurs.
-6.  **Loading Indicator**: A pulsing sound that plays while the app is checking for updates.
-7.  **Load Complete**: Played when the update check is finished.
+5.  **Error**: Played when something fails: a download, an install, or a check.
+6.  **Loading Indicator**: A pulsing sound that plays while a background update check is running.
+7.  **Load Complete**: Played when an operation finishes: an install, an update, an import, a check, or a load-order sort.
+8.  **Logo**: The startup sound. A theme can hold several; see "Splash Screen Customization" below.
+
+**Every game sounds different.** The sound theme follows the game you are managing, so you can tell by ear which game you have loaded, before anything is read out. Each game's sounds are in its own theme; see "Audio Theme Packs" below.
 
 You can turn all of these sounds off with the **Enable UI Sounds** checkbox at the top of the **Audio** tab in Settings (**Ctrl + P**). The spoken download/install progress feedback is separate and stays available — see "The Settings Dashboard" above.
 
@@ -1493,6 +1498,25 @@ Before every update, re-installation, or deletion, the manager automatically zip
 
 ### 3. Audio Theme Packs
 You can customize all application sounds via **Help -> Audio Theme Manager**. Create new themes, open their folders to drop in custom `.ogg` files, and switch between them in **Settings**.
+
+**Which theme plays.** Each theme is a folder inside the `sounds` folder where the manager is installed. Every game has its own theme, named after the game: `Stardew Valley`, `Skyrim`, `Fallout 4`, `Moonlight Peaks`, `The Witcher 3` and `Minecraft`. Load a game and its theme plays. To pick a theme yourself instead, check **Set theme manually** on the **Audio** tab in Settings.
+
+**How a theme is laid out.** Inside a theme folder there is one folder per sound, named exactly:
+
+*   `connect`
+*   `disconnect`
+*   `enable`
+*   `disable`
+*   `error`
+*   `loading_indicator`
+*   `load_complete`
+*   `logo`
+
+Put one `.ogg` file in each folder; its file name does not matter. The `logo` folder is the exception: it can hold as many `.ogg` files as you like, and you choose between them in Settings. See "Sound Cues Explained" above for when each sound plays.
+
+**A theme does not have to be finished.** Any sound a theme is missing plays the **Default** theme's sound instead. So a half-made theme is never silent, just partly Default. Nothing else is needed to add sounds: no setting to change and nothing to register. Drop the files in and they are used.
+
+**Keep sounds short**, for the reason given in "Sound Cues Explained": they play over your screen reader.
 
 ### 4. Splash Screen Customization
 If you have multiple audio files in your theme's `logo` folder, you can:
