@@ -1883,3 +1883,107 @@ The test project now copies the shipped phrase catalogue, so a test can assert t
 hears rather than the key that stands in for one. `Loc.T` returns the key itself when nothing is loaded, which
 is useful for spotting a gap and useless for checking a sentence — and "this row must not contain the
 credential" is a sentence worth checking.
+
+## 28. The Linux head stops being a spike — 2026-09-15
+
+§27 ended with a list of what the port needed. This is the first four items of it, and the work turned up
+three defects nobody had found by reading, because until now nothing had ever run the Linux code against a
+machine that was not the author's.
+
+### The two defects §27 named
+
+Both were in the installed-mods list, and both are the kind that only a blind user meets.
+
+**The list read every game's switched-off state with Minecraft's rule.** `LoadInstalled` asked
+`MinecraftLayout.IsEnabledModFile` while the toggle beside it wrote through
+`ModEnableState.TargetPath(..., game.Id)`. So a disabled Stardew mod — a folder with a leading dot — read
+back as switched **on**, and switching it on moved it to the name it already had. §20 records the write side
+being fixed; the read side was missed, which is exactly the failure mode of having the rule in two places.
+
+**A game that was not installed was announced as "0 mods installed."** The real reason went into a status
+label the user never focuses. By ear that is indistinguishable from a game that is installed and empty — and
+the first is a reason to go and install something while the second is a reason to conclude the manager does
+not support your game.
+
+Both are fixed in one place: `InstalledModsView` in the core, which now owns the rows, the switched-off state
+and the sentence to say. Three states, three different sentences, and a test that asserts no two of them can
+be mistaken for each other. The GTK head builds rows from it rather than deciding any of it locally.
+
+### A third, found while making the locator testable
+
+`MinecraftLayout.DefaultRootFolder` was `ApplicationData` + `.minecraft`. On Windows that is `%APPDATA%` and
+correct. Off Windows, .NET answers `~/.config` — so the manager looked for `~/.config/.minecraft`, a folder no
+Minecraft install has ever used, and read the game as **not installed on a machine where it plainly was**.
+
+The existing test asserted the Windows answer on every platform, so it was green the whole time. It now
+asserts what each platform actually does, with a second test naming the wrong answer so it cannot come back.
+
+### Tests, where there were none
+
+Neither Linux project was referenced by the test project, so `Kinetix.Gtk` and `Kinetix.Platform.Linux` had
+no tests at all. `Kinetix.Platform.Linux` is referenced now — plain `net10.0`, no UI toolkit, so it costs the
+test run nothing. `Kinetix.Gtk` deliberately stays out: referencing it would drag GTK4 into every test run,
+and the parts worth testing are the decisions, which is why they moved to the core.
+
+`LinuxGameLocator` gained a `home` parameter, defaulting to the real one. That is not decoration: this is code
+whose whole job is to cope with layouts the author does not have — four places Steam installs itself, a
+Flatpak home, a library on a second disk, a Proton prefix that only exists after the game has been run once —
+and whichever layout a developer happens to have is the only one that would ever be exercised by running the
+program. The tests build each of those in a temporary folder.
+
+### libsecret, and a gate that was in the wrong project
+
+`LibSecretStore` is the Linux `ISecretStore`. It does **not** put the user's keys in the keyring. It keeps one
+random 256-bit key there and encrypts everything else with it under AES-GCM.
+
+That is deliberate, and it is what makes it a drop-in rather than a different shape wearing the same
+interface. `ISecretStore` is a *transform*: `Protect` is handed a string and must return something to write
+into `settings.json`, and is never told what the string is for. A keyring used directly needs a name per
+secret — and with no name to use, every save would leave another orphaned entry in the user's keyring with
+nothing ever cleaning them up. So the keyring holds the one thing that genuinely belongs in it, and the
+settings file holds self-contained blobs exactly as it does on Windows.
+
+Verified against the live keyring on a real desktop: the entry appears under the manager's own schema, blobs
+round-trip, a second process reads what the first wrote, an edited blob is refused rather than decrypted to
+rubbish, and the same secret encrypts differently each time.
+
+**The gate moved out of `AppSettings`.** `AppSettings.Secrets` decided whether a key is encrypted before it is
+written, and `AppSettings` is in the WinForms project — so the GTK head could not reach it, and the default
+store does not protect anything. The first time a second head grew somewhere to type a key, that key would
+have gone into `settings.json` in clear text with nothing anywhere to notice. It is now `Secrets.Current` in
+the core, assigned at startup by both heads, and `AppSettings.Secrets` is a passthrough so the app's existing
+call sites read as they did.
+
+### GStreamer, so Linux is not silent
+
+`GStreamerSoundEngine` plays the named cues and the progress tone. Every pipeline is a string handed to
+`gst_parse_launch`, which is a deliberate choice over building elements and setting properties one at a time:
+the alternative is `g_object_set`, which is variadic and needs a P/Invoke per property type, and none of it
+would be any more checkable than the string is.
+
+Only the playing is there. **Which** file a name maps to stays `SoundThemes`'s decision in the core, so both
+heads get the same per-sound fallback to the Default theme — a second implementation of that rule is how two
+heads start disagreeing about what the app sounds like. Verified by ear and by clock: a real `.ogg` plays and
+the call waits for the stream to end, a name no theme has returns instantly, and the volume and mute switches
+are honoured.
+
+The GTK head now plays a cue when a mod is switched on or off, when an install finishes, and when anything
+fails — and its project copies `sounds/**` the way it already copied `lang/**`.
+
+### The strings
+
+The GTK head spoke about sixty English literals. Every one now goes through `Loc.T`, and
+`SpokenStringGuardTests` sweeps `Kinetix.Gtk` alongside the app and the core — which is what makes "every
+sentence the program says" true rather than "every sentence the Windows program says". A phrase could have
+gone missing from the catalogue and that guard would have stayed green while a Linux user heard nothing.
+
+### Where this leaves the port
+
+The platform layer is done bar the browser: speech, sound, secrets, the dispatcher and game detection all have
+Linux implementations, and four of them are now under test. What remains is the part that was always going to
+be the bulk — the screens. The GTK head has five tabs against the Windows head's sixty-odd feature areas, and
+no settings of any kind, because `AppSettings` is still in the WinForms project. **That is the next structural
+move and it is a bigger one than anything here:** every screen worth porting needs somewhere to keep its
+settings, and right now only one head has one.
+
+**1,260 → 1,298 tests.**

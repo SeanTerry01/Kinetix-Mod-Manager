@@ -114,5 +114,13 @@ still outstanding, see `TODO.md`. This file is the feature list.
 
 ### 20. A Linux version
 *   **Plan**: The same manager, native, for the games whose accessibility mods speak on Linux.
-*   **Status**: In progress. The platform-independent half is its own project and the tests pass off Windows;
-    a GTK4 front end exists as a spike. See `ARCHITECTURE_REVIEW.md` §16–§24.
+*   **Status**: In progress, and past the uncertain part. The platform-independent half is its own project and
+    its tests pass off Windows. Every platform seam but the browser now has a Linux answer — speech through
+    speech-dispatcher, sounds through GStreamer, keys through the system keyring, games through Steam and its
+    Proton prefixes — and all of it is under test. What remains is the screens: the GTK window has five tabs
+    against the Windows one's sixty-odd feature areas, and no settings of its own, because `AppSettings` still
+    lives in the WinForms project. See `ARCHITECTURE_REVIEW.md` §16–§28 and the Linux section of `TODO.md`.
+*   **Worth knowing**: Skyrim, Fallout 4, The Witcher 3 and Moonlight Peaks will have their mods managed
+    perfectly on Linux and then play silently, because their accessibility mods drive NVDA or JAWS and neither
+    exists inside a Proton prefix. Minecraft and Stardew Valley speak natively. Saying so in the interface is
+    an outstanding item and the most important one left.

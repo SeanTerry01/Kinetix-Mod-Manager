@@ -1,5 +1,28 @@
 ﻿# Unreleased
 
+## 🐧 Linux: the manager can now speak, sound, and keep a secret
+
+*   Nothing here changes the Windows build. It is the Linux side catching up, and it is listed because the two
+    share a core — three of the fixes below were in code both builds run.
+*   **Sounds work on Linux**, through GStreamer, with the same per-game themes and the same fall back to the
+    Default theme for a sound a theme has not recorded.
+*   **Keys are stored encrypted on Linux**, through the system keyring that GNOME Keyring and KWallet both
+    answer to — the equivalent of what Windows has always done with DPAPI.
+*   **The Linux window speaks every sentence through the same phrase catalogue the Windows one uses**, so it
+    can be translated, and a missing phrase now fails the build instead of going quiet.
+
+## 🐛 Three Linux bugs, two of which only a screen reader user would ever hit
+
+*   **A switched-off mod read as switched on for every game except Minecraft.** The Linux window worked out
+    whether a mod was off using Minecraft's rule — does the file end in `.jar` — while switching one off used
+    the right rule for the game. So a disabled Stardew mod was announced as enabled, and turning it on again
+    did nothing. Both now ask the same place.
+*   **A game you have not installed was announced as "0 mods installed"**, which sounds exactly like a game
+    that is installed and empty. One of those means go and install something; the other means the manager does
+    not support your game. They now say three different things: not installed, no mods folder yet, and no mods.
+*   **Minecraft read as missing on Linux even when it was there.** The manager looked for `.minecraft` in the
+    wrong folder — `~/.config/.minecraft`, which no Minecraft install has ever used, instead of `~/.minecraft`.
+
 ## ✨ You choose where your mods come from
 
 *   **A new setting on the Paths tab: "When searching for mods."** Three options — search **every** source and merge the results, search **one** source only, or search your **preferred** source with the others available on request. Choosing one of the last two shows a second dropdown naming which source that is, and it is remembered **per game**, because the sites are: Minecraft's mods live on Modrinth and CurseForge, Stardew's on Nexus, ModDrop and CurseForge.
@@ -99,7 +122,7 @@
 
 ## ✅ Tests
 
-*   **1,260 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
+*   **1,298 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
 *   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 *   Twenty-six of them cover unpacking a downloaded mod, including one that extracts a **real .7z** rather than a stand-in — the only way to know that reading one without `7za.exe` actually works.

@@ -252,16 +252,17 @@ public class SpokenStringGuardTests
     /// to the repository root rather than assuming a build layout — same approach as
     /// <see cref="InstallKeyGuardTests"/>.
     ///
-    /// Kinetix.Core has no <c>Loc.T</c> call in it today, because Loc itself is still in the app. It is swept
-    /// anyway: Loc belongs in the core eventually — a second front end needs the same sentences — and a guard
-    /// that quietly stopped covering the phrases on the day they moved would be worse than no guard, since it
-    /// would still be green.
+    /// All three heads are swept, and the GTK one is the reason this list is not hard-coded to the app. It
+    /// spoke fifty-odd English literals for months — untranslatable, and invisible to every check in this
+    /// file, so a phrase could go missing from the catalogue and the guard would still be green while a
+    /// Linux user heard nothing. Sweeping it is what makes "every sentence the program says" true rather
+    /// than "every sentence the Windows program says".
     /// </summary>
     private static IEnumerable<string> AppSourceFiles()
     {
         var files = new List<string>();
 
-        foreach (string project in new[] { "KinetixModManager", "Kinetix.Core" })
+        foreach (string project in new[] { "KinetixModManager", "Kinetix.Core", "Kinetix.Gtk" })
         {
             string dir = Path.Combine(RepositoryRoot(), project);
             Assert.True(Directory.Exists(dir), "Could not find " + project + " at " + dir);

@@ -22,6 +22,11 @@
        and a new core file is picked up without anyone having to remember to add it. -->
   <ItemGroup>
     <ProjectReference Include="..\Kinetix.Core\Kinetix.Core.csproj" />
+    <!-- The Linux platform answers. Plain net10.0 with no UI toolkit, so it costs the test run nothing to
+         reference - and until it was referenced, neither of the two Linux projects had a single test over
+         them. Kinetix.Gtk deliberately stays out: referencing it would drag GTK4 into every test run, and
+         the parts of it worth testing are the decisions, which is why they now live in the core. -->
+    <ProjectReference Include="..\Kinetix.Platform.Linux\Kinetix.Platform.Linux.csproj" />
   </ItemGroup>
 
   <!-- Real files.json bodies, recorded from the Nexus API rather than written by hand. The picking rules exist

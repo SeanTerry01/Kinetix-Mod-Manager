@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.IO.Compression;
 using System.Linq;
 using System.Text;
@@ -331,13 +332,25 @@ public class MinecraftLayoutTests
 	// -------------------------------------------------------------------------
 
 	[Fact]
-	public void TheRootFolderIsMinecraftUnderRoaming()
+	public void TheRootFolderIsWhereEachPlatformActuallyPutsIt()
 	{
-		string expected = Path.Combine(
-			Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft");
+		// Two answers, because Minecraft uses two. On Windows it is under %APPDATA%; on Linux and macOS it
+		// is ~/.minecraft directly. This test asserted the Windows one on every platform, which meant the
+		// Linux answer — ~/.config/.minecraft, a folder no Minecraft install has ever used — was green. The
+		// game read as not installed on a machine where it plainly was.
+		string expected = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+			? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft")
+			: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".minecraft");
 
 		Assert.Equal(expected, MinecraftLayout.DefaultRootFolder);
 		Assert.Equal(Path.Combine(expected, "mods"), MinecraftLayout.ModsFolderFor(expected));
+	}
+
+	[Fact]
+	public void TheRootFolderIsNeverBuriedUnderConfig()
+	{
+		// The specific wrong answer, named so it cannot come back: ApplicationData off Windows is ~/.config.
+		Assert.DoesNotContain(Path.Combine(".config", ".minecraft"), MinecraftLayout.DefaultRootFolder);
 	}
 
 	[Fact]

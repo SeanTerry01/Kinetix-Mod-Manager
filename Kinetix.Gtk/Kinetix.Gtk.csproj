@@ -21,6 +21,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The sound themes, shared with the WinForms build for the same reason the catalogue is: the theme
+         follows the loaded game, and two heads disagreeing about what Skyrim sounds like would be worse
+         than either. SoundThemes picks the file; GStreamerSoundEngine plays it. -->
+    <None Include="..\KinetixModManager\sounds\**">
+      <Link>sounds\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- The same catalogue the WinForms build ships. Shared rather than copied: the phrases are core, and
          two front ends disagreeing about what a sentence says would be worse than either wording. -->
     <None Include="..\KinetixModManager\lang\**">

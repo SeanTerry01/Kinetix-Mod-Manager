@@ -5,8 +5,8 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-09-14, after the mod source chooser. No unknowns left, only work.
-**State:** 1,260 tests passing on Windows and Linux; all five projects build clean, zero warnings.
+**Last updated:** 2026-09-15, after the Linux platform layer was finished and tested.
+**State:** 1,298 tests passing on Windows and Linux; all five projects build clean, zero warnings.
 
 ---
 
@@ -231,44 +231,49 @@ It cannot work yet, for one reason that is not a code problem:
 
 ## The GTK head, from here
 
-### Defects found by probing it, 2026-09-15
+### Done, 2026-09-15 — see §28
 
-Not speculation — these came out of running the Linux layer against a machine with no games and no Steam,
-and reading the paths that then run.
+- ~~The installed list read every game's switched-off state with Minecraft's rule~~ — `InstalledModsView` in
+  the core owns it now, and reading and writing ask the same place.
+- ~~A game that is not installed was announced as "0 mods installed"~~ — three states, three sentences, and a
+  test that no two can be mistaken for each other.
+- ~~`.minecraft` was looked for under `~/.config` on Linux~~ — a third defect, found while making the locator
+  testable, and green in the tests the whole time because they asserted the Windows answer everywhere.
+- ~~Nothing tested either Linux project~~ — `Kinetix.Platform.Linux` is referenced by the test project and
+  `LinuxGameLocator` takes a `home` so all four Steam layouts, Flatpak and a Proton prefix can be built in a
+  temporary folder.
+- ~~`ISecretStore` had to exist before the GTK head stored any key~~ — `LibSecretStore`, verified against a
+  live keyring, and the gate moved from `AppSettings` (WinForms-only) to `Secrets.Current` in the core.
+- ~~`ISoundEngine` had no Linux implementation~~ — `GStreamerSoundEngine`, and the GTK head plays cues.
+- ~~The GTK head's strings were English literals~~ — all through `Loc.T`, and the phrase guard sweeps it.
 
-- [ ] **The installed list reads every game's mods with Minecraft's rule.** `LoadInstalled` sets a row's
-      enabled state from `MinecraftLayout.IsEnabledModFile`, while `ToggleSelected` correctly writes through
-      `ModEnableState.TargetPath(..., game.Id)`. So for Stardew a disabled mod (a leading dot) reads back as
-      *enabled*, and switching it on moves it to the name it already has. The read must go through
-      `ModEnableState.IsEnabled(path, game.Id)` — the same rule as the write. **This is the one to fix first**:
-      it is a wrong answer, not a missing feature, and §20 records the write side being fixed while the read
-      side was missed.
-- [ ] **A game that is not installed is announced as "0 mods installed".** `LoadInstalled` puts the real
-      reason in the status label, and `SelectGame` then speaks a mod count. A blind user hears "Skyrim Special
-      Edition. 0 mods installed" for a game that is not there at all — which is exactly the "cannot tell
-      unsupported from not-installed" failure §20 exists to prevent. Say what the status label says.
-- [ ] **Nothing tests either Linux project.** `KinetixModManager.Tests` references `Kinetix.Core` only, so
-      `Kinetix.Gtk` and `Kinetix.Platform.Linux` have no tests at all and are not in the test build's
-      reference graph. `LinuxGameLocator` is pure logic over a filesystem layout and is entirely testable
-      against a fake Steam tree; so is the "what does this row say" half of the GTK head.
-- [ ] **⚠️ `ISecretStore` must exist before the GTK head stores any key.** `AppSettings.Secrets` defaults to
-      `PlainTextSecretStore`, and only the WinForms `Program.cs` replaces it. The GTK head does not touch
-      `AppSettings` at all today, so nothing is at risk *yet* — but the moment it grows a Nexus or CurseForge
-      key field, that key is written to `settings.json` in clear text. libsecret first, then the field.
+### What is left, in the order it should happen
 
-- [ ] **Stardew Valley support** — the scanner is in the core (§19) and so is unpacking a download (§23), so
-      what stands between here and a Stardew install on Linux is the layout half of `ExtractModAsync` above,
-      plus a game picker in the GTK head and Stardew's own paths.
-- [ ] **The spike's strings are English literals, not `Loc.T`.** The catalogue is wired and copied to
-      its output; using it is the follow-up, and the guard tests should then cover `Kinetix.Gtk` too.
-- [ ] **Confirm the AT-SPI routing by ear.** Announcements now go through Orca rather than
-      speech-dispatcher (ARCHITECTURE_REVIEW §18); the log confirms the route, but nobody has listened
-      to it yet. Check F5, a toggle and a completed search.
-- [ ] **A reader started *after* the app is not noticed.** `ScreenReaderPresence` asks once at startup.
-      A D-Bus signal subscription would fix it; the fallback speaks in the meantime.
-- [ ] **`ISoundEngine` has no Linux implementation.** The `.ogg` theme packs need GStreamer, libsoundio or
-      similar. Choosing *which* file to play is done and portable (`SoundThemes`, §24); what is left is the
-      playing, plus copying `sounds/**` to the GTK head's output the way `lang/**` already is.
-- [ ] **`ISecretStore` has no Linux implementation.** libsecret, for the Nexus key — not needed for a
-      Minecraft-only v1, needed for Stardew.
-- [ ] **The Minecraft version for search is hard-coded** to 1.21.1 in the spike.
+- [ ] **⚠️ `AppSettings` is in the WinForms project, so the GTK head has no settings at all.** No mods path,
+      no per-game folders, no profiles, no API key, nothing remembered between runs — it recomputes everything
+      from the locator each time. **This is the next structural move and it gates every screen worth porting**,
+      because each of them needs somewhere to keep its settings. It is also the biggest single item left: the
+      class is ~60 serialisable properties plus DPAPI, file I/O and a `System.Windows.Forms` reference, and it
+      is the de-facto service locator (see the god-object entry above).
+- [ ] **`IBrowserHost`** — the last platform seam with no contract. WebKitGTK works and Orca reads it (§21);
+      what is missing is the interface, and it needs one shape for an embedded view and another for handing a
+      page to the system browser.
+- [ ] **Warn which games' access mods will not speak on this platform.** Skyrim, Fallout 4, The Witcher 3 and
+      Moonlight Peaks manage their mods perfectly under Proton and then play silently, because their access
+      mods drive NVDA or JAWS. Managing mods for a game that cannot talk to you is worse than not offering it,
+      because the user has no way to tell a broken install from an unsupported one. **The single most important
+      user-facing gate left.**
+- [ ] **The Minecraft version is hard-coded to 1.21.1** in the GTK head's search.
+- [ ] **Screens, cheapest first.** Five tabs against the Windows head's sixty-odd feature areas. Settings,
+      then Updates, then Profiles.
+- [ ] **A reader started *after* the app is not noticed.** `ScreenReaderPresence` asks once at startup. A
+      D-Bus signal subscription would fix it; the fallback speaks in the meantime.
+- [ ] **GOG, Heroic and Lutris are not searched** — `LinuxGameLocator` covers the four Steam layouts and
+      Flatpak. Heroic keeps a JSON library; Lutris keeps YAML.
+- [ ] **Stardew Valley support in the GTK head** — the scanner is in the core (§19), unpacking a download is
+      (§23), and the enabled-state rule is (§28). What stands between here and a Stardew install on Linux is
+      the layout half of `ExtractModAsync`, plus somewhere to keep the game's paths — see the `AppSettings`
+      item above.
+- [ ] **Confirm the AT-SPI routing by ear.** Announcements go through Orca rather than speech-dispatcher
+      (§18); the log confirms the route, but nobody has listened to it yet. Check F5, a toggle, a completed
+      search, and now the sound cues.

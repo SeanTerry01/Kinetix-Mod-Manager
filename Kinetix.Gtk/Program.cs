@@ -30,6 +30,12 @@ public static class Program
 		// project's copy keeps the spike usable from a plain `dotnet run` in the source tree.
 		Loc.Init("");
 
+		// Before anything can store a key, not after. Secrets.Current defaults to a store that does not
+		// actually protect anything, and only the WinForms Program.cs was replacing it — so the first time
+		// this head grew a key field, that key would have gone into settings.json in clear text with nothing
+		// to notice. Assigned here whether or not a key exists yet, because the ordering is the whole point.
+		Secrets.Current = new LibSecretStore();
+
 		KinetixHttp.UserAgent = "KinetixModManager/1.6.0 (github.com/SeanTerry01/Kinetix-Mod-Manager)";
 
 		var app = Gtk.Application.New("com.audiventuregames.kinetix", Gio.ApplicationFlags.DefaultFlags);

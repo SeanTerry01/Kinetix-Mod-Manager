@@ -92,8 +92,17 @@ public static class MinecraftLayout
 	public const string ModExtension = ".jar";
 
 	/// <summary>Where Minecraft keeps everything, unless the user has moved it.</summary>
+	/// <remarks>
+	/// Two different places, because Minecraft puts it in two different places. On Windows it is under
+	/// <c>%APPDATA%</c>; on Linux and macOS it is <c>~/.minecraft</c> directly. Asking .NET for
+	/// <c>ApplicationData</c> off Windows answers <c>~/.config</c>, which produces
+	/// <c>~/.config/.minecraft</c> — a folder no Minecraft install has ever used, so the game reads as not
+	/// installed on a machine where it plainly is.
+	/// </remarks>
 	public static string DefaultRootFolder =>
-		Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft");
+		System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)
+			? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft")
+			: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".minecraft");
 
 	/// <summary>The mods folder for a given <c>.minecraft</c> root.</summary>
 	public static string ModsFolderFor(string root) => Path.Combine(root, "mods");

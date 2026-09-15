@@ -24,13 +24,27 @@ namespace KinetixModManager;
 /// </summary>
 public sealed class LinuxGameLocator : IGameLocator
 {
-	private static string Home => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+	private readonly string _home;
+
+	/// <param name="home">
+	/// The home directory to look under. Defaults to the real one, and exists so that a test can build a
+	/// Steam library in a temporary folder and point this at it.
+	///
+	/// Four places Steam might be, a Flatpak home, a Proton prefix, a library on a second disk — none of
+	/// that can be checked against a developer's own machine, because whichever layout they happen to have
+	/// is the only one that would ever be exercised. A parameter is the cheapest way to make all of it
+	/// testable, and it changes nothing for the app, which passes nothing.
+	/// </param>
+	public LinuxGameLocator(string? home = null) =>
+		_home = home ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+	private string Home => _home;
 
 	/// <summary>
 	/// Everywhere Steam puts itself. The order is the order they are tried; a machine may have several,
 	/// with only one of them real — <c>~/.steam/steam</c> is very often a symlink to one of the others.
 	/// </summary>
-	private static IEnumerable<string> SteamRoots()
+	private IEnumerable<string> SteamRoots()
 	{
 		yield return Path.Combine(Home, ".steam", "steam");
 		yield return Path.Combine(Home, ".steam", "root");
@@ -49,7 +63,9 @@ public sealed class LinuxGameLocator : IGameLocator
 		// Minecraft is sold by Mojang and has no Steam id at all; it installs beside its launcher.
 		if (game.IsMinecraft)
 		{
-			string root = MinecraftLayout.DefaultRootFolder;
+			// Minecraft keeps no Steam id and installs beside its own launcher. Resolved against this
+			// locator's home rather than the process's, so a test can place one.
+			string root = Path.Combine(Home, ".minecraft");
 			return Directory.Exists(root) ? root : null;
 		}
 

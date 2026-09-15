@@ -39,6 +39,13 @@ public sealed class MainWindow
 	private readonly IAnnouncer _announcer;
 	private readonly IDispatcher _ui = new GlibDispatcher();
 
+	/// <summary>
+	/// The short cues, which are per game and always were — the theme follows whatever is loaded, so a
+	/// Stardew session is told apart from a Skyrim one by ear before anything is read out. Only the playing
+	/// is here; SoundThemes picks the file, so both heads fall back to the Default theme the same way.
+	/// </summary>
+	private readonly ISoundEngine _sound;
+
 	private readonly Gtk.Notebook _tabs = Gtk.Notebook.New();
 	private readonly Gtk.ListBox _installed = Gtk.ListBox.New();
 	private readonly Gtk.ListBox _results = Gtk.ListBox.New();
@@ -48,7 +55,14 @@ public sealed class MainWindow
 	private readonly Gtk.ListBox _games = Gtk.ListBox.New();
 	private readonly IGameLocator _locator = new LinuxGameLocator();
 
-	private readonly List<ModRow> _rows = new();
+	/// <summary>
+	/// The installed list as the core describes it — the rows, and the sentence to say about them.
+	///
+	/// Built there rather than here because both are decisions, and this window got both wrong: it read
+	/// every game's switched-off state with Minecraft's rule, and announced a game that was not installed
+	/// as having zero mods. See InstalledModsView.
+	/// </summary>
+	private InstalledModsView _view = InstalledModsView.NotInstalled(null);
 	private readonly List<GameMod> _found = new();
 	private readonly List<GameProfile> _gameList = new();
 	private WebKitView? _web;
@@ -69,7 +83,7 @@ public sealed class MainWindow
 	/// <summary>Where the search box lives. Named for the same reason as <see cref="WikiTabIndex"/>.</summary>
 	private const int FindModsTabIndex = 2;
 
-	private readonly Gtk.Label _checkResult = Gtk.Label.New("Press the button to check whether your mods loaded.");
+	private readonly Gtk.Label _checkResult = Gtk.Label.New(Loc.T("gtk.checkPrompt"));
 
 	private GameProfile _game = GameProfiles.Require(GameProfiles.Minecraft);
 	private string _modsFolder = "";
@@ -80,7 +94,12 @@ public sealed class MainWindow
 		// Announcements go to the user's screen reader, with speech-dispatcher only as the fallback for
 		// when there is no reader to ask. See OrcaAnnouncer for why that order matters so much.
 		_announcer = new OrcaAnnouncer(_window, new SpeechDispatcherAnnouncer());
-		_window.SetTitle("Kinetix Mod Manager");
+		_sound = new GStreamerSoundEngine(
+			Path.Combine(AppContext.BaseDirectory, "sounds"),
+			() => SoundThemes.ForGame(_game?.Id),
+			() => true,
+			() => 80);
+		_window.SetTitle(Loc.T("gtk.windowTitle"));
 		_window.SetDefaultSize(900, 620);
 
 		var root = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
@@ -88,11 +107,11 @@ public sealed class MainWindow
 		root.SetMarginStart(8); root.SetMarginEnd(8);
 
 		_tabs.SetVexpand(true);
-		_tabs.AppendPage(BuildGamesTab(), Gtk.Label.New("Games"));
-		_tabs.AppendPage(BuildInstalledTab(), Gtk.Label.New("Installed Mods"));
-		_tabs.AppendPage(BuildDiscoverTab(), Gtk.Label.New("Find Mods"));
-		_tabs.AppendPage(BuildWikiTab(), Gtk.Label.New("Wiki"));
-		_tabs.AppendPage(BuildCheckTab(), Gtk.Label.New("Check My Setup"));
+		_tabs.AppendPage(BuildGamesTab(), Gtk.Label.New(Loc.T("gtk.tabGames")));
+		_tabs.AppendPage(BuildInstalledTab(), Gtk.Label.New(Loc.T("gtk.tabInstalled")));
+		_tabs.AppendPage(BuildDiscoverTab(), Gtk.Label.New(Loc.T("gtk.tabFind")));
+		_tabs.AppendPage(BuildWikiTab(), Gtk.Label.New(Loc.T("gtk.tabWiki")));
+		_tabs.AppendPage(BuildCheckTab(), Gtk.Label.New(Loc.T("gtk.tabCheck")));
 		root.Append(_tabs);
 
 		// A status line that is also spoken. On its own a label change is silent to a screen reader — Orca
@@ -111,7 +130,9 @@ public sealed class MainWindow
 		_window.Present();
 		// Said rather than shown. The window title is announced by Orca on focus, but the count of what was
 		// found is the thing the user actually opened the program to learn.
-		Say($"{_rows.Count} Minecraft mods installed. Press F6 to move between the tabs and the list.");
+		// The view's own sentence, which names the game and says what is actually true — the spike said
+		// "Minecraft" here whatever was loaded, and said a count even when the game was not installed.
+		Say(_view.Announcement + " " + Loc.T("gtk.f6Hint"));
 	}
 
 	// -------------------------------------------------------------------------
@@ -141,8 +162,8 @@ public sealed class MainWindow
 			_gameList.Add(game);
 			string? install = _locator.InstallFolder(game);
 			_games.Append(RowLabel(install is null
-				? $"{game.DisplayName} — not installed"
-				: $"{game.DisplayName} — {install}"));
+				? Loc.T("gtk.gameNotInstalled", game.DisplayName)
+				: Loc.T("gtk.gameInstalledAt", game.DisplayName, install)));
 		}
 
 		var scroller = Gtk.ScrolledWindow.New();
@@ -150,7 +171,7 @@ public sealed class MainWindow
 		scroller.SetVexpand(true);
 		box.Append(scroller);
 
-		var hint = Gtk.Label.New("Press Enter on a game to load its mods.");
+		var hint = Gtk.Label.New(Loc.T("gtk.gamesHint"));
 		hint.SetXalign(0);
 		box.Append(hint);
 		return box;
@@ -163,7 +184,7 @@ public sealed class MainWindow
 		LoadInstalled();
 		_tabs.SetCurrentPage(1);
 		_installed.GrabFocus();
-		Say($"{game.DisplayName}. {_rows.Count} mods installed.", interrupt: true);
+		Say(_view.Announcement, interrupt: true);
 	}
 
 	private Gtk.Widget BuildInstalledTab()
@@ -171,10 +192,10 @@ public sealed class MainWindow
 		var box = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
 
 		var buttons = Gtk.Box.New(Gtk.Orientation.Horizontal, 6);
-		var toggle = Gtk.Button.NewWithLabel("Enable or disable (Space)");
+		var toggle = Gtk.Button.NewWithLabel(Loc.T("gtk.toggleButton"));
 		toggle.OnClicked += (_, _) => ToggleSelected();
-		var refresh = Gtk.Button.NewWithLabel("Refresh (F5)");
-		refresh.OnClicked += (_, _) => { LoadInstalled(); Say($"{_rows.Count} mods installed."); };
+		var refresh = Gtk.Button.NewWithLabel(Loc.T("gtk.refreshButton"));
+		refresh.OnClicked += (_, _) => { LoadInstalled(); Say(_view.Announcement); };
 		buttons.Append(toggle);
 		buttons.Append(refresh);
 		box.Append(buttons);
@@ -194,14 +215,25 @@ public sealed class MainWindow
 
 	private void LoadInstalled()
 	{
-		_rows.Clear();
 		while (_installed.GetFirstChild() is { } child) _installed.Remove(child);
 
 		_modsFolder = ModsFolderFor(_game);
 
-		if (string.IsNullOrEmpty(_modsFolder) || !Directory.Exists(_modsFolder))
+		// Three different answers, and they must not sound alike. A game that is not here at all is a
+		// reason to go and install one; a game that is here with no mods folder yet is a reason to install
+		// a mod; and a game with an empty folder is neither. Announcing all three as "0 mods" is how a
+		// blind user concludes the manager does not support their game.
+		if (string.IsNullOrEmpty(_modsFolder))
 		{
-			SetStatus($"{_game.DisplayName} is not installed, or its mods folder has not been created yet.");
+			_view = InstalledModsView.NotInstalled(_game);
+			SetStatus(_view.StatusLine);
+			return;
+		}
+
+		if (!Directory.Exists(_modsFolder))
+		{
+			_view = InstalledModsView.NoModsFolder(_game, _modsFolder);
+			SetStatus(_view.StatusLine);
 			return;
 		}
 
@@ -218,42 +250,39 @@ public sealed class MainWindow
 			_game.Id,
 			(where, what) => DiagnosticLog.Write(where, what));
 
-		foreach (GameMod mod in scanned)
-			_rows.Add(new ModRow
-			{
-				JarPath = mod.FolderPath,
-				Name    = mod.Name,
-				Version = mod.Version,
-				Enabled = MinecraftLayout.IsEnabledModFile(mod.FolderPath)
-			});
+		_view = InstalledModsView.Of(_game, _modsFolder, scanned);
 
-		foreach (ModRow row in _rows) _installed.Append(RowLabel(row.Spoken));
-		SetStatus($"{_rows.Count} mods in {_modsFolder}");
+		foreach (InstalledModRow row in _view.Rows) _installed.Append(RowLabel(row.Spoken));
+		SetStatus(_view.StatusLine);
 	}
 
 	private void ToggleSelected()
 	{
 		int i = _installed.GetSelectedRow()?.GetIndex() ?? -1;
-		if (i < 0 || i >= _rows.Count) { Say("No mod is selected.", interrupt: true); return; }
+		if (i < 0 || i >= _view.Rows.Count) { Say(Loc.T("gtk.noModSelected"), interrupt: true); return; }
 
-		ModRow row = _rows[i];
+		InstalledModRow row = _view.Rows[i];
 		// Every layout switches a mod off differently - a leading dot for Stardew, a tilde for The Witcher, a
 		// move out of plugins for BepInEx, a suffix for Minecraft - and ModEnableState in the core is the one
 		// place that knows which. Reimplementing any of it here is how the two front ends would start to
 		// disagree about what "disabled" means.
-		string target = ModEnableState.TargetPath(row.JarPath, !row.Enabled, _game.Id);
+		string target = ModEnableState.TargetPath(row.Path, !row.Enabled, _game.Id);
 
 		try
 		{
-			File.Move(row.JarPath, target);
+			File.Move(row.Path, target);
+			// The cue lands while the reader is still saying the mod's name, which is the whole point of
+			// having one: the fact arrives without waiting for the sentence.
+			_sound.Play(row.Enabled ? "disable" : "enable");
 			LoadInstalled();
-			_installed.SelectRow(_installed.GetRowAtIndex(Math.Min(i, Math.Max(0, _rows.Count - 1))));
-			Say($"{row.Name} {(row.Enabled ? "disabled" : "enabled")}.", interrupt: true);
+			_installed.SelectRow(_installed.GetRowAtIndex(Math.Min(i, Math.Max(0, _view.Rows.Count - 1))));
+			Say(Loc.T(row.Enabled ? "gtk.modDisabled" : "gtk.modEnabled", row.Name), interrupt: true);
 		}
 		catch (Exception ex)
 		{
-			DiagnosticLog.WriteException("Mods", $"toggling {row.JarPath}", ex);
-			Say($"Could not change {row.Name}. {ex.Message}", interrupt: true);
+			_sound.Play("error");
+			DiagnosticLog.WriteException("Mods", $"toggling {row.Path}", ex);
+			Say(Loc.T("gtk.toggleFailed", row.Name, ex.Message), interrupt: true);
 		}
 	}
 
@@ -268,13 +297,13 @@ public sealed class MainWindow
 		var bar = Gtk.Box.New(Gtk.Orientation.Horizontal, 6);
 		// A visible label bound to the entry: that is what gives the entry an accessible name, and it is
 		// why this is a Label with a mnemonic rather than placeholder text, which Orca does not treat as one.
-		var caption = Gtk.Label.NewWithMnemonic("_Search Modrinth:");
+		var caption = Gtk.Label.NewWithMnemonic(Loc.T("gtk.searchCaption"));
 		caption.SetMnemonicWidget(_search);
 		_search.SetHexpand(true);
 		_search.OnActivate += (_, _) => _ = SearchAsync();
-		var go = Gtk.Button.NewWithLabel("Search");
+		var go = Gtk.Button.NewWithLabel(Loc.T("gtk.searchButton"));
 		go.OnClicked += (_, _) => _ = SearchAsync();
-		var install = Gtk.Button.NewWithLabel("Install selected (Ctrl+I)");
+		var install = Gtk.Button.NewWithLabel(Loc.T("gtk.installButton"));
 		install.OnClicked += (_, _) => _ = InstallSelectedAsync();
 		bar.Append(caption); bar.Append(_search); bar.Append(go); bar.Append(install);
 		box.Append(bar);
@@ -308,11 +337,11 @@ public sealed class MainWindow
 		var box = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
 
 		var bar = Gtk.Box.New(Gtk.Orientation.Horizontal, 6);
-		var open = Gtk.Button.NewWithLabel("Open this game's wiki");
+		var open = Gtk.Button.NewWithLabel(Loc.T("gtk.openWikiButton"));
 		open.OnClicked += (_, _) => OpenWiki();
-		var back = Gtk.Button.NewWithLabel("Back");
+		var back = Gtk.Button.NewWithLabel(Loc.T("gtk.backButton"));
 		back.OnClicked += (_, _) => { if (_web?.CanGoBack == true) _web.GoBack(); };
-		var login = Gtk.Button.NewWithLabel("Log in to Nexus Mods");
+		var login = Gtk.Button.NewWithLabel(Loc.T("gtk.nexusLoginButton"));
 		login.OnClicked += (_, _) => _ = SignInToNexusAsync();
 		bar.Append(open);
 		bar.Append(back);
@@ -334,7 +363,7 @@ public sealed class MainWindow
 			// A missing or mismatched WebKitGTK is worth saying out loud rather than showing an empty tab:
 			// webkit2gtk-4.1 is the GTK3 build and will not embed here, and that is an easy mistake to make.
 			DiagnosticLog.WriteException("Web", "creating the web view", ex);
-			var problem = Gtk.Label.New("The in-app browser could not start. WebKitGTK 6.0 (the GTK4 build) is needed.");
+			var problem = Gtk.Label.New(Loc.T("gtk.noBrowser"));
 			problem.SetWrap(true);
 			box.Append(problem);
 		}
@@ -344,14 +373,14 @@ public sealed class MainWindow
 
 	private void OpenWiki()
 	{
-		if (_web is null) { Say("The in-app browser is not available.", interrupt: true); return; }
+		if (_web is null) { Say(Loc.T("gtk.browserUnavailable"), interrupt: true); return; }
 
 		string url = _game.WikiArticleBase;
-		if (string.IsNullOrWhiteSpace(url)) { Say($"{_game.DisplayName} has no wiki configured.", interrupt: true); return; }
+		if (string.IsNullOrWhiteSpace(url)) { Say(Loc.T("gtk.noWiki", _game.DisplayName), interrupt: true); return; }
 
 		_web.Load(url);
-		SetStatus($"Loading {url}");
-		Say($"Opening the {_game.DisplayName} wiki. Tab into the page to read it.");
+		SetStatus(Loc.T("gtk.loadingUrl", url));
+		Say(Loc.T("gtk.openingWiki", _game.DisplayName));
 	}
 
 	/// <summary>
@@ -380,7 +409,7 @@ public sealed class MainWindow
 	{
 		var box = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
 
-		var check = Gtk.Button.NewWithLabel("Check my setup");
+		var check = Gtk.Button.NewWithLabel(Loc.T("gtk.checkButton"));
 		check.OnClicked += (_, _) => RunSetupCheck();
 		box.Append(check);
 
@@ -406,7 +435,7 @@ public sealed class MainWindow
 	{
 		string mods = ModsFolderFor(_game);
 		if (string.IsNullOrEmpty(mods) || !Directory.Exists(mods))
-			return $"{_game.DisplayName} is not installed, or its mods folder has not been created yet.";
+			return _view.Announcement;
 
 		if (!_game.IsMinecraft)
 		{
@@ -414,28 +443,24 @@ public sealed class MainWindow
 			// all-purpose "everything looks fine" that was never checked.
 			string log = GameLogFiles.LoaderLogPath(_game, _locator.InstallFolder(_game) ?? "");
 			if (string.IsNullOrEmpty(log))
-				return $"{_rows.Count} mods installed for {_game.DisplayName}. This game keeps no loader log, so whether they loaded cannot be checked from here.";
+				return Loc.T("gtk.checkNoLoaderLog", _view.Rows.Count, _game.DisplayName);
 
 			return File.Exists(log)
-				? $"{_rows.Count} mods installed for {_game.DisplayName}. Its loader log is at {log}."
-				: $"{_rows.Count} mods installed for {_game.DisplayName}. No loader log has been written yet, which usually means the game has not been run since the loader was installed.";
+				? Loc.T("gtk.checkLoaderLogAt", _view.Rows.Count, _game.DisplayName, log)
+				: Loc.T("gtk.checkNoLogYet", _view.Rows.Count, _game.DisplayName);
 		}
 
 		string root = _locator.InstallFolder(_game) ?? MinecraftLayout.DefaultRootFolder;
 		MinecraftLaunchOutcome outcome = MinecraftLaunchLog.ReadLatest(root);
 
 		if (outcome.NoLog)
-			return $"{_rows.Count} mods installed. Minecraft has not been run yet, so there is nothing to check.";
+			return Loc.T("gtk.checkNotRunYet", _view.Rows.Count);
 
 		if (!outcome.FabricLoaded)
-			return "The last time Minecraft ran, it ran WITHOUT your mods. The log shows a plain Minecraft start "
-				 + "with no Fabric, which is why the game would have said nothing. Start the game from the manager "
-				 + "rather than through the Minecraft launcher: choosing an installation and launching a world are "
-				 + "separate things there, and the second quietly overrides the first.";
+			return Loc.T("gtk.checkRanVanilla");
 
-		string version = string.IsNullOrEmpty(outcome.GameVersion) ? "" : $" on Minecraft {outcome.GameVersion}";
-		return $"All good. The last run loaded Fabric{version} with {outcome.ModCount} mods, "
-			 + $"and there are {_rows.Count} in your mods folder now.";
+		string version = string.IsNullOrEmpty(outcome.GameVersion) ? "" : Loc.T("gtk.checkOnVersion", outcome.GameVersion);
+		return Loc.T("gtk.checkAllGood", version, outcome.ModCount, _view.Rows.Count);
 	}
 
 	/// <summary>
@@ -448,21 +473,21 @@ public sealed class MainWindow
 	private async Task InstallSelectedAsync()
 	{
 		int i = _results.GetSelectedRow()?.GetIndex() ?? -1;
-		if (i < 0 || i >= _found.Count) { Say("No mod is selected.", interrupt: true); return; }
+		if (i < 0 || i >= _found.Count) { Say(Loc.T("gtk.noModSelected"), interrupt: true); return; }
 
 		GameMod mod = _found[i];
 
 		if (!_game.IsMinecraft)
 		{
-			Say($"Installing is only available for Minecraft in this build. {_game.DisplayName} mods still have to be installed from the Windows manager.", interrupt: true);
+			Say(Loc.T("gtk.installMinecraftOnly", _game.DisplayName), interrupt: true);
 			return;
 		}
 
 		string mods = ModsFolderFor(_game);
-		if (string.IsNullOrEmpty(mods)) { Say("The mods folder could not be found.", interrupt: true); return; }
+		if (string.IsNullOrEmpty(mods)) { Say(Loc.T("gtk.noModsFolder"), interrupt: true); return; }
 
-		SetStatus($"Installing {mod.Name}…");
-		Say($"Installing {mod.Name}.");
+		SetStatus(Loc.T("gtk.installingStatus", mod.Name));
+		Say(Loc.T("gtk.installing", mod.Name));
 
 		try
 		{
@@ -477,59 +502,65 @@ public sealed class MainWindow
 				{
 					// A normal answer rather than a failure, and one the user has to hear plainly: a mod
 					// built for another Minecraft version installs perfectly and then loads nothing at all.
-					SetStatus($"No build of {mod.Name} for Minecraft {MinecraftVersion}.");
-					Say($"{mod.Name} has no build for Minecraft {MinecraftVersion}, so it was not installed.", interrupt: true);
+					SetStatus(Loc.T("gtk.noBuildStatus", mod.Name, MinecraftVersion));
+					Say(Loc.T("gtk.noBuild", mod.Name, MinecraftVersion), interrupt: true);
 					return;
 				}
 
 				LoadInstalled();
 				string replaced = result.Value.WasUpgrade
-					? $" It replaced {result.Value.Replaced.Count} older copy." : "";
-				SetStatus($"Installed {mod.Name}.");
-				Say($"{mod.Name} installed.{replaced} {_rows.Count} mods now installed.", interrupt: true);
+					? " " + Loc.T("gtk.replacedOlder", result.Value.Replaced.Count) : "";
+				SetStatus(Loc.T("gtk.installedStatus", mod.Name));
+				_sound.Play("load_complete");
+				Say(Loc.T("gtk.installed", mod.Name, replaced, _view.Rows.Count), interrupt: true);
 			});
 		}
 		catch (Exception ex)
 		{
 			DiagnosticLog.WriteException("Install", $"installing {mod.Name}", ex);
-			_ui.Post(() => { SetStatus("Install failed."); Say($"Installing {mod.Name} failed. {ex.Message}", interrupt: true); });
+			_ui.Post(() =>
+			{
+				_sound.Play("error");
+				SetStatus(Loc.T("gtk.installFailedStatus"));
+				Say(Loc.T("gtk.installFailed", mod.Name, ex.Message), interrupt: true);
+			});
 		}
 	}
 
 	/// <summary>Shows a mod's own page in the in-app browser, and moves focus there to read it.</summary>
 	private void OpenModPage(GameMod mod)
 	{
-		if (_web is null) { Say("The in-app browser is not available.", interrupt: true); return; }
+		if (_web is null) { Say(Loc.T("gtk.browserUnavailable"), interrupt: true); return; }
 
 		string id = mod.ModrinthId ?? "";
-		if (id.Length == 0) { Say($"There is no page for {mod.Name}.", interrupt: true); return; }
+		if (id.Length == 0) { Say(Loc.T("gtk.noPageFor", mod.Name), interrupt: true); return; }
 
 		_web.Load($"https://modrinth.com/mod/{id}");
-		SetStatus($"Reading about {mod.Name}");
+		SetStatus(Loc.T("gtk.readingAbout", mod.Name));
 
 		// Switching tab and moving focus together, because doing only the first leaves the user on a page
 		// they cannot get into, which is precisely the gap this came from.
 		_tabs.SetCurrentPage(WikiTabIndex);
 		_web.Widget.GrabFocus();
-		Say($"Opening the page for {mod.Name}.");
+		Say(Loc.T("gtk.openingPage", mod.Name));
 	}
 
 	private async Task SignInToNexusAsync()
 	{
-		if (_web is null) { Say("The in-app browser is not available, so signing in is not possible.", interrupt: true); return; }
+		if (_web is null) { Say(Loc.T("gtk.noBrowserForSignIn"), interrupt: true); return; }
 
 		if (string.IsNullOrEmpty(NexusApplicationSlug))
 		{
 			// Said plainly rather than failing quietly. Nexus only permits single sign-on for applications
 			// they have approved, and approval is what supplies this slug — a conversation with their
 			// community managers, not something the code can arrange.
-			SetStatus("Nexus sign-in is not set up yet.");
-			Say("Nexus sign-in is not available yet. The manager has to be registered with Nexus Mods first.", interrupt: true);
+			SetStatus(Loc.T("gtk.nexusNotSetUpStatus"));
+			Say(Loc.T("gtk.nexusNotSetUp"), interrupt: true);
 			return;
 		}
 
-		SetStatus("Signing in to Nexus Mods…");
-		Say("Opening the Nexus sign-in page. Approve the manager there, and it will finish by itself.");
+		SetStatus(Loc.T("gtk.signingIn"));
+		Say(Loc.T("gtk.openingSignIn"));
 
 		try
 		{
@@ -539,16 +570,16 @@ public sealed class MainWindow
 
 			_ui.Post(() =>
 			{
-				SetStatus("Signed in to Nexus Mods.");
+				SetStatus(Loc.T("gtk.signedInStatus"));
 				// The key itself is never spoken or shown. It is a credential, and reading one aloud in a
 				// room is its own kind of leak.
-				Say($"Signed in to Nexus Mods. {key.Length} character key received and stored.", interrupt: true);
+				Say(Loc.T("gtk.signedIn", key.Length), interrupt: true);
 			});
 		}
 		catch (Exception ex)
 		{
 			DiagnosticLog.WriteException("Nexus", "signing in", ex);
-			_ui.Post(() => { SetStatus("Sign-in failed."); Say($"Nexus sign-in failed. {ex.Message}", interrupt: true); });
+			_ui.Post(() => { SetStatus(Loc.T("gtk.signInFailedStatus")); Say(Loc.T("gtk.signInFailed", ex.Message), interrupt: true); });
 		}
 	}
 
@@ -561,10 +592,10 @@ public sealed class MainWindow
 	private async Task SearchAsync()
 	{
 		string term = _search.GetBuffer().GetText();
-		if (string.IsNullOrWhiteSpace(term)) { Say("Type something to search for first.", interrupt: true); return; }
+		if (string.IsNullOrWhiteSpace(term)) { Say(Loc.T("gtk.searchEmpty"), interrupt: true); return; }
 
-		SetStatus($"Searching Modrinth for {term}…");
-		Say($"Searching for {term}.");
+		SetStatus(Loc.T("gtk.searchingStatus", term));
+		Say(Loc.T("gtk.searching", term));
 
 		try
 		{
@@ -578,14 +609,19 @@ public sealed class MainWindow
 				while (_results.GetFirstChild() is { } child) _results.Remove(child);
 				foreach (GameMod m in _found) _results.Append(RowLabel($"{m.Name} — {Trim(m.Description)}"));
 
-				SetStatus($"{_found.Count} of {total} results for {term}");
-				Say($"{_found.Count} results.");
+				SetStatus(Loc.T("gtk.resultsStatus", _found.Count, total, term));
+				Say(Loc.T("gtk.results", _found.Count));
 			});
 		}
 		catch (Exception ex)
 		{
 			DiagnosticLog.WriteException("Modrinth", $"searching for {term}", ex);
-			_ui.Post(() => { SetStatus("Search failed."); Say($"Search failed. {ex.Message}", interrupt: true); });
+			_ui.Post(() =>
+			{
+				_sound.Play("error");
+				SetStatus(Loc.T("gtk.searchFailedStatus"));
+				Say(Loc.T("gtk.searchFailed", ex.Message), interrupt: true);
+			});
 		}
 	}
 
@@ -658,7 +694,7 @@ public sealed class MainWindow
 					return true;
 				case 0xFFC2:                     // F5
 					LoadInstalled();
-					Say($"Refreshed. {_rows.Count} mods installed.", interrupt: true);
+					Say(Loc.T("gtk.refreshed", _view.Rows.Count), interrupt: true);
 					return true;
 				// Ctrl+I, the Windows manager's install shortcut. Started and not awaited: a key handler has
 				// to answer now, and the install reports itself through the status line and the announcer.
@@ -668,7 +704,7 @@ public sealed class MainWindow
 				case 0x066 when ctrl:            // Ctrl+F
 					_tabs.SetCurrentPage(FindModsTabIndex);
 					_search.GrabFocus();
-					Say("Search Modrinth.", interrupt: true);
+					Say(Loc.T("gtk.searchFocused"), interrupt: true);
 					return true;
 				case 0x020 when _installed.HasFocus:   // Space
 					ToggleSelected();

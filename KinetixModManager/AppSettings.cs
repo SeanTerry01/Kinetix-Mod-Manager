@@ -1002,9 +1002,19 @@ public class AppSettings : IModScanContext
 	/// anyway. Program.cs assigns the platform's implementation at startup; the default keeps the type
 	/// usable on its own, which is what the settings tests rely on.
 	/// </summary>
-	public static ISecretStore Secrets { get; set; } = new PlainTextSecretStore();
+	/// <remarks>
+	/// Kept as a name here because a good deal of the app and its tests say <c>AppSettings.Secrets</c>, but
+	/// the store itself now lives in <see cref="KinetixModManager.Secrets"/> in the core. It had to move: this
+	/// class is in the WinForms project, so a second front end could not reach the one gate that decides
+	/// whether a key is encrypted before it is written.
+	/// </remarks>
+	public static ISecretStore Secrets
+	{
+		get => KinetixModManager.Secrets.Current;
+		set => KinetixModManager.Secrets.Current = value;
+	}
 
-	private static string EncryptApiKey(string plainText) => Secrets.Protect(plainText);
+	private static string EncryptApiKey(string plainText) => KinetixModManager.Secrets.Protect(plainText);
 
-	private static string DecryptApiKey(string encryptedText) => Secrets.Unprotect(encryptedText);
+	private static string DecryptApiKey(string encryptedText) => KinetixModManager.Secrets.Unprotect(encryptedText);
 }
