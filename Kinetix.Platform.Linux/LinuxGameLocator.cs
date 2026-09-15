@@ -6,14 +6,22 @@ using System.Linq;
 namespace KinetixModManager;
 
 /// <summary>
-/// Finds games on Linux: Steam's own library records for the install, and the Proton prefix for the
-/// player's files.
+/// Finds games on Linux: Steam's and Heroic's own library records for the install, and the Proton prefix for
+/// the player's files.
 ///
 /// <para>
 /// The install side needs nothing new. <see cref="SteamLibraryLocator"/> already parses
 /// <c>libraryfolders.vdf</c> and the per-game <c>.acf</c>, it is already in the core, and its tests already
 /// pass off Windows — because a Steam library is laid out identically on both. A game installed through
 /// Proton is in <c>steamapps/common</c> like any other; Proton changes how it runs, not where it lives.
+/// </para>
+///
+/// <para>
+/// Steam is not the whole of it, though, and treating it as such was a real gap: a great many players own
+/// their GOG and Epic titles through Heroic, and a game installed that way sits in an ordinary folder that
+/// nothing looked in — so it read as not installed on a machine where it plainly was. See
+/// <see cref="HeroicLibraryLocator"/>, and note that Lutris is still not covered, for the reason recorded
+/// there.
 /// </para>
 ///
 /// <para>
@@ -69,11 +77,9 @@ public sealed class LinuxGameLocator : IGameLocator
 			return Directory.Exists(root) ? root : null;
 		}
 
-		if (string.IsNullOrEmpty(game.SteamAppId)) return null;
-
 		foreach (string steam in SteamRoots())
 		{
-			if (!Directory.Exists(steam)) continue;
+			if (!Directory.Exists(steam) || string.IsNullOrEmpty(game.SteamAppId)) continue;
 
 			try
 			{
@@ -84,6 +90,19 @@ public sealed class LinuxGameLocator : IGameLocator
 			{
 				DiagnosticLog.WriteException("Detect", $"searching {steam} for {game.DisplayName}", ex);
 			}
+		}
+
+		// Steam is not the whole of Linux gaming. A great many players own their GOG and Epic games through
+		// Heroic, which keeps a plain record of what it has installed — and without reading it, a game sitting
+		// in an ordinary folder read as not installed on a machine where it plainly was.
+		try
+		{
+			string? heroic = HeroicLibraryLocator.FindGameFolder(Home, game.GameExeName);
+			if (!string.IsNullOrEmpty(heroic)) return heroic;
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Detect", $"searching Heroic's library for {game.DisplayName}", ex);
 		}
 
 		return null;

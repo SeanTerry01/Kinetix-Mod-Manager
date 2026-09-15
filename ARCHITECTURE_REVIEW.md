@@ -2183,3 +2183,61 @@ drive throws rather than answering. One game that cannot be looked for now costs
 whole list.
 
 **1,327 → 1,343 tests.**
+
+## 32. Dependencies, and Steam stops being the whole of Linux — 2026-09-15
+
+Two more small ones before the large remaining item.
+
+### Dependencies
+
+Almost nothing to write again, which is the pattern now: `ModHealth.ResolveDependencies` already works out
+whether each declared dependency is present, switched on and new enough, and `ModVersions.IsNewer` already
+decides what "new enough" means. `DependenciesView` adds the two things a window would otherwise invent for
+itself twice.
+
+**What is worth showing.** Only trouble. A mod whose dependencies are all satisfied produces no row at all,
+because a list where the nine hundred things that are fine bury the three that are not is unusable — and far
+more so by ear than on screen, where at least the eye can skim.
+
+**What order.** By how much it matters rather than by name: a missing required dependency stops a mod
+loading, a disabled one is the same outcome with an easier fix, an old one usually still runs, and a missing
+optional one is information rather than a fault. Switched-off is ranked above too-old deliberately — same
+result, far easier fix, so the user should hear the easy one first.
+
+The row says the trouble *before* either name. A user opens this list to find what is broken, and hearing
+"Content Patcher" before hearing whether it is a problem means listening to every row to the end to find out
+which ones matter.
+
+### Heroic
+
+`LinuxGameLocator` looked in Steam's four install locations and nowhere else, which quietly asserted that
+Steam is the whole of Linux gaming. It is not: a great many players own their GOG and Epic titles through
+Heroic, and a game installed that way sits in a perfectly ordinary folder that nothing looked in — so it read
+as **not installed on a machine where it plainly was**.
+
+`HeroicLibraryLocator` reads Heroic's own record of what it has installed, which makes this the same shape of
+job as `SteamLibraryLocator` rather than a guess at folder names. Two decisions in it:
+
+- **It looks for the install path wherever it appears** rather than walking a fixed structure. The shape
+  differs between the GOG, Epic and Amazon stores and has changed between Heroic versions, and a reader tied
+  to one of them stops working on an upgrade the user did not know was a breaking one.
+- **A game is matched by its executable**, not by folder name — the same reasoning `GogLibraryLocator`
+  already used. What Heroic or the user called the folder is not worth guessing at; the executable is the one
+  name the game itself decides.
+
+A folder Heroic still records but that has been deleted by hand is dropped, because answering with a path
+that is not there has every later step fail for a reason nothing explains.
+
+**Lutris is still not covered, and that is recorded rather than left to be discovered.** It keeps its library
+in a SQLite database and its per-game settings in YAML, and neither can be read without a dependency this
+layer does not have. Hand-parsing YAML to avoid taking one on would be the fragile option, not the careful
+one.
+
+### A limit worth stating
+
+The Heroic library shapes in the tests are built from its documented formats, not copied off a real install,
+because there is no Heroic on the machine this was written on. What those tests hold is that the reader copes
+with each shape — not that those are the only shapes Heroic writes. That is exactly why the reader is
+forgiving rather than strict.
+
+**1,343 → 1,356 tests.** Nine tabs.

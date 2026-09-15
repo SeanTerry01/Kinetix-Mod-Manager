@@ -1,5 +1,17 @@
 ﻿# Unreleased
 
+## 🐧 Linux: a Dependencies screen, and games installed with Heroic are found
+
+*   **A Dependencies screen.** It lists only what is actually wrong — a mod whose requirements are all present
+    and switched on does not appear, because a list where the hundreds of things that are fine bury the three
+    that are not is no use to anybody, and least of all by ear. Rows are ordered by how much each one matters,
+    and each says the problem before it says any names: missing, switched off, too old, then optional extras.
+*   **Games installed through Heroic are found now.** The manager only ever looked where Steam puts things,
+    which meant a GOG or Epic game installed with Heroic — a perfectly ordinary folder — read as not installed
+    at all. It reads Heroic's own record of what it has installed, including the Flatpak version of it.
+*   Still not found: games managed by **Lutris**. Reading its library needs something the manager cannot do
+    yet, and guessing at it would be worse than saying so.
+
 ## 🐛 Deleting a Minecraft mod kept no backup, and said it had
 
 *   **This one affects Windows too.** The manager backs a mod up before deleting it, and that backup is made
@@ -173,7 +185,7 @@
 
 ## ✅ Tests
 
-*   **1,343 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
+*   **1,356 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
 *   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 *   Twenty-six of them cover unpacking a downloaded mod, including one that extracts a **real .7z** rather than a stand-in — the only way to know that reading one without `7za.exe` actually works.

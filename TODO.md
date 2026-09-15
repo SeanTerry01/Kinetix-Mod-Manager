@@ -5,8 +5,8 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-09-15, after Updates and Profiles, and Minecraft stopped being hard-coded.
-**State:** 1,327 tests passing on Windows and Linux; all five projects build clean, zero warnings.
+**Last updated:** 2026-09-15, after Dependencies and Heroic detection. Nexus is the one large item left.
+**State:** 1,356 tests passing on Windows and Linux; all five projects build clean, zero warnings.
 
 ---
 
@@ -258,16 +258,14 @@ It cannot work yet, for one reason that is not a code problem:
 - ~~Warn which games' access mods will not speak on this platform~~ — done (§29).
       `GameProfile.AccessModSpeaksOnLinux`, defaulting to false so a new game warns until somebody says
       otherwise, with a test per game and the sentence on the GTK Settings tab.
-- [ ] **Say it somewhere harder to miss than Settings.** The warning is on the Settings tab, which is where a
-      user goes once. It belongs on the Games list too, beside "not installed", so it is heard while choosing
-      rather than after.
+- ~~Say it somewhere harder to miss than Settings~~ — done (§31). `GamesView` builds the row, and the note
+  says the mods are still managed, because without that clause it reads as "not supported".
 - ~~The Minecraft version is hard-coded to 1.21.1~~ — done (§30), along with three other places Minecraft
   was written into the GTK head rather than being an entry in its list.
-- [ ] **Screens, cheapest first.** Settings, Updates and Profiles are done (§29, §30), and the mod list's own
-      actions — delete, back up, read a note — are in (§31). Eight tabs against the Windows head's sixty-odd
-      feature areas. **Next: Dependencies**, then Check My Setup's remaining per-game branches, then the SMAPI
-      log once Stardew installs work. Each is the same shape: check the decision is in the core, then draw it
-      in GTK.
+- [ ] **Screens, cheapest first.** Settings, Updates, Profiles, the mod list's own actions and Dependencies
+      are done (§29–§32) — nine tabs against the Windows head's sixty-odd feature areas. **Everything cheap is
+      now done; what is left needs Nexus first** (below), or Stardew installs, or a design decision. After
+      Nexus: Check My Setup's remaining per-game branches, the SMAPI log, and Collections.
 - [ ] **⚠️ Nexus search and updates are unavailable in the GTK head**, because `NexusService` is 1,387 lines in
       the WinForms project. Five of the six games get a plain sentence saying so rather than an empty list. It
       is the largest remaining thing keeping the two heads apart, and moving it is the same shape of job
@@ -276,8 +274,15 @@ It cannot work yet, for one reason that is not a code problem:
       Stardew is the one worth adding next and needs the layout half of `ExtractModAsync` (above).
 - [ ] **A reader started *after* the app is not noticed.** `ScreenReaderPresence` asks once at startup. A
       D-Bus signal subscription would fix it; the fallback speaks in the meantime.
-- [ ] **GOG, Heroic and Lutris are not searched** — `LinuxGameLocator` covers the four Steam layouts and
-      Flatpak. Heroic keeps a JSON library; Lutris keeps YAML.
+- ~~Heroic is not searched~~ — done (§32). `HeroicLibraryLocator` reads its library, matches by executable
+  rather than folder name, and covers the Flatpak home too.
+- [ ] **Lutris is still not searched.** It keeps its library in a SQLite database and its per-game settings in
+      YAML, and neither can be read without a dependency `Kinetix.Core` does not have. Hand-parsing YAML to
+      avoid taking one on would be the fragile option rather than the careful one, so this needs a decision
+      about the dependency before it needs code.
+- [ ] **The Heroic reader has never seen a real Heroic install.** Its tests are built from documented formats,
+      which holds that it copes with each shape rather than that those are the only shapes. Worth one check
+      against a real library.
 - [ ] **Stardew Valley support in the GTK head** — the scanner is in the core (§19), unpacking a download is
       (§23), and the enabled-state rule is (§28). What stands between here and a Stardew install on Linux is
       the layout half of `ExtractModAsync`, plus somewhere to keep the game's paths — see the `AppSettings`

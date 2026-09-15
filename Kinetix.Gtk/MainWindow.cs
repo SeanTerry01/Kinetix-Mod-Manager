@@ -155,6 +155,7 @@ public sealed partial class MainWindow
 		_tabs.AppendPage(BuildWikiTab(), Gtk.Label.New(Loc.T("gtk.tabWiki")));
 		_tabs.AppendPage(BuildUpdatesTab(), Gtk.Label.New(Loc.T("gtk.tabUpdates")));
 		_tabs.AppendPage(BuildProfilesTab(), Gtk.Label.New(Loc.T("gtk.tabProfiles")));
+		_tabs.AppendPage(BuildDependenciesTab(), Gtk.Label.New(Loc.T("gtk.tabDependencies")));
 		_tabs.AppendPage(BuildCheckTab(), Gtk.Label.New(Loc.T("gtk.tabCheck")));
 		_tabs.AppendPage(BuildSettingsTab(), Gtk.Label.New(Loc.T("gtk.tabSettings")));
 		root.Append(_tabs);

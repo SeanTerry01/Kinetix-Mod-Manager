@@ -1927,5 +1927,16 @@
   "gtk.backedUp": "{0} backed up.",
   "gtk.backupFailed": "{0} could not be backed up. {1}",
   "gtk.note": "{0}. Your note: {1}",
-  "gtk.noteNone": "You have not written a note for {0}."
+  "gtk.noteNone": "You have not written a note for {0}.",
+  "gtk.tabDependencies": "Dependencies",
+  "gtk.depsCheck": "Check dependencies",
+  "gtk.depsChecking": "Checking what your mods need…",
+  "deps.rowMissing": "Missing: {0} needs {1}, which is not installed.",
+  "deps.rowDisabled": "Switched off: {0} needs {1}, which is installed but turned off.",
+  "deps.rowTooOld": "Too old: {0} needs {1} version {2} or newer.",
+  "deps.rowOptional": "Optional: {0} can use {1}, which is not installed.",
+  "deps.rowFine": "{0} needs {1}, which is installed.",
+  "deps.allFine": "Nothing is missing. {0} mods were checked.",
+  "deps.optionalOnly": "Nothing is broken. {0} optional extras are not installed.",
+  "deps.trouble": "{0} mods are missing something they need."
 }
