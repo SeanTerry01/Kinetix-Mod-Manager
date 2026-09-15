@@ -5,7 +5,7 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-09-15, after NexusService moved to the core. Stardew installs are the next real item.
+**Last updated:** 2026-09-15, after a cleanup pass. Stardew installs (§34) are the next real item.
 **State:** 1,371 tests passing on Windows and Linux; all five projects build clean, zero warnings.
 
 ---
@@ -39,20 +39,19 @@ Anything resolved gets deleted from here rather than ticked, so the file stays s
 
 The one sequence that matters. Each step leaves the app shipping and the suite green.
 
-### 1. Phase 3, part two — the four remaining interfaces
+### 1. Phase 3, part two — six of eight seams done
 
-Done: `IAnnouncer`, `ISoundEngine`, `ISecretStore`, `IDispatcher`. Tolk is now named in two files and
+Done: `IAnnouncer`, `ISoundEngine`, `ISecretStore`, `IDispatcher`, and now `IGameLocator` (§20, §28, §32) and
+`IModSource` (§26, §33). Five of those have Linux implementations. Tolk is named in two files and
 `ProtectedData` in one.
 
-These four are **deliberately not designed yet**, because each depends on a decision that has not been
-made. Writing the interface first would be guessing.
+Two are left, and both are still **deliberately not designed**, because each waits on a decision rather than
+on effort. Writing the interface first would be guessing.
 
 | Interface | Replaces | Blocked on |
 |---|---|---|
-| `IModSource` | `NexusService` / `ModrinthService` | Nothing — just the largest. Reconciling an instance, stateful, key-carrying service with a static stateless one. The most worthwhile of the four. |
-| `IPrompts` | `SpeakBox` (177) / `ShowDialog` (12) | The shape follows from draining those screens in Phase 4, and from the inline-prompt system that deliberately avoids modal dialogs. |
+| `IPrompts` | `SpeakBox` (177) / `ShowDialog` (12) | The shape follows from draining those screens in Phase 4, and from the inline-prompt system that deliberately avoids modal dialogs. The GTK head's own inline confirmations (§31) are the first real second implementation to design against. |
 | `IBrowserHost` | WebView2 (18 files) | Decision 3 below — embedding WebKitGTK and opening the system browser need different contracts. |
-| `IGameLocator` | `Microsoft.Win32.Registry` (3 files) | Decision 1 below — resolving into a Proton prefix is a different contract from finding a native install. |
 
 ### 2. Phase 4 — drain `Form1`  ◐ six screens done, and paused on purpose
 
@@ -88,19 +87,20 @@ presenters the WinForms head uses.
 
 These stand on their own merits. None is urgent.
 
-- [ ] **`ModFileSystem.cs` is still a god object** — 2,502 lines (was 3,825). What remains: hard links,
-      backups, deployment, `plugins.txt`, INI editing, per-game finalisation, FOMOD finalisation, uninstaller
-      registry lookup. Should be about five more classes.
+- [ ] **`ModFileSystem.cs` is still a god object** — 2,513 lines (was 3,825). What remains is per-game layout
+      work: hard links, deployment, `plugins.txt`, INI editing, per-game finalisation, FOMOD finalisation,
+      uninstaller registry lookup. Should be about five more classes, and the Stardew branch (§34) is the
+      first of them.
 - [ ] **`NexusService` is an instance class, `ModrinthService` is static.** Same job — "where mods
       come from" — two incompatible shapes, so nothing can be source-agnostic without branching on
       the game. This is what `IModSource` is for.
 - [ ] **`MinecraftBinding` and `Witcher3Binding` are the same idea twice**; likewise
       `MinecraftLayout` / `Witcher3Layout` / `BethesdaLayout` have no common contract, despite
       `ModLayout` existing as an enum that names exactly what they'd implement.
-- [ ] **`AppSettings` is both a DTO and a service** — ~60 serialisable properties *plus* DPAPI
-      encryption, file I/O, a 310-line `InitializeDefaults()`, and a `System.Windows.Forms`
-      reference. It is passed to `NexusService`, `SoundEngine` and half of `Form1`, so it is the
-      de-facto service locator.
+- [ ] **`AppSettings` is both a DTO and a service** — ~60 serialisable properties *plus* file I/O and a
+      310-line `InitializeDefaults()`. It is passed to `NexusService`, `SoundEngine` and half of `Form1`, so it
+      is the de-facto service locator. (The DPAPI and `System.Windows.Forms` halves of this complaint are gone:
+      encryption is behind `Secrets` and the class is in the core — §29.)
 - [ ] **`Action<string, string> logError` threaded through ~20 `ModFileSystem` signatures** — a
       hand-rolled logger paid for in signature noise at every level. An `ILog` parameter says it once.
 - [ ] **Keyboard shortcuts are dispatched by an if/else ladder** — `Form1_KeyDown()` (342 lines) and
@@ -108,9 +108,10 @@ These stand on their own merits. None is urgent.
       `AppSettings.Shortcuts`, `IsShortcut` reads it, and `ShortcutDefaultsGuardTests` holds the defaults. What
       the ladder costs is that the *dispatch* cannot be tested without running the UI, and that two actions can
       shadow one another with nothing to catch it. A command table would fix both.
-- [ ] **`StardewMod.cs` is a one-line file** and `using StardewMod = KinetixModManager.GameMod;` is
-      copy-pasted at the top of every `Form1` partial. Vestigial from when this was Stardew-only —
-      two names for one type.
+- [ ] **`using StardewMod = KinetixModManager.GameMod;` is copy-pasted at the top of 27 `Form1` partials**,
+      and `StardewMod` is used 161 times. Vestigial from when this was Stardew-only — two names for one type.
+      The empty `StardewMod.cs` that went with it is gone (§35); retiring the alias is a mechanical rename and
+      worth doing on its own rather than inside another change.
 - [ ] **No `ConfigureAwait(false)` anywhere.** Harmless while everything runs on the WinForms sync
       context; a deadlock source the moment the core is called from another host. Cheapest to fix
       during extraction rather than after.
@@ -252,9 +253,9 @@ It cannot work yet, for one reason that is not a code problem:
 - ~~`AppSettings` is in the WinForms project, so the GTK head has no settings~~ — done (§29). Exactly one
   thing in its thousand lines was Windows-only, and the JSON is byte-identical, so every existing settings
   file reads straight in.
-- [ ] **`IBrowserHost`** — the last platform seam with no contract. WebKitGTK works and Orca reads it (§21);
-      what is missing is the interface, and it needs one shape for an embedded view and another for handing a
-      page to the system browser.
+- [ ] **`IBrowserHost`** — one of the two seams left with no contract. WebKitGTK works and Orca reads it
+      (§21); what is missing is the interface, and it needs one shape for an embedded view and another for
+      handing a page to the system browser.
 - ~~Warn which games' access mods will not speak on this platform~~ — done (§29).
       `GameProfile.AccessModSpeaksOnLinux`, defaulting to false so a new game warns until somebody says
       otherwise, with a test per game and the sentence on the GTK Settings tab.
@@ -286,10 +287,11 @@ It cannot work yet, for one reason that is not a code problem:
       D-Bus signal subscription would fix it; the fallback speaks in the meantime.
 - ~~Heroic is not searched~~ — done (§32). `HeroicLibraryLocator` reads its library, matches by executable
   rather than folder name, and covers the Flatpak home too.
-- [ ] **Lutris is still not searched.** It keeps its library in a SQLite database and its per-game settings in
-      YAML, and neither can be read without a dependency `Kinetix.Core` does not have. Hand-parsing YAML to
-      avoid taking one on would be the fragile option rather than the careful one, so this needs a decision
-      about the dependency before it needs code.
+- [ ] **Lutris is still not searched, and it shares a decision with `LootMasterlist`.** Lutris keeps its
+      library in SQLite and its per-game settings in YAML; `LootMasterlist` is the one otherwise-portable file
+      left in the app and it needs YamlDotNet. **Taking YamlDotNet into `Kinetix.Core` would settle both** —
+      one decision, two items. Hand-parsing YAML to avoid it would be the fragile option rather than the
+      careful one.
 - [ ] **The Heroic reader has never seen a real Heroic install.** Its tests are built from documented formats,
       which holds that it copes with each shape rather than that those are the only shapes. Worth one check
       against a real library.

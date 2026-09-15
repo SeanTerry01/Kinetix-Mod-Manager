@@ -1021,9 +1021,10 @@ public class AppSettings : IModScanContext
 	/// </summary>
 	/// <remarks>
 	/// Kept as a name here because a good deal of the app and its tests say <c>AppSettings.Secrets</c>, but
-	/// the store itself now lives in <see cref="KinetixModManager.Secrets"/> in the core. It had to move: this
-	/// class is in the WinForms project, so a second front end could not reach the one gate that decides
-	/// whether a key is encrypted before it is written.
+	/// the store itself lives in <see cref="KinetixModManager.Secrets"/>. It had to move: this class was in
+	/// the WinForms project at the time, so a second front end could not reach the one gate that decides
+	/// whether a key is encrypted before it is written. This class has since moved here as well, and the gate
+	/// stays separate regardless — it is assigned at startup, before anything reads a setting.
 	/// </remarks>
 	public static ISecretStore Secrets
 	{

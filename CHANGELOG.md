@@ -54,9 +54,8 @@
     could be checked", which look the same on screen and mean very different things.
 *   **A Profiles screen.** Save the mods you have switched on as a named setup and switch between them. Before
     it changes anything it says what it would do — how many mods would go on, and how many off.
-*   **What it still cannot do, and now says so:** mods for Skyrim, Fallout 4, The Witcher 3, Moonlight Peaks
-    and Stardew Valley come from Nexus Mods, and that part of the manager is still Windows-only. The Linux
-    build tells you that in a sentence rather than showing you an empty list.
+*   *(Written before Nexus Mods worked on Linux — see the entry above, which arrived later the same day and
+    lifted this limit entirely.)*
 
 ## 🐧 Linux: settings, a Settings screen, and a warning that matters
 

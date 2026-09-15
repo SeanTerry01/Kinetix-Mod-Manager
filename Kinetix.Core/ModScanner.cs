@@ -12,7 +12,7 @@ namespace KinetixModManager;
 ///
 /// <para>
 /// This is the half of the old ModFileSystem that only ever looked. The other half — enabling, deploying,
-/// backing up, extracting, writing plugins.txt — still lives in the app, and the split is along exactly that
+/// deployment, hard links, writing plugins.txt — still lives in the app, and the split is along exactly that
 /// line: reading what is there against changing it. A 3,825-line class doing both was the second-largest
 /// thing in the review after Form1 itself, and scanning is the piece a second front end needs first, since
 /// a mod manager that cannot list your mods has nothing to show you.

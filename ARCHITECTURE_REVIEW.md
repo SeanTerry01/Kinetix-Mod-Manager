@@ -2352,3 +2352,52 @@ The other three branches. BepInEx, Witcher 3 and the script extenders stay where
 games' accessibility mods drive NVDA or JAWS and do not speak under Proton (§16, and now
 `GameProfile.AccessModSpeaksOnLinux`), so installing their mods from Linux is a feature for a game that will
 not talk. Managing them is worth having. Installing them is not worth the port.
+
+## 35. A cleanup pass, and where the port stands — 2026-09-15
+
+### The lesson from §33, applied
+
+§33 ended by saying to measure the references before estimating a move. So this pass did that to the rest of
+the app rather than guessing again: every file checked for `System.Windows.Forms`, `System.Drawing`,
+`Microsoft.Win32`, `ProtectedData`, WebView2, NAudio, Tolk and `DllImport`.
+
+Six came back clean and moved: `AiService` (353 lines), `SearchHistoryStore`, `SmapiCompatibility`,
+`Collection`, `DeploymentManifest` and `SettingChoice`. `SettingChoice` needed widening from `internal` to
+`public` on the way, for the same reason `PlatformInfo` did — internal does not cross an assembly boundary,
+and two settings screens disagreeing about what an option is called would be worse than either.
+
+Two came back clean and stayed, for good reasons rather than inertia. `AccessibleTabControl` reads as
+portable to a grep and is not: it derives from a WinForms `TabControl` through an implicit using, which is
+the one case where the measurement lies and the name tells the truth. `LootMasterlist` needs YamlDotNet,
+which the core does not carry — and that is the *same* decision Lutris support waits on, so the two should
+be taken together or not at all.
+
+`StardewMod.cs` was deleted. It had been an empty file holding one comment since the type it named became
+`GameMod`; the 27 `using StardewMod = GameMod;` aliases at the top of the `Form1` partials are what remain of
+it, and retiring those is a mechanical rename worth doing on its own rather than buried here.
+
+### Comments the moves had falsified
+
+Four said in the present tense that something lives in the WinForms project when it no longer does —
+including, pointedly, `NexusModSource`'s own doc explaining why it had to stay there. They now say what
+happened rather than what was expected, which is the more useful record: the estimate was wrong because it
+was made from how the file felt rather than from what it referenced, and that is worth leaving written down
+where the next person will meet it.
+
+One unreleased changelog entry claimed a limit that a later entry the same day had removed. It now points at
+the entry that lifted it rather than contradicting it.
+
+### Where the port stands
+
+| | Files | Lines |
+|---|---:|---:|
+| `Kinetix.Core` | 115 | 21,825 |
+| `KinetixModManager` (WinForms) | 76 | 32,380 |
+| `Kinetix.Gtk` | 12 | 2,085 |
+| `Kinetix.Platform.Linux` | 4 | 844 |
+
+The core has gone from nothing to 21,825 lines in a week, and six of the eight platform seams are closed with
+five of them implemented on Linux. What remains in the app is, at last, genuinely the app: `ModFileSystem`
+(2,513 lines of per-game layout work) and 27,000-odd lines of `Form1` partials that are windows.
+
+**1,371 tests**, all passing on both platforms.

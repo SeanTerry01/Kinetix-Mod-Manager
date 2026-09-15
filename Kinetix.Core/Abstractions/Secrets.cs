@@ -6,8 +6,9 @@ namespace KinetixModManager;
 /// The one <see cref="ISecretStore"/> the program is using.
 ///
 /// <para>
-/// Here, in the core, rather than on <c>AppSettings</c> where it started — because <c>AppSettings</c> is in
-/// the WinForms project and the GTK head cannot see it. That was not a tidiness problem. The default store
+/// Here, in the core, rather than on <c>AppSettings</c> where it started — because at the time
+/// <c>AppSettings</c> was in the WinForms project and the GTK head could not see it. (It has since moved
+/// here too, but the gate belongs on its own either way.) That was not a tidiness problem. The default store
 /// does not protect anything at all, and only the Windows startup was replacing it, so the first time a
 /// second front end grew somewhere to type a key that key would have been written into <c>settings.json</c>
 /// in clear text with nothing anywhere to notice. A gate every head can reach is the difference.

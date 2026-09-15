@@ -8,10 +8,11 @@ namespace KinetixModManager;
 /// Nexus as a catalogue the user can choose.
 ///
 /// <para>
-/// This lives in the app rather than the core for one honest reason: <see cref="NexusService"/> does. It is
-/// 1,387 lines, an instance, stateful, carrying the user's key and their rate-limit counters, and reaching
-/// into <see cref="AppSettings"/> — none of which belongs in a platform-independent layer, and none of which
-/// is going to move in the same change that adds a source chooser.
+/// This was written expecting to stay in the WinForms project, because <see cref="NexusService"/> was there
+/// and looked immovable: 1,387 lines, an instance, stateful, carrying the user's key and their rate-limit
+/// counters. None of that turned out to be a portability problem — it referenced nothing Windows-only at all
+/// — and both moved to the core without a line changing. The estimate was wrong because it was made from how
+/// the file felt rather than from what it referenced.
 /// </para>
 ///
 /// <para>
