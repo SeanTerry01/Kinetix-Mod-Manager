@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
+using KinetixManagerSettings = KinetixModManager.AppSettings;
+using KinetixModManager;
 using Xunit;
 
 namespace KinetixModManager.Tests;
@@ -11,46 +11,50 @@ namespace KinetixModManager.Tests;
 /// Guards the default keyboard shortcuts against two commands claiming the same keys.
 ///
 /// <para>
-/// <c>IsShortcut</c> compares <c>e.KeyData</c> to each action's mapping and every match runs, so two actions on
+/// <c>IsShortcut</c> compares the pressed key to each action's mapping and every match runs, so two actions on
 /// one combination do not conflict in any way the compiler or the app can report — pressing the key silently
-/// runs both, or runs the wrong one, depending on which the handler reaches first. The table is now around fifty
-/// entries long and is edited by hand every time a command is added, which is exactly the shape of list where a
+/// runs both, or runs the wrong one, depending on which the handler reaches first. The table is around fifty
+/// entries and is edited by hand every time a command is added, which is exactly the shape of list where a
 /// collision goes unnoticed until somebody reports that a key "stopped working".
 /// </para>
 ///
 /// <para>
-/// Read out of the source rather than from <c>AppSettings</c> itself: the defaults live in a WinForms type
-/// (<c>System.Windows.Forms.Keys</c>) that this project deliberately does not reference, so the table is parsed
-/// the same way <see cref="SpokenStringGuardTests"/> parses <c>Loc.T</c> calls.
+/// These used to read the table by <em>parsing AppSettings.cs with a regular expression</em>, because the
+/// defaults were typed as <c>System.Windows.Forms.Keys</c> and this project deliberately does not reference
+/// WinForms. Settings now live in the core, so the table is simply called — which is both shorter and
+/// stronger: a reformat or a move can no longer make the guard quietly stop checking anything, and what is
+/// asserted is the dictionary the program actually starts with rather than the text that produces it.
 /// </para>
 /// </summary>
 public class ShortcutDefaultsGuardTests
 {
-	/// <summary>
-	/// One <c>{ "Action", Keys.X | Keys.Shift }</c> entry from the defaults table: the action name, and its
-	/// combination reduced to a form two spellings of the same keys share.
-	/// </summary>
-	private readonly record struct Binding(string Action, string Combination);
+	/// <summary>The shortcuts a fresh installation starts with.</summary>
+	private static Dictionary<string, int> Defaults()
+	{
+		var settings = new KinetixManagerSettings();
+		settings.InitializeDefaults();
+		return settings.Shortcuts;
+	}
 
 	[Fact]
 	public void NoTwoCommandsClaimTheSameKeys()
 	{
-		var byCombination = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+		var byCombination = new Dictionary<int, List<string>>();
 
-		foreach (Binding binding in DefaultShortcuts())
+		foreach (var (action, combination) in Defaults())
 		{
-			// Keys.None means "no default", which several commands legitimately share — the shortcut manager is
-			// where those get a key, if the user wants one.
-			if (binding.Combination == "None") continue;
+			// No key bound means "no default", which several commands legitimately share — the Shortcut
+			// Manager is where those get a key, if the user wants one.
+			if (combination == Shortcut.None) continue;
 
-			if (!byCombination.TryGetValue(binding.Combination, out List<string>? actions))
-				byCombination[binding.Combination] = actions = new List<string>();
-			actions.Add(binding.Action);
+			if (!byCombination.TryGetValue(combination, out List<string>? actions))
+				byCombination[combination] = actions = new List<string>();
+			actions.Add(action);
 		}
 
 		var clashes = byCombination
 			.Where(pair => pair.Value.Count > 1)
-			.Select(pair => string.Join(" and ", pair.Value) + " are all on " + pair.Key)
+			.Select(pair => string.Join(" and ", pair.Value) + " are all on " + Shortcut.Describe(pair.Key))
 			.ToList();
 
 		Assert.True(clashes.Count == 0,
@@ -59,78 +63,68 @@ public class ShortcutDefaultsGuardTests
 	}
 
 	[Fact]
-	public void NoCommandIsGivenADefaultTwice()
+	public void TheDefaultsTableIsActuallyThere()
 	{
-		var seen = new HashSet<string>(StringComparer.Ordinal);
-		var duplicates = new List<string>();
+		// The test above passes vacuously on an empty table, which is what a bad merge would leave behind.
+		Dictionary<string, int> defaults = Defaults();
 
-		foreach (Binding binding in DefaultShortcuts())
-			if (!seen.Add(binding.Action))
-				duplicates.Add(binding.Action);
+		Assert.True(defaults.Count > 30,
+			"Only " + defaults.Count + " default shortcuts were found. The table has probably been damaged, " +
+			"and these tests are no longer checking anything.");
 
-		Assert.True(duplicates.Count == 0,
-			"These commands appear more than once in the defaults table; the first one added wins and the rest " +
-			"are dead entries:\n  " + string.Join("\n  ", duplicates));
+		Assert.Contains("Manual", defaults.Keys);
+		Assert.Contains("CurationMode", defaults.Keys);
 	}
 
 	[Fact]
-	public void TheDefaultsTableWasActuallyFound()
+	public void TheDefaultsSurviveBeingInitialisedTwice()
 	{
-		// The two tests above pass vacuously if the parse returns nothing — which is what would happen if the
-		// table were reformatted or moved. This makes that failure loud instead.
-		List<Binding> bindings = DefaultShortcuts();
+		// InitializeDefaults runs on every load and must only fill in what is missing. If it overwrote, a
+		// user's remapped key would be reset to the default every time the manager started — which is the
+		// sort of thing that gets reported as "it forgets my shortcuts" and is hard to see in the code.
+		var settings = new KinetixManagerSettings();
+		settings.InitializeDefaults();
+		settings.Shortcuts["Manual"] = Shortcut.Letter('Z') | Shortcut.Control;
 
-		Assert.True(bindings.Count > 30,
-			"Only " + bindings.Count + " default shortcuts were read out of AppSettings.cs. The table has " +
-			"probably been reformatted or moved, and these tests are no longer checking anything.");
+		settings.InitializeDefaults();
 
-		Assert.Contains(bindings, b => b.Action == "Manual");
-		Assert.Contains(bindings, b => b.Action == "CurationMode");
+		Assert.Equal(Shortcut.Letter('Z') | Shortcut.Control, settings.Shortcuts["Manual"]);
 	}
 
-	/// <summary>
-	/// Every <c>{ "Action", Keys.… }</c> pair in the defaults table in <c>AppSettings.InitializeDefaults</c>.
-	///
-	/// The combination is normalised by sorting its <c>Keys.</c> parts, so <c>Keys.J | Keys.Shift | Keys.Control</c>
-	/// and <c>Keys.Control | Keys.Shift | Keys.J</c> are recognised as the same combination rather than passing as
-	/// two different ones.
-	/// </summary>
-	private static List<Binding> DefaultShortcuts()
+	[Fact]
+	public void EveryDefaultIsAKeyAndNotJustModifiers()
 	{
-		string source = File.ReadAllText(AppSettingsPath());
+		// A combination of nothing but Ctrl and Shift can never be pressed, so an action bound to one would
+		// silently have no shortcut at all.
+		var modifiersOnly = Defaults()
+			.Where(pair => pair.Value != Shortcut.None && Shortcut.KeyOf(pair.Value) == 0)
+			.Select(pair => pair.Key)
+			.ToList();
 
-		int start = source.IndexOf("new Dictionary<string, Keys>", StringComparison.Ordinal);
-		Assert.True(start >= 0, "Could not find the defaults table in AppSettings.cs.");
-
-		var bindings = new List<Binding>();
-
-		foreach (Match match in Regex.Matches(
-			source[start..],
-			@"\{\s*(?://[^\n]*\n\s*)*""(?<action>[A-Za-z]+)""\s*,\s*(?<keys>Keys\.[A-Za-z0-9]+(?:\s*\|\s*Keys\.[A-Za-z0-9]+)*)\s*\}"))
-		{
-			string combination = string.Join(
-				" | ",
-				match.Groups["keys"].Value
-					.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-					.Select(part => part["Keys.".Length..])
-					.OrderBy(part => part, StringComparer.Ordinal));
-
-			bindings.Add(new Binding(match.Groups["action"].Value, combination));
-		}
-
-		return bindings;
+		Assert.True(modifiersOnly.Count == 0,
+			"These commands are bound to modifier keys with no key to press:\n  " + string.Join("\n  ", modifiersOnly));
 	}
 
-	private static string AppSettingsPath() =>
-		Path.Combine(RepositoryRoot(), "KinetixModManager", "AppSettings.cs");
-
-	private static string RepositoryRoot()
+	[Fact]
+	public void AShortcutReadsBackAsSomethingAPersonWouldSay()
 	{
-		DirectoryInfo? dir = new DirectoryInfo(AppContext.BaseDirectory);
-		while (dir != null && !File.Exists(Path.Combine(dir.FullName, "KinetixModManager.slnx")))
-			dir = dir.Parent;
+		// It is read aloud far more often than it is looked at.
+		Assert.Equal("F1", Shortcut.Describe(Shortcut.Function(1)));
+		Assert.Equal("Ctrl + P", Shortcut.Describe(Shortcut.Letter('P') | Shortcut.Control));
+		Assert.Equal("Ctrl + Shift + D", Shortcut.Describe(Shortcut.Letter('D') | Shortcut.Shift | Shortcut.Control));
+	}
 
-		Assert.True(dir != null, "Could not find the repository root from " + AppContext.BaseDirectory);
-		return dir!.FullName;
+	[Fact]
+	public void TheNumbersAreTheOnesEverySettingsFileAlreadyHolds()
+	{
+		// The whole reason a shortcut is an int rather than a new type of the manager's own: an installation
+		// that upgrades has to read its own saved shortcuts back unchanged. These are the values
+		// System.Windows.Forms.Keys uses, and they are not free to drift.
+		Assert.Equal(112, Shortcut.Function(1));      // Keys.F1
+		Assert.Equal(65, Shortcut.Letter('a'));       // Keys.A, whatever case it is written in
+		Assert.Equal(0x10000, Shortcut.Shift);
+		Assert.Equal(0x20000, Shortcut.Control);
+		Assert.Equal(0x40000, Shortcut.Alt);
+		Assert.Equal(131152, Shortcut.Letter('P') | Shortcut.Control);   // Keys.P | Keys.Control
 	}
 }

@@ -1987,3 +1987,83 @@ move and it is a bigger one than anything here:** every screen worth porting nee
 settings, and right now only one head has one.
 
 **1,260 → 1,298 tests.**
+
+## 29. Settings move, and the GTK head gets its first screen — 2026-09-15
+
+§28 ended by naming the next structural move and saying it was bigger than anything before it: `AppSettings`
+was in the WinForms project, so the GTK head had nowhere to keep anything and recomputed the world from the
+game locator on every run. Every screen worth porting needs somewhere to put its settings, so nothing else
+could start until this did.
+
+It turned out to be one type wide.
+
+### One enum was holding a thousand lines hostage
+
+`AppSettings` is 1,020 lines and about sixty serialisable properties, and exactly **one** thing in it was
+Windows-only: `Dictionary<string, Keys> Shortcuts`, where `Keys` is `System.Windows.Forms.Keys`. DPAPI had
+already gone behind `ISecretStore` in §15 and `Secrets.Current` in §28. Everything else — paths, profiles,
+the mod source preferences, the AI settings, the whole load-and-save — was portable and had been for some
+time. Nobody had checked, because the class *looked* like the Windows-iest thing in the program.
+
+`Keys` is an `int` enum whose values are virtual-key codes with modifier bits above them, and Newtonsoft
+serialises enums as their underlying number. So `Dictionary<string, int>` produces **byte-identical JSON**
+and reads every settings file ever written by the manager, unchanged. That was worth checking rather than
+assuming, and it was: the alternative would have been silently resetting every user's shortcuts.
+
+`Shortcut` in the core now names the bits and the codes, `AppSettings` moved wholesale, and the WinForms head
+casts `(Keys)` at its own edge — six call sites — which is where a Windows type belongs.
+
+### A guard that stopped being a regex
+
+`ShortcutDefaultsGuardTests` used to read the defaults table by **parsing `AppSettings.cs` with a regular
+expression**, because the table was typed in WinForms terms and the test project deliberately does not
+reference WinForms. It now calls `InitializeDefaults()` and inspects the dictionary the program actually
+starts with. Shorter, stronger, and no longer able to quietly stop checking anything if somebody reformats
+the table. Two more checks came for free once the values were reachable: that a default is never nothing but
+modifiers, and that `InitializeDefaults` does not overwrite a key the user has remapped.
+
+### What the GTK head does with them
+
+Immediately, and without a new screen: it opens on the game you were last using, honours a mods folder you
+have set by hand, and takes its sound switch and volume from settings rather than from two hard-coded
+values. The startup order matters and is commented where it happens — `Secrets.Current` is assigned
+**before** `AppSettings.Load()`, because loading decrypts the stored keys, and `Loc.Init` after it, so the
+first thing spoken is already in the user's language.
+
+### The first screen
+
+A Settings tab, and deliberately **not** the WinForms Settings window rebuilt. That one is 1,349 lines across
+seven tabs, and most of what it holds is either Windows-only or about a part of the program this head does
+not have yet. What is here is what a Linux user can act on: the mods folder for the loaded game (with what
+was detected shown beside it, so they can see whether they need to type anything), sounds and volume, which
+catalogue to search, and — the important one — a plain sentence when the loaded game's accessibility mod
+**will not speak on this platform**.
+
+A screen with six things on it that all work is worth more than one with forty where half say "not on this
+platform". That is the principle the rest of the port should follow: the GTK head is a clone of what the
+Windows head *does*, not of how its windows are laid out.
+
+### The warning, finally
+
+`GameProfile.AccessModSpeaksOnLinux` is the TODO item that has been sitting at the top of the Linux list
+since §16, and it is the most consequential sentence this build says. Minecraft Access speaks through
+speech-dispatcher; Stardew Access supports Linux natively; the other four drive NVDA or JAWS, and neither
+exists inside a Proton prefix — so the game loads its accessibility mod, starts, plays perfectly and never
+says a word.
+
+It is a fact about the games, not about the manager, which is why the answer is to say it rather than to fix
+it. Their mods are still managed and managing them works; what does not work is the game talking, and a blind
+user has no way to tell that apart from a broken install.
+
+It defaults to **false**, which is the safe way round: a game added without anybody thinking about this shows
+the warning, somebody notices it is wrong, and it gets corrected. The reverse would be a silent game and no
+warning at all. There is a test per game, because getting one wrong in the optimistic direction sends
+somebody off to install a mod for an evening of silence.
+
+### Where this leaves the port
+
+The blocker is gone. Every remaining screen is now ordinary work: take what the Windows head decides, check
+it is in the core, and draw it in GTK. Nothing structural stands in front of Updates, Profiles, Dependencies
+or the mod list's own actions.
+
+**1,298 → 1,309 tests.**

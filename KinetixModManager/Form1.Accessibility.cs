@@ -43,7 +43,7 @@ public partial class Form1
 
 		// Append a live "Current Key Mappings" entry reflecting the user's actual (possibly remapped) shortcuts.
 		StringBuilder mappings = new StringBuilder();
-		foreach (KeyValuePair<string, Keys> shortcut in _settings.Shortcuts)
+		foreach (KeyValuePair<string, int> shortcut in _settings.Shortcuts)
 			mappings.AppendLine($"* {shortcut.Key}: {GetShortcutString(shortcut.Key)}");
 		roots.Add(new DocNode(Loc.T("manual.currentKeyMappings")) { Content = mappings.ToString() });
 

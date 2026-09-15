@@ -1864,5 +1864,19 @@
   "gtk.toggleFailed": "Could not change {0}. {1}",
   "gtk.windowTitle": "Kinetix Mod Manager",
   "gtk.refreshed": "Refreshed. {0} mods installed.",
-  "gtk.searchFocused": "Search Modrinth."
+  "gtk.searchFocused": "Search Modrinth.",
+  "shortcut.unbound": "not set",
+  "gtk.tabSettings": "Settings",
+  "gtk.settingsIntro": "These apply to the game you have loaded. Tab through the fields and press Save settings at the end.",
+  "gtk.settingsModsFolder": "_Mods folder for this game",
+  "gtk.settingsModsFolderHint": "Leave empty to use the folder found automatically",
+  "gtk.settingsDetected": "Found automatically: {0}",
+  "gtk.settingsNothingDetected": "{0} was not found automatically. Type the full path to its mods folder above.",
+  "gtk.settingsSounds": "Play _sounds",
+  "gtk.settingsVolume": "Sound _volume, 0 to 100",
+  "gtk.settingsSource": "Search for mods on",
+  "gtk.settingsOneSourceOnly": "{0} is the only place with a searchable catalogue of {1} mods, so there is nothing to choose.",
+  "gtk.settingsWillNotSpeak": "Note: {0} mods are managed here, but the game itself will not speak on Linux. Its accessibility mod drives NVDA or JAWS, and neither runs inside a Proton prefix. That is a limitation of the game's mod, not of this manager.",
+  "gtk.settingsSave": "Save settings",
+  "gtk.settingsSaved": "Settings saved."
 }

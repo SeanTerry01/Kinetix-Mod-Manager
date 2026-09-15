@@ -87,6 +87,24 @@ public sealed class GameProfile
 	public required string Id { get; init; }
 
 	/// <summary>
+	/// Whether this game's accessibility mod actually speaks when the game is played on Linux.
+	///
+	/// <para>
+	/// A fact about the game's mod, not about this manager, and the most important thing the Linux build has
+	/// to say out loud. Minecraft Access uses speech-dispatcher and Stardew Access supports Linux natively.
+	/// The other four drive NVDA or JAWS, and neither exists inside a Proton prefix — so the game loads its
+	/// access mod, starts, plays perfectly and never says a word.
+	/// </para>
+	///
+	/// <para>
+	/// Their mods are still managed, and managing them works. What does not work is the game talking, and a
+	/// user has no way to tell that apart from a broken install — which is the exact failure this manager was
+	/// written to prevent, and the reason it is worth a sentence on screen rather than a silent omission.
+	/// </para>
+	/// </summary>
+	public bool AccessModSpeaksOnLinux { get; init; }
+
+	/// <summary>
 	/// The game's wiki: the MediaWiki <c>api.php</c> that search and categories query, and the article
 	/// prefix a result is opened at.
 	///
@@ -442,6 +460,7 @@ public static class GameProfiles
 			WikiApiUrl           = "https://minecraft.wiki/api.php",
 			WikiArticleBase      = "https://minecraft.wiki/w/",
 			DisplayName          = "Minecraft",
+			AccessModSpeaksOnLinux = true,
 			// No store ids at all: Mojang sells Java Edition directly, and it arrives either as the Microsoft
 			// Store package Microsoft.MinecraftJavaEdition_8wekyb3d8bbwe or as the standalone launcher. Neither
 			// is a Steam or GOG install, so there is nothing here to detect a copy by and no store page to send
@@ -534,6 +553,7 @@ public static class GameProfiles
 			WikiApiUrl           = "https://stardewvalleywiki.com/mediawiki/api.php",
 			WikiArticleBase      = "https://stardewvalleywiki.com/",
 			DisplayName          = "Stardew Valley",
+			AccessModSpeaksOnLinux = true,
 			SteamAppId           = "413150",
 			GogProductId         = "1453375253",
 			SteamStoreUrl        = "https://store.steampowered.com/app/413150/Stardew_Valley/",

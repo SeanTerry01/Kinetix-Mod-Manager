@@ -97,11 +97,11 @@ The solution is five projects. The last two are experimental and are not part of
 
 | Project | Target | Purpose |
 |---|---|---|
-| `Kinetix.Core` | `net10.0` | The rules, the parsers and the file and HTTP work, with no user interface. Game profiles, mod scanning rules, FOMOD, archive extraction, the mod-source catalogue and search planner, sound-theme resolution, Modrinth, GitHub releases, the Minecraft launcher and Fabric installer, save and INI readers, the localisation catalogue, and the domain models under `Models/`. |
+| `Kinetix.Core` | `net10.0` | The rules, the parsers and the file and HTTP work, with no user interface. Settings (`AppSettings`), game profiles, mod scanning rules, FOMOD, archive extraction, the mod-source catalogue and search planner, sound-theme resolution, Modrinth, GitHub releases, the Minecraft launcher and Fabric installer, save and INI readers, the localisation catalogue, and the domain models under `Models/`. |
 | `KinetixModManager` | `net10.0-windows` | The WinForms application: the screen it draws, the keys it listens for, and the Windows-only pieces. Those now sit behind interfaces in `Platform/` — Tolk, DPAPI and the UI-thread dispatcher — with the registry, NAudio and WebView2 still to follow. |
-| `KinetixModManager.Tests` | `net10.0` | 1,298 xUnit tests against `Kinetix.Core` and `Kinetix.Platform.Linux`. |
+| `KinetixModManager.Tests` | `net10.0` | 1,309 xUnit tests against `Kinetix.Core` and `Kinetix.Platform.Linux`. |
 | `Kinetix.Platform.Linux` | `net10.0` | The Linux answers to the same platform questions: speech through speech-dispatcher, sounds through GStreamer, secrets through libsecret, and finding an installed game through Steam (four layouts, Flatpak included) and its Proton prefixes. No UI toolkit. |
-| `Kinetix.Gtk` | `net10.0` | A GTK4 front end for Linux: games, installed mods, Modrinth search and install, an embedded wiki Orca reads, and per-game sounds. Five tabs against the Windows head's sixty-odd, and no settings of its own yet. See `ARCHITECTURE_REVIEW.md` §17 and §28. |
+| `Kinetix.Gtk` | `net10.0` | A GTK4 front end for Linux: games, installed mods, Modrinth search and install, an embedded wiki Orca reads, per-game sounds and a Settings screen. Six tabs against the Windows head's sixty-odd. See `ARCHITECTURE_REVIEW.md` §17, §28 and §29. |
 
 `Kinetix.Core` targets plain `net10.0` rather than `net10.0-windows` deliberately: it cannot reach
 `System.Windows.Forms`, the registry or DPAPI, so the separation is enforced by the compiler rather than
@@ -112,7 +112,6 @@ Inside the app project:
 | File(s) | Purpose |
 |---|---|
 | `Form1.cs` + `Form1.*.cs` | UI and orchestration, split into partial-class files by concern (Wiki, Updates, Settings, Install, Profiles, etc.) |
-| `AppSettings.cs` | Settings load/save with DPAPI key encryption |
 | `NexusService.cs` | Nexus API communication — search, downloads, endorsements, rate limits |
 | `NexusModSource.cs` | Nexus as one of the catalogues the user can choose to search |
 | `ModFileSystem.cs` | Putting an unpacked mod where each game wants it: deployment, hard links, `plugins.txt`, INI editing, FOMOD finalisation |

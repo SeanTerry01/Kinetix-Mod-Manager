@@ -1,5 +1,20 @@
 ﻿# Unreleased
 
+## 🐧 Linux: settings, a Settings screen, and a warning that matters
+
+*   Still nothing that changes the Windows build, except one thing worth knowing: **your shortcuts are stored
+    the same way they always were.** The settings file moved into the shared half of the program, and the
+    format is byte-identical, so an upgrade reads everything back unchanged.
+*   **The Linux window remembers things now.** Which game you were on, where its mods are, whether you want
+    sounds and how loud. Before this it worked all of that out afresh every time it started.
+*   **It has a Settings screen** — the mods folder for the loaded game, with what was found automatically
+    shown beside it, sounds and volume, and which site to search for mods.
+*   **⚠️ It now tells you which games will not talk to you on Linux.** Skyrim, Fallout 4, The Witcher 3 and
+    Moonlight Peaks have their mods managed perfectly well here, and then play in silence, because their
+    accessibility mods drive NVDA or JAWS and neither runs under Proton. Minecraft and Stardew Valley speak
+    natively. That is a fact about those mods rather than about this manager, and the manager saying so is the
+    difference between knowing that up front and finding out after an evening of installing.
+
 ## 🐧 Linux: the manager can now speak, sound, and keep a secret
 
 *   Nothing here changes the Windows build. It is the Linux side catching up, and it is listed because the two
@@ -122,7 +137,7 @@
 
 ## ✅ Tests
 
-*   **1,298 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
+*   **1,309 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
 *   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 *   Twenty-six of them cover unpacking a downloaded mod, including one that extracts a **real .7z** rather than a stand-in — the only way to know that reading one without `7za.exe` actually works.

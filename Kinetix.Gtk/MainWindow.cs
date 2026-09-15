@@ -33,7 +33,7 @@ namespace KinetixModManager.GtkHead;
 /// on another. It belongs in front of the user as information, never as a reason to withhold the game.
 /// </para>
 /// </summary>
-public sealed class MainWindow
+public sealed partial class MainWindow
 {
 	private readonly Gtk.ApplicationWindow _window;
 	private readonly IAnnouncer _announcer;
@@ -85,20 +85,31 @@ public sealed class MainWindow
 
 	private readonly Gtk.Label _checkResult = Gtk.Label.New(Loc.T("gtk.checkPrompt"));
 
+	private readonly AppSettings _settings;
+
 	private GameProfile _game = GameProfiles.Require(GameProfiles.Minecraft);
 	private string _modsFolder = "";
 
-	public MainWindow(Gtk.Application app)
+	public MainWindow(Gtk.Application app, AppSettings settings)
 	{
+		_settings = settings;
+
+		// The game the user was on last time. Before settings reached this head every run started on
+		// Minecraft whatever you had been doing, which for anyone managing another game meant two keypresses
+		// before the window was about what they opened it for.
+		if (GameProfiles.Find(_settings.ActiveGame) is { } remembered) _game = remembered;
+
 		_window = Gtk.ApplicationWindow.New(app);
 		// Announcements go to the user's screen reader, with speech-dispatcher only as the fallback for
 		// when there is no reader to ask. See OrcaAnnouncer for why that order matters so much.
 		_announcer = new OrcaAnnouncer(_window, new SpeechDispatcherAnnouncer());
 		_sound = new GStreamerSoundEngine(
 			Path.Combine(AppContext.BaseDirectory, "sounds"),
-			() => SoundThemes.ForGame(_game?.Id),
-			() => true,
-			() => 80);
+			// Read fresh each time rather than captured, so switching games is heard on the very next cue and
+			// a change in Settings takes effect without restarting.
+			() => _settings.AllowManualTheme ? _settings.CurrentTheme : SoundThemes.ForGame(_game?.Id),
+			() => _settings.EnableUiSounds,
+			() => _settings.SoundVolume);
 		_window.SetTitle(Loc.T("gtk.windowTitle"));
 		_window.SetDefaultSize(900, 620);
 
@@ -112,6 +123,7 @@ public sealed class MainWindow
 		_tabs.AppendPage(BuildDiscoverTab(), Gtk.Label.New(Loc.T("gtk.tabFind")));
 		_tabs.AppendPage(BuildWikiTab(), Gtk.Label.New(Loc.T("gtk.tabWiki")));
 		_tabs.AppendPage(BuildCheckTab(), Gtk.Label.New(Loc.T("gtk.tabCheck")));
+		_tabs.AppendPage(BuildSettingsTab(), Gtk.Label.New(Loc.T("gtk.tabSettings")));
 		root.Append(_tabs);
 
 		// A status line that is also spoken. On its own a label change is silent to a screen reader — Orca
@@ -181,6 +193,12 @@ public sealed class MainWindow
 	private void SelectGame(GameProfile game)
 	{
 		_game = game;
+
+		// Remembered straight away rather than on exit: a manager that is closed by the window button, or by
+		// the session ending, should still open on the game you were using.
+		_settings.ActiveGame = game.Id;
+		_settings.Save();
+
 		LoadInstalled();
 		_tabs.SetCurrentPage(1);
 		_installed.GrabFocus();
@@ -638,6 +656,13 @@ public sealed class MainWindow
 	/// </summary>
 	private string ModsFolderFor(GameProfile game)
 	{
+		// A folder the user has pointed at wins over anything detected. It is the only way to manage a game
+		// the locator cannot find — a GOG copy, a Heroic install, a library on a disk Steam does not know
+		// about — and until settings reached this head there was no way to say so.
+		if (_settings.GameModsPaths.TryGetValue(game.Id, out string? chosen) &&
+			!string.IsNullOrWhiteSpace(chosen))
+			return chosen;
+
 		if (game.IsMinecraft)
 		{
 			string root = _locator.InstallFolder(game) ?? MinecraftLayout.DefaultRootFolder;

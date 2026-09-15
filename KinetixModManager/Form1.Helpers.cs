@@ -47,46 +47,33 @@ public partial class Form1
 	/// </summary>
 	private const string SilentAccessibleName = " ";
 
-	/// <summary>Returns a human-readable key label for <paramref name="action"/> (e.g. "Ctrl+R").</summary>
+	/// <summary>
+	/// A human-readable key label for <paramref name="action"/> (e.g. "Ctrl+R").
+	///
+	/// The shortcut is stored as a plain number now that settings live in the core, so the conversion to a
+	/// <see cref="Keys"/> happens here — at the WinForms head's own edge, which is where a Windows type
+	/// belongs. The numbers are identical either way; see <see cref="Shortcut"/>.
+	/// </summary>
 	private string GetShortcutString(string action)
 	{
-		if (_settings.Shortcuts.TryGetValue(action, out var value))
-		{
-			if (value == Keys.None)
-			{
-				return "Unmapped";
-			}
-			StringBuilder stringBuilder = new StringBuilder();
-			if ((value & Keys.Control) == Keys.Control)
-			{
-				stringBuilder.Append("Ctrl+");
-			}
-			if ((value & Keys.Shift) == Keys.Shift)
-			{
-				stringBuilder.Append("Shift+");
-			}
-			if ((value & Keys.Alt) == Keys.Alt)
-			{
-				stringBuilder.Append("Alt+");
-			}
-			stringBuilder.Append(value & Keys.KeyCode);
-			return stringBuilder.ToString();
-		}
-		return "Unmapped";
+		if (!_settings.Shortcuts.TryGetValue(action, out int value) || value == Shortcut.None)
+			return Loc.T("shortcutMgr.unmapped");
+
+		var label = new StringBuilder();
+		if (Shortcut.HasControl(value)) label.Append("Ctrl+");
+		if (Shortcut.HasShift(value)) label.Append("Shift+");
+		if (Shortcut.HasAlt(value)) label.Append("Alt+");
+		label.Append((Keys)Shortcut.KeyOf(value));
+
+		return label.ToString();
 	}
 
 	/// <summary>Returns <c>true</c> if <paramref name="e"/> matches the configured shortcut for <paramref name="action"/>.</summary>
 	private bool IsShortcut(KeyEventArgs e, string action)
 	{
-		if (!_settings.Shortcuts.TryGetValue(action, out var value))
-		{
-			return false;
-		}
-		if (value == Keys.None)
-		{
-			return false;
-		}
-		return e.KeyData == value;
+		if (!_settings.Shortcuts.TryGetValue(action, out int value) || value == Shortcut.None) return false;
+
+		return e.KeyData == (Keys)value;
 	}
 
 	/// <summary>

@@ -296,7 +296,7 @@ public partial class Form1
 	{
 		// Declared out here because RefreshList (below) is a local function that uses them, and because the
 		// "was anything saved?" flag has to outlive the view to decide what onClosed announces.
-		Dictionary<string, Keys> tempShortcuts = new Dictionary<string, Keys>(_settings.Shortcuts);
+		Dictionary<string, int> tempShortcuts = new Dictionary<string, int>(_settings.Shortcuts);
 		bool saved = false;
 		ListBox lb = new ListBox
 		{
@@ -373,7 +373,7 @@ public partial class Form1
 				return;
 			}
 
-			tempShortcuts[action] = e.KeyData;
+			tempShortcuts[action] = (int)e.KeyData;
 			// Rebuild, landing back on the action just changed rather than at the top of 48 of them.
 			RefreshList(action);
 			// Read the key back from the same formatter the list rows use, so what is spoken is exactly what is
@@ -393,7 +393,7 @@ public partial class Form1
 				tempShortcuts.Clear();
 				AppSettings appSettings = new AppSettings();
 				appSettings.InitializeDefaults();
-				foreach (KeyValuePair<string, Keys> shortcut in appSettings.Shortcuts)
+				foreach (KeyValuePair<string, int> shortcut in appSettings.Shortcuts)
 				{
 					tempShortcuts[shortcut.Key] = shortcut.Value;
 				}
@@ -458,7 +458,7 @@ public partial class Form1
 
 			lb.BeginUpdate();
 			lb.Items.Clear();
-			foreach (KeyValuePair<string, Keys> item in tempShortcuts)
+			foreach (KeyValuePair<string, int> item in tempShortcuts)
 			{
 				lb.Items.Add(item.Key + ": " + GetShortcutStringForMap(tempShortcuts, item.Key));
 			}
@@ -484,30 +484,17 @@ public partial class Form1
 	/// Returns a human-readable key label for <paramref name="action"/> looked up in <paramref name="map"/>
 	/// (used during the shortcut editor preview before changes are saved).
 	/// </summary>
-	private string GetShortcutStringForMap(Dictionary<string, Keys> map, string action)
+	private string GetShortcutStringForMap(Dictionary<string, int> map, string action)
 	{
-		if (map.TryGetValue(action, out var value))
-		{
-			if (value == Keys.None)
-			{
-				return Loc.T("shortcutMgr.unmapped");
-			}
-			StringBuilder stringBuilder = new StringBuilder();
-			if ((value & Keys.Control) == Keys.Control)
-			{
-				stringBuilder.Append("Ctrl+");
-			}
-			if ((value & Keys.Shift) == Keys.Shift)
-			{
-				stringBuilder.Append("Shift+");
-			}
-			if ((value & Keys.Alt) == Keys.Alt)
-			{
-				stringBuilder.Append("Alt+");
-			}
-			stringBuilder.Append(value & Keys.KeyCode);
-			return stringBuilder.ToString();
-		}
-		return "Unmapped";
+		if (!map.TryGetValue(action, out int value) || value == Shortcut.None)
+			return Loc.T("shortcutMgr.unmapped");
+
+		var label = new StringBuilder();
+		if (Shortcut.HasControl(value)) label.Append("Ctrl+");
+		if (Shortcut.HasShift(value)) label.Append("Shift+");
+		if (Shortcut.HasAlt(value)) label.Append("Alt+");
+		label.Append((Keys)Shortcut.KeyOf(value));
+
+		return label.ToString();
 	}
 }

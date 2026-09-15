@@ -26,22 +26,27 @@ public static class Program
 			"os        : " + Environment.OSVersion
 		});
 
-		// The catalogue lives beside the executable, as it does on Windows. Falling back to the WinForms
-		// project's copy keeps the spike usable from a plain `dotnet run` in the source tree.
-		Loc.Init("");
-
-		// Before anything can store a key, not after. Secrets.Current defaults to a store that does not
-		// actually protect anything, and only the WinForms Program.cs was replacing it — so the first time
-		// this head grew a key field, that key would have gone into settings.json in clear text with nothing
-		// to notice. Assigned here whether or not a key exists yet, because the ordering is the whole point.
+		// Before the settings are read, not after, because reading them decrypts the stored keys. Secrets.Current
+		// defaults to a store that protects nothing, and only the WinForms startup used to replace it — so the
+		// first time this head grew somewhere to type a key, that key would have gone into settings.json in clear
+		// text with nothing anywhere to notice.
 		Secrets.Current = new LibSecretStore();
+
+		// Settings, at last. They were unreachable from here until AppSettings moved to the core: this head
+		// recomputed everything from the game locator on every run, so nothing it learned — which game you were
+		// on, where your mods live, whether you wanted sounds — survived closing the window.
+		AppSettings settings = AppSettings.Load();
+
+		// After the settings, so the first thing spoken is already in the user's own language rather than in
+		// English until they next restart.
+		Loc.Init(settings.Language);
 
 		KinetixHttp.UserAgent = "KinetixModManager/1.6.0 (github.com/SeanTerry01/Kinetix-Mod-Manager)";
 
 		var app = Gtk.Application.New("com.audiventuregames.kinetix", Gio.ApplicationFlags.DefaultFlags);
 		app.OnActivate += (sender, _) =>
 		{
-			var window = new MainWindow((Gtk.Application)sender);
+			var window = new MainWindow((Gtk.Application)sender, settings);
 			window.Present();
 		};
 

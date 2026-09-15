@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Windows.Forms;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
@@ -545,7 +544,24 @@ public class AppSettings : IModScanContext
 	/// </summary>
 	public Dictionary<string, string> LastSeenGameVersion { get; set; } = new Dictionary<string, string>();
 
-	public Dictionary<string, Keys> Shortcuts { get; set; } = new Dictionary<string, Keys>();
+	/// <summary>
+	/// Each action's key, as a Windows virtual-key code with the modifier bits <c>System.Windows.Forms.Keys</c>
+	/// uses — Shift is 0x10000, Control 0x20000, Alt 0x40000.
+	///
+	/// <para>
+	/// An <c>int</c> rather than that enum, and that is the only reason this whole class could not live in
+	/// the core before. The numbers are identical and so is the JSON, so an existing settings file reads
+	/// straight in; what changes is that the type no longer drags <c>System.Windows.Forms</c> behind it. The
+	/// WinForms head casts at its own edge, which is where a Windows type belongs.
+	/// </para>
+	///
+	/// <para>
+	/// Windows-shaped numbering on every platform is deliberate and is the same choice
+	/// <see cref="VirtualKeys"/> makes for the same reason: the codes are a shared vocabulary for "which key",
+	/// not a statement about the host.
+	/// </para>
+	/// </summary>
+	public Dictionary<string, int> Shortcuts { get; set; } = new Dictionary<string, int>();
 
 	public static string AppDataFolder
 	{
@@ -709,228 +725,229 @@ public class AppSettings : IModScanContext
 			FileWinnerOverrides[key] = new Dictionary<string, string>(FileWinnerOverrides[key], StringComparer.OrdinalIgnoreCase);
 
 		if (string.IsNullOrEmpty(ActiveGame)) ActiveGame = "None";
-		Shortcuts ??= new Dictionary<string, Keys>();
+		Shortcuts ??= new Dictionary<string, int>();
 
 		// The "Delete Old Backups" action's internal key was renamed from "PruneBackups" to "DeleteOldBackups" so
 		// it reads correctly in the Shortcut Manager. Carry any saved binding across to the new key (done before the
 		// defaults are filled in below so a custom binding survives), and bump the legacy defaults — Ctrl+B (which
 		// clashed with Open Backups Folder) and the later Ctrl+Shift+B — to the new Ctrl+Shift+D default.
-		if (Shortcuts.TryGetValue("PruneBackups", out Keys oldPruneKey))
+		if (Shortcuts.TryGetValue("PruneBackups", out int oldPruneKey))
 		{
 			Shortcuts.Remove("PruneBackups");
-			if (oldPruneKey == (Keys.B | Keys.Control) || oldPruneKey == (Keys.B | Keys.Shift | Keys.Control))
-				oldPruneKey = Keys.D | Keys.Shift | Keys.Control;
+			if (oldPruneKey == (Shortcut.Letter('B') | Shortcut.Control) ||
+				oldPruneKey == (Shortcut.Letter('B') | Shortcut.Shift | Shortcut.Control))
+				oldPruneKey = Shortcut.Letter('D') | Shortcut.Shift | Shortcut.Control;
 			if (!Shortcuts.ContainsKey("DeleteOldBackups"))
 				Shortcuts["DeleteOldBackups"] = oldPruneKey;
 		}
 
-		foreach (KeyValuePair<string, Keys> item in new Dictionary<string, Keys>
+		foreach (KeyValuePair<string, int> item in new Dictionary<string, int>
 		{
 			{
 				"Manual",
-				Keys.F1
+				Shortcut.Function(1)
 			},
 			{
 				"ChangeLog",
-				Keys.F2
+				Shortcut.Function(2)
 			},
 			{
 				"ModDocs",
-				Keys.F3
+				Shortcut.Function(3)
 			},
 			{
 				"ContextHelp",
-				Keys.F1 | Keys.Shift
+				Shortcut.Function(1) | Shortcut.Shift
 			},
 			{
 				"ControlsHelp",
-				Keys.H | Keys.Control
+				Shortcut.Letter('H') | Shortcut.Control
 			},
 			{
 				"LaunchGame",
-				Keys.F5
+				Shortcut.Function(5)
 			},
 			{
 				"OpenLogFile",
-				Keys.F4
+				Shortcut.Function(4)
 			},
 			{
 				"Settings",
-				Keys.P | Keys.Control
+				Shortcut.Letter('P') | Shortcut.Control
 			},
 			{
 				"Login",
-				Keys.L | Keys.Control
+				Shortcut.Letter('L') | Shortcut.Control
 			},
 			{
 				"InstallZip",
-				Keys.I | Keys.Control
+				Shortcut.Letter('I') | Shortcut.Control
 			},
 			{
 				"OpenModPage",
-				Keys.G | Keys.Control
+				Shortcut.Letter('G') | Shortcut.Control
 			},
 			{
 				"OpenDownloads",
-				Keys.D | Keys.Control
+				Shortcut.Letter('D') | Shortcut.Control
 			},
 			{
 				"OpenBackups",
-				Keys.B | Keys.Control
+				Shortcut.Letter('B') | Shortcut.Control
 			},
 			{
 				"ManualID",
-				Keys.K | Keys.Control
+				Shortcut.Letter('K') | Shortcut.Control
 			},
 			{
 				"ChangeCategory",
-				Keys.J | Keys.Control
+				Shortcut.Letter('J') | Shortcut.Control
 			},
 			{
 				"BatchCategory",
-				Keys.J | Keys.Shift | Keys.Control
+				Shortcut.Letter('J') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"ShowDependencies",
-				Keys.Y | Keys.Control
+				Shortcut.Letter('Y') | Shortcut.Control
 			},
 			{
 				"QuickFix",
-				Keys.Q | Keys.Control
+				Shortcut.Letter('Q') | Shortcut.Control
 			},
 			{
 				"Search",
-				Keys.F | Keys.Control
+				Shortcut.Letter('F') | Shortcut.Control
 			},
 			{
 				"UpdateAll",
-				Keys.U | Keys.Control
+				Shortcut.Letter('U') | Shortcut.Control
 			},
 			{
 				// Acts on the selected Updates row, like Delete does. Not on a letter that spells "installed":
 				// Ctrl+I and Ctrl+Shift+I are both taken, and Insert is out of the question - screen readers own
 				// that key, so a binding on it would be pressed at them, not at us.
 				"MarkVersionInstalled",
-				Keys.Y | Keys.Shift | Keys.Control
+				Shortcut.Letter('Y') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"SaveProfile",
-				Keys.S | Keys.Control
+				Shortcut.Letter('S') | Shortcut.Control
 			},
 			{
 				"ReadDescription",
-				Keys.R | Keys.Control
+				Shortcut.Letter('R') | Shortcut.Control
 			},
 			{
 				"OpenConfig",
-				Keys.E | Keys.Control
+				Shortcut.Letter('E') | Shortcut.Control
 			},
 			{
 				"OpenManifest",
-				Keys.M | Keys.Control
+				Shortcut.Letter('M') | Shortcut.Control
 			},
 			{
 				// The pair to OpenManifest: both open a file itself in the JSON editor, so they sit together on M.
 				// Ctrl+E is the settings list, which is what a mod's config normally deserves; this is the way to
 				// the file behind it for a setting the list cannot offer.
 				"OpenConfigFile",
-				Keys.M | Keys.Shift | Keys.Control
+				Shortcut.Letter('M') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"DeleteOldBackups",
-				Keys.D | Keys.Shift | Keys.Control
+				Shortcut.Letter('D') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"OpenErrorLog",
-				Keys.L | Keys.Shift | Keys.Control
+				Shortcut.Letter('L') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"RefreshLog",
-				Keys.R | Keys.Shift | Keys.Control
+				Shortcut.Letter('R') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"RefreshAll",
-				Keys.None
+				Shortcut.None
 			},
 			{
 				"RefreshInstalled",
-				Keys.None
+				Shortcut.None
 			},
 			{
 				"CycleFocus",
-				Keys.F6
+				Shortcut.Function(6)
 			},
 			{
 				"AutoSort",
-				Keys.F8
+				Shortcut.Function(8)
 			},
 			{
 				"SearchHistory",
-				Keys.H | Keys.Shift | Keys.Control
+				Shortcut.Letter('H') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"FileConflicts",
-				Keys.F | Keys.Shift | Keys.Control
+				Shortcut.Letter('F') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"CheckRequirements",
-				Keys.Q | Keys.Shift | Keys.Control
+				Shortcut.Letter('Q') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"Endorse",
-				Keys.E | Keys.Shift | Keys.Control
+				Shortcut.Letter('E') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"ApiCredits",
-				Keys.A | Keys.Shift | Keys.Control
+				Shortcut.Letter('A') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"ExportCollection",
-				Keys.X | Keys.Shift | Keys.Control
+				Shortcut.Letter('X') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"InstallCollection",
-				Keys.N | Keys.Shift | Keys.Control
+				Shortcut.Letter('N') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"EditNote",
-				Keys.O | Keys.Shift | Keys.Control
+				Shortcut.Letter('O') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"DiagnoseAi",
-				Keys.F9
+				Shortcut.Function(9)
 			},
 			{
 				"ViewChangelog",
-				Keys.G | Keys.Shift | Keys.Control
+				Shortcut.Letter('G') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"ViewDescription",
-				Keys.I | Keys.Shift | Keys.Control
+				Shortcut.Letter('I') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"CheckBrokenMods",
-				Keys.B | Keys.Shift | Keys.Control
+				Shortcut.Letter('B') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"HealthCheck",
-				Keys.K | Keys.Shift | Keys.Control
+				Shortcut.Letter('K') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"PluginSlots",
-				Keys.U | Keys.Shift | Keys.Control
+				Shortcut.Letter('U') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"SaveManager",
-				Keys.V | Keys.Shift | Keys.Control
+				Shortcut.Letter('V') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"DownloadsHistory",
-				Keys.W | Keys.Shift | Keys.Control
+				Shortcut.Letter('W') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"TrackedMods",
-				Keys.T | Keys.Shift | Keys.Control
+				Shortcut.Letter('T') | Shortcut.Shift | Shortcut.Control
 			},
 			// The curation keys sit together on F7, which is the only bare function key left: F1 to F6, F8 and F9
 			// are taken above, F10 opens the menu bar for Windows, and F12 is spoken for by screen-reader add-ons
@@ -942,19 +959,19 @@ public class AppSettings : IModScanContext
 			// manager, which an unlisted command could never be.
 			{
 				"SuggestedMods",
-				Keys.None
+				Shortcut.None
 			},
 			{
 				"CurationMode",
-				Keys.F7 | Keys.Shift | Keys.Control
+				Shortcut.Function(7) | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"MarkSuggestion",
-				Keys.F7
+				Shortcut.Function(7)
 			},
 			{
 				"SuggestedList",
-				Keys.F7 | Keys.Shift
+				Shortcut.Function(7) | Shortcut.Shift
 			}
 		})
 		{

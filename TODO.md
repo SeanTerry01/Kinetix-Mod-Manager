@@ -5,8 +5,8 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-09-15, after the Linux platform layer was finished and tested.
-**State:** 1,298 tests passing on Windows and Linux; all five projects build clean, zero warnings.
+**Last updated:** 2026-09-15, after settings moved to the core and the GTK head got its first screen.
+**State:** 1,309 tests passing on Windows and Linux; all five projects build clean, zero warnings.
 
 ---
 
@@ -249,23 +249,25 @@ It cannot work yet, for one reason that is not a code problem:
 
 ### What is left, in the order it should happen
 
-- [ ] **⚠️ `AppSettings` is in the WinForms project, so the GTK head has no settings at all.** No mods path,
-      no per-game folders, no profiles, no API key, nothing remembered between runs — it recomputes everything
-      from the locator each time. **This is the next structural move and it gates every screen worth porting**,
-      because each of them needs somewhere to keep its settings. It is also the biggest single item left: the
-      class is ~60 serialisable properties plus DPAPI, file I/O and a `System.Windows.Forms` reference, and it
-      is the de-facto service locator (see the god-object entry above).
+- ~~`AppSettings` is in the WinForms project, so the GTK head has no settings~~ — done (§29). Exactly one
+  thing in its thousand lines was Windows-only, and the JSON is byte-identical, so every existing settings
+  file reads straight in.
 - [ ] **`IBrowserHost`** — the last platform seam with no contract. WebKitGTK works and Orca reads it (§21);
       what is missing is the interface, and it needs one shape for an embedded view and another for handing a
       page to the system browser.
-- [ ] **Warn which games' access mods will not speak on this platform.** Skyrim, Fallout 4, The Witcher 3 and
-      Moonlight Peaks manage their mods perfectly under Proton and then play silently, because their access
-      mods drive NVDA or JAWS. Managing mods for a game that cannot talk to you is worse than not offering it,
-      because the user has no way to tell a broken install from an unsupported one. **The single most important
-      user-facing gate left.**
+- ~~Warn which games' access mods will not speak on this platform~~ — done (§29).
+      `GameProfile.AccessModSpeaksOnLinux`, defaulting to false so a new game warns until somebody says
+      otherwise, with a test per game and the sentence on the GTK Settings tab.
+- [ ] **Say it somewhere harder to miss than Settings.** The warning is on the Settings tab, which is where a
+      user goes once. It belongs on the Games list too, beside "not installed", so it is heard while choosing
+      rather than after.
 - [ ] **The Minecraft version is hard-coded to 1.21.1** in the GTK head's search.
-- [ ] **Screens, cheapest first.** Five tabs against the Windows head's sixty-odd feature areas. Settings,
-      then Updates, then Profiles.
+- [ ] **Screens, cheapest first.** Settings is done (§29); six tabs now against the Windows head's sixty-odd
+      feature areas. **Updates next**, then Profiles, then the mod list's own actions (delete, backup, notes).
+      Nothing structural stands in front of any of them any more — each is: check the decision is in the core,
+      then draw it in GTK.
+- [ ] **The GTK head installs Minecraft mods only.** `InstallSelectedAsync` says so plainly for other games.
+      Stardew is the one worth adding next and needs the layout half of `ExtractModAsync` (above).
 - [ ] **A reader started *after* the app is not noticed.** `ScreenReaderPresence` asks once at startup. A
       D-Bus signal subscription would fix it; the fallback speaks in the meantime.
 - [ ] **GOG, Heroic and Lutris are not searched** — `LinuxGameLocator` covers the four Steam layouts and
