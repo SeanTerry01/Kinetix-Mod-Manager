@@ -457,6 +457,7 @@ public partial class Form1
 
 				File.Copy(jarPath, destination, overwrite: true);
 			});
+			RecordDownloadInstalled(jarPath);
 
 			Speak(Loc.T("mc.install.done", info.Name));
 			await RefreshModList(checkUpdates: false);

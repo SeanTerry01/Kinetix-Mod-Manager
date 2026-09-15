@@ -570,6 +570,7 @@ public partial class Form1
                     backupsPath, _settings.MaxBackupsPerMod, _settings.ActiveGame, LogError,
                     mod.NexusID, _nexusService, mod.GitHubRepo, _settings.CurrentGamePath, null, instProgress);
                 instProgress?.Complete();
+                RecordDownloadInstalled(destinationPath);
 
                 Invoke(delegate
                 {

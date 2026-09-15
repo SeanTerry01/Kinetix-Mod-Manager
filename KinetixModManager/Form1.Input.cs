@@ -241,6 +241,11 @@ public partial class Form1
 			e.SuppressKeyPress = true;
 			ShowDownloadsHistory();
 		}
+		if (IsShortcut(e, "InstallPendingDownload"))
+		{
+			e.SuppressKeyPress = true;
+			ShowPendingDownloads();
+		}
 		if (IsShortcut(e, "TrackedMods"))
 		{
 			e.SuppressKeyPress = true;

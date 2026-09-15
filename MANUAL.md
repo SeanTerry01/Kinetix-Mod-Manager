@@ -275,6 +275,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Ctrl + Shift + K**: **Check My Setup** - Runs the Windows runtime, requirements, plugin-limit, broken-mod, and file-conflict checks together and gives one spoken summary. See "Check My Setup (Setup Health Check)" below.
 *   **Ctrl + Shift + T**: **Check Tracked Mods for Updates** - Lists the mods you track on Nexus that need attention. See "Tracked Mods" below.
 *   **Ctrl + Shift + W**: **Reinstall a Downloaded Mod** - Reinstall from your downloads folder without re-searching. See "Reinstalling a Downloaded Mod" below.
+*   **Ctrl + Shift + P**: **Install a Download Not Yet Installed** - The mods you downloaded but said "not now" to when the manager offered to install them. See "Installing a Download You Skipped" below.
 *   **Ctrl + Shift + U**: **Plugin Slot Usage** (Skyrim & Fallout 4) - Speaks how many plugin slots you're using. See "Plugin Limit Awareness" below.
 *   **Ctrl + Shift + V**: **Manage Save Games** (Skyrim & Fallout 4) - Browse, back up, and delete your saves. See "Savegame Manager" below.
 *   **Ctrl + K**: Manually assign a Nexus ID.
@@ -517,6 +518,20 @@ You choose how much of this you hear with the **"Download and install feedback"*
 Every mod archive the manager downloads stays in its downloads folder, so you can reinstall one later **without searching Nexus again** — useful if you removed a mod and want it back, or an install didn't take. Press **Ctrl + Shift + W** (or **Mods → Install and Update Mods → Reinstall a Downloaded Mod**).
 
 A list of your downloaded archives opens, newest first, each showing its file name, size, and date. Press **Enter** on one to reinstall it (it installs exactly as if you'd picked the file by hand, with the same progress feedback and, if the mod has options, the FOMOD wizard). Press **Delete** to send an archive you no longer need to the Recycle Bin and free up space — this only removes the download, not the installed mod. The list is per game, so you only see downloads for the game you're currently managing. **The list stays open after an install**, so you can go straight on to the next one; press **Escape** when you're done.
+
+---
+
+## Installing a Download You Skipped (Ctrl + Shift + P)
+
+When a download finishes, the manager asks whether to install it. If you said **No**, the file stays in your downloads folder. Press **Ctrl + Shift + P** (or **Mods → Install and Update Mods → Install a Download Not Yet Installed**) to come back to it.
+
+This list shows **only the downloads that have never been installed**, newest first, each with the mod's name, its version where known, when you downloaded it, and its size. Downloads you did install are left out, even though they are still in the folder. **Ctrl + Shift + W** lists all of them. Press **Enter** to install the selected one, or **Delete** to send it to the Recycle Bin. For Minecraft, the list shows mod `.jar` files.
+
+**You stay in the list while you work through it.** Once a mod installs, it leaves the list and you land on the download that took its place, which is read out. When the last one is installed, the list closes and says so.
+
+**How it tells them apart:** from this version on, the manager notes each download as it installs it. So a download you skipped is always listed, even an optional file from the page of a mod you already have. Downloads from before this version were never noted either way. For those, the manager checks what you have installed. If the same mod is installed at that version or a newer one, the download is left out. If the download is a newer version than the one installed, it's an update you skipped, so it's listed.
+
+A mod you installed and later removed is not listed here, because it was installed. Use **Ctrl + Shift + W** to reinstall it.
 
 ---
 

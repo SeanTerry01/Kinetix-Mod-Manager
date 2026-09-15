@@ -768,6 +768,7 @@ public partial class Form1
 				matchExistingByNexusId: !partOfMultiPartMod);
 			installProgress?.Complete();
 			_soundEngine.Play("load_complete");
+			RecordDownloadInstalled(zipPath);
 
 			await RefreshModList(checkUpdates: false);
 

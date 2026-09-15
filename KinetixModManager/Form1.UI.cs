@@ -151,6 +151,7 @@ public partial class Form1
 		// Submenu: installing and updating mods.
 		var grpInstall = new ToolStripMenuItem(Loc.T("menu.groupInstall")) { Name = "menuGroupInstall" };
 		grpInstall.DropDownItems.Add(Loc.T("menu.autoMatch"), null, async delegate { await AutoMatchNexusIDs(); });
+		grpInstall.DropDownItems.Add(Loc.T("menu.pendingDownloads", GetShortcutString("InstallPendingDownload")), null, delegate { ShowPendingDownloads(); });
 		grpInstall.DropDownItems.Add(Loc.T("menu.downloadsHistory", GetShortcutString("DownloadsHistory")), null, delegate { ShowDownloadsHistory(); });
 		grpInstall.DropDownItems.Add(Loc.T("menu.tidyFolders"), null, delegate { TidyModFolderNames(); });
 		grpInstall.DropDownItems.Add(Loc.T("menu.trackedMods", GetShortcutString("TrackedMods")), null, async delegate { await ShowTrackedMods(); });

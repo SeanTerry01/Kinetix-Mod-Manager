@@ -235,6 +235,7 @@ public partial class Form1
 						zip, _settings.CurrentModsPath, _allInstalledMods, backupsPath, _settings.MaxBackupsPerMod,
 						_settings.ActiveGame, LogError, req.ModId, _nexusService, null, _settings.CurrentGamePath,
 						fomodSelector: ShowFomodWizardAsync, installProgress: null, confirmOverwrite: null);
+					RecordDownloadInstalled(zip);
 					installedNames.Add(installedName);
 					installed.Add(req.ModName);
 				}

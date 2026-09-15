@@ -344,6 +344,20 @@ public class AppSettings : IModScanContext
 	public Dictionary<string, Dictionary<string, string>> InstalledDownloadVersions { get; set; } = new();
 
 	/// <summary>
+	/// The downloads the manager has installed, per game: <c>game -> file names in its downloads folder</c>.
+	///
+	/// Every archive stays in the downloads folder whether it was installed or not, so this is the only thing that
+	/// tells a download someone said "not now" to apart from one that went in. See <see cref="PendingDownloads"/>.
+	/// </summary>
+	public Dictionary<string, List<string>> InstalledArchives { get; set; } = new();
+
+	/// <summary>
+	/// When <see cref="InstalledArchives"/> began being kept. A download newer than this is answered by the record
+	/// alone; an older one was never recorded either way, so it is worked out from what is installed.
+	/// </summary>
+	public DateTime? InstalledArchivesSince { get; set; }
+
+	/// <summary>
 	/// Skyrim SE / Fallout 4 only. When true (the default) the manager guards the game's <c>plugins.txt</c>:
 	/// it is marked read-only whenever the manager writes it, so the game cannot rewrite the active plugin
 	/// list behind the user's back. Both games do exactly that when a new game is started — they deactivate
@@ -711,6 +725,9 @@ public class AppSettings : IModScanContext
 		}
 
 		if (InstalledDownloadVersions == null) InstalledDownloadVersions = new Dictionary<string, Dictionary<string, string>>();
+		InstalledArchives ??= new Dictionary<string, List<string>>();
+		// Set once, the first time a version that keeps the record starts, and never moved after.
+		InstalledArchivesSince ??= DateTime.Now;
 		if (ModBundledWith == null) ModBundledWith = new Dictionary<string, Dictionary<string, string>>();
 		if (ModPriority == null) ModPriority = new Dictionary<string, List<string>>();
 		if (PluginOrder == null) PluginOrder = new Dictionary<string, List<string>>();
@@ -944,6 +961,11 @@ public class AppSettings : IModScanContext
 			{
 				"DownloadsHistory",
 				Shortcut.Letter('W') | Shortcut.Shift | Shortcut.Control
+			},
+			{
+				// P for pending: the downloads that were never installed. DownloadsHistory beside it lists them all.
+				"InstallPendingDownload",
+				Shortcut.Letter('P') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"TrackedMods",
