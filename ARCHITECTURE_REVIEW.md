@@ -7,6 +7,38 @@
 
 ---
 
+## How to read this document
+
+It is in two halves, and they are different kinds of writing.
+
+**Sections 1 to 10 are the original assessment**, written on 2026-09-13 against revision `a90d5d6`. They are
+deliberately **not** edited as the work is done, because their value is as a record of what was true when
+somebody first looked — including the numbers, the counts and the judgements that have since been overtaken.
+Read them for the reasoning, not for the current state.
+
+**Sections 11 onwards are the log.** One per piece of work, in the order it happened, each saying what moved,
+what it cost, what broke, and what was deliberately left alone. A claim in the first half is superseded by
+anything later that contradicts it.
+
+For *what is currently outstanding*, read `TODO.md` — that file is kept current and things are deleted from it
+when they are done. For *what the app does*, read `MANUAL.md`. For *what changed in this release*, read
+`CHANGELOG.md`.
+
+| | The assessment, 2026-09-13 | | The log |
+|---:|---|---:|---|
+| 1 | Executive summary | 11–14 | Phases 0–2: the core project, the off-Windows failures, the domain model |
+| 2 | How I assessed this | 15 | Phase 3 — four platform seams of eight |
+| 3 | What is genuinely good | 16, 20 | Which games this is for, and on what |
+| 4 | The core problem: `Form1` is the application | 17, 18, 21 | The GTK spike, speech routing, the in-app browser |
+| 5 | Portability blockers | 19, 22 | Mod scanning and six screens out of the window |
+| 6 | Design inconsistencies | 23 | The archive pipeline, and dropping `7za.exe` |
+| 7 | Proposed target architecture | 24 | Per-game sounds, and Minecraft's connect cue |
+| 8 | Suggested sequence | 25, 26 | Where mods come from, researched and then built |
+| 9 | Things to decide before you start | 27 | Mod source keys, and how downloading actually stands |
+| 10 | Bottom line | | |
+
+---
+
 ## 1. Executive summary
 
 This is a **well-written codebase in a bad shape**. Those are two different things and it matters

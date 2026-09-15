@@ -10,9 +10,10 @@ namespace KinetixModManager;
 /// the confirmation that a mod was enabled arrives without interrupting the name of the next one. That is
 /// why these are a separate channel from <see cref="IAnnouncer"/> rather than a decoration on it.
 ///
-/// The sounds themselves are ordinary <c>.ogg</c> files in swappable theme folders, so they are not part of
-/// this contract and need no porting. Only the playing of them is platform work: NAudio on Windows, and
-/// something like GStreamer or libsoundio elsewhere.
+/// The sounds themselves are ordinary <c>.ogg</c> files in swappable theme folders, and <em>choosing</em> one
+/// is <see cref="SoundThemes"/>'s job — in the core, so every front end resolves a name to a file the same way
+/// and gets the same per-sound fallback to the Default theme. Only the playing is platform work: NAudio on
+/// Windows, and something like GStreamer or libsoundio elsewhere.
 /// </summary>
 public interface ISoundEngine
 {

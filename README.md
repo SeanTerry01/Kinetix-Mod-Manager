@@ -7,17 +7,19 @@ A fully keyboard-driven, screen-reader-compatible mod manager for **Stardew Vall
 ## Features
 
 - **Installed Mods** — browse, enable/disable, delete, and search your mod list with real-time audio feedback
-- **Update Checking** — detects available updates via the Nexus Mods API, or via Modrinth for Minecraft; supports one-click "Update All" for Premium members
-- **Mod Discovery** — search Nexus by keyword or browse trending/popular/recent mods without leaving the app; Minecraft searches Modrinth instead, and needs no API key
+- **Update Checking** — detects available updates via the Nexus Mods API, via Modrinth for Minecraft, and for Stardew Valley via SMAPI's own mod database, which also covers mods hosted on ModDrop and CurseForge; one-click "Update All" for Premium members
+- **Mod Discovery** — search for mods without leaving the app, and **choose where they are searched for**: every source at once, one source, or a preferred source with the rest a keypress away. Minecraft searches Modrinth and needs no account at all
+- **Install from GitHub** — name a repository (or paste its address) and the newest release is downloaded and installed, for the many mods published there and nowhere else
+- **Mod Source API Keys** — one screen listing every site that wants a key, whether you have given it one, and the key itself when you ask for it; stored encrypted, and never read aloud in passing
 - **Mod Profiles** — save and restore different enabled/disabled mod configurations for different playthroughs
 - **Automatic Backups** — zips the current mod folder before every update or deletion; configurable retention limit
 - **Dependency Viewer** — shows required and optional dependencies for the selected mod, flagging missing or outdated ones
 - **SMAPI Log Viewer** — parses your latest SMAPI log, filters by level, and suggests fixes for common errors (Stardew Valley)
 - **Integrated Game Wiki** — built-in, screen-reader-friendly wiki browser (Stardew Valley Wiki, UESP for Skyrim, Fallout Wiki, Minecraft Wiki) with category drilling
 - **Walkthroughs** — read community walkthroughs and guides for the active game inside the app
-- **Audio Themes** — all feedback sounds are `.ogg` files organized into swappable theme packs
+- **Audio Themes** — feedback sounds are `.ogg` files in swappable theme packs, and the theme **follows the game you load**, so a Skyrim session sounds like Skyrim before anything is read out. Adding a game's sounds is dropping files into a folder. For Minecraft the connect and disconnect cues follow the game's own log, so they sound when you join and leave a multiplayer server
 - **NXM Protocol** — registers as an `nxm://` handler so "Mod Manager Download" buttons on Nexus open the app directly
-- **Secure API Key Storage** — Nexus API key is stored encrypted using Windows DPAPI (never plain text on disk)
+- **Secure API Key Storage** — every mod site key, and your AI provider key, are stored encrypted using Windows DPAPI (never plain text on disk)
 
 ---
 
@@ -46,7 +48,7 @@ Switch the active game from the **Games** menu.
 
 - Windows 10 or 11 (64-bit)
 - [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0)
-- A free [Nexus Mods account](https://www.nexusmods.com) with a Personal API Key
+- A free [Nexus Mods account](https://www.nexusmods.com) with a Personal API Key — for the five games whose mods come from Nexus. **Minecraft needs no account of any kind**: its mods come from Modrinth
 - The target game installed (point the Mods Path to wherever your `Mods` / game data folder lives)
 
 ---
@@ -56,8 +58,8 @@ Switch the active game from the **Games** menu.
 1. Download the latest `KinetixModManager_Setup.exe` from the [Releases](https://github.com/SeanTerry01/Kinetix-Mod-Manager/releases) page and run the installer.
 2. Launch `KinetixModManager.exe`. On first launch, the Settings dialog opens automatically.
 3. Choose your active game from the **Games** menu, then confirm or browse to that game's `Mods` folder.
-4. Paste your Nexus Mods API key (Settings → Nexus API Key field).
-5. Press **Save Settings**. The app connects to Nexus and loads your mod list.
+4. Paste your Nexus Mods API key — either in Settings, or from **File → Mod source API keys...**, which lists every site that wants one. Skip this entirely if you are here for Minecraft.
+5. Press **Save Settings**. The app connects and loads your mod list.
 
 Press **F1** at any time to open the full User Manual, or **Shift + F1** for context-sensitive shortcuts on the active tab.
 
@@ -73,6 +75,7 @@ Press **F1** at any time to open the full User Manual, or **Shift + F1** for con
 | Cycle focus (tabs ↔ list ↔ web view) | F6 |
 | Settings | Ctrl + P |
 | Install from .zip | Ctrl + I |
+| Search the other mod sources too (Discovery list) | Alt + O |
 | Search installed mods | Ctrl + F |
 | Check/update all mods | Ctrl + U |
 | Save profile | Ctrl + S |
@@ -94,10 +97,10 @@ The solution is five projects. The last two are experimental and are not part of
 
 | Project | Target | Purpose |
 |---|---|---|
-| `Kinetix.Core` | `net10.0` | The rules, the parsers and the file and HTTP work, with no user interface. Game profiles, mod scanning rules, FOMOD, Modrinth, the Minecraft launcher and Fabric installer, save and INI readers, the localisation catalogue, and the domain models under `Models/`. |
+| `Kinetix.Core` | `net10.0` | The rules, the parsers and the file and HTTP work, with no user interface. Game profiles, mod scanning rules, FOMOD, archive extraction, the mod-source catalogue and search planner, sound-theme resolution, Modrinth, GitHub releases, the Minecraft launcher and Fabric installer, save and INI readers, the localisation catalogue, and the domain models under `Models/`. |
 | `KinetixModManager` | `net10.0-windows` | The WinForms application: the screen it draws, the keys it listens for, and the Windows-only pieces. Those now sit behind interfaces in `Platform/` — Tolk, DPAPI and the UI-thread dispatcher — with the registry, NAudio and WebView2 still to follow. |
-| `KinetixModManager.Tests` | `net10.0` | 1,024 xUnit tests against `Kinetix.Core`. |
-| `Kinetix.Platform.Linux` | `net10.0` | The Linux answers to the same platform questions — currently speech, through speech-dispatcher. No UI toolkit. |
+| `KinetixModManager.Tests` | `net10.0` | 1,260 xUnit tests against `Kinetix.Core`. |
+| `Kinetix.Platform.Linux` | `net10.0` | The Linux answers to the same platform questions — currently speech (through speech-dispatcher) and finding an installed game. No UI toolkit, and no sound engine yet. |
 | `Kinetix.Gtk` | `net10.0` | An experimental GTK4 front end for Linux, covering Minecraft only. See `ARCHITECTURE_REVIEW.md` §17. |
 
 `Kinetix.Core` targets plain `net10.0` rather than `net10.0-windows` deliberately: it cannot reach
@@ -110,8 +113,9 @@ Inside the app project:
 |---|---|
 | `Form1.cs` + `Form1.*.cs` | UI and orchestration, split into partial-class files by concern (Wiki, Updates, Settings, Install, Profiles, etc.) |
 | `AppSettings.cs` | Settings load/save with DPAPI key encryption |
-| `NexusService.cs` | All Nexus and GitHub API communication |
-| `ModFileSystem.cs` | Mod scanning, backup management, zip installation |
+| `NexusService.cs` | Nexus API communication — search, downloads, endorsements, rate limits |
+| `NexusModSource.cs` | Nexus as one of the catalogues the user can choose to search |
+| `ModFileSystem.cs` | Putting an unpacked mod where each game wants it: deployment, hard links, `plugins.txt`, INI editing, FOMOD finalisation |
 | `SoundEngine.cs` | Audio playback via NAudio + NVorbis |
 | `LogAnalyzer.cs` | SMAPI log parsing and fix-rule engine |
 
@@ -119,7 +123,7 @@ Inside the app project:
 
 ```
 dotnet build KinetixModManager.slnx
-dotnet test  KinetixModManager.Tests
+dotnet test  KinetixModManager.Tests/KinetixModManager.Tests.csproj
 ```
 
 The core and the tests build anywhere .NET 10 runs. To compile the WinForms app on a non-Windows

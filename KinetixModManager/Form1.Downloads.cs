@@ -28,29 +28,29 @@ namespace KinetixModManager;
 /// <summary>Mod-loader (SMAPI/SKSE/F4SE) download-URL resolution for Form1.</summary>
 public partial class Form1
 {
+	/// <summary>
+	/// The file to download from a repository's newest release, or null when there is nothing usable.
+	///
+	/// Reads the release through <see cref="GitHubReleases"/>, which is the same code the "install from a
+	/// GitHub repository" action uses — one rule for what counts as the mod rather than two that can drift.
+	/// It is also stricter than what this used to do on its own: it skips release notes and checksums, knows a
+	/// Fabric sources jar is not the mod, and takes a <c>.7z</c> where a release publishes no zip at all,
+	/// which the archive pipeline has been able to unpack since §23.
+	/// </summary>
 	private async Task<string?> GetGitHubLatestReleaseZipUrl(string repo)
 	{
 		try
 		{
-			using var req = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{repo}/releases/latest");
+			using var req = new HttpRequestMessage(HttpMethod.Get, GitHubReleases.LatestReleaseApiUrl(repo));
 			req.Headers.UserAgent.ParseAdd($"KinetixModManager/{NexusService.AppVersion}");
 			using var resp = await NexusService.HttpClient.SendAsync(req);
 			if (!resp.IsSuccessStatusCode) return null;
 
-			JObject json = JObject.Parse(await resp.Content.ReadAsStringAsync());
-			JArray? assets = json["assets"] as JArray;
-			if (assets != null)
-			{
-				foreach (var asset in assets)
-				{
-					string name = asset["name"]?.ToString() ?? "";
-					string url = asset["browser_download_url"]?.ToString() ?? "";
-					if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(url))
-					{
-						return url;
-					}
-				}
-			}
+			GitHubRelease? release = GitHubReleases.Parse(await resp.Content.ReadAsStringAsync());
+			if (release == null) return null;
+
+			bool minecraft = GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true;
+			return GitHubReleases.PickModAsset(release, minecraft)?.Url;
 		}
 		catch (Exception ex) { DiagnosticLog.WriteException("Downloads", $"asking GitHub for the latest release of {repo}", ex); }
 		return null;
@@ -72,19 +72,19 @@ public partial class Form1
 			using var resp = await NexusService.HttpClient.SendAsync(req);
 			if (!resp.IsSuccessStatusCode) return null;
 
-			JObject json = JObject.Parse(await resp.Content.ReadAsStringAsync());
-			if (json["assets"] is not JArray assets) return null;
+			GitHubRelease? release = GitHubReleases.Parse(await resp.Content.ReadAsStringAsync());
+			if (release == null) return null;
 
+			// SMAPI's own rules rather than the general ones: which of ITS assets is the installer is a fact
+			// about SMAPI's release, not about GitHub releases in general, so it stays here.
 			string? fallback = null;
-			foreach (var asset in assets)
+			foreach (GitHubAsset asset in release.Assets)
 			{
-				string name = asset["name"]?.ToString() ?? "";
-				string url = asset["browser_download_url"]?.ToString() ?? "";
-				if (string.IsNullOrEmpty(url) || !name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) continue;
-				if (name.Contains("double-zipped", StringComparison.OrdinalIgnoreCase)) continue;
-				if (name.Contains("developer", StringComparison.OrdinalIgnoreCase)) continue;
-				if (name.Contains("installer", StringComparison.OrdinalIgnoreCase)) return url;
-				fallback ??= url;
+				if (!asset.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) continue;
+				if (asset.Name.Contains("double-zipped", StringComparison.OrdinalIgnoreCase)) continue;
+				if (asset.Name.Contains("developer", StringComparison.OrdinalIgnoreCase)) continue;
+				if (asset.Name.Contains("installer", StringComparison.OrdinalIgnoreCase)) return asset.Url;
+				fallback ??= asset.Url;
 			}
 			return fallback;
 		}

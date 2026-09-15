@@ -12,8 +12,20 @@ using Newtonsoft.Json.Linq;
 namespace KinetixModManager;
 
 /// <summary>
-/// Static helpers for all mod-related file I/O: scanning mods, parsing manifests,
-/// creating and pruning backups, extracting archives, and deploying/syncing files.
+/// Putting an unpacked mod where each game wants it, and keeping it there.
+///
+/// <para>
+/// What is left here after the extraction passes: deployment and hard links, per-game finalisation for
+/// Bethesda, BepInEx and Witcher layouts, <c>plugins.txt</c>, INI editing, archive invalidation, script
+/// extender installs, and the uninstaller registry lookup. What used to be here and is not any more:
+/// scanning (<see cref="ModScanner"/>), backups (<see cref="BackupStore"/>) and getting a mod out of
+/// whatever it arrived in (<see cref="ModArchive"/>) — all three now live in Kinetix.Core, where a second
+/// front end can reach them.
+/// </para>
+///
+/// <para>
+/// Still a god object, and named as one in TODO.md. About five more classes' worth.
+/// </para>
 /// </summary>
 public static class ModFileSystem
 {

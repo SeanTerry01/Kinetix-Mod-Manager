@@ -1,4 +1,4 @@
-# Kinetix Mod Manager 1.5.0 — tester checklist
+# Kinetix Mod Manager 1.6.0 — tester checklist
 
 Thank you for doing this. This build is large: two new games, a change to how every per-game setting is stored,
 and about thirty screens that used to be separate windows and now open inside the main window. A lot of it has
@@ -256,7 +256,55 @@ This is the part where the author cannot check his own work, because he knows wh
 
 ## 6. New in this release, worth a look
 
-Not risky, but new, so worth your ears once:
+### The riskiest change, and why your ears matter most here
+
+*   ⚠️ **Install a `.7z` mod.** The manager used to hand `.7z` files to a helper program it downloaded from
+    7-zip.org; it now unpacks them itself. Everything we can test says it works and is faster, but the code
+    reading the archive is genuinely different from what shipped last time. **A big, real `.7z` mod for Skyrim
+    or Fallout 4 is the single most useful thing you can install.** Tell us if anything about it is slower,
+    stranger, or lands in the wrong place. `.rar` mods are worth one go too.
+*   ⚠️ **A FOMOD mod that arrives as a `.7z`**, for the same reason one layer deeper.
+*   ⚠️ **Install SKSE or F4SE from the Accessibility Suite**, which also changed how it reads the file it
+    downloaded.
+
+### Sounds
+
+*   **Each game should sound different.** Load Stardew, then Skyrim, then Minecraft, and listen to the enable
+    and disable cues. Minecraft has no sounds of its own recorded yet, so it should sound like the Default
+    theme — **silence there is a bug**, not an empty folder.
+*   **Minecraft only: joining a multiplayer server should play the connect sound**, and leaving it the
+    disconnect. Playing your own worlds should play neither. Quitting the game while still on a server should
+    play the disconnect on the way out.
+*   Several sounds that used to play the **connect** cue for things that were not connections — sorting a load
+    order, an update being found — now play the **load complete** cue instead. If that sounds wrong to you, say
+    so; it is a judgement call.
+
+### Choosing where your mods come from
+
+*   **Settings → Paths & Account → "When searching for mods".** Try all three modes on Stardew and on
+    Minecraft. The default behaves exactly as the manager always has.
+*   **Skyrim, Fallout 4, The Witcher 3 and Moonlight Peaks should show a single line of explanation** rather
+    than a dropdown — Nexus is the only place with a searchable catalogue of their mods.
+*   When two sources answer, each result should say which one it came from. When one does, it should not.
+
+### Two new screens
+
+*   **Mods → "Install a mod from a GitHub repository..."** Try typing `owner/repo` and try pasting a
+    repository's address from your browser. Both should work. A repository that has never published a release
+    should say so clearly.
+*   **File → "Mod source API keys..."** Add a key, close and reopen the screen, and check it reads back exactly
+    what you typed. Try Edit and Forget. **Most important: arrow up and down the list and confirm your keys are
+    never read out loud** — only the site names and whether a key is saved should be spoken.
+
+### If you only play Minecraft
+
+*   **Try it on a machine that has never had a Nexus key.** Two bugs were fixed here: the mod list and the mod
+    search both used to demand a Nexus key for a game that never uses one, and sent you off to log in to a
+    service Minecraft has nothing to do with. It should simply work now.
+
+### Everything else, not risky but new
+
+Worth your ears once:
 
 *   **Help → Support Development (Donate)** — a note and two ways to give, with both addresses readable as text.
     Nothing should ever prompt you about this; it is only a menu item. Report it if anything nags you.

@@ -1,20 +1,22 @@
 # Pre-release checklist
 
 Written 2026-08-08 for the release that followed v1.4.5, and kept up since. **Now for v1.6.0**, on branch
-`fix/disabled-bepinex-grouping`, **40 commits ahead of `origin/master`, unpushed**, version 1.6.0 in both
-`KinetixModManager.csproj` and `KinetixModManager\setup.iss`. 1009 tests, build clean with no warnings.
+`refactor/kinetix-core-split`, **71 commits ahead of `origin/master`, unpushed**, version 1.6.0 in both
+`KinetixModManager.csproj` and `KinetixModManager\setup.iss`. **1,260 tests**, all five projects build clean
+with no warnings.
 
-⚠️ The branch name is 40 commits out of date — it was one small BepInEx fix, and the branch is really 1.6.0.
+⚠️ The branch name describes the first thing done on it, not the whole of it. It now carries the core split,
+the Linux spike, the archive pipeline, per-game sounds and the mod source chooser.
 
 ⚠️ **The only tester zip in `KinetixModManager\Setup\` is the 1.5.2 one, and it is stale** — it predates every
 Minecraft commit. Re-cut with `tools\make-test-zip.ps1` before giving anything to a tester.
 
 ⚠️ Sections 1.1 to 1.7 are the v1.5.0/v1.5.1 list. They all shipped and are kept because they describe how to
-test those areas, not because they are outstanding. **§1.0 is the live list for v1.6.0; §1.0a is what is still
-outstanding from v1.5.2.**
+test those areas, not because they are outstanding. **§1.0b is the newest work and the live list; §1.0 is the
+rest of v1.6.0; §1.0a is what is still outstanding from v1.5.2.**
 
 This is what has **not** been confirmed by ear, what is known to be unverified, and what is deliberately not in
-this release. Everything here builds clean, passes 1009 tests, and publishes a complete Release folder — none of
+this release. Everything here builds clean, passes 1,260 tests, and publishes a complete Release folder — none of
 it is unfinished work. It is untested work, which is a different thing.
 
 ---
@@ -22,6 +24,38 @@ it is unfinished work. It is untested work, which is a different thing.
 ## 1. What needs testing by ear
 
 Ordered by how likely a problem is and how much it would cost. Work down the list.
+
+### 1.0b The newest work — none of it confirmed by ear
+
+Everything in this section was written in one day and is covered by tests, which is not the same as having been
+heard. The first three are the ones where a problem would cost the most.
+
+*   ⚠️ **`.7z` and `.rar` mods install as they used to.** The biggest behavioural change in the release:
+    `7za.exe` is gone and both formats are now unpacked in-process. Install a real `.7z` Skyrim or Fallout 4 mod
+    — ideally a large, solid one — and confirm it lands correctly and that progress still climbs to 100. The
+    decoder is not the same code as before, and this is the one thing tests cannot settle.
+*   ⚠️ **A FOMOD mod inside a `.7z`.** Same reason, one layer deeper: the wizard runs on what came out of the
+    archive.
+*   ⚠️ **A script extender install.** `InstallScriptExtenderAsync` and the Engine Fixes preloader both routed on
+    the file extension before and now sniff the file. Confirm SKSE and F4SE still install from the Accessibility
+    Suite.
+*   **Per-game sounds.** Load each game in turn and confirm the sounds change with it. Minecraft's theme folder
+    is present but has no sounds in it yet, so Minecraft should sound like the Default theme rather than silent
+    — silence there is a bug, not an empty folder.
+*   **Minecraft's connect and disconnect cues.** Join a multiplayer server and leave it; both should sound.
+    Playing a singleplayer world should produce neither. Quitting the game while still on a server should sound
+    the disconnect.
+*   **The mod source chooser** (Paths & Account). All three modes, on Stardew and on Minecraft. Confirm Skyrim,
+    Fallout 4, The Witcher 3 and Moonlight Peaks show the one-line explanation instead of a dropdown.
+*   **Alt+O in the Discovery list.** With nothing else usable to search, it should do nothing surprising.
+*   **Install from a GitHub repository** (Mods menu). Try `owner/repo` and a pasted address. A repository with
+    no releases and a made-up repository should each say which of the two is wrong.
+*   **The mod source keys screen** (File menu). Add a key, reopen it and confirm the key reads back correctly;
+    edit it; forget it. **Confirm that arrowing down the list does not read any key aloud** — that is the rule
+    the screen exists to keep.
+*   **Minecraft with no Nexus key at all.** Two defects were fixed here: the mod list and the Discovery tab both
+    used to demand a Nexus key for a game that never uses one. On a machine that has never had a Nexus key,
+    Minecraft should simply work.
 
 ### 1.0 v1.6.0 — Minecraft, the live list
 

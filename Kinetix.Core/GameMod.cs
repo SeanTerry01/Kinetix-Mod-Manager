@@ -50,7 +50,8 @@ public class GameMod
 	/// Kept apart from <see cref="NexusID"/> rather than sharing it. The two are not interchangeable: a Nexus
 	/// id is a number that means something entirely different on the other service, and a value in the wrong
 	/// field would send a download or an update check to the wrong catalogue asking about somebody else's mod.
-	/// Which one a game uses is decided by its <c>ModSource</c>.
+	/// Which catalogue a result came from is <see cref="SourceId"/>, which the user's own choice now decides
+	/// — see <see cref="ModSearchPlan"/>.
 	/// </summary>
 	public string? ModrinthId { get; set; }
 

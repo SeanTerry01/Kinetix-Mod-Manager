@@ -48,13 +48,22 @@ public enum ModLayout
 }
 
 /// <summary>
-/// Where a game's mods are browsed, downloaded and update-checked from.
+/// Where a game's mods come from unless the user says otherwise.
 ///
+/// <para>
 /// Nexus was the only answer for the first five games, to the point that the assumption is spread across the
 /// download, search and update-check paths. Minecraft breaks it: Nexus has a Minecraft section, but it is
 /// largely maps and legacy content, and Fabric mods live on Modrinth and CurseForge instead. Modrinth's API is
 /// the better one anyway — no key, and it states the loader and game version each file targets, which is the
 /// very thing the update checker has to guess at everywhere else.
+/// </para>
+///
+/// <para>
+/// ⚠️ Not to be confused with <see cref="ModSources"/>, which is the catalogue of every site the manager knows
+/// about and is keyed by string id. This enum is narrower and answers one question: which site a game
+/// <em>starts</em> on. <see cref="ModSources.DefaultFor"/> is the bridge between them, and the user's own
+/// preference overrides it — see <see cref="ModSearchMode"/>.
+/// </para>
 /// </summary>
 public enum ModSource
 {

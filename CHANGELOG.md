@@ -1,34 +1,5 @@
 ﻿# Unreleased
 
-## 🐛 Two messages that read out their own punctuation
-
-*   The **duplicate UniqueID** line in Check My Setup was written to say "UniqueID *X* is used by *N* mods: *list*", but was never given the count. String formatting failed, the failure was caught, and the sentence came out as the raw template — so the screen reader read the braces aloud: "UniqueID open brace zero close brace is used by open brace one close brace mods". It now says the number.
-*   The **manual download** dialog, the one that opens when your Nexus account is not Premium, had the title "Download {0}" for the same reason. It now names the mod.
-
-## 🐛 A profile with a slash or a dot in its name
-
-*   Profiles were saved to a file named after whatever you typed, with nothing checked. A profile called **"Mage/Thief"** failed to save at all; one ending in a dot or a space saved under a name Windows then refused to open. Worst of the three, saving and deleting disagreed about the name — so a profile could appear in the list and then refuse to be deleted. All three are fixed, and the same rule is now used everywhere a name becomes a file.
-
-## ✨ One place for your mod site keys
-
-*   **File → "Mod source API keys..."** lists every site that asks for one and whether you have given it. Press **Enter** on a site: if it has no key, you are asked to type one; if it has, the key is shown in a **read-only box** so you can check it against what you meant to type. **Edit key** asks for a new one either way — which is the point, because a key typed wrongly months ago cannot be fixed by a screen that only shows it back to you. **Delete** forgets one, after asking.
-*   **Arrowing down the list never reads your keys out loud.** A row says the site's name and whether a key is saved, nothing more. The key itself is only spoken on the one row you open — a credential read out in passing is read out in whatever room you are sitting in.
-*   There is also a button that **opens the site's page for getting a key**, so you are not left to find it.
-*   **Sites that need nothing are not listed.** Modrinth and GitHub need no account at all, so three rows saying "nothing to do here" would only be in the way.
-*   **Keys are stored encrypted**, the same way your Nexus key and your AI provider key already were.
-*   **Sites with a login rather than a key end up with a key too** — that is what a login is for. Nexus can sign you in on its own website and hand the manager a key without you typing one, which is better because the manager never sees your password and you can cancel the key without changing it. That is built and waiting on Nexus approving the manager as an application; until then the screen says so plainly rather than offering a button that cannot work.
-
-## 🐛 A mod from a site the manager could not download from did nothing at all
-
-*   Pressing **Enter** on a search result decided what to do by asking "does this have a Modrinth id", which really meant "is this Minecraft". A result from anywhere else fell through to opening its page, and opening the page only knew about Nexus and Modrinth — so a result from any other site did nothing. Enter now asks what the site can actually do, and anything the manager cannot fetch itself opens its page, which is the one thing every site can do.
-
-## ✨ Install a mod straight from GitHub
-
-*   **Mods → "Install a mod from a GitHub repository..."** Type `owner/repo`, or just **paste the address** of the repository's page from your browser — the clone command and the releases page work too. The manager finds the newest release, downloads the right file and installs it exactly as it would a file you picked yourself: backups, the FOMOD wizard, and a record of which release went on so it can tell you about the next one.
-*   GitHub is not in the source dropdown, and that is deliberate — there is no catalogue to search. You cannot ask GitHub for "Stardew mods about fishing". What you can do is name a repository, and plenty of mods are released there and nowhere else.
-*   **It knows which file is the mod.** A Fabric mod publishes `sodium-0.6.0.jar` and `sodium-0.6.0-sources.jar` side by side, and installing the second gives you a mods folder that looks right, a game that starts and no mod at all. Release notes, checksums and signatures are skipped, and a `.zip` is preferred to a `.7z` or `.rar` when a release offers all three.
-*   When there is nothing installable, it says which of the two reasons applies: no such repository, or a repository whose author has never published a release.
-
 ## ✨ You choose where your mods come from
 
 *   **A new setting on the Paths tab: "When searching for mods."** Three options — search **every** source and merge the results, search **one** source only, or search your **preferred** source with the others available on request. Choosing one of the last two shows a second dropdown naming which source that is, and it is remembered **per game**, because the sites are: Minecraft's mods live on Modrinth and CurseForge, Stardew's on Nexus, ModDrop and CurseForge.
@@ -39,13 +10,21 @@
 *   **Skyrim, Fallout 4, The Witcher 3 and Moonlight Peaks get no dropdown**, and one sentence saying why: Nexus is the only place with a searchable catalogue of their mods. Bethesda.net, ModDB and LoversLab have no way in for a program like this one. A choice with one option in it is not a choice.
 *   **CurseForge is listed, and says why it cannot be used yet.** It is a real second catalogue for Minecraft and Stardew, and it needs an API key that CurseForge issues to approved applications — a conversation rather than a setting, like the Nexus sign-in. It is there so you can see the manager knows about it and what is in the way.
 
-## 🐛 Minecraft mods could not be discovered without a Nexus account
+## ✨ Install a mod straight from GitHub
 
-*   Opening the **Discovery** tab with Minecraft loaded and no Nexus API key said "log in first" and searched nothing — sending you off to sign in to a service your game has no relationship with. Minecraft's mods come from Modrinth, which has no accounts. It searches now.
+*   **Mods → "Install a mod from a GitHub repository..."** Type `owner/repo`, or just **paste the address** of the repository's page from your browser — the clone command and the releases page work too. The manager finds the newest release, downloads the right file and installs it exactly as it would a file you picked yourself: backups, the FOMOD wizard, and a record of which release went on so it can tell you about the next one.
+*   GitHub is not in the source dropdown, and that is deliberate — there is no catalogue to search. You cannot ask GitHub for "Stardew mods about fishing". What you can do is name a repository, and plenty of mods are released there and nowhere else.
+*   **It knows which file is the mod.** A Fabric mod publishes `sodium-0.6.0.jar` and `sodium-0.6.0-sources.jar` side by side, and installing the second gives you a mods folder that looks right, a game that starts and no mod at all. Release notes, checksums and signatures are skipped, and a `.zip` is preferred to a `.7z` or `.rar` when a release offers all three.
+*   When there is nothing installable, it says which of the two reasons applies: no such repository, or a repository whose author has never published a release.
 
-## 🐛 A mod hosted somewhere other than Nexus or GitHub went missing
+## ✨ One place for your mod site keys
 
-*   The manager asks SMAPI's mod database about your Stardew mods, and that database knows about **ModDrop**, **CurseForge** and **Chucklefish** as well as Nexus and GitHub. It would hand back a mod's newest version and its page, and the manager kept only the Nexus and GitHub ones — so a mod hosted anywhere else was then reported to you as one it **could not track**, moments after being told exactly where the mod was. Mods now keep their page whatever site it names, it is remembered between runs, and Check My Setup counts them as covered.
+*   **File → "Mod source API keys..."** lists every site that asks for one and whether you have given it. Press **Enter** on a site: if it has no key, you are asked to type one; if it has, the key is shown in a **read-only box** so you can check it against what you meant to type. **Edit key** asks for a new one either way — which is the point, because a key typed wrongly months ago cannot be fixed by a screen that only shows it back to you. **Delete** forgets one, after asking.
+*   **Arrowing down the list never reads your keys out loud.** A row says the site's name and whether a key is saved, nothing more. The key itself is only spoken on the one row you open — a credential read out in passing is read out in whatever room you are sitting in.
+*   There is also a button that **opens the site's page for getting a key**, so you are not left to find it.
+*   **Sites that need nothing are not listed.** Modrinth and GitHub need no account at all, so three rows saying "nothing to do here" would only be in the way.
+*   **Keys are stored encrypted**, the same way your Nexus key and your AI provider key already were.
+*   **Sites with a login rather than a key end up with a key too** — that is what a login is for. Nexus can sign you in on its own website and hand the manager a key without you typing one, which is better because the manager never sees your password and you can cancel the key without changing it. That is built and waiting on Nexus approving the manager as an application; until then the screen says so plainly rather than offering a button that cannot work.
 
 ## ✨ Minecraft has its own sounds, and its connect cue means joining a server
 
@@ -55,19 +34,36 @@
 *   Your own worlds make no sound either way. A singleplayer world is not a connection to anything.
 *   It is a **sound and nothing else** — no spoken announcement. The game is in front of you with its own accessibility mod talking, and the manager speaking over it would be worse than saying nothing.
 
-## 🐛 Minecraft asked for a Nexus key it never uses
-
-*   Opening the manager with Minecraft loaded and no Nexus API key played the **disconnect** sound, forced the Settings window open and left the mod list empty. Nothing you could have typed would have fixed it, because Minecraft's mods come from Modrinth and the key is never used for them. Only games that actually get their mods from Nexus ask for one now.
-
-## 🔧 The connect sound is for connections
-
-*   Four places played the **connect** sound for things that connect to nothing: a load-order sort that changed something, the AI provider test passing, and an app or SMAPI update being found. All four now play **load complete**, which is what they are. It also means the connect cue is worth listening for again.
-
 ## 🔒 A mod archive can no longer point at your own files
 
 *   Mod archives were checked to make sure nothing in them escaped the folder they were unpacked into — but only by looking at the names inside. A **link** (a shortcut the filesystem follows) named something ordinary like `textures`, pointing at your documents, passed that check, and what happens next in an install is copying that folder into the game. Links are now followed and refused if they lead anywhere outside.
 *   The check used to run on one install path. It now runs on all of them, including the script extender and the Engine Fixes preloader.
 *   No archive from Nexus or Modrinth has ever been seen doing this. It was possible, which was enough.
+
+## 🐛 A mod hosted somewhere other than Nexus or GitHub went missing
+
+*   The manager asks SMAPI's mod database about your Stardew mods, and that database knows about **ModDrop**, **CurseForge** and **Chucklefish** as well as Nexus and GitHub. It would hand back a mod's newest version and its page, and the manager kept only the Nexus and GitHub ones — so a mod hosted anywhere else was then reported to you as one it **could not track**, moments after being told exactly where the mod was. Mods now keep their page whatever site it names, it is remembered between runs, and Check My Setup counts them as covered.
+
+## 🐛 A mod from a site the manager could not download from did nothing at all
+
+*   Pressing **Enter** on a search result decided what to do by asking "does this have a Modrinth id", which really meant "is this Minecraft". A result from anywhere else fell through to opening its page, and opening the page only knew about Nexus and Modrinth — so a result from any other site did nothing. Enter now asks what the site can actually do, and anything the manager cannot fetch itself opens its page, which is the one thing every site can do.
+
+## 🐛 Minecraft asked for a Nexus key it never uses
+
+*   Opening the manager with Minecraft loaded and no Nexus API key played the **disconnect** sound, forced the Settings window open and left the mod list empty. Nothing you could have typed would have fixed it, because Minecraft's mods come from Modrinth and the key is never used for them. Only games that actually get their mods from Nexus ask for one now.
+
+## 🐛 Minecraft mods could not be discovered without a Nexus account
+
+*   Opening the **Discovery** tab with Minecraft loaded and no Nexus API key said "log in first" and searched nothing — sending you off to sign in to a service your game has no relationship with. Minecraft's mods come from Modrinth, which has no accounts. It searches now.
+
+## 🐛 Two messages that read out their own punctuation
+
+*   The **duplicate UniqueID** line in Check My Setup was written to say "UniqueID *X* is used by *N* mods: *list*", but was never given the count. String formatting failed, the failure was caught, and the sentence came out as the raw template — so the screen reader read the braces aloud: "UniqueID open brace zero close brace is used by open brace one close brace mods". It now says the number.
+*   The **manual download** dialog, the one that opens when your Nexus account is not Premium, had the title "Download {0}" for the same reason. It now names the mod.
+
+## 🐛 A profile with a slash or a dot in its name
+
+*   Profiles were saved to a file named after whatever you typed, with nothing checked. A profile called **"Mage/Thief"** failed to save at all; one ending in a dot or a space saved under a name Windows then refused to open. Worst of the three, saving and deleting disagreed about the name — so a profile could appear in the list and then refuse to be deleted. All three are fixed, and the same rule is now used everywhere a name becomes a file.
 
 ## 🔧 Under the bonnet: .7z and .rar mods no longer need a downloaded helper
 
@@ -76,6 +72,10 @@
 *   **Solid archives** — the kind where every file shares one compressed block, which is most .7z mods — are now read straight through instead of file by file. A large mod that used to sit there looking frozen now extracts at the speed it should.
 *   A mod archive written on Windows keeps its folder structure when unpacked anywhere else. This makes no difference on Windows and is the difference between a working and a silently broken install elsewhere.
 *   All of this moved into **Kinetix.Core**, so unpacking a mod is no longer something only the Windows app knows how to do.
+
+## 🔧 The connect sound is for connections
+
+*   Four places played the **connect** sound for things that connect to nothing: a load-order sort that changed something, the AI provider test passing, and an app or SMAPI update being found. All four now play **load complete**, which is what they are. It also means the connect cue is worth listening for again.
 
 ## 🔧 Under the bonnet: the screen reader is now one replaceable part
 

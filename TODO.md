@@ -58,7 +58,7 @@ made. Writing the interface first would be guessing.
 
 Done: SMAPI Log, Dependencies, Profiles, Updates, Install, ModList (§22).
 
-**Paused deliberately, not abandoned.** `ShowSettings()` (1,252 lines) and `SetupAccessibleUI()` (1,077)
+**Paused deliberately, not abandoned.** `ShowSettings()` (1,349 lines) and `SetupAccessibleUI()` (1,088)
 are what remain, and they are almost entirely widget construction — extracting them would move lines
 between files without giving the core anything it can use. The "`Form1` under 5,000 lines" target was set
 before anyone looked at what those lines are; it is not a good target.
@@ -71,10 +71,10 @@ before anyone looked at what those lines are; it is not a good target.
       looks like a parent of `Mods/AutoFish`), and the copy rebases paths with `string.Replace`, which
       replaces every occurrence rather than the leading one.
 
-~28,100 lines across 63 partial files, ~232 fields, ~614 methods. Per screen, smallest first:
+28,519 lines across 65 partial files. Per screen, smallest first:
 `SmapiLog` → `Dependencies` → `Profiles` → `Updates` → `Install` → `ModList` → `Settings`.
-Target: `Form1` under 5,000 lines. `ShowSettings()` (1,252 lines) and `SetupAccessibleUI()`
-(1,077) are 2,329 of those between them.
+`ShowSettings()` and `SetupAccessibleUI()` are 2,437 of those between them, and are the two that should
+not be chased — see above.
 
 ### 3. Phase 5 — `Kinetix.Gtk`
 
@@ -103,24 +103,27 @@ These stand on their own merits. None is urgent.
       de-facto service locator.
 - [ ] **`Action<string, string> logError` threaded through ~20 `ModFileSystem` signatures** — a
       hand-rolled logger paid for in signature noise at every level. An `ILog` parameter says it once.
-- [ ] **Keyboard shortcuts are an if/else ladder** — `Form1_KeyDown()` (342 lines) and
-      `List_KeyDown()` (281). ~35 shortcuts with no command table, so the set cannot be enumerated,
-      remapped or tested without running the UI. (`docs/OBJECTIVES.md` lists remappable shortcuts as
-      a stretch goal; this is the thing standing in its way.)
+- [ ] **Keyboard shortcuts are dispatched by an if/else ladder** — `Form1_KeyDown()` (342 lines) and
+      `List_KeyDown()` (289), 53 actions between them. Remapping itself works: the Shortcut Manager writes
+      `AppSettings.Shortcuts`, `IsShortcut` reads it, and `ShortcutDefaultsGuardTests` holds the defaults. What
+      the ladder costs is that the *dispatch* cannot be tested without running the UI, and that two actions can
+      shadow one another with nothing to catch it. A command table would fix both.
 - [ ] **`StardewMod.cs` is a one-line file** and `using StardewMod = KinetixModManager.GameMod;` is
       copy-pasted at the top of every `Form1` partial. Vestigial from when this was Stardew-only —
       two names for one type.
 - [ ] **No `ConfigureAwait(false)` anywhere.** Harmless while everything runs on the WinForms sync
       context; a deadlock source the moment the core is called from another host. Cheapest to fix
       during extraction rather than after.
-- [ ] **Only one interface in the whole codebase** (`IListHeadingRow`), and 50 of 135 files are
-      `static class`. A static class takes no dependency and so cannot be swapped per platform.
+- [ ] **Still heavily static** — 72 static classes across the core and the app. A static class takes no
+      dependency and so cannot be swapped per platform. Much better than it was: there are now nine interfaces
+      (`IAnnouncer`, `IDispatcher`, `IGameLocator`, `IListHeadingRow`, `IModScanContext`, `IModSource`,
+      `IProgressDisplay`, `ISecretStore`, `ISoundEngine`) where there used to be one.
 
 ---
 
 ## Accessibility
 
-- [ ] **`health.mcVanilla` is the only string of 1,741 that opens with an emoji** (`⚠️`). It is a
+- [ ] **`health.mcVanilla` is the only string of 1,790 that opens with an emoji** (`⚠️`). It is a
       Health Dashboard row, so it is read aloud — announced as "warning sign" or dropped entirely
       depending on the reader's symbol level. The sentence already carries the warning in words.
       **Sean's call**, since it is wording rather than a defect.
@@ -136,13 +139,12 @@ These stand on their own merits. None is urgent.
 
 ## Docs and housekeeping
 
-- [ ] **`docs/OBJECTIVES.md` is stale** — it still describes a three-game app ("Stardew Valley,
-      Skyrim Special Edition, and Fallout 4"). There are six.
-- [ ] **`MANUAL.md` is 178 KB and `CHANGELOG.md` is 201 KB**, both copied into the build output.
-      Worth splitting per version before they stop being maintainable.
-- [ ] **Mixed line endings** — the tree holds both CRLF and LF `.cs` files (33 LF / 18 CRLF in
-      `Kinetix.Core`, 20 / 37 in the tests). `.gitattributes` normalises on commit so it does not
-      affect what is stored, but it makes a working tree inconsistent. A one-off `renormalize` would
+- [ ] **`MANUAL.md` is 180 KB and `CHANGELOG.md` is 212 KB**, both copied into the build output.
+      Worth splitting per version before they stop being maintainable. `ARCHITECTURE_REVIEW.md` is 112 KB and
+      is append-only by design, so it grows too — but nothing ships it.
+- [ ] **Mixed line endings** — the tree holds both CRLF and LF `.cs` files (73 LF / 25 CRLF in
+      `Kinetix.Core`, 37 / 37 in the tests, 68 / 18 in the app). `.gitattributes` normalises on commit so it
+      does not affect what is stored, but it makes a working tree inconsistent. A one-off `renormalize` would
       settle it.
 - [ ] **CI on both operating systems.** The whole point of the split is that it stays portable, and
       the sixteen failures found in Phase 1 are the evidence of how quietly that slips. One Linux

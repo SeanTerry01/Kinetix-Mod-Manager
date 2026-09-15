@@ -9,9 +9,18 @@ using NAudio.Wave;
 namespace KinetixModManager;
 
 /// <summary>
-/// Handles all audio playback for the application using NAudio and NVorbis.
-/// Sounds are loaded from the active theme folder under the application's "sounds" directory.
-/// All playback is fire-and-forget on a background thread so the UI is never blocked.
+/// The Windows <see cref="ISoundEngine"/>: NAudio and NVorbis, playing the files
+/// <see cref="SoundThemes"/> picks out of the <c>sounds</c> folder.
+///
+/// <para>
+/// Only the playing is here. Which file a named event maps to — the loaded game's theme, or the Default
+/// theme's where this one has not recorded that sound yet — is decided in Kinetix.Core, so a Linux engine
+/// answers it the same way rather than reimplementing the fallback and getting it subtly different.
+/// </para>
+///
+/// <para>
+/// All playback is fire-and-forget on a background thread, so the interface is never waiting on a sound.
+/// </para>
 /// </summary>
 public class SoundEngine : ISoundEngine
 {
