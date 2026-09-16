@@ -277,6 +277,26 @@ public static class ModSources
 	}
 
 	/// <summary>
+	/// Whether the manager needs a Nexus Premium account to update this mod by itself.
+	///
+	/// <para>
+	/// Only a Nexus download does. Premium buys the right to fetch a file without a browser session, and it buys
+	/// nothing anywhere else: Modrinth hands files to anybody, and a GitHub release is a public URL. This was once a
+	/// single check on the whole Update All command, which told a Minecraft player — whose mods come from Modrinth
+	/// and from their authors' GitHub releases — to buy an account from a site that hosts none of them.
+	/// </para>
+	/// </summary>
+	public static bool NeedsNexusPremium(string? gameId, GameMod mod)
+	{
+		// Minecraft's catalogue is Modrinth, and a mod of any game that names a repository is fetched from there.
+		if (GameProfiles.Find(gameId)?.IsMinecraft == true) return false;
+		if (!string.IsNullOrEmpty(mod.GitHubRepo)) return false;
+		if (!string.IsNullOrEmpty(mod.ModrinthId)) return false;
+
+		return true;
+	}
+
+	/// <summary>
 	/// Which known site a mod page belongs to, or null for a URL the manager does not recognise.
 	///
 	/// This is the floor of the whole feature. A Stardew mod living on ModDrop used to have its page handed

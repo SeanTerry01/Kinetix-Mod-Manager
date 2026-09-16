@@ -363,7 +363,9 @@ public partial class Form1
 		// mods whose manifest update key is missing or broken — the manifest-only Nexus grouping below
 		// can't see those. Skyrim/Fallout 4 use only the Nexus group checks.
 		bool runSmapi = GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley);
-		int unitCount = list.Count + (runSmapi ? 1 : 0);
+		// Minecraft's loader and the Minecraft version itself are not mods and are checked as a unit of their own,
+		// so the run's completion cue waits for them — see CheckMinecraftPlatformUpdatesAsync.
+		int unitCount = list.Count + (runSmapi ? 1 : 0) + (minecraft ? 1 : 0);
 		if (unitCount == 0)
 		{
 			_isLoading = false;
@@ -383,6 +385,10 @@ public partial class Form1
 		{
 			var (smapiVer, gameVer) = DetectStardewVersions();
 			Fire(CheckUpdatesViaSmapiApi(_allInstalledMods.Where(m => !m.IsGroup).ToList(), smapiVer, gameVer), "CheckUpdatesViaSmapiApi");
+		}
+		if (minecraft)
+		{
+			Fire(CheckMinecraftPlatformUpdatesAsync(), "CheckMinecraftPlatformUpdatesAsync");
 		}
 		foreach (IGrouping<string, StardewMod> item3 in list)
 		{

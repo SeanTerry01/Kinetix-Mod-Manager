@@ -1,5 +1,42 @@
 ﻿# Unreleased
 
+## ✨ Fabric and Minecraft itself are checked for updates now
+
+*   **Nothing ever checked the Fabric loader.** It is what makes Minecraft load mods at all, and a player who
+    heard "no updates" was being told about the mods and nothing about the ground they stand on. An update
+    check now adds a **Fabric Loader** row when a newer build exists for the Minecraft version you are on.
+    Installing it changes nothing about your mods.
+*   **A newer Minecraft version appears as its own row**, but only once your accessibility mod has a build for
+    it — Fabric is ready for a new Minecraft version well before the mods are, and moving early gives a game
+    that starts perfectly and never speaks. Pressing Enter says what will happen to each of your mods and asks
+    before anything is written.
+*   **What a mod supports is read from its catalogue entry first**, and only then from the mod itself.
+    Declaring a Minecraft version is optional, and a mod that declares nothing accepts everything — which is
+    how a mod built for the previous version loaded happily on the new one and then broke world loading
+    outright, reported to the player as "errors in the currently selected data packs" with nothing naming the
+    mod responsible. Its catalogue entry knew which versions it was published for all along.
+*   **A mod that cannot run on the new version is switched off as part of the move**, and named before and
+    after. Fabric does not skip a mod built for another Minecraft version: it refuses to start the game and
+    lists every offender, so switching them off is what keeps the game launching. Nothing is deleted, and a
+    mod is switched back on in one keypress once its author releases a build. Mods that need no new build —
+    one asking for "26.2 or newer" is happy on 26.3 — are left alone, which the manager knows by reading what
+    each mod declares rather than by whether a newer build exists.
+
+## 🐛 Minecraft updates asked for a Nexus Premium account
+
+*   **Update All told Minecraft players to buy Premium.** The check ran before anything looked at where the
+    mods came from, and Minecraft's come from Modrinth and from their authors' GitHub releases — a site that
+    hosts none of them was deciding whether they could be updated. Premium is now asked for only where it is
+    really needed, a Nexus download, so a free account updates everything the manager can fetch itself. If
+    some updates in the list do need it, the confirmation says how many will be skipped before you start.
+*   **Updating a Minecraft mod did not work at all**, whichever route it took. A Modrinth mod fell through to
+    the Nexus branch and offered its page instead of updating; a mod from GitHub releases, such as United
+    Minecraft, downloaded its `.jar` and then **unpacked it**, which leaves a folder of loose files the loader
+    ignores and the old mod still in place. Minecraft mods now update through Modrinth (matched on the jar,
+    as the update check already did) or through the mod's own GitHub releases, and the jar is put in place as
+    a jar, replacing the copy it supersedes — including a disabled one, which would otherwise stop the game
+    starting with a duplicate mod id.
+
 ## ✨ Lists you work through keep you in them
 
 *   **Doing something in a list no longer throws you out of it.** Installing a download, linking a mod in the

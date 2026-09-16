@@ -310,7 +310,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
     *   In **Search for Mods**: Open the Nexus page for the selected mod — **or**, on the **"Load more results"** row at the bottom of the list, load the next batch of results.
 *   **Delete**: (In Updates tab) **Ignore Update** - Hides this specific version from the updates list.
 *   **Ctrl + Shift + Y**: (In Updates tab) **Mark As Already Installed** - Records the offered version as the one you already have. See "When a mod is offered the same update forever" below.
-*   **Ctrl + U**: **Update All** mods (Premium only).
+*   **Ctrl + U**: **Update All** mods. A **Nexus Premium** account is only needed for the updates that come from Nexus; mods from Modrinth or GitHub releases are updated whatever account you have, and the confirmation says how many Nexus updates will be skipped.
 *   **Ctrl + R**: Read the mod's summary.
 
 ### Load Order Tabs (Skyrim & Fallout 4 only)
@@ -777,6 +777,54 @@ newest one. Fabric is usually ready for a new Minecraft version weeks before the
 a version with no mods built for it gives you a game that starts perfectly and stays silent.
 
 ### Two accessibility mods
+### If the game does not start
+
+Minecraft needs a set of its own files for each version, quite apart from your mods. The manager starts the game
+itself, so **it checks those files are there and fetches any that are missing before launching**, verifying each
+one against the checksum Mojang publishes. This matters most right after a Minecraft update, when files for the
+new version may never have been downloaded.
+
+If something still fails, the game's own log is the place to look: **F5 launches the game and the manager reads
+its log**, and the log itself is in `.minecraft\logs\latest.log`. Two kinds of failure read very differently:
+
+*   **"Incompatible mods found"** lists mods that cannot run on your Minecraft version. Fabric refuses to start
+    until they're switched off — see below.
+*   **A Java error naming a class** (`NoClassDefFoundError`) is a missing file rather than a mod problem.
+*   **"Errors in the currently selected data pack(s)"** when opening a world is a mod too, but a quieter one: it
+    loaded because it never said which Minecraft version it was for, and then its content couldn't be read. The
+    log names the pack, and **Check My Setup** names the mod, because it asks the catalogue what your installed
+    build supports rather than trusting the mod's own word.
+
+### Keeping Fabric and Minecraft up to date
+
+An update check for Minecraft looks at two things besides your mods, and each appears in the **Updates** list as
+its own row:
+
+*   **Fabric Loader** — a newer build of the loader for the Minecraft version you're already on. Press **Enter**
+    to install it. Your mods are unaffected, because the Minecraft version doesn't change. Close the Minecraft
+    launcher first: it rewrites its own settings when it closes and would undo the change.
+*   **Minecraft** — a newer Minecraft version. This one only appears **once your accessibility mod has a build
+    for it**, since moving before that gives you a game that starts perfectly and never speaks.
+
+Pressing **Enter** on the Minecraft row moves your setup to the new version. Before anything is changed, you're
+told what will happen to each of your mods, and asked whether to go ahead. Saying yes installs Fabric for the new
+version and updates every mod that has a build for it.
+
+**A mod that can't run on the new version is switched off as part of the move**, and the manager names them all,
+both before and afterwards. This is not tidiness: **Fabric refuses to start the game at all** if a mod is built
+for another Minecraft version, listing every offender. Switching them off is what keeps the game launching.
+Nothing is deleted — switch one back on in your Installed Mods list once its author releases a build.
+
+Some mods need no new build. A mod asking for "26.2 or newer" is happy on 26.3, and the manager can tell those
+apart from a mod demanding 26.2 exactly by reading what each one declares, so it only switches off the ones that
+would really stop the game.
+
+If a mod you depend on is in that list, say **No** and stay where you are. Your old Minecraft version and its
+Fabric installation both remain on disk.
+
+**Update All never moves you to a new Minecraft version.** That row is left for you to choose deliberately; Update
+All takes the Fabric loader and your mods.
+
 
 Minecraft has two, and you pick one:
 

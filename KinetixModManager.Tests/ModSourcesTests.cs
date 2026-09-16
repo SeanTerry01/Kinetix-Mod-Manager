@@ -288,4 +288,37 @@ public class ModSourcesTests : IDisposable
 	{
 		Assert.Empty(ModPageLinks.Load(Path.Combine(_appData, "never-written")));
 	}
+
+	// ---------------------------------------------------------------------
+	// What a Nexus Premium account is actually needed for
+	// ---------------------------------------------------------------------
+
+	[Fact]
+	public void UpdatingAMinecraftModNeverNeedsNexusPremium()
+	{
+		// The bug this guards: Update All asked for Premium before looking at where the mods came from, so a
+		// Minecraft player was told to buy an account from a site that hosts none of their mods.
+		Assert.False(ModSources.NeedsNexusPremium(GameProfiles.Minecraft, new GameMod { Name = "Sodium" }));
+	}
+
+	[Fact]
+	public void UpdatingFromAGitHubReleaseNeverNeedsNexusPremium()
+	{
+		Assert.False(ModSources.NeedsNexusPremium(GameProfiles.SkyrimSE,
+			new GameMod { Name = "United Minecraft", GitHubRepo = "BlindGoofball/united-minecraft" }));
+	}
+
+	[Fact]
+	public void UpdatingAModrinthModNeverNeedsNexusPremium()
+	{
+		Assert.False(ModSources.NeedsNexusPremium(GameProfiles.StardewValley,
+			new GameMod { Name = "Something", ModrinthId = "abc123" }));
+	}
+
+	[Fact]
+	public void UpdatingANexusModStillNeedsPremium()
+	{
+		// The other half, and the one that must not be lost: a Nexus file cannot be fetched without it.
+		Assert.True(ModSources.NeedsNexusPremium(GameProfiles.SkyrimSE, new GameMod { Name = "SkyUI", NexusID = "12604" }));
+	}
 }

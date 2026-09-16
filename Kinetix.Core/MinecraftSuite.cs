@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace KinetixModManager;
 
@@ -116,6 +117,29 @@ public static class MinecraftSuite
 	public static MinecraftSuiteMod Default => AccessMods[0];
 
 	/// <summary>The access mod with this id, or <see cref="Default"/> for an unset or unrecognised one.</summary>
+	/// <summary>
+	/// Whether a GitHub release says it is for <paramref name="gameVersion"/> — read from its tag and the names of
+	/// the files it publishes, which is all a GitHub release offers. United Minecraft tags its releases
+	/// "v1.2.0-mc26.3" and names its jar to match; nothing machine-readable says it any other way.
+	///
+	/// <para>
+	/// Matched as a whole version rather than as text, or Minecraft 26.2 would count as support for 26.20, and a
+	/// player would be moved onto a Minecraft version their accessibility mod has no build for — a game that starts
+	/// perfectly and never speaks.
+	/// </para>
+	/// </summary>
+	public static bool ReleaseIsForGameVersion(GitHubRelease? release, string? gameVersion)
+	{
+		if (release == null || string.IsNullOrWhiteSpace(gameVersion)) return false;
+
+		// Not followed by more version: "26.2" must not match inside "26.20" or "26.2.1". A trailing dot is allowed
+		// when nothing numeric follows it, because the version is commonly the last thing before ".jar".
+		var pattern = new Regex(@"(?<![\d.])" + Regex.Escape(gameVersion.Trim()) + @"(?!\.?\d)");
+		if (pattern.IsMatch(release.TagName)) return true;
+
+		return release.Assets.Any(a => pattern.IsMatch(a.Name));
+	}
+
 	public static MinecraftSuiteMod AccessModFor(string? id) =>
 		AccessMods.FirstOrDefault(m => string.Equals(m.Id, id, StringComparison.OrdinalIgnoreCase)) ?? Default;
 

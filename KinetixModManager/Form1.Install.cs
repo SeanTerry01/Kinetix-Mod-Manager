@@ -38,13 +38,28 @@ public partial class Form1
 		{
 			return;
 		}
-		if (!_nexusService.IsPremium)
+		// Premium is a Nexus arrangement and only ever mattered for a Nexus download. Asking it of the whole command
+		// told a Minecraft player, whose mods come from Modrinth and from their authors' GitHub releases, to buy an
+		// account from a site that hosts none of them. So the updates that need it are separated from the ones that
+		// do not, and a free account still gets everything the manager can fetch by itself.
+		// Moving to a new Minecraft version is never part of "update everything": it changes what the game is, and
+		// leaves behind any mod without a build for it. It stays in the list, to be chosen deliberately.
+		List<StardewMod> rows = listUpdates.Items.Cast<StardewMod>()
+			.Where(m => m.UniqueId != MinecraftVersionRowId).ToList();
+		if (rows.Count == 0) return;
+		List<StardewMod> needPremium = _nexusService.IsPremium
+			? new List<StardewMod>()
+			: rows.Where(NeedsPremiumToUpdate).ToList();
+
+		if (needPremium.Count == rows.Count)
 		{
 			Speak(Loc.T("updateAll.premiumSpeak"));
 			SpeakBox(Loc.T("updateAll.premiumBox"), Loc.T("updateAll.premiumTitle"), MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
 		}
 		else
 		{
+			rows = rows.Except(needPremium).ToList();
+
 			// Several installed mods can come from one Nexus download (e.g. Cape Stardew bundles 5 sub-mods in one
 			// zip, all sharing a mod id). Installing that one download updates them all at once, so collapse update
 			// rows that share a source to a single download — but keep genuine multi-part mods (Part 1 / Part 2)
@@ -61,6 +76,10 @@ public partial class Form1
 			string confirmMsg = mods.Count == totalMods
 				? Loc.T("updateAll.confirm", totalMods)
 				: Loc.T("updateAll.confirmGrouped", totalMods, mods.Count);
+			// Said before the confirmation rather than after the run: somebody deciding whether to start needs to know
+			// that some of what they are looking at is not included.
+			if (needPremium.Count > 0)
+				confirmMsg += " " + Loc.T(needPremium.Count == 1 ? "updateAll.skippingPremiumOne" : "updateAll.skippingPremium", needPremium.Count);
 			if (SpeakBox(confirmMsg, Loc.T("common.confirm"), MessageBoxButtons.YesNo) == DialogResult.No)
 			{
 				return;
@@ -143,6 +162,19 @@ public partial class Form1
 	///
 	/// <para>
 	/// Two questions, and both have to be yes. The site must say it hands files over
+	/// <summary>Whether updating this mod needs a Nexus Premium account. The rule lives in the core.</summary>
+	private bool NeedsPremiumToUpdate(GameMod mod) => ModSources.NeedsNexusPremium(_settings.ActiveGame, mod);
+
+	/// <summary>
+	/// Whether the manager can install this update itself, without sending the user to a browser — which is what
+	/// makes the offer on Enter worth making. A Nexus update is left alone here: fetching one needs the NXM handler
+	/// or a Premium account, so its page is still where that row leads.
+	/// </summary>
+	private bool CanUpdateWithoutBrowser(GameMod mod) =>
+		GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true ||
+		!string.IsNullOrEmpty(mod.GitHubRepo) ||
+		!string.IsNullOrEmpty(mod.ModrinthId);
+
 	/// (<see cref="ModSourceAbilities.Download"/>), and the manager must actually have a way to talk to it —
 	/// which is not the same thing, and is the honest state of affairs today: CurseForge hands files over and
 	/// the manager has no key for it, so a CurseForge result opens its page.

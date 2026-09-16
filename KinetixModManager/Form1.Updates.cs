@@ -542,6 +542,64 @@ public partial class Form1
     {
         // Updates install the mod enabled; remember if it was disabled so we can turn it back off afterward.
         bool wasDisabled = !mod.IsEnabled;
+
+        // Minecraft's mods come from Modrinth and from their authors' own GitHub releases, and every one of them is
+        // a single jar. Neither the Nexus branch below nor the GitHub one can install that: the first wants a
+        // Premium account for a site that hosts none of these mods, and the second unpacks the jar. See
+        // UpdateMinecraftModAsync.
+        if (GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true)
+        {
+            // The two rows that are not mods: the loader that runs them, and the Minecraft version they are built
+            // for. See CheckMinecraftPlatformUpdatesAsync.
+            if (mod.UniqueId == FabricLoaderRowId)
+            {
+                if (await UpdateFabricLoaderAsync()) { RemoveUpdateRowsFor(mod); if (!silent) AnnounceUpdatesListEmptyIfFocused(); }
+                return;
+            }
+            if (mod.UniqueId == MinecraftVersionRowId)
+            {
+                if (await MoveToMinecraftVersionAsync(mod.LatestVersion ?? "", silent))
+                {
+                    // Every mod's row is stale now: they were checked against the version that has just been left.
+                    Invoke(delegate { listUpdates.Items.Clear(); });
+                    if (!silent) AnnounceUpdatesListEmptyIfFocused();
+                }
+                return;
+            }
+
+            try
+            {
+                if (!await UpdateMinecraftModAsync(mod, silent))
+                {
+                    _soundEngine.Play("error");
+                    if (!silent) SpeakBox(Loc.T("updates.failBox", mod.Name, Loc.T("updates.noMinecraftBuild", mod.Name)));
+                    ResetStatus();
+                    return;
+                }
+
+                RemoveUpdateRowsFor(mod);
+                await RefreshModList(checkUpdates: false);
+                await ReapplyDisabledIfNeeded(mod, wasDisabled);
+
+                if (!silent)
+                {
+                    _soundEngine.Play("load_complete");
+                    Speak(Loc.T("updates.success", mod.Name));
+                    ResetStatus();
+                    AnnounceUpdatesListEmptyIfFocused();
+                }
+                else ResetStatus();
+            }
+            catch (Exception ex)
+            {
+                _soundEngine.Play("error");
+                LogFailure(mod.Name, "Download/Install Failure", ex);
+                ResetStatus();
+                if (!silent) Invoke(delegate { SpeakBox(Loc.T("updates.failBox", mod.Name, FriendlyError(ex))); });
+            }
+            return;
+        }
+
         if (!string.IsNullOrEmpty(mod.GitHubRepo))
         {
             try
@@ -682,6 +740,23 @@ public partial class Form1
             Invoke(delegate { SpeakBox(Loc.T("updates.failBox", mod.Name, FriendlyError(ex))); });
         }
     }
+
+	/// <summary>
+	/// Takes a mod's row out of the Updates list once its update has gone in. Matched on the mod's own id, which is
+	/// what identifies a Minecraft mod — it has neither a Nexus id nor, usually, a GitHub repository.
+	/// </summary>
+	private void RemoveUpdateRowsFor(StardewMod mod)
+	{
+		Invoke(delegate
+		{
+			listUpdates.BeginUpdate();
+			for (int i = listUpdates.Items.Count - 1; i >= 0; i--)
+				if (listUpdates.Items[i] is StardewMod m && !string.IsNullOrEmpty(m.UniqueId) &&
+					m.UniqueId.Equals(mod.UniqueId, StringComparison.OrdinalIgnoreCase))
+					listUpdates.Items.RemoveAt(i);
+			listUpdates.EndUpdate();
+		});
+	}
 
 	/// <summary>
 	/// Announces "List is empty" after the last available update has been installed and removed in place. A screen

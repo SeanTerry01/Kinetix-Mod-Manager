@@ -167,6 +167,37 @@ public static class ModrinthService
 	}
 
 	/// <summary>
+	/// What the installed jars themselves say they support, looked up by their hashes — not the newest build, the
+	/// one on disk.
+	///
+	/// <para>
+	/// The question "will this mod survive a move to a new Minecraft version" needs this. A mod's own
+	/// <c>fabric.mod.json</c> is the first answer, but it is optional: Toolbar Sounds declares no Minecraft
+	/// version at all, so nothing stopped it loading on 26.3 — where its data pack failed to parse and the world
+	/// would not load, which a player sees as "errors in the currently selected data packs" and no way back in.
+	/// Its catalogue entry knew perfectly well that it supports 26.2 and no further.
+	/// </para>
+	/// </summary>
+	public static async Task<Dictionary<string, ModrinthFile>> GetInstalledVersionsForHashesAsync(
+		IReadOnlyCollection<string> sha1Hashes)
+	{
+		var found = new Dictionary<string, ModrinthFile>(StringComparer.OrdinalIgnoreCase);
+		if (sha1Hashes.Count == 0) return found;
+
+		var body = new JObject
+		{
+			["hashes"]    = new JArray(sha1Hashes),
+			["algorithm"] = "sha1"
+		};
+
+		using var content = new StringContent(body.ToString(), Encoding.UTF8, "application/json");
+		HttpResponseMessage response = await KinetixHttp.Api.PostAsync($"{ApiBase}/version_files", content);
+		if (!response.IsSuccessStatusCode) return found;
+
+		return ParseHashUpdates(JObject.Parse(await response.Content.ReadAsStringAsync()));
+	}
+
+	/// <summary>
 	/// <see cref="GetLatestForHashesAsync"/>'s parsing half — the response is an object keyed by the hash that
 	/// was asked about, each value a version in the same shape the version listing uses.
 	/// </summary>

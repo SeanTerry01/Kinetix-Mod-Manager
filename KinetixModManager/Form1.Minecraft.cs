@@ -325,6 +325,437 @@ public partial class Form1
 		}
 	}
 
+	/// <summary>The Updates row that stands for the Fabric loader rather than for a mod.</summary>
+	internal const string FabricLoaderRowId = "kinetix:fabric-loader";
+
+	/// <summary>The Updates row that stands for a newer Minecraft version being available.</summary>
+	internal const string MinecraftVersionRowId = "kinetix:minecraft-version";
+
+	/// <summary>
+	/// Checks the two things a Minecraft player depends on that are not mods: the Fabric loader, and the Minecraft
+	/// version itself. Runs as a unit of the update check, so the run's completion cue waits for it like any other.
+	///
+	/// <para>
+	/// Neither was ever checked. The loader is what makes the game load mods at all, and a new Minecraft version is
+	/// the event that makes every one of them need a new build — so a player who heard "no updates" was being told
+	/// about the mods and nothing about the ground they stand on.
+	/// </para>
+	///
+	/// <para>
+	/// The rows are ordinary update rows carrying a reserved id, so Delete ignores one and Update All takes them
+	/// both, exactly as for a mod. <see cref="DownloadAndInstallUpdate"/> recognises the ids and does the right
+	/// thing instead of trying to install a jar.
+	/// </para>
+	/// </summary>
+	private async Task CheckMinecraftPlatformUpdatesAsync()
+	{
+		try
+		{
+			string root = MinecraftRootFolder();
+			if (root.Length == 0) return;
+
+			string inUse = MinecraftGameVersionInUse(root);
+			if (inUse.Length == 0) return;
+
+			try
+			{
+				string installed = InstalledLoaderVersionFor(root, inUse);
+				string newest = await FabricInstaller.GetLatestStableLoaderVersionAsync(inUse);
+				if (installed.Length > 0 && ModVersions.IsNewer(installed, newest))
+					AddPlatformUpdateRow(FabricLoaderRowId, Loc.T("mc.update.loaderName"), Loc.T("mc.update.loaderAuthor"), installed, newest);
+			}
+			catch (Exception ex) { DiagnosticLog.WriteException("Fabric", $"asking for the newest loader for Minecraft {inUse}", ex); }
+
+			try
+			{
+				string newestGame = await FabricInstaller.GetLatestStableGameVersionAsync();
+				// Offered only once the accessibility mod has a build for it. Fabric is ready for a new Minecraft
+				// version well before the mods are, and moving early gives a game that launches and says nothing.
+				if (ModVersions.IsNewer(inUse, newestGame) && await AccessModSupportsAsync(newestGame))
+					AddPlatformUpdateRow(MinecraftVersionRowId, Loc.T("mc.update.gameName"), Loc.T("mc.update.gameAuthor"), inUse, newestGame);
+			}
+			catch (Exception ex) { DiagnosticLog.WriteException("Fabric", "asking for the newest Minecraft version", ex); }
+		}
+		finally
+		{
+			CompleteUpdateCheckUnit();
+		}
+	}
+
+	/// <summary>The loader version installed for <paramref name="gameVersion"/>, newest if there are several.</summary>
+	private static string InstalledLoaderVersionFor(string root, string gameVersion)
+	{
+		string best = "";
+		foreach (string id in FabricInstaller.InstalledVersionIds(root))
+		{
+			if (!string.Equals(FabricInstaller.GameVersionOf(id), gameVersion, StringComparison.OrdinalIgnoreCase)) continue;
+
+			string loader = FabricInstaller.LoaderVersionOf(id);
+			if (loader.Length > 0 && (best.Length == 0 || ModVersions.IsNewer(best, loader))) best = loader;
+		}
+		return best;
+	}
+
+	/// <summary>
+	/// The accessibility mod this setup actually runs: the one in the mods folder, whatever the settings say.
+	///
+	/// <para>
+	/// The setting is only written when the manager installs an access mod through the suite installer, so anyone
+	/// who put one there themselves has it empty — and the gate that decides whether a newer Minecraft version is
+	/// safe was then asking about the DEFAULT mod rather than the one they depend on. That is the one question in
+	/// this game where being wrong means a game that launches and never speaks.
+	/// </para>
+	/// </summary>
+	private MinecraftSuiteMod ActiveAccessMod()
+	{
+		foreach (MinecraftSuiteMod candidate in MinecraftSuite.AccessMods)
+			if (_allInstalledMods.Any(m => !m.IsGroup &&
+					string.Equals(m.UniqueId, candidate.FabricModId, StringComparison.OrdinalIgnoreCase)))
+				return candidate;
+
+		return MinecraftSuite.AccessModFor(_settings.MinecraftAccessModId);
+	}
+
+	/// <summary>Whether the accessibility mod in use has a build for <paramref name="gameVersion"/>.</summary>
+	private async Task<bool> AccessModSupportsAsync(string gameVersion)
+	{
+		MinecraftSuiteMod access = ActiveAccessMod();
+
+		try
+		{
+			if (access.Origin == MinecraftModOrigin.Modrinth)
+				return (await ModrinthService.GetSupportedGameVersionsAsync(access.Source))
+					.Contains(gameVersion, StringComparer.OrdinalIgnoreCase);
+
+			// A GitHub release publishes no version list, so its tag and file names are the only answer available.
+			using var req = new HttpRequestMessage(HttpMethod.Get, GitHubReleases.LatestReleaseApiUrl(access.Source));
+			req.Headers.UserAgent.ParseAdd($"KinetixModManager/{NexusService.AppVersion}");
+			using HttpResponseMessage resp = await NexusService.HttpClient.SendAsync(req);
+			if (!resp.IsSuccessStatusCode) return false;
+
+			return MinecraftSuite.ReleaseIsForGameVersion(
+				GitHubReleases.Parse(await resp.Content.ReadAsStringAsync()), gameVersion);
+		}
+		catch (Exception ex)
+		{
+			// Not knowing is not the same as knowing it works. An unanswered question leaves the move unoffered.
+			DiagnosticLog.WriteException("Minecraft", $"asking whether {access.DisplayName} supports Minecraft {gameVersion}", ex);
+			return false;
+		}
+	}
+
+	/// <summary>Puts one of the two platform rows into the Updates list, unless it is there or has been ignored.</summary>
+	private void AddPlatformUpdateRow(string rowId, string name, string author, string installed, string latest)
+	{
+		if (_settings.IgnoredVersions.TryGetValue(rowId, out string? ignored) && ignored == latest) return;
+
+		Invoke(delegate
+		{
+			foreach (object item in listUpdates.Items)
+				if (item is GameMod existing && existing.UniqueId == rowId) return;
+
+			listUpdates.Items.Add(new GameMod
+			{
+				UniqueId = rowId,
+				Name = name,
+				Author = author,
+				Version = installed,
+				LatestVersion = latest,
+				IsUpdateResult = true
+			});
+		});
+	}
+
+	/// <summary>
+	/// Installs the newest Fabric loader for the Minecraft version in use. The pinned version does not change, so
+	/// every installed mod goes on working: a loader update is the safe half of keeping Fabric current.
+	/// </summary>
+	private async Task<bool> UpdateFabricLoaderAsync()
+	{
+		string root = MinecraftRootFolder();
+		return root.Length > 0 && await InstallFabricAsync(root, ActiveAccessMod());
+	}
+
+	/// <summary>
+	/// Moves the setup to a newer Minecraft version: Fabric is installed for it, and every mod that has a build for
+	/// it is updated.
+	///
+	/// <para>
+	/// The warning is the point. A mod with no build for the new version is not removed and does not error — Fabric
+	/// simply does not load it, and for a mod the player's speech depends on that is a silent game. So the counts
+	/// are given before anything is written, and the mods left behind are named afterwards.
+	/// </para>
+	/// </summary>
+	private async Task<bool> MoveToMinecraftVersionAsync(string newVersion, bool silent)
+	{
+		string root = MinecraftRootFolder();
+		if (root.Length == 0 || newVersion.Length == 0) return false;
+
+		List<GameMod> mods = _allInstalledMods.Where(m => !m.IsGroup && !string.IsNullOrEmpty(m.FolderPath) && File.Exists(m.FolderPath)).ToList();
+		Dictionary<string, ModrinthFile> available = await BuildsForVersionAsync(mods, newVersion);
+
+		// Three outcomes, not two. A mod with a build for the new version is updated; a mod whose own declared
+		// range already accepts it needs nothing; and the rest have to be switched OFF, because Fabric does not
+		// skip a mod built for another version — it refuses to start the game and names every offender.
+		Dictionary<string, ModrinthFile> installedBuilds = await InstalledBuildsAsync(mods);
+
+		List<GameMod> ready = mods.Where(m => available.ContainsKey(ModrinthService.Sha1Of(m.FolderPath))).ToList();
+		List<GameMod> fineAsTheyAre = mods.Except(ready)
+			.Where(m => SurvivesTheMove(m, newVersion, installedBuilds))
+			.ToList();
+		List<GameMod> leftBehind = mods.Except(ready).Except(fineAsTheyAre).ToList();
+
+		// Asked even in a batch: this is not an update, it is a change to what the game is.
+		string question = leftBehind.Count == 0
+			? Loc.T("mc.move.confirmAll", newVersion, ready.Count + fineAsTheyAre.Count)
+			: Loc.T("mc.move.confirmSome", newVersion, ready.Count, leftBehind.Count,
+				string.Join(", ", leftBehind.Select(m => m.Name)));
+		if (SpeakBox(question, Loc.T("mc.move.title", newVersion), MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+		{
+			Speak(Loc.T("common.changesCancelled"));
+			return false;
+		}
+
+		string pinnedBefore = _settings.MinecraftGameVersion;
+		_settings.MinecraftGameVersion = newVersion;
+		_settings.Save();
+
+		if (!await InstallFabricAsync(root, ActiveAccessMod()))
+		{
+			// Put the pin back: a half-moved setup, pinned to a version whose loader was never installed, would
+			// have the manager checking for builds the game cannot run.
+			_settings.MinecraftGameVersion = pinnedBefore;
+			_settings.Save();
+			return false;
+		}
+
+		string modsFolder = MinecraftLayout.ModsFolderFor(root);
+		int updated = 0;
+		foreach (GameMod mod in ready)
+		{
+			try
+			{
+				if (!available.TryGetValue(ModrinthService.Sha1Of(mod.FolderPath), out ModrinthFile? file)) continue;
+
+				SetStatus(Loc.T("updateAll.updatingStatus", updated + 1, ready.Count, mod.Name), speak: false);
+				string downloaded = await ModrinthService.DownloadAsync(file, downloadsPath);
+				await Task.Run(() => ModInstaller.InstallFile(downloaded, modsFolder));
+				RecordDownloadInstalled(downloaded);
+				updated++;
+			}
+			catch (Exception ex) { LogFailure(mod.Name, $"Failed to update for Minecraft {newVersion}", ex); }
+		}
+
+		// Switched off rather than left to break the launch. A mod Fabric rejects takes the whole game down with
+		// it, so leaving these enabled would hand back a setup that cannot start — which is precisely what
+		// happened the first time this ran.
+		var switchedOff = new List<string>();
+		foreach (GameMod mod in leftBehind)
+		{
+			try
+			{
+				string off = MinecraftLayout.PathWithEnabled(mod.FolderPath, enable: false,
+					GameProfiles.Require(GameProfiles.Minecraft).DisabledModSuffix);
+				if (off != mod.FolderPath && File.Exists(mod.FolderPath)) File.Move(mod.FolderPath, off);
+				switchedOff.Add(mod.Name);
+			}
+			catch (Exception ex) { LogFailure(mod.Name, $"Could not switch off a mod with no build for Minecraft {newVersion}", ex); }
+		}
+
+		ResetStatus();
+		await RefreshModList(checkUpdates: false);
+
+		string done = switchedOff.Count == 0
+			? Loc.T("mc.move.doneAll", newVersion, updated + fineAsTheyAre.Count)
+			: Loc.T("mc.move.doneSome", newVersion, updated, switchedOff.Count, string.Join(", ", switchedOff));
+		Speak(done);
+		if (!silent && switchedOff.Count > 0)
+			SpeakBox(done, Loc.T("mc.move.title", newVersion), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+		return true;
+	}
+
+	/// <summary>
+	/// Whether this mod can be left alone when the setup moves to <paramref name="gameVersion"/>.
+	///
+	/// <para>
+	/// Two authorities, and the catalogue is the better one. A mod's own declared range is optional and plenty of
+	/// mods leave it out — Toolbar Sounds declares nothing, so it loaded happily on a Minecraft version it was
+	/// never built for, and then its data pack would not parse and the world refused to load. Its Modrinth entry
+	/// knew it supported 26.2 and no further. So: what the catalogue says about the exact jar installed, and only
+	/// where the catalogue has never heard of it, what the mod says about itself.
+	/// </para>
+	/// </summary>
+	private static bool SurvivesTheMove(GameMod mod, string gameVersion, Dictionary<string, ModrinthFile> installedBuilds)
+	{
+		IReadOnlyList<string>? catalogue = null;
+		try
+		{
+			if (!string.IsNullOrEmpty(mod.FolderPath) && File.Exists(mod.FolderPath) &&
+				installedBuilds.TryGetValue(ModrinthService.Sha1Of(mod.FolderPath), out ModrinthFile? build))
+				catalogue = build.GameVersions;
+		}
+		catch (Exception ex) { DiagnosticLog.WriteException("Modrinth", $"reading what {mod.Name} supports", ex); }
+
+		return FabricVersionRange.SurvivesMove(catalogue, DeclaredMinecraftRange(mod), gameVersion);
+	}
+
+	/// <summary>What the catalogue says about the exact jars installed, by hash. Empty when it cannot be asked.</summary>
+	private static async Task<Dictionary<string, ModrinthFile>> InstalledBuildsAsync(List<GameMod> mods)
+	{
+		try
+		{
+			string[] hashes = mods
+				.Where(m => !string.IsNullOrEmpty(m.FolderPath) && File.Exists(m.FolderPath))
+				.Select(m => ModrinthService.Sha1Of(m.FolderPath))
+				.Distinct()
+				.ToArray();
+
+			return await ModrinthService.GetInstalledVersionsForHashesAsync(hashes);
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Modrinth", "asking what the installed mods support", ex);
+			return new Dictionary<string, ModrinthFile>();
+		}
+	}
+
+	/// <summary>
+	/// Whether this installed mod's own declared Minecraft range accepts <paramref name="gameVersion"/> — which is
+	/// the difference between a mod that needs a new build and one that is already happy. See
+	/// <see cref="FabricVersionRange"/> for what that cost when nothing asked.
+	/// </summary>
+	private static bool AcceptsGameVersion(GameMod mod, string gameVersion) =>
+		FabricVersionRange.Accepts(DeclaredMinecraftRange(mod), gameVersion);
+
+	/// <summary>The Minecraft range a mod declares in its own jar, or null when it declares none or cannot be read.</summary>
+	private static string? DeclaredMinecraftRange(GameMod mod)
+	{
+		try
+		{
+			if (string.IsNullOrEmpty(mod.FolderPath) || !File.Exists(mod.FolderPath)) return null;
+
+			FabricModInfo info = MinecraftLayout.ReadModInfo(mod.FolderPath);
+			return info.IsUnreadable || !info.Depends.TryGetValue("minecraft", out string? range) ? null : range;
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Minecraft", $"reading what {mod.Name} requires", ex);
+			return null;
+		}
+	}
+
+	/// <summary>Which of these installed mods Modrinth has a build of for <paramref name="gameVersion"/>, by jar hash.</summary>
+	private async Task<Dictionary<string, ModrinthFile>> BuildsForVersionAsync(List<GameMod> mods, string gameVersion)
+	{
+		try
+		{
+			string[] hashes = mods.Select(m => ModrinthService.Sha1Of(m.FolderPath)).Distinct().ToArray();
+			return hashes.Length == 0
+				? new Dictionary<string, ModrinthFile>()
+				: await ModrinthService.GetLatestForHashesAsync(hashes, gameVersion);
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Modrinth", $"asking which mods have builds for Minecraft {gameVersion}", ex);
+			return new Dictionary<string, ModrinthFile>();
+		}
+	}
+
+	/// <summary>
+	/// Updates one installed Minecraft mod in place, and says whether it did.
+	///
+	/// <para>
+	/// Minecraft's updates went through the Nexus path, which is wrong twice over. Nexus hosts none of these mods,
+	/// so a free account was told to buy Premium to update a mod nobody was charging for; and a Fabric mod IS its
+	/// jar, so the GitHub branch's "download it and extract it" left a folder of loose classes that the loader walks
+	/// straight past, with the old jar still beside it.
+	/// </para>
+	///
+	/// <para>
+	/// Modrinth first, by the hash of the installed jar — the same question the update check asked — then the mod's
+	/// own GitHub releases, which is where United Minecraft is published. <see cref="ModInstaller.InstallFile"/>
+	/// removes the copy being replaced, including a disabled one: Fabric refuses to start when two jars declare the
+	/// same mod id, and a <c>.jar.disabled</c> left behind is invisible to it but not to the manager.
+	/// </para>
+	/// </summary>
+	private async Task<bool> UpdateMinecraftModAsync(GameMod mod, bool silent)
+	{
+		string root = MinecraftRootFolder();
+		string modsFolder = MinecraftLayout.ModsFolderFor(root);
+		if (modsFolder.Length == 0) return false;
+
+		if (!silent) Speak(Loc.T("updates.downloading", mod.Name));
+		SetStatus(Loc.T("updates.updating", mod.Name), speak: false);
+
+		string? downloaded = await DownloadNewestMinecraftJarAsync(mod, root);
+		if (downloaded == null) return false;
+
+		if (!MinecraftLayout.IsModFile(downloaded, null))
+		{
+			// Whatever that release publishes, it is not a Fabric mod. Copying it into the mods folder would be a
+			// file the loader ignores in place of the working mod that is there now.
+			LogError(mod.Name, $"The newest release of {mod.Name} is {Path.GetFileName(downloaded)}, which is not a Fabric mod jar.");
+			return false;
+		}
+
+		// Minecraft's did not, so when a move to a new Minecraft version turned out badly the jars that had been
+		// replaced were simply gone — and two of them had been installed straight into the mods folder, so they
+		// were not in the downloads folder either.
+
+		ProgressAnnouncer? progress = NewProgress(mod.Name, installing: true);
+		ModInstaller.InstallResult result = await Task.Run(() => ModInstaller.InstallFile(downloaded, modsFolder));
+		progress?.Complete();
+
+		RecordDownloadInstalled(downloaded);
+		return true;
+	}
+
+	/// <summary>
+	/// Downloads the newest jar for an installed Minecraft mod into the downloads folder, or null when neither
+	/// catalogue offers one for the Minecraft version in use.
+	/// </summary>
+	private async Task<string?> DownloadNewestMinecraftJarAsync(GameMod mod, string root)
+	{
+		string gameVersion = MinecraftGameVersionInUse(root);
+
+		try
+		{
+			if (gameVersion.Length > 0 && !string.IsNullOrEmpty(mod.FolderPath) && File.Exists(mod.FolderPath))
+			{
+				string hash = ModrinthService.Sha1Of(mod.FolderPath);
+				Dictionary<string, ModrinthFile> latest =
+					await ModrinthService.GetLatestForHashesAsync(new[] { hash }, gameVersion);
+				if (latest.TryGetValue(hash, out ModrinthFile? file))
+					return await ModrinthService.DownloadAsync(file, downloadsPath);
+			}
+		}
+		catch (Exception ex) { DiagnosticLog.WriteException("Modrinth", $"fetching the newest build of {mod.Name}", ex); }
+
+		if (string.IsNullOrEmpty(mod.GitHubRepo)) return null;
+
+		try
+		{
+			// The asset's own name, not "<id>_github_latest.zip": it is a jar, the name carries the release, and the
+			// downloads folder is a record somebody reads.
+			string? url = await GetGitHubLatestReleaseZipUrl(mod.GitHubRepo!);
+			if (string.IsNullOrEmpty(url)) return null;
+
+			string fileName = Path.GetFileName(new Uri(url).LocalPath);
+			if (fileName.Length == 0) fileName = mod.UniqueId + MinecraftLayout.ModExtension;
+
+			Directory.CreateDirectory(downloadsPath);
+			string destination = Path.Combine(downloadsPath, fileName);
+			ProgressAnnouncer? progress = NewProgress(mod.Name, installing: false);
+			await _nexusService.DownloadFileWithProgressAsync(url, destination, progress);
+			progress?.Complete();
+			return destination;
+		}
+		catch (Exception ex) { DiagnosticLog.WriteException("GitHub", $"fetching the newest release of {mod.Name}", ex); }
+
+		return null;
+	}
+
 	/// <summary>
 	/// Asks what to do with a mod found by searching Modrinth, and does it.
 	///
@@ -450,6 +881,8 @@ public partial class Form1
 			if (existing != null && !ConfirmOverwrite(info.Name, MinecraftLayout.ReadModInfo(existing).Version))
 				return;
 
+			if (existing != null && File.Exists(existing))
+
 			await Task.Run(() =>
 			{
 				if (existing != null && !string.Equals(existing, destination, StringComparison.OrdinalIgnoreCase))
@@ -573,6 +1006,7 @@ public partial class Form1
 
 		try
 		{
+
 			MinecraftLaunchPlan plan = MinecraftLauncher.BuildPlan(root, versionId, identity);
 
 			SetStatus(Loc.T("mc.launch.starting"));

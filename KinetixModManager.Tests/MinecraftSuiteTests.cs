@@ -106,4 +106,39 @@ public class MinecraftSuiteTests
 			MinecraftSuite.AccessModFor(MinecraftSuite.MinecraftAccessId).Origin);
 		Assert.Equal(MinecraftModOrigin.Modrinth, MinecraftSuite.FabricApi.Origin);
 	}
+
+	// ---------------------------------------------------------------------
+	// Whether a GitHub release is for a given Minecraft version
+	// ---------------------------------------------------------------------
+
+	private static GitHubRelease Release(string tag, params string[] assets) =>
+		new(tag, assets.Select(a => new GitHubAsset(a, "https://example.invalid/" + a, 1)).ToList());
+
+	[Fact]
+	public void AReleaseTaggedForTheVersionCounts() =>
+		Assert.True(MinecraftSuite.ReleaseIsForGameVersion(Release("v1.2.0-mc26.3"), "26.3"));
+
+	[Fact]
+	public void AReleaseWhoseJarNamesTheVersionCounts() =>
+		Assert.True(MinecraftSuite.ReleaseIsForGameVersion(Release("v1.2.0", "united-minecraft-1.2.0-mc26.3.jar"), "26.3"));
+
+	[Fact]
+	public void AReleaseForAnotherVersionDoesNot() =>
+		Assert.False(MinecraftSuite.ReleaseIsForGameVersion(Release("v1.1.0-mc26.2", "um-26.2.jar"), "26.3"));
+
+	[Fact]
+	public void ALongerVersionIsNotMistakenForTheOneAskedAbout()
+	{
+		// The reason this is matched as a version and not as text. Reading 26.20 as support for 26.2 would move a
+		// player onto a Minecraft version their accessibility mod has no build for — a game that never speaks.
+		Assert.False(MinecraftSuite.ReleaseIsForGameVersion(Release("v2.0.0-mc26.20"), "26.2"));
+		Assert.False(MinecraftSuite.ReleaseIsForGameVersion(Release("v2.0.0-mc1.26.2"), "26.2"));
+	}
+
+	[Fact]
+	public void NothingToReadMeansNo()
+	{
+		Assert.False(MinecraftSuite.ReleaseIsForGameVersion(null, "26.3"));
+		Assert.False(MinecraftSuite.ReleaseIsForGameVersion(Release("v1.2.0", "united-minecraft.jar"), "26.3"));
+	}
 }
