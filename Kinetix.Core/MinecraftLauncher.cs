@@ -438,8 +438,15 @@ public static class MinecraftLauncher
 	/// (<c>javaVersion.component</c>), and the Microsoft Store and standalone launchers keep their runtimes in
 	/// different places. Falling back to a system Java would be wrong more often than right — Minecraft 26.2
 	/// needs Java 25, which almost nobody has installed separately.
+	///
+	/// <para>
+	/// With a <paramref name="root"/> it also looks under <c>&lt;root&gt;\runtime</c>, where the manager puts a
+	/// runtime it fetched itself. Last, so that a runtime the launcher installed and keeps up to date is
+	/// preferred to a copy of ours — and so that an empty answer still means what it has always meant: nobody
+	/// on this machine has this component. See <see cref="MinecraftGameFiles.RuntimeRootFor"/>.
+	/// </para>
 	/// </summary>
-	public static string FindBundledJava(string component)
+	public static string FindBundledJava(string component, string root = "")
 	{
 		string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
@@ -454,6 +461,8 @@ public static class MinecraftLauncher
 			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
 				"Minecraft Launcher", "runtime")
 		};
+
+		if (root.Length > 0) roots.Add(Path.Combine(root, "runtime"));
 
 		foreach (string runtimeRoot in roots)
 		{
@@ -502,7 +511,7 @@ public static class MinecraftLauncher
 		classpath.Add(GameJarPath(root, versionId, inheritsFrom));
 
 		string component = (string?)resolved["javaVersion"]?["component"] ?? "java-runtime-delta";
-		string java = FindBundledJava(component);
+		string java = FindBundledJava(component, root);
 		if (java.Length == 0)
 			throw new InvalidOperationException(
 				$"Could not find the Java runtime '{component}' that Minecraft {versionId} needs. " +
