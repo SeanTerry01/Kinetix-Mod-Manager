@@ -370,6 +370,9 @@ public partial class Form1
 			btnInstall.Text = Loc.T("suite.installing");
 			UseWaitCursor = true;
 
+			// Gathered through the run and said once at the end. See the box below closeView.
+			var noBuildFor = new List<string>();
+
 			try
 			{
 				Speak(Loc.T("suite.startInstall"));
@@ -412,7 +415,7 @@ public partial class Form1
 							.Append(MinecraftSuite.FabricApi)
 							.FirstOrDefault(m => m.DisplayName == item.Name);
 
-						if (part != null) await InstallMinecraftModAsync(part, MinecraftRootFolder());
+						if (part != null) await InstallMinecraftModAsync(part, MinecraftRootFolder(), noBuildFor);
 						continue;
 					}
 
@@ -562,6 +565,18 @@ public partial class Form1
 				// made — the same ordering fault that made the list announcement wrong for eight attempts.
 				await RefreshModList(checkUpdates: false);
 				closeView();
+
+				// ⚠️ After the view has closed, and one box for the whole run rather than one per mod.
+				//
+				// Raised mid-install, this cut the reader off: a message box takes focus and the reader
+				// abandons whatever it was halfway through to read the dialog, so "Downloading Fabric API" and
+				// "Fabric API installed" were both lost to the box that followed them. Here the only thing it
+				// interrupts is the mod list announcing itself — and that is re-announced when focus returns to
+				// the list after the box is dismissed, so nothing is actually lost.
+				if (noBuildFor.Count > 0)
+					SpeakBox(
+						Loc.T("mc.install.noBuildSomeBox", string.Join(", ", noBuildFor), _settings.MinecraftGameVersion),
+						Loc.T("mc.install.noBuildTitle"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
 			}
 			catch (Exception ex)
 			{

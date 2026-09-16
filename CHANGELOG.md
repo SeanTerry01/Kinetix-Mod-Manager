@@ -1,5 +1,20 @@
 ﻿# Unreleased
 
+## 🐛 A suite install cut itself off mid-sentence
+
+*   **"Downloading Fabric API" and "Fabric API installed" were both lost**, spoken over by the message box
+    that came next. A message box takes focus, and the screen reader abandons whatever it was halfway through
+    in order to read the dialog — so every step announced just before one was thrown away. The same thing
+    happened to "Downloading Minecraft Access".
+*   **A download is no longer announced unless there is something to download.** Whether a build exists for
+    your Minecraft version is settled first, and only then does it say "Downloading...". Saying a mod is
+    downloading and contradicting it a second later was how the contradiction came to cut the sentence in
+    half.
+*   **One summary at the end instead of a box per mod.** Anything with no build for your version is named once,
+    after the installer has closed and the mod list has refreshed. The only thing it interrupts now is the mod
+    list announcing itself, and that is said again when focus returns after the box is dismissed — so nothing
+    is lost.
+
 ## 🐛 The Minecraft suite installed a mod built for the wrong game version
 
 *   **Installing the accessibility suite into a Minecraft 1.19.2 setup fetched United Minecraft's build for

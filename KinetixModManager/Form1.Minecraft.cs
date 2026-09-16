@@ -192,20 +192,27 @@ public partial class Form1
 	/// other game's install path does with a download, would leave a folder of loose classes that Fabric walks
 	/// straight past.
 	/// </summary>
-	private async Task<bool> InstallMinecraftModAsync(MinecraftSuiteMod mod, string root)
+	/// <param name="noBuildFor">
+	/// Where to collect the names of mods with no build for this Minecraft version, instead of interrupting
+	/// with a message box. The suite installer passes one; a caller installing a single mod passes nothing and
+	/// gets told there and then, which is right when there is no sequence to interrupt.
+	/// </param>
+	private async Task<bool> InstallMinecraftModAsync(
+		MinecraftSuiteMod mod, string root, List<string>? noBuildFor = null)
 	{
 		string modsFolder = MinecraftLayout.ModsFolderFor(root);
 		Directory.CreateDirectory(modsFolder);
 
 		try
 		{
-			// speak: false — see InstallFabricAsync. Every suite mod was announced twice for the same reason.
-			SetStatus(Loc.T("suite.downloading", mod.DisplayName), speak: false);
-			Speak(Loc.T("suite.downloading", mod.DisplayName));
-
+			// ⚠️ Nothing is announced here any more. Whether there IS a build is settled first, inside the two
+			// methods below, and only then is a download announced — because "Downloading United Minecraft..."
+			// followed a moment later by "United Minecraft has no build for this version" is a sentence the
+			// screen reader never finishes. A message box takes focus, and the reader abandons whatever it was
+			// halfway through to read the dialog, so the announcement and the step before it were both lost.
 			string installed = mod.Origin == MinecraftModOrigin.Modrinth
-				? await InstallModrinthJarAsync(mod, modsFolder)
-				: await InstallGitHubJarAsync(mod, modsFolder);
+				? await InstallModrinthJarAsync(mod, modsFolder, noBuildFor)
+				: await InstallGitHubJarAsync(mod, modsFolder, noBuildFor);
 
 			if (installed.Length == 0) return false;
 
@@ -219,22 +226,41 @@ public partial class Form1
 		}
 	}
 
+	/// <summary>Says a download is starting — only ever called once there is genuinely something to download.</summary>
+	private void AnnounceSuiteDownload(MinecraftSuiteMod mod)
+	{
+		// speak: false — see InstallFabricAsync. Every suite mod was announced twice for the same reason.
+		SetStatus(Loc.T("suite.downloading", mod.DisplayName), speak: false);
+		Speak(Loc.T("suite.downloading", mod.DisplayName));
+	}
+
+	/// <summary>
+	/// Records, or says, that a mod has no build for the Minecraft version in use.
+	///
+	/// Collected rather than announced when the caller is working through a list: one box at the end of the
+	/// run says the same thing without cutting the reader off partway through the step before it.
+	/// </summary>
+	private void ReportNoBuild(MinecraftSuiteMod mod, List<string>? noBuildFor)
+	{
+		if (noBuildFor != null) { noBuildFor.Add(mod.DisplayName); return; }
+
+		Speak(Loc.T("mc.install.noBuildSpeak", mod.DisplayName, _settings.MinecraftGameVersion));
+		SpeakBox(
+			Loc.T("mc.install.noBuildBox", mod.DisplayName, _settings.MinecraftGameVersion),
+			Loc.T("mc.install.noBuildTitle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+	}
+
 	/// <summary>Fetches a Modrinth project's newest build for the pinned Minecraft version.</summary>
-	private async Task<string> InstallModrinthJarAsync(MinecraftSuiteMod mod, string modsFolder)
+	private async Task<string> InstallModrinthJarAsync(
+		MinecraftSuiteMod mod, string modsFolder, List<string>? noBuildFor)
 	{
 		ModrinthFile? file = await ModrinthService.GetLatestFileAsync(mod.Source, _settings.MinecraftGameVersion);
 
-		if (file is null)
-		{
-			// Said out loud rather than swallowed: "there is no build of this for the version you are on" is
-			// something the user can act on, and installing a build for another version would not work.
-			Speak(Loc.T("mc.install.noBuildSpeak", mod.DisplayName, _settings.MinecraftGameVersion));
-			SpeakBox(
-				Loc.T("mc.install.noBuildBox", mod.DisplayName, _settings.MinecraftGameVersion),
-				Loc.T("mc.install.noBuildTitle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
-			return "";
-		}
+		// Reported rather than swallowed: "there is no build of this for the version you are on" is something
+		// the user can act on, and installing a build for another version would not work.
+		if (file is null) { ReportNoBuild(mod, noBuildFor); return ""; }
 
+		AnnounceSuiteDownload(mod);
 		return await ModrinthService.DownloadAsync(file, modsFolder);
 	}
 
@@ -244,7 +270,8 @@ public partial class Form1
 	/// Deliberately the .jar and not the source zip GitHub always attaches: a release carries both, and
 	/// grabbing the wrong one puts a folder of source code in the mods folder.
 	/// </summary>
-	private async Task<string> InstallGitHubJarAsync(MinecraftSuiteMod mod, string modsFolder)
+	private async Task<string> InstallGitHubJarAsync(
+		MinecraftSuiteMod mod, string modsFolder, List<string>? noBuildFor)
 	{
 		string json = await KinetixHttp.Api.GetStringAsync($"https://api.github.com/repos/{mod.Source}/releases/latest");
 		Newtonsoft.Json.Linq.JObject release = Newtonsoft.Json.Linq.JObject.Parse(json);
@@ -258,10 +285,7 @@ public partial class Form1
 		// spare the player. MinecraftSuite.ReleaseIsForGameVersion already existed for the update check.
 		if (!MinecraftSuite.ReleaseIsForGameVersion(GitHubReleases.Parse(json), _settings.MinecraftGameVersion))
 		{
-			Speak(Loc.T("mc.install.noBuildSpeak", mod.DisplayName, _settings.MinecraftGameVersion));
-			SpeakBox(
-				Loc.T("mc.install.noBuildBox", mod.DisplayName, _settings.MinecraftGameVersion),
-				Loc.T("mc.install.noBuildTitle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+			ReportNoBuild(mod, noBuildFor);
 			return "";
 		}
 
@@ -277,6 +301,8 @@ public partial class Form1
 			Speak(Loc.T("mc.install.noJarSpeak", mod.DisplayName));
 			return "";
 		}
+
+		AnnounceSuiteDownload(mod);
 
 		string path = Path.Combine(modsFolder, name!);
 		// The jar itself goes through the download client: a mod is large enough to deserve the long timeout.

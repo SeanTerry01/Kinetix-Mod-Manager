@@ -1266,6 +1266,7 @@
   "mc.fabric.closeLauncherSpeak": "Please close the Minecraft launcher, then try again.",
   "mc.fabric.closeLauncherBox": "The Minecraft launcher is running. It rewrites its own settings when it closes, which would undo the installation.\n\nPlease close the launcher and the game, then choose Install again.",
   "mc.install.done": "{0} installed.",
+  "mc.install.noBuildSomeBox": "Not installed, because there is no build of them for Minecraft {1} yet: {0}.\n\nA mod built for a different Minecraft version does not simply fail to load \u2014 Fabric refuses to start the game at all and names it. Everything else in the suite was installed, and these can be added once their authors release a build for Minecraft {1}.",
   "mc.install.noBuildTitle": "No build for this Minecraft version",
   "mc.install.noBuildSpeak": "There is no build of {0} for Minecraft {1} yet.",
   "mc.install.noBuildBox": "{0} has no release built for Minecraft {1} yet.\n\nA mod built for a different Minecraft version will not load, so it has not been installed. Try again once the mod has been updated.",
