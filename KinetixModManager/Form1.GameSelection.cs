@@ -811,7 +811,9 @@ public partial class Form1
 			// front of the thing this is meant to spare them: choosing an installation and launching a world
 			// are separate pieces of launcher state, the second overrides the first, and nothing says so when
 			// it goes wrong. The manager builds the java command itself instead.
-			if (GameProfiles.IsGame(game, GameProfiles.Minecraft)) { LaunchMinecraft(); return; }
+			// Fired rather than awaited: the game's own files are fetched first when any are missing, and this
+			// path is not async. See FetchMissingLibrariesAsync.
+			if (GameProfiles.IsGame(game, GameProfiles.Minecraft)) { Fire(LaunchMinecraftAsync(), "LaunchMinecraftAsync"); return; }
 
 			string gamePath = _settings.CurrentGamePath;
 			if (string.IsNullOrEmpty(gamePath) || !Directory.Exists(gamePath))

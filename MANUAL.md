@@ -777,7 +777,6 @@ It installs Fabric for a Minecraft version it knows your accessibility mod suppo
 newest one. Fabric is usually ready for a new Minecraft version weeks before the mods are, and installing for
 a version with no mods built for it gives you a game that starts perfectly and stays silent.
 
-### Two accessibility mods
 ### If the game does not start
 
 Minecraft needs a set of its own files for each version, quite apart from your mods. The manager starts the game
@@ -826,6 +825,7 @@ Fabric installation both remain on disk.
 **Update All never moves you to a new Minecraft version.** That row is left for you to choose deliberately; Update
 All takes the Fabric loader and your mods.
 
+### Two accessibility mods
 
 Minecraft has two, and you pick one:
 

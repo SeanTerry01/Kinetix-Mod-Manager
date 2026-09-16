@@ -100,6 +100,85 @@ public class MinecraftLauncherTests
 	}
 
 	// -------------------------------------------------------------------------
+	// The game's own files, which the manager has to fetch because it starts the game itself
+	// -------------------------------------------------------------------------
+
+	/// <summary>Minecraft 26.3's jtracy entries, as the real version file spells them: one jar plus its natives.</summary>
+	private static JObject WithJtracy() => JObject.Parse("""
+	{
+		"id": "26.3",
+		"libraries": [
+			{ "name": "com.mojang:jtracy:1.14.38",
+			  "downloads": { "artifact": { "path": "com/mojang/jtracy/1.14.38/jtracy-1.14.38.jar",
+										   "url": "https://libraries.minecraft.net/com/mojang/jtracy/1.14.38/jtracy-1.14.38.jar",
+										   "sha1": "cc2ad81342001b4281c305a298d7f50332354058", "size": 14292 } } },
+			{ "name": "com.mojang:jtracy:1.14.38:natives-windows", "rules": [ { "action": "allow", "os": { "name": "windows" } } ],
+			  "downloads": { "artifact": { "path": "com/mojang/jtracy/1.14.38/jtracy-1.14.38-natives-windows.jar",
+										   "url": "https://libraries.minecraft.net/natives.jar", "sha1": "abc", "size": 49885 } } },
+			{ "name": "com.mojang:jtracy:1.14.38:natives-linux", "rules": [ { "action": "allow", "os": { "name": "linux" } } ],
+			  "downloads": { "artifact": { "path": "com/mojang/jtracy/1.14.38/jtracy-1.14.38-natives-linux.jar",
+										   "url": "https://libraries.minecraft.net/linux.jar" } } }
+		]
+	}
+	""");
+
+	[Fact]
+	public void TheLibraryThatStoppedTheGameIsReportedMissing()
+	{
+		// Exactly what happened on 2026-09-15: the natives jar was on disk and the jar carrying the classes was
+		// not, so the game died on NoClassDefFoundError with nothing naming a file. The manager starts the game
+		// itself, so nothing else was ever going to fetch it.
+		bool Exists(string path) => path.Contains("natives-windows", StringComparison.OrdinalIgnoreCase);
+
+		IReadOnlyList<MinecraftLauncher.MissingLibrary> missing =
+			MinecraftLauncher.MissingLibraries(WithJtracy(), @"C:\mc\libraries", Windows, X64, Exists);
+
+		MinecraftLauncher.MissingLibrary only = Assert.Single(missing);
+		Assert.Equal(Path.Combine("com", "mojang", "jtracy", "1.14.38", "jtracy-1.14.38.jar"), only.RelativePath);
+		Assert.Equal("cc2ad81342001b4281c305a298d7f50332354058", only.Sha1);
+		Assert.Equal(14292, only.Bytes);
+	}
+
+	[Fact]
+	public void AnotherPlatformsFilesAreNotFetched()
+	{
+		// The Linux natives are absent on every Windows machine and are not missing in any sense that matters.
+		IReadOnlyList<MinecraftLauncher.MissingLibrary> missing =
+			MinecraftLauncher.MissingLibraries(WithJtracy(), @"C:\mc\libraries", Windows, X64, _ => false);
+
+		Assert.Equal(2, missing.Count);
+		Assert.DoesNotContain(missing, m => m.RelativePath.Contains("linux", StringComparison.OrdinalIgnoreCase));
+	}
+
+	[Fact]
+	public void NothingIsFetchedWhenEverythingIsThere() =>
+		Assert.Empty(MinecraftLauncher.MissingLibraries(WithJtracy(), @"C:\mc\libraries", Windows, X64, _ => true));
+
+	[Fact]
+	public void AFabricLibraryIsFetchedFromItsOwnRepository()
+	{
+		// Fabric's libraries carry a maven coordinate and the repository to take it from, with no download path.
+		JObject fabric = JObject.Parse("""
+		{ "libraries": [ { "name": "org.ow2.asm:asm:9.10.1", "url": "https://maven.fabricmc.net/",
+						   "sha1": "ada2141c0cc52ee8f5c48cd5fa4ce0e794f22236", "size": 126151 } ] }
+		""");
+
+		MinecraftLauncher.MissingLibrary only = Assert.Single(
+			MinecraftLauncher.MissingLibraries(fabric, @"C:\mc\libraries", Windows, X64, _ => false));
+
+		Assert.Equal("https://maven.fabricmc.net/org/ow2/asm/asm/9.10.1/asm-9.10.1.jar", only.Url);
+		Assert.Equal("ada2141c0cc52ee8f5c48cd5fa4ce0e794f22236", only.Sha1);
+	}
+
+	[Fact]
+	public void ALibraryWithNowhereToFetchItFromIsNotGuessedAt()
+	{
+		JObject noSource = JObject.Parse("""{ "libraries": [ { "name": "mystery:thing:1.0" } ] }""");
+
+		Assert.Empty(MinecraftLauncher.MissingLibraries(noSource, @"C:\mc\libraries", Windows, X64, _ => false));
+	}
+
+	// -------------------------------------------------------------------------
 	// Merging a Fabric profile onto vanilla
 	// -------------------------------------------------------------------------
 

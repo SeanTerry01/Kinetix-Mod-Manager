@@ -397,6 +397,95 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// Fetches any of Minecraft's own libraries that are missing before the game is started, and says whether the
+	/// launch can go ahead.
+	///
+	/// <para>
+	/// The manager starts the game itself, and assumed every file it needs was already on disk — true only because
+	/// the official launcher had fetched them at some point. After a move to a Minecraft version the official
+	/// launcher had never played, one library was missing and the game died on <c>NoClassDefFoundError</c>: a Java
+	/// stack trace naming a class, with nothing to connect it to a file, a version, or anything the player did.
+	/// The official launcher repairs this on every single launch, quietly. So does this now.
+	/// </para>
+	///
+	/// <para>
+	/// Each file is checked against the checksum the version file gives before it is kept. A library that arrives
+	/// corrupted would fail in exactly the same unreadable way as one that is missing.
+	/// </para>
+	/// </summary>
+	private async Task<bool> FetchMissingLibrariesAsync(string root, string versionId)
+	{
+		IReadOnlyList<MinecraftLauncher.MissingLibrary> missing;
+		try
+		{
+			Newtonsoft.Json.Linq.JObject? resolved = MinecraftLauncher.ResolveVersion(root, versionId);
+			if (resolved == null) return true;   // BuildPlan reports this properly a moment later
+
+			missing = MinecraftLauncher.MissingLibraries(resolved, Path.Combine(root, "libraries"),
+				MinecraftLauncher.CurrentOsName, MinecraftLauncher.CurrentOsArch, File.Exists);
+		}
+		catch (Exception ex)
+		{
+			// Never a reason to refuse to start a game that may well be fine.
+			DiagnosticLog.WriteException("Minecraft", "checking which of the game's libraries are present", ex);
+			return true;
+		}
+
+		if (missing.Count == 0) return true;
+
+		Speak(Loc.T("mc.launch.fetchingLibraries", missing.Count));
+		SetStatus(Loc.T("mc.launch.fetchingLibraries", missing.Count), speak: false);
+
+		var failed = new List<string>();
+		foreach (MinecraftLauncher.MissingLibrary library in missing)
+		{
+			string destination = Path.Combine(root, "libraries", library.RelativePath);
+			try
+			{
+				Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+				await _nexusService.DownloadFileWithProgressAsync(library.Url, destination, null);
+
+				if (!string.IsNullOrEmpty(library.Sha1) && !FileHasSha1(destination, library.Sha1!))
+				{
+					File.Delete(destination);
+					failed.Add(Path.GetFileName(library.RelativePath));
+				}
+			}
+			catch (Exception ex)
+			{
+				LogFailure("Minecraft", $"Could not fetch {library.RelativePath}", ex);
+				failed.Add(Path.GetFileName(library.RelativePath));
+			}
+		}
+
+		ResetStatus();
+		if (failed.Count == 0) return true;
+
+		// Said plainly, and the launch is stopped: starting anyway produces a Java stack trace about a missing
+		// class, which tells the player nothing about what is wrong or what to do.
+		Speak(Loc.T("mc.launch.librariesFailedSpeak", failed.Count));
+		SpeakBox(Loc.T("mc.launch.librariesFailedBox", string.Join(", ", failed)),
+			Loc.T("mc.launch.librariesFailedTitle"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+		return false;
+	}
+
+	/// <summary>Whether a file on disk matches the checksum the version file published for it.</summary>
+	private static bool FileHasSha1(string path, string expected)
+	{
+		try
+		{
+			using FileStream stream = File.OpenRead(path);
+			byte[] hash = System.Security.Cryptography.SHA1.HashData(stream);
+			return Convert.ToHexString(hash).Equals(expected.Trim(), StringComparison.OrdinalIgnoreCase);
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Minecraft", $"checking {path}", ex);
+			return false;
+		}
+	}
+
+	/// <summary>
 	/// The accessibility mod this setup actually runs: the one in the mods folder, whatever the settings say.
 	///
 	/// <para>
@@ -1082,7 +1171,7 @@ public partial class Form1
 	/// of state, the second silently overrides the first, and when it goes wrong the game starts, plays
 	/// normally and never speaks.
 	/// </summary>
-	private void LaunchMinecraft()
+	private async Task LaunchMinecraftAsync()
 	{
 		string root = MinecraftRootFolder();
 
@@ -1109,6 +1198,8 @@ public partial class Form1
 
 		try
 		{
+			// Before the game is asked to start, not after it has failed to. See FetchMissingLibrariesAsync.
+			if (!await FetchMissingLibrariesAsync(root, versionId)) return;
 
 			MinecraftLaunchPlan plan = MinecraftLauncher.BuildPlan(root, versionId, identity);
 

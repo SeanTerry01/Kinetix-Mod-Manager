@@ -320,6 +320,71 @@ public static class MinecraftLauncher
 		return paths;
 	}
 
+	/// <summary>One file the game needs before it can start, and where to get it.</summary>
+	/// <param name="RelativePath">Where it belongs under <c>libraries\</c>.</param>
+	/// <param name="Url">Where to fetch it.</param>
+	/// <param name="Sha1">Its checksum, where the version file gave one.</param>
+	/// <param name="Bytes">Its size, for the progress announcement; 0 when unknown.</param>
+	public readonly record struct MissingLibrary(string RelativePath, string Url, string? Sha1, long Bytes);
+
+	/// <summary>
+	/// The libraries this version needs that are not on disk.
+	///
+	/// <para>
+	/// The manager starts Minecraft itself rather than through the official launcher, and until now it assumed
+	/// every file the game needs was already there — which is true only because the official launcher had fetched
+	/// them at some point. On a Minecraft version it had never started, it was not true: Sean's move to 26.3 left
+	/// exactly one library missing, <c>jtracy</c>, and the game died on a missing class with no mention of a file.
+	/// The official launcher repairs this silently every time it plays; a launcher that does not is a launcher that
+	/// works until the day the game updates.
+	/// </para>
+	///
+	/// <para>
+	/// Two spellings have to be understood. The game's own libraries carry a <c>downloads.artifact</c> with an
+	/// explicit path, url and checksum. Fabric's carry a maven coordinate and the repository to take it from, and
+	/// the path is worked out from the coordinate — which is why <see cref="MavenToRelativePath"/> exists.
+	/// </para>
+	/// </summary>
+	public static IReadOnlyList<MissingLibrary> MissingLibraries(
+		JObject resolved, string librariesRoot, string osName, string osArch, Func<string, bool> exists)
+	{
+		var missing = new List<MissingLibrary>();
+		var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+		foreach (JToken library in resolved["libraries"] as JArray ?? new JArray())
+		{
+			if (!RulesAllow(library["rules"], osName, osArch)) continue;
+
+			JToken? artifact = library["downloads"]?["artifact"];
+			string relative = (string?)artifact?["path"] is { Length: > 0 } explicitPath
+				? explicitPath.Replace('/', Path.DirectorySeparatorChar)
+				: MavenToRelativePath((string?)library["name"] ?? "");
+			if (relative.Length == 0 || !seen.Add(relative)) continue;
+
+			if (exists(Path.Combine(librariesRoot, relative))) continue;
+
+			string url = (string?)artifact?["url"] ?? MavenUrl((string?)library["url"], (string?)library["name"] ?? "");
+			if (url.Length == 0) continue;   // nowhere to get it from; the caller reports the gap rather than guessing
+
+			missing.Add(new MissingLibrary(relative, url,
+				(string?)artifact?["sha1"] ?? (string?)library["sha1"],
+				(long?)artifact?["size"] ?? (long?)library["size"] ?? 0));
+		}
+
+		return missing;
+	}
+
+	/// <summary>The URL a maven coordinate resolves to under a repository, or "" without one.</summary>
+	public static string MavenUrl(string? repository, string coordinate)
+	{
+		if (string.IsNullOrWhiteSpace(repository) || coordinate.Length == 0) return "";
+
+		string relative = MavenToRelativePath(coordinate);
+		if (relative.Length == 0) return "";
+
+		return repository.TrimEnd('/') + "/" + relative.Replace(Path.DirectorySeparatorChar, '/');
+	}
+
 	// -------------------------------------------------------------------------
 	// Arguments
 	// -------------------------------------------------------------------------

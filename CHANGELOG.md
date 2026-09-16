@@ -1,5 +1,17 @@
 ﻿# Unreleased
 
+## 🐛 Minecraft would not start after a game update, for want of one file
+
+*   **The manager starts Minecraft itself**, and assumed every file the game needs was already on disk — which
+    is only true because the official launcher had fetched them at some point. On a Minecraft version that
+    launcher had never played, files can be missing, and the game then dies on a Java stack trace naming a
+    class, with nothing to connect it to a file or to anything the player did. One 14 KB library was the
+    difference between playing and a wall of text.
+*   **Missing files are now fetched before the game starts**, checked against the checksums the version file
+    publishes, exactly as the official launcher does on every launch. If any cannot be downloaded the manager
+    says which, plainly, and does not start the game — a launch that fails on a missing class tells the
+    player nothing.
+
 ## ✨ Enter on an update now asks what you want
 
 *   **On an update the manager can fetch itself** — anything from Modrinth or a GitHub release, and every
