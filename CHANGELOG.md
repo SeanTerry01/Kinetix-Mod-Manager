@@ -30,6 +30,23 @@
     one asking for "26.2 or newer" is happy on 26.3 — are left alone, which the manager knows by reading what
     each mod declares rather than by whether a newer build exists.
 
+## 🐛 An updated mod could come back switched on, and Minecraft kept no backup
+
+*   **A disabled mod came back switched on after it updated** — for Minecraft mods, every time. Installing a
+    mod always puts it in switched on, and the step that puts it back as you had it only recognised mods with
+    a Nexus page or a GitHub repository. A Minecraft mod has neither, so nothing matched and a mod you had
+    deliberately parked quietly came back to life.
+*   **Now you are asked.** A disabled mod that updates stays disabled, and the manager offers to switch it on
+    now that the new version is in — which is often the reason it was parked in the first place. Update All
+    asks nothing and leaves them all as they were, naming them when it finishes.
+*   **Minecraft updates now back the mod up first**, like every other game. Replacing a `.jar` simply deleted
+    the copy you had, so a bad update had nothing to go back to — and a mod installed straight into the mods
+    folder was not in the downloads folder either.
+*   **The "can I move to this Minecraft version" check asked about the wrong mod.** It read the accessibility
+    mod recorded in Settings, which is only written when the manager installs one for you; anyone who put
+    theirs there by hand had it empty, so the question was answered about a mod they do not run. It now reads
+    what is actually in the mods folder.
+
 ## 🐛 Minecraft was missing the requirement checks entirely
 
 *   **Ctrl + Q did nothing for Minecraft**, and neither did the requirements report or Check My Setup. Every

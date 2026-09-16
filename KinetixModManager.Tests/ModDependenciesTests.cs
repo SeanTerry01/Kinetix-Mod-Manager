@@ -126,4 +126,41 @@ public class ModDependenciesTests
 	{
 		Assert.Empty(ModDependencies.PluginFiles(new GameMod { Name = "Nowhere", FolderPath = "" }));
 	}
+
+	// ---------------------------------------------------------------------
+	// Recognising the same mod after an update replaced it
+	// ---------------------------------------------------------------------
+
+	[Fact]
+	public void AMinecraftModIsRecognisedByItsOwnId()
+	{
+		// The gap that switched Sean's disabled mods back on: a Minecraft mod has no Nexus id and no GitHub
+		// repository, so matching on those alone found nothing and "put it back as it was" did nothing at all.
+		var before = new GameMod { Name = "Sound Physics Remastered", UniqueId = "sound_physics_remastered" };
+		var after = new GameMod { Name = "Sound Physics Remastered", UniqueId = "sound_physics_remastered" };
+
+		Assert.True(ModHealth.IsSameMod(before, after));
+	}
+
+	[Theory]
+	[InlineData("12604", "12604", true)]
+	[InlineData("12604", "3863", false)]
+	public void ANexusModIsRecognisedByItsPage(string a, string b, bool expected) =>
+		Assert.Equal(expected, ModHealth.IsSameMod(new GameMod { NexusID = a }, new GameMod { NexusID = b }));
+
+	[Fact]
+	public void AGitHubModIsRecognisedByItsRepository() =>
+		Assert.True(ModHealth.IsSameMod(
+			new GameMod { GitHubRepo = "blindgoofball/united-Minecraft" },
+			new GameMod { GitHubRepo = "BlindGoofball/United-minecraft" }));
+
+	[Fact]
+	public void TwoModsWithNothingInCommonAreNotTheSameMod()
+	{
+		// The other direction, and the one that would be a disaster: an empty id must not match an empty id, or
+		// every unlinked mod would be "the same mod" as every other and updates would put back the wrong one.
+		Assert.False(ModHealth.IsSameMod(new GameMod { Name = "A" }, new GameMod { Name = "B" }));
+		Assert.False(ModHealth.IsSameMod(new GameMod { NexusID = "", UniqueId = "" }, new GameMod { NexusID = "", UniqueId = "" }));
+		Assert.False(ModHealth.IsSameMod(new GameMod { UniqueId = "a.mod" }, new GameMod { UniqueId = "another.mod" }));
+	}
 }

@@ -39,6 +39,29 @@ public static class ModHealth
 	/// When two copies of the same mod are installed, an enabled one satisfies the dependency in preference to a
 	/// disabled one — that is what the game will load, so reporting the disabled copy would be equally untrue.
 	/// </summary>
+	/// <summary>
+	/// Whether these two entries are the same mod — the installed copy and what an update left in its place.
+	///
+	/// <para>
+	/// Matched on any of the three identities a mod can have: its Nexus page, its GitHub repository, or its own id.
+	/// Leaving the third one out is what let an updated Minecraft mod come back switched ON after the user had
+	/// deliberately switched it off: a Minecraft mod has neither of the first two, so nothing ever matched and the
+	/// code that puts the mod back as it was quietly did nothing.
+	/// </para>
+	///
+	/// <para>
+	/// An empty identity never matches, or every mod without a Nexus id would be "the same mod" as every other.
+	/// </para>
+	/// </summary>
+	public static bool IsSameMod(GameMod a, GameMod b)
+	{
+		static bool Same(string? x, string? y) =>
+			!string.IsNullOrWhiteSpace(x) && !string.IsNullOrWhiteSpace(y) &&
+			x.Trim().Equals(y.Trim(), StringComparison.OrdinalIgnoreCase);
+
+		return Same(a.NexusID, b.NexusID) || Same(a.GitHubRepo, b.GitHubRepo) || Same(a.UniqueId, b.UniqueId);
+	}
+
 	public static void ResolveDependencies(
 		List<GameMod> mods,
 		Func<string?, string?, bool> isNewerVersion)

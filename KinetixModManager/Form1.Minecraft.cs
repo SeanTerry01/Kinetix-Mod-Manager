@@ -539,6 +539,7 @@ public partial class Form1
 
 				SetStatus(Loc.T("updateAll.updatingStatus", updated + 1, ready.Count, mod.Name), speak: false);
 				string downloaded = await ModrinthService.DownloadAsync(file, downloadsPath);
+				if (File.Exists(mod.FolderPath)) BackupMod(mod.FolderPath, mod.Name);
 				await Task.Run(() => ModInstaller.InstallFile(downloaded, modsFolder));
 				RecordDownloadInstalled(downloaded);
 				updated++;
@@ -797,9 +798,11 @@ public partial class Form1
 			return false;
 		}
 
+		// The copy being replaced, kept before it goes. Every other game's update path backs the mod up first;
 		// Minecraft's did not, so when a move to a new Minecraft version turned out badly the jars that had been
 		// replaced were simply gone — and two of them had been installed straight into the mods folder, so they
 		// were not in the downloads folder either.
+		if (File.Exists(mod.FolderPath)) BackupMod(mod.FolderPath, mod.Name);
 
 		ProgressAnnouncer? progress = NewProgress(mod.Name, installing: true);
 		ModInstaller.InstallResult result = await Task.Run(() => ModInstaller.InstallFile(downloaded, modsFolder));
@@ -979,7 +982,9 @@ public partial class Form1
 			if (existing != null && !ConfirmOverwrite(info.Name, MinecraftLayout.ReadModInfo(existing).Version))
 				return;
 
+			// Backed up before it is replaced, like every other game's install path does.
 			if (existing != null && File.Exists(existing))
+				BackupMod(existing, MinecraftLayout.ReadModInfo(existing).Name is { Length: > 0 } had ? had : info.Name);
 
 			await Task.Run(() =>
 			{

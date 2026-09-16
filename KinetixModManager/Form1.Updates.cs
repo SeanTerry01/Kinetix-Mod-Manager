@@ -579,7 +579,7 @@ public partial class Form1
 
                 RemoveUpdateRowsFor(mod);
                 await RefreshModList(checkUpdates: false);
-                await ReapplyDisabledIfNeeded(mod, wasDisabled);
+                await ReapplyDisabledIfNeeded(mod, wasDisabled, silent);
 
                 if (!silent)
                 {
@@ -653,7 +653,7 @@ public partial class Form1
                     Invoke(delegate { RefreshModPriorityList(); });
                 }
 
-                await ReapplyDisabledIfNeeded(mod, wasDisabled);
+                await ReapplyDisabledIfNeeded(mod, wasDisabled, silent);
                 // Remember which release is now on disk, so the next check compares against what was installed
 
                 // rather than whatever version numbers the mods inside the download happen to declare.
@@ -713,7 +713,7 @@ public partial class Form1
                 listUpdates.EndUpdate();
             });
             await RefreshModList(checkUpdates: false);
-            await ReapplyDisabledIfNeeded(mod, wasDisabled);
+            await ReapplyDisabledIfNeeded(mod, wasDisabled, silent);
             // Remember which release is now on disk, so the next check compares against what was installed
 
             // rather than whatever version numbers the mods inside the download happen to declare.
@@ -859,19 +859,53 @@ public partial class Form1
 	/// matched by Nexus ID or GitHub repo; its folder is renamed to the disabled form (a leading dot) and the mod
 	/// list re-reconciled so deployment and plugins.txt reflect the disabled state.
 	/// </summary>
-	private async Task ReapplyDisabledIfNeeded(StardewMod original, bool wasDisabled)
+	/// <summary>
+	/// Mods left switched off by an Update All, so the batch can say so once at the end rather than asking about
+	/// each one in the middle of a run the user started precisely to avoid answering things.
+	/// </summary>
+	private readonly List<string> _updatesLeftDisabled = new();
+
+	/// <summary>
+	/// Puts a mod back the way the user had it after an update, and — outside a batch — asks whether they would
+	/// rather have it on now.
+	///
+	/// <para>
+	/// An update installs the mod switched on, whatever it was before, so without this a mod deliberately parked
+	/// comes back to life behind the user's back. Off stays the answer unless they say otherwise, because that is
+	/// the state they chose; but a mod is often parked <em>because</em> it was broken, and the update may be
+	/// exactly what fixes it, so the question is worth asking once.
+	/// </para>
+	///
+	/// <para>
+	/// ⚠️ Matched on the Nexus id, the GitHub repository AND the mod's own id. The first two are all it used to
+	/// look at, so for Minecraft — where a mod has neither — nothing matched and every disabled mod silently came
+	/// back switched on.
+	/// </para>
+	/// </summary>
+	private async Task ReapplyDisabledIfNeeded(StardewMod original, bool wasDisabled, bool silent = false)
 	{
 		if (!wasDisabled) return;
-		StardewMod? updated = _allInstalledMods.FirstOrDefault(m => !m.IsGroup && m.IsEnabled &&
-			((!string.IsNullOrEmpty(original.NexusID) && original.NexusID.Equals(m.NexusID, StringComparison.OrdinalIgnoreCase)) ||
-			 (!string.IsNullOrEmpty(original.GitHubRepo) && original.GitHubRepo.Equals(m.GitHubRepo, StringComparison.OrdinalIgnoreCase))));
-		if (updated == null) return;
+
+		StardewMod? updated = _allInstalledMods.FirstOrDefault(m => !m.IsGroup && m.IsEnabled && ModHealth.IsSameMod(original, m));
+		if (updated == null || !updated.IsEnabled) return;
+
+		// In a batch nothing is asked: the run is unattended by design, and the state the user chose is kept. The
+		// end of the run says which mods that happened to.
+		if (!silent && SpeakBox(Loc.T("updates.enableAfterUpdate", updated.Name, updated.Version),
+				Loc.T("updates.enableAfterUpdateTitle"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+		{
+			_soundEngine.Play("enable");
+			Speak(Loc.T("updates.leftEnabled", updated.Name));
+			return;
+		}
+
 		try
 		{
-			if (!updated.IsEnabled) return;   // already disabled
 			updated.FolderPath = ModFileSystem.SetModEnabled(updated.FolderPath, false, _settings.ActiveGame);
 			updated.IsEnabled = false;
 			_soundEngine.Play("disable");
+			if (silent) _updatesLeftDisabled.Add(updated.Name);
+			else Speak(Loc.T("updates.leftDisabled", updated.Name));
 			await RefreshModList(checkUpdates: false);
 		}
 		catch (Exception ex)

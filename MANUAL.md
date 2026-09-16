@@ -1043,6 +1043,19 @@ When you check for updates, the manager works out the latest version of each ins
 *   **The mod's own link.** A mod that records a Nexus mod ID or a GitHub repository is checked against that page directly.
 *   **SMAPI's mod database (Stardew Valley).** Every installed Stardew mod is also looked up by its **unique ID** on smapi.io — the same service SMAPI itself uses when it tells you about updates in its log window. This finds updates for mods whose `manifest.json` has a missing or wrong update key, so what the manager reports lines up with what SMAPI reports.
 
+**Disabled mods are checked too.** A mod you've switched off is still yours, and an update to it is still worth
+knowing about — often it's the very thing that makes the mod usable again. Its update appears in the list like any
+other.
+
+**A disabled mod stays disabled after it updates.** Installing a mod always puts it in switched on, so afterwards
+the manager puts it back the way you had it, and asks whether you'd rather switch it on now that the new version
+is in — because a mod is often parked precisely because it was broken. Answer No (or press Escape) and it stays
+off. During **Update All** nothing is asked: every mod that was off stays off, and the finishing announcement
+names them.
+
+**Your old copy is kept.** Every update backs the mod up first, Minecraft's single `.jar` files included, so you
+can go back to the version you had from the Backups tab.
+
 Where both sources have an answer and they disagree, the manager takes the **newer** of the two. A Nexus page's version field is typed in by the author and often lags the files actually on the page, so the mod database is frequently ahead of it. A mod is only ever listed in the Updates tab when the version it would fetch really is newer than the one you have.
 
 When that lookup identifies a mod, the manager also **remembers its Nexus page**, so a mod that arrived with no link becomes fully actionable — you can download its update and open its page like any other. This happens quietly during a normal update check; nothing in the mod's own files is edited.

@@ -64,12 +64,12 @@ public partial class Form1
 			// zip, all sharing a mod id). Installing that one download updates them all at once, so collapse update
 			// rows that share a source to a single download — but keep genuine multi-part mods (Part 1 / Part 2)
 			// distinct so both parts still get fetched.
-			int totalMods = listUpdates.Items.Count;
-			var groupSizes = listUpdates.Items.Cast<StardewMod>()
+			int totalMods = rows.Count;
+			var groupSizes = rows
 				.GroupBy(UpdateGroupKey)
 				.ToDictionary(g => g.Key, g => g.Count());
 			var seenSources = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-			List<StardewMod> mods = listUpdates.Items.Cast<StardewMod>().Where(m => seenSources.Add(UpdateGroupKey(m))).ToList();
+			List<StardewMod> mods = rows.Where(m => seenSources.Add(UpdateGroupKey(m))).ToList();
 
 			// When some updates are bundled, the download count is lower than the mod count. Say both so "1 download"
 			// never looks like it is skipping the other mods it actually updates.
@@ -85,6 +85,7 @@ public partial class Form1
 				return;
 			}
 			isUpdatingAll = true;
+			_updatesLeftDisabled.Clear();
 			try
 			{
 				for (int i = 0; i < mods.Count; i++)
@@ -96,7 +97,11 @@ public partial class Form1
 						: Loc.T("updateAll.updatingStatus", i + 1, mods.Count, mods[i].Name));
 					await DownloadAndInstallUpdate(mods[i], silent: true);
 				}
-				Speak(Loc.T("updateAll.finished"));
+				// A mod that was switched off stays switched off, and the run says which ones rather than asking
+				// about each in the middle of a batch the user started to avoid answering things.
+				Speak(_updatesLeftDisabled.Count == 0
+					? Loc.T("updateAll.finished")
+					: Loc.T("updateAll.finishedSomeDisabled", _updatesLeftDisabled.Count, string.Join(", ", _updatesLeftDisabled)));
 			}
 			catch (Exception ex)
 			{
@@ -157,11 +162,6 @@ public partial class Form1
 	}
 
 	/// <summary>Opens the Nexus Mods page for the selected mod in the default browser.</summary>
-	/// <summary>
-	/// Whether the manager can fetch this search result itself, rather than sending the user to its page.
-	///
-	/// <para>
-	/// Two questions, and both have to be yes. The site must say it hands files over
 	/// <summary>Whether updating this mod needs a Nexus Premium account. The rule lives in the core.</summary>
 	private bool NeedsPremiumToUpdate(GameMod mod) => ModSources.NeedsNexusPremium(_settings.ActiveGame, mod);
 
@@ -175,6 +175,11 @@ public partial class Form1
 		!string.IsNullOrEmpty(mod.GitHubRepo) ||
 		!string.IsNullOrEmpty(mod.ModrinthId);
 
+	/// <summary>
+	/// Whether the manager can fetch this search result itself, rather than sending the user to its page.
+	///
+	/// <para>
+	/// Two questions, and both have to be yes. The site must say it hands files over
 	/// (<see cref="ModSourceAbilities.Download"/>), and the manager must actually have a way to talk to it —
 	/// which is not the same thing, and is the honest state of affairs today: CurseForge hands files over and
 	/// the manager has no key for it, so a CurseForge result opens its page.
