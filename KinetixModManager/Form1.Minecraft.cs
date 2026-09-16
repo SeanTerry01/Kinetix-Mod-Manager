@@ -74,18 +74,28 @@ public partial class Form1
 	/// Asked once rather than every install, and asked as a plain "which of these two?" — the difference in
 	/// what each one needs installed alongside it is the manager's problem, not the player's.
 	/// </summary>
-	private MinecraftSuiteMod? EnsureAccessModChosen()
+	/// <param name="alwaysAsk">
+	/// Ask even when a mod has already been chosen, opening on that choice. What the suite installer does, so
+	/// that the choice comes before the list built from it — and so there is a way to change it at all, which
+	/// there was not: once set, this setting could only ever be read.
+	/// </param>
+	private MinecraftSuiteMod? EnsureAccessModChosen(bool alwaysAsk = false)
 	{
-		if (!string.IsNullOrEmpty(_settings.MinecraftAccessModId))
-			return MinecraftSuite.AccessModFor(_settings.MinecraftAccessModId);
+		MinecraftSuiteMod? already = string.IsNullOrEmpty(_settings.MinecraftAccessModId)
+			? null
+			: MinecraftSuite.AccessModFor(_settings.MinecraftAccessModId);
+
+		if (already != null && !alwaysAsk) return already;
 
 		string? picked = ShowChoiceList(
 			Loc.T("mc.chooser.title"),
 			Loc.T("mc.chooser.listName"),
 			MinecraftSuite.AccessModNames,
-			MinecraftSuite.Default.DisplayName,
+			(already ?? MinecraftSuite.Default).DisplayName,
 			Loc.T("mc.chooser.hint"));
 
+		// Escape. The existing choice is deliberately left alone rather than cleared: backing out of a question
+		// is not the same as unpicking the answer given to it last time.
 		MinecraftSuiteMod? chosen = MinecraftSuite.AccessModByDisplayName(picked);
 		if (chosen is null) return null;
 
@@ -127,7 +137,9 @@ public partial class Form1
 			// EnsureMinecraftVersionAsync: on a version the player already has, this costs no network call.
 			if (!await EnsureMinecraftVersionAsync(root, gameVersion)) return false;
 
-			SetStatus(Loc.T("mc.fabric.installing", gameVersion));
+			// speak: false, because Speak says the same sentence on the next line. SetStatus speaks by default,
+			// so this pair announced "Installing Fabric for Minecraft 1.19.2..." twice, back to back.
+			SetStatus(Loc.T("mc.fabric.installing", gameVersion), speak: false);
 			Speak(Loc.T("mc.fabric.installing", gameVersion));
 
 			await FabricInstaller.InstallAsync(root, gameVersion);
@@ -187,7 +199,8 @@ public partial class Form1
 
 		try
 		{
-			SetStatus(Loc.T("suite.downloading", mod.DisplayName));
+			// speak: false — see InstallFabricAsync. Every suite mod was announced twice for the same reason.
+			SetStatus(Loc.T("suite.downloading", mod.DisplayName), speak: false);
 			Speak(Loc.T("suite.downloading", mod.DisplayName));
 
 			string installed = mod.Origin == MinecraftModOrigin.Modrinth
@@ -235,6 +248,22 @@ public partial class Form1
 	{
 		string json = await KinetixHttp.Api.GetStringAsync($"https://api.github.com/repos/{mod.Source}/releases/latest");
 		Newtonsoft.Json.Linq.JObject release = Newtonsoft.Json.Linq.JObject.Parse(json);
+
+		// ⚠️ The version gate the Modrinth path has always had, and this one never did.
+		//
+		// Found by installing the suite into a bare 1.19.2 folder: Fabric API arrived as 0.77.0+1.19.2,
+		// correctly, and United Minecraft arrived as 1.2.0+mc26.3 — the newest release, built for a Minecraft
+		// seven versions later. A mod built for the wrong version does not degrade anything; Fabric refuses to
+		// start the game and names it, which is the wall of Java text this whole game's support exists to
+		// spare the player. MinecraftSuite.ReleaseIsForGameVersion already existed for the update check.
+		if (!MinecraftSuite.ReleaseIsForGameVersion(GitHubReleases.Parse(json), _settings.MinecraftGameVersion))
+		{
+			Speak(Loc.T("mc.install.noBuildSpeak", mod.DisplayName, _settings.MinecraftGameVersion));
+			SpeakBox(
+				Loc.T("mc.install.noBuildBox", mod.DisplayName, _settings.MinecraftGameVersion),
+				Loc.T("mc.install.noBuildTitle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+			return "";
+		}
 
 		var jar = (release["assets"] as Newtonsoft.Json.Linq.JArray)?
 			.FirstOrDefault(a => ((string?)a["name"] ?? "")

@@ -1,5 +1,42 @@
 ﻿# Unreleased
 
+## 🐛 The Minecraft suite installed a mod built for the wrong game version
+
+*   **Installing the accessibility suite into a Minecraft 1.19.2 setup fetched United Minecraft's build for
+    Minecraft 26.3** — seven versions later. Fabric API, fetched from Modrinth, arrived correctly as the
+    1.19.2 build; the difference was that the Modrinth path checked the version and the GitHub-release path
+    never had. A mod built for the wrong Minecraft version does not degrade anything: Fabric refuses to start
+    the game and names it, which is precisely the wall of Java text this game's support exists to spare you.
+*   **Both paths check now**, using the same rule the update check already used, and say "there is no build of
+    this for the version you are on" rather than installing something that cannot work.
+
+## ✨ Minecraft's suite installer asks which accessibility mod first
+
+*   **The choice now comes before the list**, when you open the installer, instead of part-way through the
+    install. Every other game's suite is a fixed list of mods; Minecraft's is one of two rival accessibility
+    mods plus whatever that one needs, so "which mods do you need" has no answer until you have picked. You
+    choose, then see exactly what will be installed, then press **Continue and Install**.
+*   **This fixes a real trap.** The list used to be built from the default before you were asked, so someone
+    who wanted **Minecraft Access** saw United Minecraft listed as though it were already decided — and
+    picking Minecraft Access at the later prompt still installed United Minecraft's jar, because the install
+    walked the list built before the question was asked.
+*   **The choice can be changed now.** It opens on your current answer, and Escape leaves it alone. Once set,
+    that setting could previously only be read, never changed.
+
+## 🐛 Suite install fixes: things said twice, and a refresh that never happened
+
+*   **"Refreshing mod list" now refreshes the mod list.** The line at the end of a suite install has always
+    said it and nothing ever did it, for every game — so after installing the whole suite the list was
+    exactly as empty as before, and the only way to see what had just arrived was to refresh it by hand.
+*   **Every step was announced twice.** "Installing Fabric for Minecraft 1.19.2", "Downloading Fabric API",
+    "Downloading United Minecraft" — each said, then immediately said again, because the status line speaks
+    by default and each one was also spoken explicitly.
+*   **Downloading Minecraft asks one question instead of two, and its numbers agree.** The Java runtime used
+    to be asked about separately and first, before you had even been told the game itself was missing. Worse,
+    the question and the line that followed it counted different things: you were asked about "3,365 files,
+    551.3 MB" and then told "3,768 files, 638.2 MB" was downloading. Getting the game and getting the Java it
+    runs on is one decision, so it is now one question, with one honest total.
+
 ## ✨ A Minecraft update now says so out loud
 
 *   **An update check that finds a new Minecraft version tells you, rather than leaving a row to be found.**

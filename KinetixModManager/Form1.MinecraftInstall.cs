@@ -133,13 +133,14 @@ public partial class Form1
 				}
 			}
 
-			// The Java runtime is its own question with its own answer, so it is asked separately and its
-			// files are appended to the same download rather than run as a second one.
-			if (!await AddMissingJavaRuntimeAsync(root, versionJson, gameVersion, wanted)) return false;
+			// Found, not asked about. Getting the game and getting the Java it runs on is one decision, and
+			// asking it as two put the Java question FIRST — before the user had been told the game itself was
+			// missing, which is the wrong way round and reads as a non sequitur.
+			string javaVersion = await FindMissingJavaRuntimeAsync(root, versionJson, gameVersion, wanted);
 
 			if (wanted.Count == 0) return true;
 
-			return await FetchTheGameAsync(gameVersion, wanted, missingAssets);
+			return await FetchTheGameAsync(gameVersion, wanted, missingAssets, javaVersion);
 		}
 		catch (Exception ex)
 		{
@@ -176,8 +177,9 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Adds the Java runtime this version wants to the download, when no launcher on this machine already has
-	/// it. Answers <c>false</c> only when the user was asked and said no.
+	/// Adds the Java runtime this version wants to the download when no launcher on this machine has it, and
+	/// returns the Java version number so the caller can name it in the one question it asks. <c>""</c> when
+	/// no runtime is needed or none could be found.
 	///
 	/// <para>
 	/// This is the step that used to end the story. <see cref="MinecraftLauncher.BuildPlan"/> could say which
@@ -185,15 +187,22 @@ public partial class Form1
 	/// the Minecraft launcher" — which is the sentence this whole feature exists to delete. Minecraft has
 	/// moved runtime twice in recent memory, so a version bump that also bumps Java is not a rare case.
 	/// </para>
+	///
+	/// <para>
+	/// ⚠️ It finds and does not ask. Asking here put the Java question in front of the user BEFORE they had
+	/// been told the game itself was missing — the first thing Sean heard on a bare folder was a question about
+	/// Java 17, which answers a question nobody had yet been asked. Downloading a game and downloading the Java
+	/// it runs on is one decision, so it is now one question, and it is the caller's.
+	/// </para>
 	/// </summary>
-	private async Task<bool> AddMissingJavaRuntimeAsync(
+	private async Task<string> FindMissingJavaRuntimeAsync(
 		string root, JObject versionJson, string gameVersion, List<MinecraftFetch> wanted)
 	{
 		string component = MinecraftGameFiles.JavaComponent(versionJson);
-		if (MinecraftLauncher.FindBundledJava(component, root).Length > 0) return true;
+		if (MinecraftLauncher.FindBundledJava(component, root).Length > 0) return "";
 
 		JObject? all = await FetchJsonAsync(MinecraftGameFiles.JavaRuntimeManifestUrl);
-		if (all is null) return true;   // reported by the launch itself if it turns out to matter
+		if (all is null) return "";   // reported by the launch itself if it turns out to matter
 
 		string platform = MinecraftGameFiles.RuntimePlatform(
 			MinecraftLauncher.CurrentOsName, MinecraftLauncher.CurrentOsArch);
@@ -206,23 +215,15 @@ public partial class Form1
 			Speak(Loc.T("mc.game.javaUnavailableSpeak", gameVersion));
 			SpeakBox(Loc.T("mc.game.javaUnavailableBox", gameVersion, component, platform),
 				Loc.T("mc.game.javaTitle"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
-			return true;
+			return "";
 		}
 
 		JObject? manifest = await FetchJsonAsync(manifestUrl);
-		if (manifest is null) return true;
+		if (manifest is null) return "";
 
 		string componentRoot = MinecraftGameFiles.RuntimeRootFor(root, component, platform);
 		MinecraftRuntimePlan plan = MinecraftGameFiles.MissingRuntimeFiles(manifest, componentRoot, File.Exists);
-		if (plan.Files.Count == 0) return true;
-
-		string version = MinecraftGameFiles.RuntimeVersionName(all, platform, component);
-		if (SpeakBox(Loc.T("mc.game.javaConfirm", gameVersion, version, FormatBytes(plan.TotalBytes)),
-				Loc.T("mc.game.javaTitle"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
-		{
-			Speak(Loc.T("common.changesCancelled"));
-			return false;
-		}
+		if (plan.Files.Count == 0) return "";
 
 		foreach (string directory in plan.Directories)
 		{
@@ -234,7 +235,7 @@ public partial class Form1
 			wanted.Add(new MinecraftFetch(file.Url, Path.Combine(componentRoot, file.RelativePath), file.Sha1, file.Bytes));
 
 		_pendingRuntimePlan = (componentRoot, plan);
-		return true;
+		return MinecraftGameFiles.RuntimeVersionName(all, platform, component);
 	}
 
 	/// <summary>
@@ -252,22 +253,36 @@ public partial class Form1
 	/// permission for four sounds has traded one annoyance for a worse one.
 	/// </para>
 	/// </summary>
-	private async Task<bool> FetchTheGameAsync(string gameVersion, List<MinecraftFetch> wanted, int missingAssets)
+	private async Task<bool> FetchTheGameAsync(
+		string gameVersion, List<MinecraftFetch> wanted, int missingAssets, string javaVersion)
 	{
+		// ⚠️ One total, used by the question AND by the line that follows it. They were computed differently
+		// before — the question subtracted the separately-approved Java and the status line did not — so the
+		// user was asked about "3,365 files, 551.3 MB" and then told "3,768 files, 638.2 MB" was downloading.
+		// Two honest numbers that contradict each other are worse than one rounded one.
 		long total = wanted.Sum(f => f.Bytes);
-
-		// The Java runtime was asked about on its own terms, with its own size, a moment ago. Counting it here
-		// too would put a second question in front of someone who has just answered this one.
 		int javaFiles = _pendingRuntimePlan?.Plan.Files.Count ?? 0;
-		long approved = _pendingRuntimePlan?.Plan.TotalBytes ?? 0;
 		int gameFiles = wanted.Count - javaFiles;
+		bool needsJava = javaVersion.Length > 0 && javaFiles > 0;
 
-		bool ask = total - approved >= MinecraftAskFirstBytes;
-		if (ask && SpeakBox(Loc.T("mc.game.confirm", gameVersion, gameFiles, FormatBytes(total - approved)),
-				Loc.T("mc.game.title", gameVersion), MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+		bool ask = total >= MinecraftAskFirstBytes;
+		if (ask)
 		{
-			Speak(Loc.T("common.changesCancelled"));
-			return false;
+			// One question for one decision. Getting the game and getting the Java it runs on are not two
+			// things a person can sensibly answer separately: saying no to the second leaves the first useless.
+			string question = gameFiles == 0
+				? Loc.T("mc.game.javaConfirm", gameVersion, javaVersion, FormatBytes(total))
+				: needsJava
+					? Loc.T("mc.game.confirmWithJava", gameVersion, wanted.Count, FormatBytes(total), javaVersion)
+					: Loc.T("mc.game.confirm", gameVersion, wanted.Count, FormatBytes(total));
+
+			string title = gameFiles == 0 ? Loc.T("mc.game.javaTitle") : Loc.T("mc.game.title", gameVersion);
+
+			if (SpeakBox(question, title, MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+			{
+				Speak(Loc.T("common.changesCancelled"));
+				return false;
+			}
 		}
 
 		// Four situations, because they are genuinely four different things to be told. Assets are named in
@@ -277,7 +292,7 @@ public partial class Form1
 		string opening = ask
 			? Loc.T("mc.game.fetching", gameVersion, wanted.Count, FormatBytes(total))
 			: gameFiles == 0
-				? Loc.T("mc.game.fetchingJava", gameVersion, FormatBytes(approved))
+				? Loc.T("mc.game.fetchingJava", gameVersion, FormatBytes(total))
 				: missingAssets > 0
 					? Loc.T("mc.game.repairingAssets", gameVersion, gameFiles)
 					: Loc.T("mc.game.repairing", gameVersion, gameFiles);

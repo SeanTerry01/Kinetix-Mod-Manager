@@ -57,6 +57,23 @@ public partial class Form1
 		string game = _settings.ActiveGame;
 		string gameName = GameProfiles.DisplayNameFor(game);
 
+		// ⚠️ Minecraft asks BEFORE the list exists, and it is the one game that has to.
+		//
+		// Every other game's suite is a fixed list. Minecraft's is one of two rival accessibility mods plus
+		// whatever that one needs, so "which mods do you need" has no answer until the user has picked. The
+		// list used to be built from the default and the question asked later, during the install — which
+		// meant someone who wanted Minecraft Access saw United Minecraft listed as though it were decided,
+		// and, worse, picking Minecraft Access at that late prompt still installed United Minecraft's jar,
+		// because the loop walked the list built before the question was asked.
+		//
+		// Asking first makes the list a consequence of the answer, which is what Sean asked for and what
+		// removes the bug in the same stroke.
+		if (GameProfiles.IsGame(game, GameProfiles.Minecraft) && EnsureAccessModChosen(alwaysAsk: true) is null)
+		{
+			Speak(Loc.T("common.changesCancelled"));
+			return;
+		}
+
 		// Shown inside the main window rather than as one of its own — see Form1.InlineView. Escape is handled by
 		// the view. The main window used to be hidden while this was open, to keep the per-mod confirmations and
 		// progress on the panel rather than flashing to the window behind; being part of that window now achieves
@@ -264,9 +281,15 @@ public partial class Form1
 			lstStatus.SelectedIndex = 0;
 		}
 
+		// "Install Missing Suite Mods" is right for a fixed checklist and wrong for Minecraft, where the screen
+		// is now the consequence of a choice just made: what follows it is a continuation, not a repair.
+		string installText = GameProfiles.IsGame(game, GameProfiles.Minecraft)
+			? Loc.T("suite.installMinecraft")
+			: Loc.T("suite.installMissing");
+
 		Button btnInstall = new Button
 		{
-			Text = allModsInstalled ? Loc.T("suite.suiteInstalled") : Loc.T("suite.installMissing"),
+			Text = allModsInstalled ? Loc.T("suite.suiteInstalled") : installText,
 			Enabled = !allModsInstalled,
 			Height = 45,
 			Dock = DockStyle.Fill,
@@ -529,6 +552,15 @@ public partial class Form1
 					WarnAboutRivalAccessMod(MinecraftSuite.AccessModFor(_settings.MinecraftAccessModId));
 
 				Speak(Loc.T("suite.setupComplete"));
+
+				// The sentence above has always ended "Refreshing mod list" and nothing ever refreshed it. Every
+				// game was affected: after installing the whole suite the list was exactly as empty as before,
+				// and the only way to see what had just been installed was to refresh it by hand.
+				//
+				// ⚠️ Before closeView, not after. Closing restores focus to the mod list and announces it, so
+				// refreshing afterwards would change the list underneath an announcement that had already been
+				// made — the same ordering fault that made the list announcement wrong for eight attempts.
+				await RefreshModList(checkUpdates: false);
 				closeView();
 			}
 			catch (Exception ex)
@@ -539,7 +571,7 @@ public partial class Form1
 			{
 				UseWaitCursor = false;
 				btnInstall.Enabled = true;
-				btnInstall.Text = Loc.T("suite.installMissing");
+				btnInstall.Text = installText;
 				isInstalling = false;
 				// Whatever happened, don't leave "Installing..." / "Downloading..." stuck in the title.
 				ResetStatus();
