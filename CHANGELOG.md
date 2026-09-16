@@ -10,10 +10,11 @@
     your Minecraft version is settled first, and only then does it say "Downloading...". Saying a mod is
     downloading and contradicting it a second later was how the contradiction came to cut the sentence in
     half.
-*   **One summary at the end instead of a box per mod.** Anything with no build for your version is named once,
-    after the installer has closed and the mod list has refreshed. The only thing it interrupts now is the mod
-    list announcing itself, and that is said again when focus returns after the box is dismissed — so nothing
-    is lost.
+*   **One summary at the end instead of a box per mod, and that summary now says everything.** A dialog will
+    always outrun the speech: the queue drains far slower than the code runs, so whenever the box appears the
+    run is still being read out, and taking focus throws the rest away. Moving the box later only changes what
+    gets destroyed. So the box names what WAS installed as well as what was not — it is a superset of what it
+    speaks over, and losing the queue costs nothing because the box says all of it.
 
 ## 🐛 The Minecraft suite installed a mod built for the wrong game version
 

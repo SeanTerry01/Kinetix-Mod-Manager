@@ -370,8 +370,10 @@ public partial class Form1
 			btnInstall.Text = Loc.T("suite.installing");
 			UseWaitCursor = true;
 
-			// Gathered through the run and said once at the end. See the box below closeView.
+			// Gathered through the run and said once at the end. See the box below closeView — it has to name
+			// what DID install as well as what did not, because it speaks over the lines that said so.
 			var noBuildFor = new List<string>();
+			var installedNames = new List<string>();
 
 			try
 			{
@@ -415,7 +417,8 @@ public partial class Form1
 							.Append(MinecraftSuite.FabricApi)
 							.FirstOrDefault(m => m.DisplayName == item.Name);
 
-						if (part != null) await InstallMinecraftModAsync(part, MinecraftRootFolder(), noBuildFor);
+						if (part != null && await InstallMinecraftModAsync(part, MinecraftRootFolder(), noBuildFor))
+							installedNames.Add(part.DisplayName);
 						continue;
 					}
 
@@ -566,16 +569,21 @@ public partial class Form1
 				await RefreshModList(checkUpdates: false);
 				closeView();
 
-				// ⚠️ After the view has closed, and one box for the whole run rather than one per mod.
+				// ⚠️ This box SPEAKS OVER everything the install just said, and no amount of reordering will
+				// stop it. Tolk queues, but the queue drains far slower than the code runs, so by the time the
+				// box appears the whole run — "Downloading Fabric API", "Fabric API installed", "setup
+				// complete" — is still waiting to be read. A dialog takes focus and the reader abandons the
+				// queue to read it. Moving the box later only moves what gets destroyed.
 				//
-				// Raised mid-install, this cut the reader off: a message box takes focus and the reader
-				// abandons whatever it was halfway through to read the dialog, so "Downloading Fabric API" and
-				// "Fabric API installed" were both lost to the box that followed them. Here the only thing it
-				// interrupts is the mod list announcing itself — and that is re-announced when focus returns to
-				// the list after the box is dismissed, so nothing is actually lost.
+				// So the box is a SUPERSET of what it interrupts: it names what was installed as well as what
+				// was not. Then losing the queue costs nothing, because the box says all of it.
 				if (noBuildFor.Count > 0)
 					SpeakBox(
-						Loc.T("mc.install.noBuildSomeBox", string.Join(", ", noBuildFor), _settings.MinecraftGameVersion),
+						installedNames.Count > 0
+							? Loc.T("mc.install.suiteDoneSomeMissing", string.Join(", ", noBuildFor),
+								_settings.MinecraftGameVersion, string.Join(", ", installedNames))
+							: Loc.T("mc.install.suiteDoneNoneInstalled", string.Join(", ", noBuildFor),
+								_settings.MinecraftGameVersion),
 						Loc.T("mc.install.noBuildTitle"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
 			}
 			catch (Exception ex)
