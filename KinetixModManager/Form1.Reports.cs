@@ -110,8 +110,15 @@ public partial class Form1
 		var enabled = _allInstalledMods.Where(m => !m.IsGroup && m.IsEnabled).ToList();
 		var rows = new List<ReportRow>();
 
-		if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley))
+		// Minecraft is checked the same way as Stardew: both record each mod's declared dependencies, and
+		// ModHealth.ResolveDependencies has already worked out which are present and switched on. It was left out
+		// of this branch, so Ctrl+Q and the requirements report had nothing to say for it — while Fabric refuses
+		// to start the game over exactly these, which makes it the game where the check matters most.
+		if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley) ||
+			GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true)
 		{
+			rows.AddRange(await GatherMinecraftVersionFindings(enabled));
+
 			foreach (GameMod mod in enabled)
 				foreach (ModDependency dep in mod.Dependencies.Where(d => d.IsRequired))
 				{
@@ -528,6 +535,53 @@ public partial class Form1
 		// list rows themselves can stay short and scannable, rather than each carrying a paragraph.
 		if (hasRows && !string.IsNullOrEmpty(openingNote)) opening += ". " + openingNote;
 		return opening;
+	}
+
+	/// <summary>
+	/// Minecraft mods that cannot run on the Minecraft version installed.
+	///
+	/// <para>
+	/// The most consequential finding the manager can report for this game, and it had no way to say it. Fabric
+	/// does not skip a mod built for another version: it refuses to launch and lists every offender, so one stale
+	/// jar is the difference between playing and a wall of text. Reported per mod, with the range it asks for, so
+	/// the answer — switch it off, or wait for its author — is the user's to make.
+	/// </para>
+	/// </summary>
+	private async Task<List<ReportRow>> GatherMinecraftVersionFindings(List<GameMod> enabled)
+	{
+		var rows = new List<ReportRow>();
+		if (GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft != true) return rows;
+
+		string gameVersion = MinecraftGameVersionInUse(MinecraftRootFolder());
+		if (gameVersion.Length == 0) return rows;
+
+		// Asked about the exact jars installed, because a mod's own declaration is optional: Toolbar Sounds
+		// declares no Minecraft version, loaded on a version it was never built for, and took the user's world
+		// down with it. Its catalogue entry knew. See FabricVersionRange.SurvivesMove.
+		Dictionary<string, ModrinthFile> installedBuilds = await InstalledBuildsAsync(enabled);
+
+		foreach (GameMod mod in enabled)
+		{
+			try
+			{
+				if (string.IsNullOrEmpty(mod.FolderPath) || !File.Exists(mod.FolderPath)) continue;
+				if (SurvivesTheMove(mod, gameVersion, installedBuilds)) continue;
+
+				string says = DeclaredMinecraftRange(mod)
+					?? (installedBuilds.TryGetValue(ModrinthService.Sha1Of(mod.FolderPath), out ModrinthFile? build)
+						? string.Join(", ", build.GameVersions)
+						: "");
+
+				rows.Add(new ReportRow
+				{
+					Text = Loc.T("reports.mcWrongVersion", mod.Name, mod.Version, says, gameVersion),
+					IgnoreKey = $"mcver|{mod.UniqueId}|{gameVersion}"
+				});
+			}
+			catch (Exception ex) { DiagnosticLog.WriteException("Minecraft", $"reading what {mod.Name} requires", ex); }
+		}
+
+		return rows;
 	}
 
 	/// <summary>

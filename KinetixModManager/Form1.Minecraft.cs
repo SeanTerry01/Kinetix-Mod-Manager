@@ -576,6 +576,104 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// Ctrl+Q for Minecraft: fetches the mods this one needs and has not got.
+	///
+	/// <para>
+	/// A missing dependency is not a degraded setup here, it is a game that will not start — Fabric lists what is
+	/// missing and stops. The manager had nothing to offer for it ("not supported for this game"), which left the
+	/// user with an id like <c>cloth-config</c> and a web search. Modrinth is keyless and its project slugs are
+	/// usually the Fabric mod id, so most of these can simply be fetched.
+	/// </para>
+	/// </summary>
+	private async Task ResolveMinecraftDependenciesAsync(GameMod mod)
+	{
+		List<string> missing = mod.Dependencies
+			.Where(d => d.IsRequired && !d.IsPresent)
+			.Select(d => d.UniqueId)
+			.Distinct(StringComparer.OrdinalIgnoreCase)
+			.ToList();
+		if (missing.Count == 0) { Speak(Loc.T("deps.resolveNoneMissing")); return; }
+
+		string root = MinecraftRootFolder();
+		string gameVersion = MinecraftGameVersionInUse(root);
+		if (gameVersion.Length == 0) { Speak(Loc.T("mc.search.noVersionSpeak")); return; }
+
+		if (SpeakBox(Loc.T("deps.mcConfirm", mod.Name, missing.Count, string.Join(", ", missing), gameVersion),
+				Loc.T("deps.resolveTitle"), MessageBoxButtons.YesNo) != DialogResult.Yes)
+		{
+			Speak(Loc.T("deps.resolveCancelled"));
+			return;
+		}
+
+		string modsFolder = MinecraftLayout.ModsFolderFor(root);
+		var installed = new List<string>();
+		var notFound = new List<string>();
+
+		for (int i = 0; i < missing.Count; i++)
+		{
+			string id = missing[i];
+			SetStatus(Loc.T("deps.resolveInstalling", i + 1, missing.Count, id), speak: false);
+			try
+			{
+				ModrinthFile? file = await FindDependencyBuildAsync(id, gameVersion);
+				if (file == null) { notFound.Add(id); continue; }
+
+				string downloaded = await ModrinthService.DownloadAsync(file, downloadsPath);
+				await Task.Run(() => ModInstaller.InstallFile(downloaded, modsFolder));
+				RecordDownloadInstalled(downloaded);
+				installed.Add(id);
+			}
+			catch (Exception ex)
+			{
+				LogFailure(id, $"Failed to install a dependency of {mod.Name}", ex);
+				notFound.Add(id);
+			}
+		}
+
+		ResetStatus();
+		await RefreshModList(checkUpdates: false);
+
+		// Named individually, both ways round: what arrived, and what has no build for this Minecraft version and
+		// so still stands between the user and a game that starts.
+		string said = notFound.Count == 0
+			? Loc.T("deps.mcDone", installed.Count, string.Join(", ", installed))
+			: Loc.T("deps.mcDoneSome", installed.Count, notFound.Count, string.Join(", ", notFound), gameVersion);
+		Speak(said);
+		SpeakBox(said, Loc.T("deps.resolveTitle"), MessageBoxButtons.OK,
+			notFound.Count == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+	}
+
+	/// <summary>
+	/// Finds a build of a dependency for this Minecraft version. A Fabric mod id and a Modrinth slug usually agree,
+	/// but not always — <c>yet_another_config_lib_v3</c> is published as <c>yet-another-config-lib</c> — so the
+	/// obvious spellings are tried before giving up.
+	/// </summary>
+	private static async Task<ModrinthFile?> FindDependencyBuildAsync(string modId, string gameVersion)
+	{
+		var tried = new List<string>();
+		foreach (string candidate in new[] { modId, modId.Replace('_', '-'), TrimVersionSuffix(modId.Replace('_', '-')) })
+		{
+			if (candidate.Length == 0 || tried.Contains(candidate, StringComparer.OrdinalIgnoreCase)) continue;
+			tried.Add(candidate);
+
+			try
+			{
+				if (await ModrinthService.GetLatestFileAsync(candidate, gameVersion) is { } file) return file;
+			}
+			catch (Exception ex) { DiagnosticLog.WriteException("Modrinth", $"looking for {candidate}", ex); }
+		}
+
+		return null;
+	}
+
+	/// <summary>Drops a trailing major-version marker from a mod id: "yet-another-config-lib-v3" to "…-lib".</summary>
+	private static string TrimVersionSuffix(string id)
+	{
+		int cut = id.LastIndexOf("-v", StringComparison.OrdinalIgnoreCase);
+		return cut > 0 && id[(cut + 2)..].All(char.IsDigit) ? id[..cut] : id;
+	}
+
+	/// <summary>
 	/// Whether this mod can be left alone when the setup moves to <paramref name="gameVersion"/>.
 	///
 	/// <para>

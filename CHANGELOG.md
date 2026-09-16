@@ -30,6 +30,19 @@
     one asking for "26.2 or newer" is happy on 26.3 — are left alone, which the manager knows by reading what
     each mod declares rather than by whether a newer build exists.
 
+## 🐛 Minecraft was missing the requirement checks entirely
+
+*   **Ctrl + Q did nothing for Minecraft**, and neither did the requirements report or Check My Setup. Every
+    other game had them. This is the game where they matter most: a missing requirement or a mod built for
+    another Minecraft version does not degrade anything, it stops Fabric starting the game at all, with a
+    wall of text in place of a session.
+*   **Ctrl + Q now looks each missing mod up on Modrinth** and installs the build for your Minecraft version,
+    naming anything it could not find.
+*   **The reports now name any mod built for a different Minecraft version than the one you are running**,
+    with the version it asks for and the version you have.
+*   **Update All does not move you to a new Minecraft version**; it takes the loader and the mods. Changing
+    what the game is stays a deliberate choice.
+
 ## 🐛 Minecraft updates asked for a Nexus Premium account
 
 *   **Update All told Minecraft players to buy Premium.** The check ran before anything looked at where the

@@ -169,6 +169,12 @@ public partial class Form1
 			return;
 		}
 
+		if (GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true)
+		{
+			await ResolveMinecraftDependenciesAsync(mod);
+			return;
+		}
+
 		if (!IsBethesdaGame) { Speak(Loc.T("deps.resolveNotSupported")); return; }
 		if (string.IsNullOrEmpty(mod.NexusID)) { Speak(Loc.T("deps.resolveNoNexusId", mod.Name)); return; }
 		if (string.IsNullOrEmpty(_settings.ApiKey)) { Speak(Loc.T("deps.resolveNoLogin")); return; }
