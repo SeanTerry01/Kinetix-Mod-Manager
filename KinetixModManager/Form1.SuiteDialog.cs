@@ -78,6 +78,14 @@ public partial class Form1
 		// the view. The main window used to be hidden while this was open, to keep the per-mod confirmations and
 		// progress on the panel rather than flashing to the window behind; being part of that window now achieves
 		// the same thing without hiding anything.
+		// ⚠️ Set by a finished install, acted on in onClosed below — NOT at the end of the install itself.
+		//
+		// Focusing the list there did nothing, and Sean landed back on the tabs. closeView() only sets a flag;
+		// RunOverlay tears the view down later, once the click handler has returned, and restores focus to
+		// whatever held it when the view opened. So any focus moved inside the handler is overwritten a moment
+		// afterwards. onClosed runs after that teardown, which is the first point where focus stays put.
+		bool landInModListWhenClosed = false;
+
 		ShowInlineView(Loc.T("suite.installerTitle", gameName), (container, closeView) =>
 		{
 		TableLayoutPanel layout = new TableLayoutPanel
@@ -593,8 +601,7 @@ public partial class Form1
 				// the list announcing its row were both spoken over by the box. Landing focus in the list makes
 				// it announce itself AFTER the box is dismissed, which is a fact he can hear rather than a
 				// claim that gets destroyed on the way out.
-				SelectTab(AppTab.Installed);
-				if (listInstalled.CanFocus) listInstalled.Focus();
+				landInModListWhenClosed = true;
 			}
 			catch (Exception ex)
 			{
@@ -614,6 +621,29 @@ public partial class Form1
 		container.Controls.Add(layout);
 		ApplyScreenReaderPauses(container);
 		return lstStatus;
+		},
+		onClosed: () =>
+		{
+			// Only after an install actually ran. Escaping out of the installer should leave the user where
+			// they were, not move them somewhere they did not ask to go.
+			if (!landInModListWhenClosed) return;
+
+			SelectTab(AppTab.Installed);
+
+			// The same dance RunOverlay does when it hands focus back to a list, and for the same reason: a
+			// focus change the user did not make is one the reader often treats as no change at all, so the
+			// list would arrive in silence. The caret is aligned before focus lands, because the reader reads
+			// whichever row the list calls current the instant it gets there.
+			AlignListCaretToSelection(listInstalled);
+			_announceRowNameOnNextChange = true;
+			_announceListNameOnNextChange = true;
+
+			if (listInstalled.CanFocus) listInstalled.Focus();
+
+			// The flag still being set is the evidence that nothing announced the arrival — focus was already
+			// here, so no GotFocus fired. Say it directly. If GotFocus did fire it consumed the flag and this
+			// does nothing.
+			if (_announceListNameOnNextChange) List_Enter(listInstalled, EventArgs.Empty);
 		});
 	}
 
