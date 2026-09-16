@@ -122,6 +122,11 @@ public partial class Form1
 				_settings.Save();
 			}
 
+			// Before Fabric, because Fabric is a profile that inherits from the game and a profile inheriting
+			// from a version that is not there is exactly the broken setup this used to produce. See
+			// EnsureMinecraftVersionAsync: on a version the player already has, this costs no network call.
+			if (!await EnsureMinecraftVersionAsync(root, gameVersion)) return false;
+
 			SetStatus(Loc.T("mc.fabric.installing", gameVersion));
 			Speak(Loc.T("mc.fabric.installing", gameVersion));
 
@@ -1199,6 +1204,14 @@ public partial class Form1
 		try
 		{
 			// Before the game is asked to start, not after it has failed to. See FetchMissingLibrariesAsync.
+			//
+			// The game's own files are checked first, and the version checked is the vanilla one the Fabric
+			// profile inherits from — that is where the jar and the assets live. ⚠️ Assets are included
+			// deliberately: Sean's 26.3 was missing four objects and all four were sounds, which is a loss no
+			// error message anywhere would have mentioned. See EnsureMinecraftVersionAsync.
+			string vanilla = (string?)MinecraftLauncher.ReadVersionJson(root, versionId)?["inheritsFrom"] ?? versionId;
+			if (!await EnsureMinecraftVersionAsync(root, vanilla, versionId)) return;
+
 			if (!await FetchMissingLibrariesAsync(root, versionId)) return;
 
 			MinecraftLaunchPlan plan = MinecraftLauncher.BuildPlan(root, versionId, identity);

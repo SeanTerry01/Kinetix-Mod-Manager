@@ -765,6 +765,10 @@ You will still need the launcher **once**, to sign in. After that the manager kn
 the game on its own. It plays as you — your own username and your own character — so your worlds, inventory
 and advancements are exactly where you left them.
 
+Signing in is the only thing it is still needed for. The manager **installs Minecraft itself** when a version
+you want is not on the computer, and repairs one that is missing pieces — see "Installing and repairing
+Minecraft itself" below.
+
 Servers and Realms need a live sign-in and are not available this way; singleplayer is unaffected.
 
 ### Installing Fabric
@@ -776,6 +780,38 @@ window to get through.
 It installs Fabric for a Minecraft version it knows your accessibility mod supports, rather than simply the
 newest one. Fabric is usually ready for a new Minecraft version weeks before the mods are, and installing for
 a version with no mods built for it gives you a game that starts perfectly and stays silent.
+
+### Installing and repairing Minecraft itself
+
+The manager downloads Minecraft for you when it needs to. This is what every third-party launcher does: the
+game's files all come from Mojang's own servers with published checksums, and each one is verified as it
+arrives.
+
+It happens in two situations:
+
+*   **A version you do not have.** Moving to a new Minecraft version, or setting the game up for the first
+    time, no longer requires you to open the official launcher and play the version once first. You are told
+    how many files and how many megabytes before anything starts, and asked whether to go ahead — a whole
+    version is several hundred megabytes and can take a long time on a slow connection. Progress is spoken as
+    it goes.
+*   **A version you do have, but which is missing pieces.** Before every launch the manager checks the files
+    the game loads, not only the ones that would stop it starting. A Minecraft install can end up missing
+    individual sounds, language files or textures, and when it does the game starts, plays and looks
+    completely normal — so nothing tells you. On the machine this was found on, four files were missing and
+    all four were sounds. Anything absent is fetched before the game starts, and you are told how many.
+
+**Java is fetched too, when a version wants one you have not got.** Minecraft has changed Java runtime twice
+in recent memory, and the version it asks for is not something most computers have. You are asked first, and
+told the size. It is installed alongside your game, inside your `.minecraft` folder, and nothing else on the
+computer is changed.
+
+**None of this needs an account or a password.** Signing in stays the launcher's job; the manager only reads
+who you already are.
+
+**Nothing is downloaded when nothing is missing.** The check reads what is already on the disk and only asks
+Mojang when something is genuinely absent, so it costs nothing on a normal launch and the game still starts
+with no internet connection at all. If a download is interrupted, whatever arrived is kept — trying again
+picks up where it stopped rather than starting over.
 
 ### If the game does not start
 
@@ -807,8 +843,9 @@ its own row:
     for it**, since moving before that gives you a game that starts perfectly and never speaks.
 
 Pressing **Enter** on the Minecraft row moves your setup to the new version. Before anything is changed, you're
-told what will happen to each of your mods, and asked whether to go ahead. Saying yes installs Fabric for the new
-version and updates every mod that has a build for it.
+told what will happen to each of your mods, and asked whether to go ahead. Saying yes downloads the new
+Minecraft version if you do not already have it, installs Fabric for it, and updates every mod that has a build
+for it. You do not need to play the new version in the official launcher first.
 
 **A mod that can't run on the new version is switched off as part of the move**, and the manager names them all,
 both before and afterwards. This is not tidiness: **Fabric refuses to start the game at all** if a mod is built

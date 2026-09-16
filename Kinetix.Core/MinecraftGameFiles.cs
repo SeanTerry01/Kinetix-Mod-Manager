@@ -9,9 +9,6 @@ namespace KinetixModManager;
 /// <summary>Which part of an installation a file belongs to, so the spoken progress can name it.</summary>
 public enum MinecraftFileKind
 {
-	/// <summary>The version's own JSON, under <c>versions\</c>.</summary>
-	VersionJson,
-
 	/// <summary>The game jar itself, around 41 MB.</summary>
 	ClientJar,
 
@@ -156,9 +153,24 @@ public static class MinecraftGameFiles
 	/// re-prove something that was verified when it arrived would cost more than it saves. Corruption is caught
 	/// on the way in, where it can still be re-fetched.
 	/// </para>
+	///
+	/// <para>
+	/// ⚠️ <paramref name="alsoInstalledAs"/> is not a nicety either. A version's jar does not always live under
+	/// that version's name: the official launcher copies it into the Fabric profile's folder on first run, so a
+	/// machine that has played modded 26.3 has the jar at <c>versions\fabric-loader-…-26.3\</c> and nothing at
+	/// all under <c>versions\26.3\</c>. <see cref="MinecraftLauncher.GameJarPath"/> already knows this and
+	/// launches happily from either. Checking only the plain name would declare a 41 MB file missing on a
+	/// machine that is running it, and fetch it again — which is exactly what the first version of this did on
+	/// the development machine.
+	/// </para>
 	/// </summary>
+	/// <param name="alsoInstalledAs">
+	/// Another version id whose folder the jar may be sitting in — the Fabric profile that inherits from this
+	/// version, in practice.
+	/// </param>
 	public static MinecraftDownload? MissingClientJar(
-		JObject versionJson, string versionId, string root, Func<string, bool> exists)
+		JObject versionJson, string versionId, string root, Func<string, bool> exists,
+		string? alsoInstalledAs = null)
 	{
 		JToken? client = versionJson["downloads"]?["client"];
 		string url = (string?)client?["url"] ?? "";
@@ -166,6 +178,11 @@ public static class MinecraftGameFiles
 
 		string relative = ClientJarRelativePath(versionId);
 		if (exists(Path.Combine(root, relative))) return null;
+
+		if (!string.IsNullOrEmpty(alsoInstalledAs) &&
+			!string.Equals(alsoInstalledAs, versionId, StringComparison.OrdinalIgnoreCase) &&
+			exists(Path.Combine(root, ClientJarRelativePath(alsoInstalledAs!))))
+			return null;
 
 		return new MinecraftDownload(relative, url, (string?)client?["sha1"],
 			(long?)client?["size"] ?? 0, MinecraftFileKind.ClientJar);

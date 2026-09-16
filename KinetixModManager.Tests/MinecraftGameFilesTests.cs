@@ -116,6 +116,25 @@ public class MinecraftGameFilesTests
 		Assert.Null(MinecraftGameFiles.MissingClientJar(VersionJson(), "26.3", Root, Everything));
 
 	[Fact]
+	public void AJarTheLauncherCopiedIntoTheFabricFolderCountsAsPresent()
+	{
+		// Found by running this against the real .minecraft rather than by reading the code: 26.3 was reported
+		// as missing its 41 MB jar on a machine that plays 26.3 every day. The official launcher copies the
+		// game jar into the Fabric profile's folder on first run and leaves versions\26.3\ holding only the
+		// JSON, and MinecraftLauncher.GameJarPath launches from either. Checking the plain name alone would
+		// have re-downloaded 41 MB of a file already on the disk.
+		string fabricJar = Path.Combine(Root, "versions", "fabric-loader-0.19.5-26.3", "fabric-loader-0.19.5-26.3.jar");
+
+		Assert.Null(MinecraftGameFiles.MissingClientJar(VersionJson(), "26.3", Root,
+			p => p.Equals(fabricJar, StringComparison.OrdinalIgnoreCase), "fabric-loader-0.19.5-26.3"));
+
+		// Without being told about the profile it is genuinely missing, which is the answer a fresh install
+		// needs -- so the fallback must not become a blanket excuse for never fetching the jar.
+		Assert.NotNull(MinecraftGameFiles.MissingClientJar(VersionJson(), "26.3", Root,
+			p => p.Equals(fabricJar, StringComparison.OrdinalIgnoreCase)));
+	}
+
+	[Fact]
 	public void TheJarIsLookedForWhereThatVersionKeepsIt()
 	{
 		// The presence check has to ask about the version's own folder, not merely be told "something exists".

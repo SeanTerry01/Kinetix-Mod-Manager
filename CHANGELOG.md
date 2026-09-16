@@ -1,5 +1,38 @@
 ﻿# Unreleased
 
+## ✨ The manager installs Minecraft itself now
+
+*   **Moving to a new Minecraft version no longer needs the official launcher.** The manager could already
+    install Fabric for a version and update every mod to it, and it could not put the version there — it
+    assumed the launcher had fetched the game, which is true of every version you have played and of none you
+    have not. So moving to a version you had never launched left the setup pinned to something that was not on
+    the disk, and you met that later as a Java stack trace. For anyone using this manager precisely because the
+    launcher is the part they cannot use, "open the launcher once" was no answer at all.
+*   **Everything the game needs is fetched from Mojang's own servers**, checked against the checksums Mojang
+    publishes: the version, the game itself, the thousands of small files it loads, and the version of Java it
+    asks for. This is what every third-party launcher does. No account and no password is involved — signing
+    in stays the launcher's job, and the manager reads who you are from what it left behind.
+*   **The size is said before anything starts, and you are asked.** A whole version is several hundred
+    megabytes and can be most of an evening on a slow line; that is your decision to make, not one to discover
+    halfway through. Progress is spoken as it goes, and anything that does arrive is kept, so trying again
+    after a dropped connection picks up where it stopped rather than starting over.
+*   **Java is fetched too, when a new version wants one you have not got.** Minecraft has changed Java runtime
+    twice in recent memory. Until now the manager could tell you which Java a version needed and that it was
+    missing, and then had nothing to offer but "start it once through the Minecraft launcher". It is installed
+    beside your game, and nothing else on the computer is touched.
+
+## 🐛 Minecraft was missing sounds, and nothing said so
+
+*   **Before the game starts, the files it loads are checked, not just the ones that would stop it starting.**
+    A Minecraft install can be missing individual sounds, language files or textures — the launcher fetches
+    them piecemeal and does not always finish. When that happens the game starts, plays, and looks completely
+    normal to anyone watching it.
+*   **On this machine it was four files, and all four were sounds.** For a player who hears the game rather
+    than sees it, a missing sound is not cosmetic and no error message anywhere would ever have mentioned it.
+    Anything absent is now fetched before the game starts, and you are told how many and why.
+*   **The check costs nothing when there is nothing to do.** It reads what is already on the disk and asks
+    Mojang only when something is genuinely missing, so a launch still works with no internet at all.
+
 ## 🐛 Ctrl+H threw an error on Minecraft 26.3
 
 *   **The controls viewer failed outright** with "Cannot access child value" for anyone running United
