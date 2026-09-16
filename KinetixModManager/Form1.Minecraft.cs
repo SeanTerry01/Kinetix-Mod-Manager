@@ -377,7 +377,15 @@ public partial class Form1
 				// Offered only once the accessibility mod has a build for it. Fabric is ready for a new Minecraft
 				// version well before the mods are, and moving early gives a game that launches and says nothing.
 				if (ModVersions.IsNewer(inUse, newestGame) && await AccessModSupportsAsync(newestGame))
+				{
 					AddPlatformUpdateRow(MinecraftVersionRowId, Loc.T("mc.update.gameName"), Loc.T("mc.update.gameAuthor"), inUse, newestGame);
+
+					// Held rather than spoken here, so it lands after the check's own "N updates" line instead
+					// of interrupting a run that is still going. See CompleteUpdateCheckUnit, which does the
+					// same for SMAPI.
+					if (_minecraftUpdateAlreadyOffered != newestGame)
+						_pendingMinecraftUpdate = (inUse, newestGame);
+				}
 			}
 			catch (Exception ex) { DiagnosticLog.WriteException("Fabric", "asking for the newest Minecraft version", ex); }
 		}
@@ -536,6 +544,57 @@ public partial class Form1
 			DiagnosticLog.WriteException("Minecraft", $"asking whether {access.DisplayName} supports Minecraft {gameVersion}", ex);
 			return false;
 		}
+	}
+
+	/// <summary>
+	/// A new Minecraft version found by the last check, waiting to be offered once the check has finished
+	/// speaking. Mirrors the SMAPI one; see <c>CompleteUpdateCheckUnit</c>.
+	/// </summary>
+	private (string Current, string Latest)? _pendingMinecraftUpdate;
+
+	/// <summary>
+	/// The version already offered this session, so declining is not re-asked on every later check.
+	///
+	/// Deliberately not the persistent ignore list, which is what Delete on the row means and which suppresses
+	/// the row itself. Saying "not now" to a prompt is a smaller thing than saying "never mention this
+	/// version": the row stays in the Updates list, and Enter on it still moves.
+	/// </summary>
+	private string _minecraftUpdateAlreadyOffered = "";
+
+	/// <summary>
+	/// Offers a new Minecraft version after an update check, naming the version in use as well as the new one.
+	///
+	/// <para>
+	/// The Updates list already carried a Minecraft row, and Sean asked for this because a row is something you
+	/// have to go and look at. An update to the game is not like an update to a mod — it is the event that
+	/// decides whether every mod he depends on still loads — so it is worth saying out loud, unprompted, and
+	/// worth saying which version he is on rather than only which one is new.
+	/// </para>
+	///
+	/// <para>
+	/// Saying yes goes through the same move as the row does, which asks its own question afterwards: this one
+	/// cannot name the mods that would be switched off, because working that out takes a Modrinth lookup per
+	/// mod. So this asks whether to look at the move at all, and the move itself asks whether to go through
+	/// with it once it can say exactly what would happen.
+	/// </para>
+	/// </summary>
+	private async void NotifyMinecraftUpdateAvailable(string current, string latest)
+	{
+		_minecraftUpdateAlreadyOffered = latest;
+
+		Speak(Loc.T("mc.update.availableSpeak", current, latest));
+		if (SpeakBox(Loc.T("mc.update.availableBox", current, latest),
+				Loc.T("mc.update.availableTitle", latest),
+				MessageBoxButtons.YesNo, MessageBoxIcon.Information) != DialogResult.Yes)
+		{
+			Speak(Loc.T("mc.update.availableLater", latest));
+			return;
+		}
+
+		if (!await MoveToMinecraftVersionAsync(latest, silent: false)) return;
+
+		// Every mod's row was checked against the version just left, so none of them mean anything now.
+		Invoke(delegate { listUpdates.Items.Clear(); });
 	}
 
 	/// <summary>Puts one of the two platform rows into the Updates list, unless it is there or has been ignored.</summary>

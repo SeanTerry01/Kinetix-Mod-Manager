@@ -842,6 +842,12 @@ its own row:
 *   **Minecraft** — a newer Minecraft version. This one only appears **once your accessibility mod has a build
     for it**, since moving before that gives you a game that starts perfectly and never speaks.
 
+When a check finds a new Minecraft version, you're also **asked about it directly**, once the check has finished
+speaking. The question names the version you're on and the version available, because a new Minecraft version
+decides whether every mod you depend on still loads. Saying yes leads to the move described below, which asks
+again before changing anything. Saying no leaves the row in the Updates list for whenever you want it, and you
+won't be asked about that same version again for the rest of the session.
+
 Pressing **Enter** on the Minecraft row moves your setup to the new version. Before anything is changed, you're
 told what will happen to each of your mods, and asked whether to go ahead. Saying yes downloads the new
 Minecraft version if you do not already have it, installs Fabric for it, and updates every mod that has a build

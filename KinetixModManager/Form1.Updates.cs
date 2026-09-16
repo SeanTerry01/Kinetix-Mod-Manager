@@ -313,6 +313,8 @@ public partial class Form1
 			_soundEngine.Play("load_complete");
 			var pendingSmapi = _pendingSmapiUpdate;
 			_pendingSmapiUpdate = null;
+			var pendingMinecraft = _pendingMinecraftUpdate;
+			_pendingMinecraftUpdate = null;
 			int unchecked_ = UncheckedModCount();
 			Invoke(delegate
 			{
@@ -327,6 +329,10 @@ public partial class Form1
 				Speak(message);
 				if (pendingSmapi is { } s)
 					NotifySmapiUpdateAvailable(s.Current, s.Latest, s.Url);
+				// The same courtesy for the one update that is not a mod at all. See
+				// NotifyMinecraftUpdateAvailable: a new Minecraft version decides whether every mod still loads.
+				if (pendingMinecraft is { } mc)
+					NotifyMinecraftUpdateAvailable(mc.Current, mc.Latest);
 			});
 		}
 	}

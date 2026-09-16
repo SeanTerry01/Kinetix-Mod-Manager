@@ -1,5 +1,19 @@
 ﻿# Unreleased
 
+## ✨ A Minecraft update now says so out loud
+
+*   **An update check that finds a new Minecraft version tells you, rather than leaving a row to be found.**
+    It names **the version you are on and the version that is available**, and asks whether to update. A new
+    Minecraft version is not like a mod update — it is the event that decides whether every mod you depend on
+    still loads — so it is worth interrupting for.
+*   **It arrives after the check has finished speaking**, not in the middle of one, the same way a SMAPI update
+    already did.
+*   **Saying yes leads to the existing move**, which then tells you exactly what will happen to each of your
+    mods and asks again before changing anything. The first question is whether to look; the second is whether
+    to go ahead, and only the second can name the mods that would be switched off.
+*   **Saying no is not held against you.** The Minecraft row stays in the Updates list and Enter on it still
+    works; you are simply not asked about that same version again for the rest of the session.
+
 ## ✨ The manager installs Minecraft itself now
 
 *   **Moving to a new Minecraft version no longer needs the official launcher.** The manager could already
