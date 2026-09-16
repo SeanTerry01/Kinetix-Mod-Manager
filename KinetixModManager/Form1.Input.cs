@@ -763,9 +763,22 @@ public partial class Form1
 			// web page whose download button they then have to find. Everything else opens its page, because
 			// for those that IS the only way in — and that is the answer for every site added later too:
 			// worst case it degrades to the page, which every site has.
-			else if (list.SelectedItem is StardewMod result && CanFetchDirectly(result))
+			else if (list.Name == "listDiscovery" && list.SelectedItem is StardewMod result && CanFetchDirectly(result))
 			{
 				Fire(OfferMinecraftSearchResultAsync(result), "OfferMinecraftSearchResultAsync");
+			}
+			// The Fabric loader and the Minecraft version are not mods and have no page to offer, so Enter does the
+			// one thing they are for. See CheckMinecraftPlatformUpdatesAsync.
+			else if (list.Name == "listUpdates" && list.SelectedItem is StardewMod platform &&
+					 (platform.UniqueId == FabricLoaderRowId || platform.UniqueId == MinecraftVersionRowId))
+			{
+				Fire(DownloadAndInstallUpdate(platform), "DownloadAndInstallUpdate");
+			}
+			// An update the manager can fetch itself asks which the user wants, rather than assuming they pressed
+			// Enter to go and read about a mod they already have.
+			else if (list.Name == "listUpdates" && list.SelectedItem is StardewMod pending && CanUpdateWithoutBrowser(pending))
+			{
+				Fire(OfferUpdateChoiceAsync(pending), "OfferUpdateChoiceAsync");
 			}
 			else
 			{

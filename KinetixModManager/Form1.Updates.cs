@@ -742,6 +742,35 @@ public partial class Form1
     }
 
 	/// <summary>
+	/// Enter on an update the manager can fetch itself: asks whether to install it or to open its page, the same
+	/// two-way choice a search result offers.
+	///
+	/// <para>
+	/// Enter used to open the page for every row, which was the right answer while every update came from Nexus and
+	/// needed a browser session to fetch. It is the wrong one for a mod from Modrinth or a GitHub release, where the
+	/// manager can simply do it — and reading about a mod you already have is the rarer of the two wants, not the
+	/// only one.
+	/// </para>
+	/// </summary>
+	private async Task OfferUpdateChoiceAsync(StardewMod mod)
+	{
+		string[] actions = { Loc.T("updates.choiceUpdate"), Loc.T("updates.choicePage") };
+
+		string? chosen = ShowChoiceList(
+			Loc.T("updates.choiceTitle", mod.Name),
+			Loc.T("updates.choiceListName"),
+			actions,
+			actions[0],
+			Loc.T("updates.choiceHint", mod.Name, mod.Version, mod.LatestVersion ?? ""));
+
+		if (chosen is null) { Speak(Loc.T("common.changesCancelled")); return; }
+
+		if (chosen == actions[1]) { OpenModPage(); return; }
+
+		await DownloadAndInstallUpdate(mod);
+	}
+
+	/// <summary>
 	/// Takes a mod's row out of the Updates list once its update has gone in. Matched on the mod's own id, which is
 	/// what identifies a Minecraft mod — it has neither a Nexus id nor, usually, a GitHub repository.
 	/// </summary>

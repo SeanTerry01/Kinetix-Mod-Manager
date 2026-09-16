@@ -1,5 +1,13 @@
 ﻿# Unreleased
 
+## ✨ Enter on an update now asks what you want
+
+*   **On an update the manager can fetch itself** — anything from Modrinth or a GitHub release, and every
+    Minecraft mod — Enter offers **update it now** or **open its page**, the same two-way choice a search
+    result gives, with update first and Escape to leave it alone. Enter used to open the page for every row,
+    which was right while every update came from Nexus and needed a browser, and wrong for the ones the
+    manager could simply install. A Nexus update still opens its page.
+
 ## ✨ Fabric and Minecraft itself are checked for updates now
 
 *   **Nothing ever checked the Fabric loader.** It is what makes Minecraft load mods at all, and a player who
