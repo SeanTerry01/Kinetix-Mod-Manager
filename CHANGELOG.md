@@ -41,6 +41,10 @@
 
 ## 🐛 Suite install fixes: things said twice, and a refresh that never happened
 
+*   **After a suite install you are put in the mod list**, on the Installed tab, so it announces what is now
+    there. The refresh itself was being done — the list really did hold the newly installed mod — but every
+    sentence saying so was spoken over by the summary box, so there was no way to tell. Landing in the list
+    says it after the box, where nothing can destroy it.
 *   **"Refreshing mod list" now refreshes the mod list.** The line at the end of a suite install has always
     said it and nothing ever did it, for every game — so after installing the whole suite the list was
     exactly as empty as before, and the only way to see what had just arrived was to refresh it by hand.

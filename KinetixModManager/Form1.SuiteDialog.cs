@@ -585,6 +585,16 @@ public partial class Form1
 							: Loc.T("mc.install.suiteDoneNoneInstalled", string.Join(", ", noBuildFor),
 								_settings.MinecraftGameVersion),
 						Loc.T("mc.install.noBuildTitle"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+				// ⚠️ Focus ends in the mod list, not back on the menu that opened the installer.
+				//
+				// Measured rather than guessed: the refresh above was working the whole time — scanned=1,
+				// listRows=1, no filter — and Sean still had no way to know, because the sentence saying so and
+				// the list announcing its row were both spoken over by the box. Landing focus in the list makes
+				// it announce itself AFTER the box is dismissed, which is a fact he can hear rather than a
+				// claim that gets destroyed on the way out.
+				SelectTab(AppTab.Installed);
+				if (listInstalled.CanFocus) listInstalled.Focus();
 			}
 			catch (Exception ex)
 			{
