@@ -335,6 +335,107 @@ public class MinecraftControlsTests
 			$"'{action}' is in no section. Sections: "
 			+ string.Join(", ", sections.Select(s => $"{s.Name} [{string.Join(" | ", s.Bindings.Select(b => b.Action))}]")));
 
+	// ---------------------------------------------------------------------
+	// Minecraft 26.3 replaced GLFW with SDL, and United Minecraft's file changed shape with it
+	// ---------------------------------------------------------------------
+
+	/// <summary>Sean's own file, 2026-09-15, trimmed to the bindings that settle the decoding.</summary>
+	private const string SchemaTwoFile = """
+	{
+	  "schemaVersion": 2,
+	  "bindings": {
+	    "narrate_coordinates":       { "key": 6,  "modifiers": 0 },
+	    "narrate_light_level":       { "key": 6,  "modifiers": 3 },
+	    "narrate_health":            { "key": 11, "modifiers": 0 },
+	    "narrate_armor_and_effects": { "key": 11, "modifiers": 768 },
+	    "build_place":               { "key": 228, "modifiers": 0 },
+	    "narrate_coordinate_x":      { "key": -1, "modifiers": 0 }
+	  }
+	}
+	""";
+
+	[Fact]
+	public void AVersionTwoFileIsReadAtAllRatherThanThrowing()
+	{
+		// It threw "Cannot access child value on JValue": the reader walked the top level, reached
+		// "schemaVersion": 2 and asked a plain number for its "key". Ctrl+H showed an exception instead of the
+		// controls, which for this game is the list telling the player which keys their access mod answers to.
+		List<MinecraftBinding> bindings = ReadUnited(SchemaTwoFile);
+
+		Assert.Equal(6, bindings.Count);
+		Assert.DoesNotContain(bindings, b => b.Id == "schemaVersion");
+	}
+
+	[Fact]
+	public void TheNewKeyNumbersAreReadAsSdlScancodes()
+	{
+		// 6 is C and 11 is H under SDL. Read with the old GLFW table they are unprintable control codes, and the
+		// list would name the wrong keys while looking perfectly healthy — worse than naming none.
+		List<MinecraftBinding> bindings = ReadUnited(SchemaTwoFile);
+
+		Assert.Equal("C", Find(bindings, MinecraftControls.FriendlyActionName("narrate_coordinates")).Key);
+		Assert.Equal("H", Find(bindings, MinecraftControls.FriendlyActionName("narrate_health")).Key);
+		Assert.Equal("Right control", Find(bindings, MinecraftControls.FriendlyActionName("build_place")).Key);
+	}
+
+	[Fact]
+	public void TheNewModifierBitsAreReadAsSdlMasks()
+	{
+		// SDL keeps a bit per side: Shift is 0x0003, Control 0x00C0, Alt 0x0300. The mod's own documentation says
+		// Shift on the coordinates key reads the light level, and Alt on the health key reads armour.
+		List<MinecraftBinding> bindings = ReadUnited(SchemaTwoFile);
+
+		Assert.Equal("Shift plus C", Find(bindings, MinecraftControls.FriendlyActionName("narrate_light_level")).Key);
+		Assert.Equal("Alt plus H", Find(bindings, MinecraftControls.FriendlyActionName("narrate_armor_and_effects")).Key);
+		Assert.Equal("Control plus C", MinecraftControls.DescribeSdlCombo(6, 0x00C0));
+		Assert.Equal("Windows plus C", MinecraftControls.DescribeSdlCombo(6, 0x0C00));
+	}
+
+	[Theory]
+	[InlineData(63, "F6")]
+	[InlineData(79, "Right arrow")]
+	[InlineData(44, "Space")]
+	[InlineData(49, "Backslash")]
+	[InlineData(30, "1")]
+	[InlineData(39, "0")]
+	[InlineData(229, "Right shift")]
+	[InlineData(93, "Numpad 5")]
+	public void EachSdlKeyIsNamed(int scancode, string expected) =>
+		Assert.Equal(expected, MinecraftControls.DescribeSdlKey(scancode));
+
+	[Fact]
+	public void AnUnboundActionStillSaysSo()
+	{
+		MinecraftBinding unbound = Find(ReadUnited(SchemaTwoFile), MinecraftControls.FriendlyActionName("narrate_coordinate_x"));
+
+		Assert.True(unbound.IsUnbound);
+		Assert.Equal("Not bound", unbound.Key);
+	}
+
+	[Fact]
+	public void TheOriginalFlatFileIsStillReadWithTheOldNumbering()
+	{
+		// A player who has not run 26.3 yet still has the old file, and 72 there is H under GLFW. Both layouts
+		// have to keep working: the file is migrated by the mod, on its own schedule, not by the manager.
+		List<MinecraftBinding> bindings = ReadUnited("""
+		{ "narrate_health": { "key": 72, "modifiers": 0 }, "narrate_light_level": { "key": 67, "modifiers": 1 } }
+		""");
+
+		Assert.Equal("H", Find(bindings, MinecraftControls.FriendlyActionName("narrate_health")).Key);
+		Assert.Equal("Shift plus C", Find(bindings, MinecraftControls.FriendlyActionName("narrate_light_level")).Key);
+	}
+
+	[Fact]
+	public void AFieldTheModAddsLaterIsIgnoredRatherThanFatal()
+	{
+		List<MinecraftBinding> bindings = ReadUnited("""
+		{ "schemaVersion": 3, "somethingNew": "whatever", "bindings": { "narrate_health": { "key": 11, "modifiers": 0 } } }
+		""");
+
+		MinecraftBinding only = Assert.Single(bindings);
+		Assert.Equal("H", only.Key);
+	}
+
 	private static MinecraftBinding Find(IEnumerable<MinecraftBinding> bindings, string action) =>
 		bindings.FirstOrDefault(b => b.Action == action)
 		?? throw new Xunit.Sdk.XunitException(

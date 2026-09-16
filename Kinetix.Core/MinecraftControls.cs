@@ -181,21 +181,130 @@ public static class MinecraftControls
 			return bindings;
 		}
 
-		foreach (JProperty entry in doc.Properties())
+		// Two layouts. The original was a flat map of action to key; from schema 2 the bindings sit under
+		// "bindings" beside a "schemaVersion". Walking the top level of a version-2 file reached
+		// "schemaVersion": 2 and asked a plain number for its "key" — which is where the controls viewer threw
+		// "Cannot access child value on JValue" and showed nothing at all.
+		int schema = (int?)doc[SchemaVersionField] ?? 1;
+		JObject entries = doc[BindingsField] as JObject ?? doc;
+
+		foreach (JProperty entry in entries.Properties())
 		{
-			int key = (int?)entry.Value["key"] ?? -1;
-			int modifiers = (int?)entry.Value["modifiers"] ?? 0;
+			// Anything that is not an object is not a binding — the schema marker, or a field added later. A
+			// viewer that throws on one unknown field is a viewer that breaks on the mod's next release.
+			if (entry.Value is not JObject binding) continue;
+
+			int key = (int?)binding["key"] ?? -1;
+			int modifiers = (int?)binding["modifiers"] ?? 0;
 
 			bindings.Add(new MinecraftBinding
 			{
 				Id        = entry.Name,
 				Action    = FriendlyActionName(entry.Name),
-				Key       = DescribeGlfwCombo(key, modifiers),
+				Key       = schema >= 2 ? DescribeSdlCombo(key, modifiers) : DescribeGlfwCombo(key, modifiers),
 				IsUnbound = key < 0
 			});
 		}
 
 		return bindings;
+	}
+
+	/// <summary>The field naming the keybind file's layout; absent in the original flat one.</summary>
+	private const string SchemaVersionField = "schemaVersion";
+
+	/// <summary>Where the bindings live from schema 2 onwards.</summary>
+	private const string BindingsField = "bindings";
+
+	/// <summary>
+	/// A key chord as Minecraft 26.3 and later record it.
+	///
+	/// <para>
+	/// ⚠️ <b>26.3 replaced GLFW with SDL</b>, and both halves of a binding changed meaning with it. Keys are SDL
+	/// scancodes, where 6 is C and 11 is H — under GLFW those numbers were unprintable control codes. Modifiers
+	/// are SDL's mask, which has a separate bit per side: Shift is 0x0003, Control 0x00C0, Alt 0x0300. Reading a
+	/// 26.3 file with the old table does not fail, which is the danger — it quietly reads back the wrong keys, and
+	/// a controls list that names the wrong key is worse than one that names none.
+	/// </para>
+	/// </summary>
+	public static string DescribeSdlCombo(int key, int modifiers)
+	{
+		if (key < 0) return "Not bound";
+
+		var parts = new List<string>();
+		if ((modifiers & 0x0003) != 0) parts.Add("Shift");
+		if ((modifiers & 0x00C0) != 0) parts.Add("Control");
+		if ((modifiers & 0x0300) != 0) parts.Add("Alt");
+		if ((modifiers & 0x0C00) != 0) parts.Add("Windows");
+
+		parts.Add(DescribeSdlKey(key));
+		return string.Join(" plus ", parts);
+	}
+
+	/// <summary>The name of one SDL scancode — the numbering Minecraft uses from 26.3.</summary>
+	public static string DescribeSdlKey(int key)
+	{
+		if (key < 0) return "Not bound";
+
+		// 4 to 29 are A to Z in order, and 30 to 39 are the digits 1 to 9 then 0 — not their ASCII values, which
+		// is the whole difference from the GLFW numbering this replaced.
+		if (key >= 4 && key <= 29) return ((char)('A' + key - 4)).ToString();
+		if (key >= 30 && key <= 38) return ((char)('1' + key - 30)).ToString();
+
+		return key switch
+		{
+			39  => "0",
+			40  => "Enter",
+			41  => "Escape",
+			42  => "Backspace",
+			43  => "Tab",
+			44  => "Space",
+			45  => "Minus",
+			46  => "Equals",
+			47  => "Left bracket",
+			48  => "Right bracket",
+			49  => "Backslash",
+			51  => "Semicolon",
+			52  => "Apostrophe",
+			53  => "Grave accent",
+			54  => "Comma",
+			55  => "Period",
+			56  => "Slash",
+			57  => "Caps lock",
+			70  => "Print screen",
+			71  => "Scroll lock",
+			72  => "Pause",
+			73  => "Insert",
+			74  => "Home",
+			75  => "Page up",
+			76  => "Delete",
+			77  => "End",
+			78  => "Page down",
+			79  => "Right arrow",
+			80  => "Left arrow",
+			81  => "Down arrow",
+			82  => "Up arrow",
+			83  => "Num lock",
+			84  => "Numpad divide",
+			85  => "Numpad multiply",
+			86  => "Numpad subtract",
+			87  => "Numpad add",
+			88  => "Numpad enter",
+			98  => "Numpad 0",
+			99  => "Numpad decimal",
+			// The modifier keys as ordinary bindings: United Minecraft puts place on Right control and break on
+			// Right shift, so these are not a curiosity here, they are two of the keys used most.
+			224 => "Left control",
+			225 => "Left shift",
+			226 => "Left alt",
+			227 => "Left Windows",
+			228 => "Right control",
+			229 => "Right shift",
+			230 => "Right alt",
+			231 => "Right Windows",
+			>= 58 and <= 69 => "F" + (key - 57).ToString(CultureInfo.InvariantCulture),
+			>= 89 and <= 97 => "Numpad " + (key - 88).ToString(CultureInfo.InvariantCulture),
+			_ => "Key " + key.ToString(CultureInfo.InvariantCulture)
+		};
 	}
 
 	/// <summary>

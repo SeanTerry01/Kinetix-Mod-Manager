@@ -1,5 +1,18 @@
 ﻿# Unreleased
 
+## 🐛 Ctrl+H threw an error on Minecraft 26.3
+
+*   **The controls viewer failed outright** with "Cannot access child value" for anyone running United
+    Minecraft on Minecraft 26.3. The mod changed the shape of its keybind file — the bindings now sit under a
+    "bindings" field beside a version marker — and the manager walked the old layout, asking a plain number
+    for its key. For this game that list is how a player finds out which keys their accessibility mod answers
+    to, so losing it loses a lot.
+*   **Both layouts are read now**, and a field the mod adds later is ignored rather than fatal.
+*   **The keys are named correctly again.** Minecraft 26.3 replaced GLFW with SDL, which renumbered every key
+    and every modifier: 6 means C now, not an unprintable code, and Shift is 3 rather than 1. Reading the new
+    file with the old table would not have failed — it would quietly have named the wrong keys, which is worse
+    than naming none.
+
 ## 🐛 Minecraft would not start after a game update, for want of one file
 
 *   **The manager starts Minecraft itself**, and assumed every file the game needs was already on disk — which
