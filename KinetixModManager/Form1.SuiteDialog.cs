@@ -380,8 +380,15 @@ public partial class Form1
 
 			// Gathered through the run and said once at the end. See the box below closeView — it has to name
 			// what DID install as well as what did not, because it speaks over the lines that said so.
+			//
+			// Installed is DERIVED rather than collected: every item that was attempted and did not land in one
+			// of the problem lists went in. Instrumenting each success path instead would mean editing five
+			// branches across install routes for games I cannot test from here.
+			var attempted = new List<string>();
 			var noBuildFor = new List<string>();
-			var installedNames = new List<string>();
+			var couldNotFetch = new List<string>();
+			var needManualDownload = new List<string>();
+			var failedNames = new List<string>();
 
 			try
 			{
@@ -416,6 +423,10 @@ public partial class Form1
 					if (item.IsInstalled) continue;
 					if (item.Type == "Loader" && (GameProfiles.IsAnyGame(game, GameProfiles.StardewValley, GameProfiles.MoonlightPeaks, GameProfiles.Minecraft))) continue;
 
+					// Past the skips, so this one is genuinely being tried. Everything attempted that does not
+					// end up in a problem list below is counted as installed by the summary.
+					attempted.Add(item.Name);
+
 					// A Minecraft mod IS its .jar file. It is copied into the mods folder rather than unpacked,
 					// which is what every other path here does with a download — unpacking one would leave a
 					// folder of loose classes that Fabric walks straight past.
@@ -425,8 +436,9 @@ public partial class Form1
 							.Append(MinecraftSuite.FabricApi)
 							.FirstOrDefault(m => m.DisplayName == item.Name);
 
-						if (part != null && await InstallMinecraftModAsync(part, MinecraftRootFolder(), noBuildFor))
-							installedNames.Add(part.DisplayName);
+						if (part != null && !await InstallMinecraftModAsync(part, MinecraftRootFolder(), noBuildFor)
+							&& !noBuildFor.Contains(part.DisplayName))
+							failedNames.Add(item.Name);   // failed for some reason other than "no build yet"
 						continue;
 					}
 
@@ -435,12 +447,12 @@ public partial class Form1
 					// than stopping the whole suite install on it.
 					if (string.IsNullOrEmpty(item.Source))
 					{
-						Speak(Loc.T("suite.noSourceSpeak", item.Name));
-						SpeakBox(
-							Loc.T("suite.noSourceBox", item.Name),
-							Loc.T("suite.noSourceTitle"),
-							MessageBoxButtons.OK,
-							MessageBoxIcon.Information);
+						// Collected, not announced here. This used to raise a box in the middle of the run,
+						// which took focus and made the reader abandon everything still queued behind it —
+						// every "Downloading X" and "X installed" from the mods before this one. Nothing about
+						// it needs the user to act now, so it waits for the summary. See the box after
+						// closeView.
+						couldNotFetch.Add(item.Name);
 						continue;
 					}
 
@@ -456,7 +468,9 @@ public partial class Form1
 						continue;
 					}
 
-					SetStatus(Loc.T("suite.downloading", item.Name));
+					// speak: false, because the next line says the same sentence. SetStatus speaks by default,
+					// so every mod in every game's suite was announced twice, back to back.
+					SetStatus(Loc.T("suite.downloading", item.Name), speak: false);
 					Speak(Loc.T("suite.downloading", item.Name));
 
 					string? downloadUrl = null;
@@ -489,8 +503,13 @@ public partial class Form1
 							}
 						}
 						
+						// ⚠️ The Speak that used to be here was never heard. A browser opening takes focus and
+						// the box takes it again, so the reader abandoned it both times — and it carried the
+						// only explanation of WHY a browser had just appeared. Its sentence is now the opening
+						// of the box, which does get read. This box stays where it is rather than joining the
+						// summary: it is an instruction about a page that is on screen now, not a report.
 						string gameDomain = _nexusService.CurrentGameDomain;
-						Speak(Loc.T("suite.manualDownloadSpeak", item.Name));
+						needManualDownload.Add(item.Name);
 						Process.Start(new ProcessStartInfo($"https://www.nexusmods.com/{gameDomain}/mods/{item.Source}?tab=files") { UseShellExecute = true });
 						SpeakBox(Loc.T("suite.manualDownloadBox1", item.Name), Loc.T("suite.manualDownloadTitle"));
 						continue;
@@ -527,7 +546,8 @@ public partial class Form1
 								}
 							}
 							
-							Speak(Loc.T("suite.manualDownloadSpeak", item.Name));
+							// See the other manual-download site above for why nothing is spoken before the box.
+							needManualDownload.Add(item.Name);
 							Process.Start(new ProcessStartInfo(downloadUrl) { UseShellExecute = true });
 							SpeakBox(Loc.T("suite.manualDownloadBox2", item.Name), Loc.T("suite.manualDownloadTitle"));
 							continue;
@@ -554,7 +574,10 @@ public partial class Form1
 						catch (Exception ex)
 						{
 							LogFailure(item.Name, $"Download or extraction failed", ex);
-							Speak(Loc.T("suite.failedInstallItem", item.Name));
+							// Collected rather than spoken here. A failure announced mid-run is the single most
+							// important thing to hear and the most likely to be lost: any box later in the run
+							// destroys it. The summary names it where nothing can.
+							failedNames.Add(item.Name);
 						}
 					}
 				}
@@ -585,14 +608,28 @@ public partial class Form1
 				//
 				// So the box is a SUPERSET of what it interrupts: it names what was installed as well as what
 				// was not. Then losing the queue costs nothing, because the box says all of it.
+				// Built from whichever parts apply, each part its own sentence so every one stays translatable.
+				var problems = new List<string>();
 				if (noBuildFor.Count > 0)
-					SpeakBox(
-						installedNames.Count > 0
-							? Loc.T("mc.install.suiteDoneSomeMissing", string.Join(", ", noBuildFor),
-								_settings.MinecraftGameVersion, string.Join(", ", installedNames))
-							: Loc.T("mc.install.suiteDoneNoneInstalled", string.Join(", ", noBuildFor),
-								_settings.MinecraftGameVersion),
-						Loc.T("mc.install.noBuildTitle"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+					problems.Add(Loc.T("suite.summaryNoBuild", string.Join(", ", noBuildFor), _settings.MinecraftGameVersion));
+				if (couldNotFetch.Count > 0)
+					problems.Add(Loc.T("suite.summaryNoSource", string.Join(", ", couldNotFetch)));
+				if (failedNames.Count > 0)
+					problems.Add(Loc.T("suite.summaryFailed", string.Join(", ", failedNames)));
+
+				if (problems.Count > 0)
+				{
+					List<string> installed = attempted
+						.Except(noBuildFor).Except(couldNotFetch).Except(needManualDownload).Except(failedNames)
+						.ToList();
+
+					var summary = new List<string> { Loc.T("suite.summaryDone") };
+					if (installed.Count > 0) summary.Add(Loc.T("suite.summaryInstalled", string.Join(", ", installed)));
+					summary.AddRange(problems);
+
+					SpeakBox(string.Join("\n\n", summary), Loc.T("suite.summaryTitle"),
+						MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				}
 
 				// ⚠️ Focus ends in the mod list, not back on the menu that opened the installer.
 				//

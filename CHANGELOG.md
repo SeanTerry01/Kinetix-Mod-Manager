@@ -1,5 +1,25 @@
 ﻿# Unreleased
 
+## 🐛 The same speech fixes, for every other game's suite
+
+*   **Every mod in every game's suite was announced twice.** The status line speaks by default and each one
+    was also spoken explicitly, so "Downloading SkyUI" came out back to back. The Minecraft path was fixed
+    first; this is the same fault on the path the other five games use.
+*   **A mod that cannot be downloaded yet no longer interrupts the install to say so.** It used to raise a
+    message box in the middle of the run, which took focus and made the screen reader abandon everything still
+    queued behind it — every "Downloading" and "installed" from the mods before it. Nothing about it needs you
+    to act at that moment, so it now waits and is named in the summary at the end.
+*   **A failed mod is named where you will actually hear it.** "Failed to install X" was spoken mid-run, which
+    made it the single most important message and the one most likely to be destroyed by any later box. It
+    goes in the summary now.
+*   **The summary covers the whole run, for every game**: what was installed, what has no build for your
+    Minecraft version, what is not published anywhere the manager can fetch from yet, and what failed —
+    whichever of those apply. Because it speaks over the run that produced it, it has to say all of it.
+*   **The manual-download instruction explains itself.** The line saying a mod must be fetched by hand from
+    Nexus was never heard: the browser opening took focus, and the box took it again. That box stays where it
+    is, because it is an instruction about a page that is on screen right then rather than a report that can
+    wait.
+
 ## 🐛 A suite install cut itself off mid-sentence
 
 *   **"Downloading Fabric API" and "Fabric API installed" were both lost**, spoken over by the message box
