@@ -6,6 +6,12 @@ api.minecraftservices.com and collect the 403 that proves the attempt happened.
 
 Prints statuses only - no token is ever written to stdout or to disk.
 
+⚠️ That sentence was a LIE until 2026-09-17, and only on the run that mattered. Every poll had come
+back 403, whose body carries no credential, so nobody noticed that the success path dumped the whole
+response - including a live 24-hour Minecraft access token - straight to stdout, and from there into
+whatever file the run was redirected to. The day it finally returned 200, it wrote the token to disk.
+Everything credential-shaped now goes through redact(); see SECRET_KEYS.
+
 Chain: Microsoft device code -> Xbox Live -> XSTS -> Minecraft services.
 """
 
@@ -52,9 +58,35 @@ def post(url, data, headers=None, form=False):
         return status, raw
 
 
+# Anything whose value is a credential rather than a status. The Minecraft response carries a LIVE
+# access token, good for 24 hours, and the 403 body does not -- so this only ever mattered on success,
+# which is exactly the run nobody had done yet when this script was written.
+SECRET_KEYS = {"access_token", "refresh_token", "id_token", "Token", "identityToken", "RpsTicket",
+               "device_code", "user_code"}
+
+
+def redact(value):
+    """A copy of a response with every credential replaced by its length. Structure stays readable."""
+    if isinstance(value, dict):
+        return {k: (f"<{len(v)} chars, not shown>" if k in SECRET_KEYS and isinstance(v, str)
+                    else redact(v))
+                for k, v in value.items()}
+    if isinstance(value, list):
+        return [redact(v) for v in value]
+    return value
+
+
+def show(body, limit):
+    """Print a response body without ever printing a credential."""
+    if isinstance(body, dict):
+        print(json.dumps(redact(body), indent=2)[:limit])
+    else:
+        print(str(body)[:limit])
+
+
 def fail(step, status, body):
     print(f"\nFAILED at {step} - HTTP {status}")
-    print(json.dumps(body, indent=2)[:1200] if isinstance(body, dict) else str(body)[:1200])
+    show(body, 1200)
     sys.exit(1)
 
 
@@ -155,7 +187,7 @@ status, mc = post(
 print("\n" + "=" * 60)
 print(f"  api.minecraftservices.com returned HTTP {status}")
 print("=" * 60)
-print(json.dumps(mc, indent=2)[:800] if isinstance(mc, dict) else str(mc)[:800])
+show(mc, 800)
 print()
 
 if status == 403:
