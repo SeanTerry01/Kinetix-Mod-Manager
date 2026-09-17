@@ -496,6 +496,19 @@ public class AppSettings : IModScanContext
 	/// </summary>
 	public string MinecraftGameVersion { get; set; } = "";
 
+	/// <summary>
+	/// The Microsoft account the manager signed in to Minecraft with, or <c>null</c> if it never has. The
+	/// credentials inside are encrypted; see <see cref="MinecraftAccountRecord"/>.
+	/// </summary>
+	public MinecraftAccountRecord? MinecraftAccount { get; set; }
+
+	/// <summary>
+	/// Whether F5 starts Minecraft signed in (servers, Realms, skins) or offline. Offline is the everyday mode and
+	/// the default; online is a deliberate choice the player can make and undo at any time. Only ever true while
+	/// <see cref="MinecraftAccount"/> is set — signing out turns it off.
+	/// </summary>
+	public bool MinecraftPlayOnline { get; set; }
+
 	public Dictionary<string, string> IgnoredVersions { get; set; } = new Dictionary<string, string>();
 
 	/// <summary>
