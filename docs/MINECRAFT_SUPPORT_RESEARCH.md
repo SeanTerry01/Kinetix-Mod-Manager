@@ -12,8 +12,9 @@ Two things it does not know about, both found during implementation:
     tiles carry their own `configId` in `launcher_quick_play.json` and override the
     selected installation, so a world launched from the home screen runs whichever
     installation it was first played with. See section 3.
-*   The whole online sign-in chain is now registered and proven, and is waiting only
-    on Mojang's approval of the app. See section 8, and poll `tools\mcauth-probe.py`.
+*   The online sign-in chain is registered, proven and **APPROVED**: `tools\mcauth-probe.py`
+    returned HTTP 200 on 2026-09-17, five days after the request. Online mode is no longer
+    blocked on anything external - it simply has not been built yet. See section 8.
 
 Everything in the "Verified" sections was checked against a real install on this
 machine or against a live API, and the evidence is recorded so it can be
@@ -419,12 +420,24 @@ launcher's UI.
 but online ships too, so servers, Realms and skins all work. This is not a fallback
 arrangement - both are first-class, and the user moves between them at will.
 
-**Sequencing, though: ship offline first.** Online is blocked on an Azure directory that a
-personal Microsoft account does not have (see the blocked note below), and *nothing else needs
-it*. The mod layout, the Fabric install, profiles and F5-to-game can all be built, shipped and
-ear-tested against offline mode alone. Online then lands as a pure addition whenever the Azure
-and approval paperwork clears, with no rework - the identity plumbing is the same either way,
-because offline already passes a real uuid.
+**Sequencing: offline shipped first, and that was right.** Online was blocked on an Azure
+directory a personal Microsoft account does not have, and then on Mojang's approval, and
+*nothing else needed it*. The mod layout, the Fabric install, profiles and F5-to-game were all
+built, shipped and ear-tested against offline mode alone.
+
+**Both blockers are now clear (approved 2026-09-17) and online has not been built.** It lands
+as a pure addition with no rework, because the identity plumbing is the same either way -
+offline already passes a real uuid. What is left to write, all of it net-new:
+
+1. The device-code sign-in inside the app, speaking the code the way `tools\mcauth-probe.py`
+   already proves the chain works (device code -> Xbox Live -> XSTS -> `login_with_xbox`).
+2. Somewhere to keep the refresh token, encrypted per-user, and a refresh on expiry. The
+   Minecraft access token itself lasts 24 hours, so a refresh path is not optional.
+3. A deliberate switch between online and offline, either direction, at any time, plus what
+   `MinecraftIdentity` hands `BuildPlan` in each case - today it is
+   `MinecraftIdentity.OfflineFromLauncher` only.
+4. Saying plainly which mode a launch is using, since a silent difference between them is
+   exactly the class of failure this game's support exists to prevent.
 
 Sign in **once**, then choose online or offline freely, in either direction, at any time.
 This is Prism Launcher's rule and it solves two problems with one decision: the manager
@@ -444,11 +457,12 @@ The device-code flow is worth wanting for its own sake, not just tolerating: the
 speaks a short code, the user types it into a browser where their screen reader already
 works well, once, ever. That is a better sign-in than the launcher's.
 
-### Azure registration - the long pole, start it first
+### Azure registration - done, and approved
 
-Online mode needs an approved Azure application. This is the only part of Minecraft support
-with an external waiting period, and it blocks nothing else, so it should be started before
-any code is written.
+Online mode needs an approved Azure application. This was the only part of Minecraft support
+with an external waiting period. **It is approved as of 2026-09-17** and nothing here is
+outstanding; the settings below are recorded so the registration can be understood, rebuilt
+or handed over, not because anything is still pending.
 
 Settings for the app registration:
 
@@ -503,11 +517,18 @@ flow, `XboxLive.signin` only, token stored locally, each user signs into their o
 The only response was a generic "thank you for contacting Mojang Studios" - there is no ticket
 number, no status page and no published timeline.
 
-**So do not wait on an email - poll instead.** Re-run `tools\mcauth-probe.py` every few days:
-a **403** means still pending, a **200** means approved and online mode can be built. That is
-ground truth from Minecraft's own API. The probe needs an interactive device-code sign-in each
-time (the 403 only occurs after the Microsoft/Xbox/XSTS steps), so it cannot be automated.
-It prints statuses only and never emits a token.
+**No email ever arrived.** Polling `tools\mcauth-probe.py` was the only way to find out, and on
+**2026-09-17 it returned HTTP 200** - approved, five days after the request. A **403** meant
+still pending, a **200** means the app has Minecraft API access. That is ground truth from
+Minecraft's own API rather than from a notification. The probe still needs an interactive
+device-code sign-in each run, so it cannot be automated; it remains useful for confirming
+access has not been revoked.
+
+> ⚠️ **The probe leaked a live token the first time it succeeded, and its docstring said it
+> never would.** Every poll until then returned 403, whose body carries no credential, so the
+> success path had never run: it printed the whole response - including a 24-hour Minecraft
+> access token - to the file the run was redirected to. Fixed in `5c9d187`; the token was
+> destroyed and has expired. **A safety claim exercised only on the failure path is untested.**
 
 #### ⚠️ Getting there: a personal Microsoft account has no directory, and you need one
 
