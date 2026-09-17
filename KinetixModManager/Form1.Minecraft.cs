@@ -1303,17 +1303,8 @@ public partial class Form1
 			return;
 		}
 
-		// Identity comes from the launcher's own accounts file — public profile data, no credential — and
-		// carries the player's REAL uuid. See MinecraftIdentity: a derived offline uuid would walk into their
-		// world as a different person, with the old character orphaned rather than deleted.
-		MinecraftIdentity? identity = MinecraftIdentity.OfflineFromLauncher(root);
-		if (identity is null)
-		{
-			Speak(Loc.T("mc.launch.noAccountSpeak"));
-			SpeakBox(Loc.T("mc.launch.noAccountBox"), Loc.T("mc.launch.noAccountTitle"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
-			return;
-		}
+		MinecraftIdentity? identity = await ResolveMinecraftIdentityAsync(root);
+		if (identity is null) return;   // whatever went wrong has already been said
 
 		try
 		{
@@ -1331,7 +1322,10 @@ public partial class Form1
 			MinecraftLaunchPlan plan = MinecraftLauncher.BuildPlan(root, versionId, identity);
 
 			SetStatus(Loc.T("mc.launch.starting"));
-			Speak(Loc.T("mc.launch.startingSpeak", identity.Username));
+			// ⚠️ Which mode this launch is using is said out loud, every time. The difference between them is
+			// invisible until the player tries to join a server, and a silent difference is the class of failure
+			// this game's support exists to prevent.
+			Speak(Loc.T(identity.IsOffline ? "mc.launch.startingSpeak" : "mc.launch.startingOnlineSpeak", identity.Username));
 
 			var start = new System.Diagnostics.ProcessStartInfo(plan.JavaPath)
 			{

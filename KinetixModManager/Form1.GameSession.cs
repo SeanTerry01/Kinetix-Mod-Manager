@@ -80,6 +80,10 @@ public partial class Form1
 		// the Bethesda pair and The Witcher 3.
 		if (FindMenuItem(modsMenu, "menuSaveManager") is ToolStripItem saveItem)
 			saveItem.Visible = !string.IsNullOrEmpty(profile?.SavesFolderName);
+		// Signing in is Minecraft's alone: it is the only game the manager launches itself, so the only one where
+		// which account the session belongs to is a thing the manager decides.
+		if (FindMenuItem(modsMenu, "menuMinecraftAccount") is ToolStripItem accountItem)
+			accountItem.Visible = GameProfiles.IsGame(game, GameProfiles.Minecraft);
 		// Skyrim SE / Fallout 4-only items: script extender, conflict winners, load-order rules, safety restore,
 		// and the prepare/restore-for-update pair. All of them are about staged deployment or plugins.txt, which
 		// no other game has.

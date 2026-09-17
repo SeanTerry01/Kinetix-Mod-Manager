@@ -222,6 +222,10 @@ public partial class Form1
 		var grpGame = new ToolStripMenuItem(Loc.T("menu.groupGame")) { Name = "menuGroupGame" };
 		grpGame.DropDownItems.Add(Loc.T("menu.installSuite", gameName), null, delegate { ShowAccessibilitySuiteDialog(); }).Name = "menuSuite";
 		grpGame.DropDownItems.Add(Loc.T("menu.uninstallScriptExtender"), null, delegate { UninstallScriptExtenderCommand(); }).Name = "menuUninstallSE";
+		// Minecraft only: the one game the manager starts itself, and so the one where who you play as, and
+		// whether that session can reach a server, are the manager's business. See Form1.MinecraftAccount.
+		grpGame.DropDownItems.Add(Loc.T("menu.minecraftAccount"), null,
+			delegate { Fire(ShowMinecraftAccountAsync(), "ShowMinecraftAccountAsync"); }).Name = "menuMinecraftAccount";
 		grpGame.DropDownItems.Add(Loc.T("menu.editGameIni"), null, delegate { EditGameIni(); }).Name = "menuEditGameIni";
 		grpGame.DropDownItems.Add(Loc.T("menu.saveManager", GetShortcutString("SaveManager")), null, async delegate { await ShowSaveManager(); }).Name = "menuSaveManager";
 		grpGame.DropDownItems.Add(Loc.T("menu.prepUpdate"), null, delegate { PrepareForGameUpdate(); }).Name = "menuPrepUpdate";
