@@ -1,5 +1,31 @@
 ﻿# Unreleased
 
+## ✨ Minecraft: sign in, and play online or offline
+
+*   **You can now sign in to Minecraft from the manager**, and play on servers and Realms. Open the **Mods**
+    menu, choose **Game and Maintenance**, then **Minecraft Account**.
+*   **The sign-in is a short code, said one word per character.** "Alfa, Bravo, One" — no code read out as a
+    run of letters that sound alike, and nothing to squint at. One button opens microsoft.com/link in your
+    browser with the code already copied, ready to paste; another says it again as often as you like.
+    You sign in on Microsoft's own page, where your screen reader already works, and **your password never
+    passes through the manager**.
+*   **The waiting is the manager's job.** The screen stays up while you are in your browser and closes itself
+    the moment Microsoft says you are done. There is nothing to press when you come back.
+*   **Offline is still the everyday mode, and still the default.** Singleplayer needs no account at all.
+    Online is a deliberate switch — one button, in either direction, at any time.
+*   **F5 says which mode it is starting in**, every time. A silent difference between online and offline is
+    exactly the kind of failure Minecraft support exists to prevent: you would only find out when a server
+    refused you.
+*   **You are the same character either way.** Both modes pass your real player id, so your worlds, inventory
+    and advancements are where you left them whichever mode you started in.
+*   **An online launch that cannot sign in asks what to do** rather than quietly starting offline — it says
+    what went wrong and offers to start this session offline instead. The mode itself is left alone.
+*   **The saved sign-in renews itself** (Minecraft's own lasts about a day) and is encrypted so that a copied
+    settings file is useless on another computer or account. If Microsoft ever stops accepting it, the manager
+    says so and asks you to sign in again.
+*   **The official Minecraft launcher is now needed for nothing at all.** It used to be needed once, to sign
+    in. If you have used it before, the manager still reads who you are from it and plays offline as you.
+
 ## 🐛 The same speech fixes, for every other game's suite
 
 *   **Every mod in every game's suite was announced twice.** The status line speaks by default and each one

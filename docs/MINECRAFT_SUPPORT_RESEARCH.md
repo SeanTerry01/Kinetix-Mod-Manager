@@ -12,9 +12,9 @@ Two things it does not know about, both found during implementation:
     tiles carry their own `configId` in `launcher_quick_play.json` and override the
     selected installation, so a world launched from the home screen runs whichever
     installation it was first played with. See section 3.
-*   The online sign-in chain is registered, proven and **APPROVED**: `tools\mcauth-probe.py`
-    returned HTTP 200 on 2026-09-17, five days after the request. Online mode is no longer
-    blocked on anything external - it simply has not been built yet. See section 8.
+*   The online sign-in chain is registered, proven, **APPROVED** and now **BUILT**:
+    `tools\mcauth-probe.py` returned HTTP 200 on 2026-09-17, five days after the request, and
+    the sign-in went in the same day. Offline remains the default. See section 6.
 
 Everything in the "Verified" sections was checked against a real install on this
 machine or against a live API, and the evidence is recorded so it can be
@@ -425,19 +425,28 @@ directory a personal Microsoft account does not have, and then on Mojang's appro
 *nothing else needed it*. The mod layout, the Fabric install, profiles and F5-to-game were all
 built, shipped and ear-tested against offline mode alone.
 
-**Both blockers are now clear (approved 2026-09-17) and online has not been built.** It lands
-as a pure addition with no rework, because the identity plumbing is the same either way -
-offline already passes a real uuid. What is left to write, all of it net-new:
+**✅ BUILT 2026-09-17**, the same day approval landed, and it was the pure addition this section
+predicted - no rework, because offline already passed a real uuid. What was written:
 
-1. The device-code sign-in inside the app, speaking the code the way `tools\mcauth-probe.py`
-   already proves the chain works (device code -> Xbox Live -> XSTS -> `login_with_xbox`).
-2. Somewhere to keep the refresh token, encrypted per-user, and a refresh on expiry. The
-   Minecraft access token itself lasts 24 hours, so a refresh path is not optional.
-3. A deliberate switch between online and offline, either direction, at any time, plus what
-   `MinecraftIdentity` hands `BuildPlan` in each case - today it is
-   `MinecraftIdentity.OfflineFromLauncher` only.
-4. Saying plainly which mode a launch is using, since a silent difference between them is
-   exactly the class of failure this game's support exists to prevent.
+1. `Kinetix.Core\MinecraftAuth.cs` - the device-code sign-in, the same chain the probe proved
+   (device code -> Xbox Live -> XSTS -> `login_with_xbox` -> `/minecraft/profile`), plus
+   `PhoneticSpelling` so the code is said one word per character.
+2. `Kinetix.Core\MinecraftAccount.cs` - `MinecraftAccountRecord` in `AppSettings`, both tokens
+   encrypted through `Secrets`, and `MinecraftAccounts.OnlineAsync` refreshing when the token
+   is within 30 minutes of expiry. ⚠️ Microsoft **rotates** the refresh token, so the caller
+   must save settings whenever a refresh happened - `Refreshed` is returned for exactly that.
+3. `KinetixModManager\Form1.MinecraftAccount.cs` - the Minecraft Account view (Mods > Game and
+   Maintenance), the online/offline switch in both directions, and
+   `ResolveMinecraftIdentityAsync`, which an online launch uses and which **asks** before
+   starting offline instead when signing in fails.
+4. `mc.launch.startingOnlineSpeak` beside the offline one, so F5 always says which mode it is.
+
+⚠️ **Every failure path names the step and the HTTP status and nothing else** - never a body.
+That is the probe's lesson (§8 note below) applied: `MinecraftAuthTests` fails every step in
+turn with credential-stuffed bodies and asserts no token reaches the message.
+
+Not yet exercised against the real service: only the fake in the tests. The first live sign-in
+is an ear test.
 
 Sign in **once**, then choose online or offline freely, in either direction, at any time.
 This is Prism Launcher's rule and it solves two problems with one decision: the manager

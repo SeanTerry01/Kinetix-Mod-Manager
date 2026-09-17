@@ -761,15 +761,42 @@ installation correctly, then launch a world from the home screen, and get an unm
 tile remembers which installation it was first played with. Nothing tells you. The game starts, plays
 perfectly, and simply never speaks.
 
-You will still need the launcher **once**, to sign in. After that the manager knows who you are and can start
-the game on its own. It plays as you — your own username and your own character — so your worlds, inventory
-and advancements are exactly where you left them.
+It plays as you — your own username and your own character — so your worlds, inventory and advancements are
+exactly where you left them. The manager also **installs Minecraft itself** when a version you want is not on
+the computer, and repairs one that is missing pieces — see "Installing and repairing Minecraft itself" below.
 
-Signing in is the only thing it is still needed for. The manager **installs Minecraft itself** when a version
-you want is not on the computer, and repairs one that is missing pieces — see "Installing and repairing
-Minecraft itself" below.
+### Signing in, and online or offline play
 
-Servers and Realms need a live sign-in and are not available this way; singleplayer is unaffected.
+Minecraft starts **offline** unless you say otherwise, and offline covers singleplayer completely. What it
+does not cover is anything that checks a live sign-in: servers, Realms and custom skins.
+
+Open the **Mods** menu, choose **Game and Maintenance**, then **Minecraft Account**. It tells you who is signed
+in and which mode your next launch will use, and it has the buttons that change either.
+
+**Signing in** is done with a short code, once:
+
+*   Press **Sign in with Microsoft**. The manager is given a code and says it one word per character — "Alfa,
+    Bravo, One" — so there is nothing to squint at or guess.
+*   Press **Open the sign-in page** and your browser opens at microsoft.com/link with the code already copied,
+    ready to paste. You can also read the code from the screen, or have it said again.
+*   Sign in there as usual. **The manager never sees your password.** When you finish, this screen closes by
+    itself — there is nothing to press when you come back.
+*   Kinetix then asks whether to play online from now on. Either answer is fine; you can change it whenever you
+    like.
+
+**Switching modes** is one button in the same place, in either direction, at any time. **F5 always says which
+mode it is starting in**, so the difference is never silent.
+
+Your saved sign-in is encrypted on this computer so that it is useless on any other, and it renews itself
+quietly — Minecraft's own sign-in lasts about a day. If it ever stops being accepted (a changed password, or a
+long time away), Kinetix says so and asks you to sign in again. **Sign out** removes it and goes back to
+offline play; your worlds, mods and characters are untouched.
+
+If an online launch cannot sign in — no internet, say — the manager tells you why and asks whether to start
+this session offline instead. It never switches modes behind your back.
+
+You do not need the official Minecraft launcher for any of this. If you have signed in to it before, Kinetix
+can read who you are from it and play offline as you without any sign-in at all.
 
 ### Installing Fabric
 
