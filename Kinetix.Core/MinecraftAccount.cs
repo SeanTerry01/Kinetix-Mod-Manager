@@ -127,6 +127,27 @@ public static class MinecraftAccounts
 		return (Identity(session.Username, session.Uuid, session.AccessToken), true);
 	}
 
+	/// <summary>
+	/// Proves the stored sign-in works NOW, for saying "connected" to the player. <see cref="OnlineAsync"/>
+	/// hands back a saved token without asking anyone, which is right for a launch but proves nothing: this
+	/// also puts that token to Minecraft's service, and refreshes when the service has stopped taking it.
+	///
+	/// Same contract as <see cref="OnlineAsync"/>: when <c>Refreshed</c> is true, the caller must save.
+	/// </summary>
+	public static async Task<(MinecraftIdentity Identity, bool Refreshed)> ConnectAsync(
+		AppSettings settings, CancellationToken cancel = default)
+	{
+		(MinecraftIdentity identity, bool refreshed) = await OnlineAsync(settings, cancel).ConfigureAwait(false);
+
+		// A refresh has just walked the whole chain to the profile, so it has already been proved.
+		if (refreshed || await MinecraftAuth.IsTokenAcceptedAsync(identity.AccessToken, cancel).ConfigureAwait(false))
+			return (identity, refreshed);
+
+		// Turned down before its time. The saved token is dropped so OnlineAsync goes the long way round.
+		settings.MinecraftAccount!.AccessTokenEncrypted = "";
+		return await OnlineAsync(settings, cancel).ConfigureAwait(false);
+	}
+
 	private static MinecraftIdentity Identity(string name, string uuid, string token) => new()
 	{
 		Username = name,

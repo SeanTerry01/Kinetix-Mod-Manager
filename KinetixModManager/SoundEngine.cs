@@ -30,8 +30,8 @@ public class SoundEngine : ISoundEngine
 	public static readonly IReadOnlyDictionary<string, string> SoundDescriptions =
 		new Dictionary<string, string>
 		{
-			{ "connect",            "Played when successfully connected to Nexus Mods. For Minecraft, whose mods come from Modrinth and need no account, it plays when you join a multiplayer server instead." },
-			{ "disconnect",         "Played when you are disconnected, need to enter an API key, when the session is closed, or when the program closes. For Minecraft, when you leave a server." },
+			{ "connect",            "Played when successfully connected to Nexus Mods. For Minecraft, whose mods come from Modrinth and need no account, it plays when your Microsoft sign-in is confirmed for online play, and when you join a multiplayer server." },
+			{ "disconnect",         "Played when you are disconnected, need to enter an API key, when the session is closed, or when the program closes. For Minecraft, when you leave a server, switch to offline play or sign out." },
 			{ "enable",             "Played when one or more mods are enabled." },
 			{ "disable",            "Played when one or more mods are disabled or deleted." },
 			{ "error",              "Played when an error occurs, such as a failed download." },

@@ -621,10 +621,12 @@ public partial class Form1
 		// Sean" while managing Minecraft states a fact about a service this game has nothing to do with, and
 		// it is the line the user sees most often — it is what the title says whenever nothing else is
 		// happening. The account is still signed in; it is simply not what this session is about.
-		_nexusService.UsesNexus &&
+		// Minecraft's account is Microsoft's: the title rests on that connection, or on which mode is in use.
+		MinecraftRestingStatus() ??
+		(_nexusService.UsesNexus &&
 		!string.IsNullOrEmpty(_nexusService.NexusUser) && _nexusService.NexusUser != "Unknown User"
 			? Loc.T("status.connectedAs", _nexusService.NexusUser)
-			: Loc.T("status.ready");
+			: Loc.T("status.ready"));
 
 	/// <summary>Returns the title bar to the resting status after a transient operation, without speaking it.</summary>
 	private void ResetStatus() => SetStatus(RestingStatus(), speak: false);

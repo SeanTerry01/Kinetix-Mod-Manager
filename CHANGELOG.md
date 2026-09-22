@@ -13,6 +13,19 @@
     the moment Microsoft says you are done. There is nothing to press when you come back.
 *   **Offline is still the everyday mode, and still the default.** Singleplayer needs no account at all.
     Online is a deliberate switch — one button, in either direction, at any time.
+*   **Online play is heard as soon as the manager opens, not only at F5.** With online play on, the manager checks
+    your sign-in with Microsoft when it opens Minecraft, plays the connected sound, says "Connected to Minecraft
+    as" your name, and keeps that in the title bar — the same as a Nexus game's "Connected as". If the check
+    fails you hear the error sound and why. Switching to online play checks straight away too; switching to
+    offline, or signing out, plays the disconnected sound.
+*   **The menu says the mode before you open anything.** The entry reads, for example, "Minecraft Account:
+    online play, connected as" your name, and the account screen's first line says the same. In offline play
+    the title bar says "Offline play" rather than a bare "Ready".
+*   **F4 is named for Minecraft's own log** — "Open Minecraft and Fabric Log". It said "Open SMAPI Log File" in
+    every game whenever the manager reopened your last session, because only switching games renamed it.
+*   **A game listed twice for one folder is listed once.** Testing the Minecraft version move left a second
+    "Minecraft" pointing at the same folder. The manager now removes a duplicate like that when it starts —
+    only when nothing at all is filed under the extra copy, so no mods, backups or history can go with it.
 *   **F5 says which mode it is starting in**, every time. A silent difference between online and offline is
     exactly the kind of failure Minecraft support exists to prevent: you would only find out when a server
     refused you.

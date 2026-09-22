@@ -341,6 +341,61 @@ public sealed class MinecraftAuthTests : IDisposable
 	}
 
 	[Fact]
+	public async Task ConnectingPutsEvenAFreshStoredTokenToMinecraft()
+	{
+		var settings = new AppSettings();
+		MinecraftAccounts.Remember(settings, Session(MsRefresh, expires: _now.AddHours(20)));
+		_fake.On("/minecraft/profile", HttpStatusCode.OK, new JObject { ["id"] = RawUuid, ["name"] = "SeanPlays" });
+
+		(MinecraftIdentity identity, bool refreshed) = await MinecraftAccounts.ConnectAsync(settings);
+
+		// "Connected" has to mean the service said yes today, not that a token was saved yesterday.
+		Assert.False(refreshed);
+		Assert.Equal("/minecraft/profile", Assert.Single(_fake.Requests).Path);
+		Assert.Equal("Bearer " + McToken, _fake.AuthorizationOf("/minecraft/profile"));
+		Assert.Equal(McToken, identity.AccessToken);
+	}
+
+	[Fact]
+	public async Task ConnectingWithATokenMinecraftTurnsDownRefreshesIt()
+	{
+		var settings = new AppSettings();
+		MinecraftAccounts.Remember(settings, Session(MsRefresh, expires: _now.AddHours(20)));
+		_fake.On("/minecraft/profile", HttpStatusCode.Unauthorized, new JObject());
+		_fake.On("/token", HttpStatusCode.OK, MicrosoftTokenBody(MsRefreshRotated));
+		QueueXboxAndMinecraft();
+
+		(_, bool refreshed) = await MinecraftAccounts.ConnectAsync(settings);
+
+		// Refreshed, so the caller saves — and what it saves is the rotated refresh token.
+		Assert.True(refreshed);
+		Assert.Equal(MarkingSecretStore.Mark + MsRefreshRotated, settings.MinecraftAccount!.RefreshTokenEncrypted);
+	}
+
+	[Fact]
+	public async Task ConnectingWithNoNetworkIsReportedAsNoNetwork()
+	{
+		var settings = new AppSettings();
+		MinecraftAccounts.Remember(settings, Session(MsRefresh, expires: _now.AddHours(20)));
+		_fake.Throw = new HttpRequestException("No such host is known.");
+
+		var ex = await Assert.ThrowsAsync<MinecraftAuthException>(() => MinecraftAccounts.ConnectAsync(settings));
+		Assert.Equal(MinecraftAuthFailure.NetworkFailed, ex.Failure);
+	}
+
+	[Fact]
+	public async Task AFailedConnectionCheckDoesNotQuoteWhatCameBack()
+	{
+		var settings = new AppSettings();
+		MinecraftAccounts.Remember(settings, Session(MsRefresh, expires: _now.AddHours(20)));
+		_fake.On("/minecraft/profile", HttpStatusCode.BadGateway, SecretStuffedBody());
+
+		var ex = await Assert.ThrowsAsync<MinecraftAuthException>(() => MinecraftAccounts.ConnectAsync(settings));
+		Assert.Equal(MinecraftAuthFailure.Unexpected, ex.Failure);
+		AssertNoSecretIn(ex.ToString());
+	}
+
+	[Fact]
 	public async Task PlayingOnlineWithNoAccountMeansSigningIn()
 	{
 		var ex = await Assert.ThrowsAsync<MinecraftAuthException>(() => MinecraftAccounts.OnlineAsync(new AppSettings()));

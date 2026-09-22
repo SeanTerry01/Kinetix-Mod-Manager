@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
 
 namespace KinetixModManager;
 
@@ -142,6 +143,74 @@ public class AppSettings : IModScanContext
 	/// exactly as they did before any of this existed.
 	/// </summary>
 	public bool HasMultipleCopies(string gameId) => InstallsOf(gameId).Count > 1;
+
+	/// <summary>
+	/// Removes a recorded copy that is the same folder as an earlier copy of the same game, provided nothing is
+	/// filed under it. Returns the keys removed; the caller saves.
+	///
+	/// <para>
+	/// How one arises: a copy's folder is changed to where detection had already recorded a second copy — Sean's
+	/// Minecraft was pointed at an empty test folder, detection found <c>.minecraft</c> again as "Minecraft2", and
+	/// moving back left two entries for one folder. The games list then offered the same game twice.
+	/// </para>
+	///
+	/// <para>
+	/// ⚠️ Only an EMPTY duplicate goes. A copy that is the active session, has anything filed under its key in
+	/// these settings, or has anything on disk (<paramref name="hasDataFiledUnder"/>) is left alone: merging
+	/// two copies' mods and history is a decision, not a tidy-up.
+	/// </para>
+	/// </summary>
+	public List<string> DropEmptyDuplicateInstalls(Func<string, bool> hasDataFiledUnder)
+	{
+		static string Normalised(string folder) => folder.Trim().TrimEnd('\\', '/');
+
+		var dropped = new List<string>();
+		JObject? filed = null;
+
+		foreach (string gameId in GameInstalls.Select(i => i.GameId).Distinct().ToList())
+		{
+			List<GameInstall> copies = InstallsOf(gameId);
+			for (int n = 1; n < copies.Count; n++)
+			{
+				GameInstall copy = copies[n];
+				string folder = Normalised(copy.Folder);
+				if (folder.Length == 0) continue;
+
+				bool sameAsEarlier = copies.Take(n).Any(earlier => !dropped.Contains(earlier.Key)
+					&& string.Equals(Normalised(earlier.Folder), folder, StringComparison.OrdinalIgnoreCase));
+				if (!sameAsEarlier || copy.Key == ActiveGame) continue;
+
+				filed ??= JObject.FromObject(this);
+				if (IsFiledUnder(filed, copy.Key) || hasDataFiledUnder(copy.Key)) continue;
+
+				GameInstalls.Remove(copy);
+				GamePaths.Remove(copy.Key);
+				GameModsPaths.Remove(copy.Key);
+				dropped.Add(copy.Key);
+			}
+		}
+
+		return dropped;
+	}
+
+	/// <summary>
+	/// True when any per-game map in the settings holds something under <paramref name="key"/>, other than the two
+	/// path maps a duplicate is recorded in by definition. An empty value is not something filed.
+	/// </summary>
+	private static bool IsFiledUnder(JObject settings, string key)
+	{
+		foreach (JProperty map in settings.Properties())
+		{
+			if (map.Name is nameof(GamePaths) or nameof(GameModsPaths)) continue;
+			if (map.Value is not JObject entries || entries[key] is not JToken value) continue;
+
+			bool empty = value.Type == JTokenType.Null
+				|| (value.Type == JTokenType.String && ((string?)value ?? "").Length == 0)
+				|| (value is JContainer container && !container.HasValues);
+			if (!empty) return true;
+		}
+		return false;
+	}
 
 	public Dictionary<string, string> GameModsPaths { get; set; } = new Dictionary<string, string>();
 

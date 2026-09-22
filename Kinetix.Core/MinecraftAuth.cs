@@ -264,6 +264,25 @@ public static class MinecraftAuth
 		return await CompleteAsync(MicrosoftTokens(body, "refreshing the Microsoft sign-in"), cancel).ConfigureAwait(false);
 	}
 
+	/// <summary>
+	/// Whether Minecraft's service accepts an access token right now, asked by reading the profile it belongs
+	/// to. <c>false</c> is the service turning the token down (401) — ended early, by a password change say —
+	/// which a refresh can put right; everything else that is not a yes throws, as the rest of the chain does.
+	/// </summary>
+	public static async Task<bool> IsTokenAcceptedAsync(string accessToken, CancellationToken cancel = default)
+	{
+		const string step = "checking the Minecraft sign-in";
+		(HttpStatusCode status, JObject? profile) = await GetJsonAsync("https://api.minecraftservices.com/minecraft/profile",
+			accessToken, step, cancel).ConfigureAwait(false);
+
+		if (status == HttpStatusCode.OK) return true;
+		if (status == HttpStatusCode.Unauthorized) return false;
+		if (status == HttpStatusCode.NotFound)
+			throw new MinecraftAuthException(MinecraftAuthFailure.NoJavaProfile,
+				"The Microsoft account has no Minecraft Java Edition profile (HTTP 404).");
+		throw Unexpected(step, status, profile);
+	}
+
 	private static (string Access, string Refresh) MicrosoftTokens(JObject body, string step)
 	{
 		string? access = (string?)body["access_token"];

@@ -770,8 +770,16 @@ the computer, and repairs one that is missing pieces — see "Installing and rep
 Minecraft starts **offline** unless you say otherwise, and offline covers singleplayer completely. What it
 does not cover is anything that checks a live sign-in: servers, Realms and custom skins.
 
-Open the **Mods** menu, choose **Game and Maintenance**, then **Minecraft Account**. It tells you who is signed
-in and which mode your next launch will use, and it has the buttons that change either.
+Open the **Mods** menu, choose **Game and Maintenance**, then **Minecraft Account**. The menu entry itself says
+the mode — for example "Minecraft Account: online play, connected as Sean" — and the screen it opens starts
+with the same line, then explains what your next launch will do. It has the buttons that change either.
+
+With online play on, the manager **checks your sign-in with Microsoft when it opens Minecraft**: you hear the
+connected sound and "Connected to Minecraft as" your name, and the title bar keeps saying so. In offline play
+the title bar says "Offline play" instead. If the check
+fails you hear the error sound and why — nothing is decided yet, because F5 will ask whether to start offline.
+Switching to online play checks straight away; switching to offline, or signing out, plays the disconnected
+sound.
 
 **Signing in** is done with a short code, once:
 

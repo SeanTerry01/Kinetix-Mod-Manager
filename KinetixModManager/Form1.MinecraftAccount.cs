@@ -93,24 +93,48 @@ public partial class Form1
 					// The button says what pressing it does, not which mode is on — the state is in the text
 					// above, and a button named for a state leaves the player working out which way it toggles.
 					bool online = _settings.MinecraftPlayOnline;
+					bool connecting = false;
 					Button mode = MakeViewButton(
 						Loc.T(online ? "mcAccount.switchToOffline" : "mcAccount.switchToOnline"),
 						Loc.T(online ? "mcAccount.switchToOfflineName" : "mcAccount.switchToOnlineName"),
 						onClick: null);
-					mode.Click += delegate
+					mode.Click += async delegate
 					{
+						// A second press while Microsoft is still being asked would switch straight back.
+						if (connecting) return;
+
 						bool nowOnline = !_settings.MinecraftPlayOnline;
 						_settings.MinecraftPlayOnline = nowOnline;
 						_settings.Save();
+						_minecraftOnlineWorking = null;
 
 						// Relabelled in place rather than closing the view: this is a switch the player may want
-						// to flip and hear, and the announcement below is the confirmation either way.
+						// to flip and hear, and the announcement is the confirmation either way.
 						mode.Text = Loc.T(nowOnline ? "mcAccount.switchToOffline" : "mcAccount.switchToOnline");
 						mode.AccessibleName = Loc.T(nowOnline ? "mcAccount.switchToOfflineName" : "mcAccount.switchToOnlineName");
-						tbState.Text = MinecraftAccountSummary();
-						tbState.Select(0, 0);
 
-						Speak(Loc.T(nowOnline ? "mcAccount.nowOnline" : "mcAccount.nowOffline"));
+						if (nowOnline)
+						{
+							// Switching on is only worth announcing once it is known to work — Sean heard "online"
+							// and then nothing to say anything had connected. The check says the mode, the account
+							// and the cue together, or says why not.
+							connecting = true;
+							try { await ConnectMinecraftAccountAsync(sayConnecting: false); }
+							finally { connecting = false; }
+						}
+						else
+						{
+							_soundEngine.Play("disconnect");
+							ResetStatus();
+							Speak(Loc.T("mcAccount.nowOffline"));
+						}
+
+						// The player may have closed the view while Microsoft was answering.
+						if (!tbState.IsDisposed)
+						{
+							tbState.Text = MinecraftAccountSummary();
+							tbState.Select(0, 0);
+						}
 					};
 					buttons.Controls.Add(mode);
 
@@ -143,14 +167,108 @@ public partial class Form1
 		}
 	}
 
-	/// <summary>What the view reads out: who is signed in, and what a launch will therefore do.</summary>
+	/// <summary>
+	/// What the view reads out: which mode, who is signed in, and what a launch will therefore do.
+	///
+	/// ⚠️ The mode comes FIRST, on a line of its own. A screen reader landing in this box reads the line the caret
+	/// is on and no more — the mode used to be in the third paragraph, so arriving here said only the name.
+	/// </summary>
 	private string MinecraftAccountSummary()
 	{
-		string text = _settings.MinecraftAccount is { } account
-			? Loc.T(_settings.MinecraftPlayOnline ? "mcAccount.summaryOnline" : "mcAccount.summaryOffline", account.Username)
-			: Loc.T("mcAccount.summarySignedOut");
+		string text = Loc.T("mcAccount.stateLine", MinecraftAccountState())
+			+ "\n\n"
+			+ (_settings.MinecraftAccount is null
+				? Loc.T("mcAccount.summarySignedOut")
+				: Loc.T(_settings.MinecraftPlayOnline ? "mcAccount.summaryOnline" : "mcAccount.summaryOffline"));
 
 		return text.Replace("\n", Environment.NewLine);
+	}
+
+	/// <summary>
+	/// The mode, the account and whether the online sign-in is working, in a few words — "online play, connected
+	/// as Sean". Shared by the menu item and the first line of the view, so the two can never disagree.
+	/// </summary>
+	private string MinecraftAccountState()
+	{
+		if (_settings.MinecraftAccount is not { } account) return Loc.T("mcAccount.stateSignedOut");
+		if (!_settings.MinecraftPlayOnline) return Loc.T("mcAccount.stateOffline", account.Username);
+
+		return _minecraftOnlineWorking switch
+		{
+			true => Loc.T("mcAccount.stateConnected", account.Username),
+			false => Loc.T("mcAccount.stateNotWorking", account.Username),
+			null => Loc.T("mcAccount.stateOnline", account.Username)
+		};
+	}
+
+	/// <summary>The Game and Maintenance menu's entry, which says the state before it is even opened.</summary>
+	private string MinecraftAccountMenuText() => Loc.T("menu.minecraftAccount", MinecraftAccountState());
+
+	// -------------------------------------------------------------------------
+	// Being connected
+	// -------------------------------------------------------------------------
+
+	/// <summary>
+	/// Whether this run has proved the online sign-in works: <c>null</c> until it has been tried (or since the
+	/// mode or account last changed), then what Microsoft said.
+	/// </summary>
+	private bool? _minecraftOnlineWorking;
+
+	/// <summary>
+	/// Minecraft's resting title: "Connected to Minecraft as Sean", as a Nexus game rests on "Connected as", and
+	/// otherwise the mode — Sean found offline play resting on a bare "Ready", which says nothing about which
+	/// mode F5 will use. Null for every other game.
+	/// </summary>
+	private string? MinecraftRestingStatus()
+	{
+		if (!GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.Minecraft)) return null;
+
+		return _minecraftOnlineWorking == true && _settings.MinecraftPlayOnline && _settings.MinecraftAccount is { } account
+			? Loc.T("mcAccount.connectedStatus", account.Username)
+			: MinecraftAccountState();
+	}
+
+	/// <summary>
+	/// Checks the online sign-in with Microsoft now, and says how it went — the connect cue and who you are, or
+	/// the error cue and why not. Does nothing in offline play.
+	///
+	/// <para>
+	/// Online play used to be invisible until F5: the manager opened, nothing sounded, nothing was said, and the
+	/// session looked exactly like an offline one. This is the Nexus games' "Connecting… connected as" for
+	/// Minecraft, whose account is Microsoft's.
+	/// </para>
+	///
+	/// <para>
+	/// A failure is spoken, never boxed. Nothing has to be decided yet — the launch still asks whether to start
+	/// offline if it cannot sign in — and a box at startup would take the floor for a question nobody asked.
+	/// </para>
+	/// </summary>
+	private async Task ConnectMinecraftAccountAsync(bool sayConnecting = true)
+	{
+		if (!_settings.MinecraftPlayOnline || _settings.MinecraftAccount is null) return;
+
+		SetStatus(Loc.T("mcAccount.connecting"), speak: sayConnecting);
+		try
+		{
+			(MinecraftIdentity identity, bool refreshed) = await MinecraftAccounts.ConnectAsync(_settings);
+
+			// ⚠️ Microsoft rotates the refresh token: see ResolveMinecraftIdentityAsync.
+			if (refreshed) _settings.Save();
+
+			_minecraftOnlineWorking = true;
+			_soundEngine.Play("connect");
+			SetStatus(Loc.T("mcAccount.connectedStatus", identity.Username), speak: false);
+			Speak(Loc.T("mcAccount.connected", identity.Username));
+		}
+		catch (MinecraftAuthException ex)
+		{
+			LogFailure("Minecraft", "Could not check the online sign-in", ex);
+
+			_minecraftOnlineWorking = false;
+			_soundEngine.Play("error");
+			ResetStatus();
+			Speak(Loc.T("mcAccount.notWorking", MinecraftAuthMessage(ex)));
+		}
 	}
 
 	/// <summary>One button in a view's row. The same shape the other in-window views use.</summary>
@@ -298,6 +416,11 @@ public partial class Form1
 	{
 		MinecraftAccounts.Remember(_settings, session);
 		_settings.Save();
+		_minecraftOnlineWorking = null;
+
+		// A sign-in that finished IS a connection to Microsoft, whichever mode is chosen next. The cue is a sound,
+		// not speech, so the box below cannot flush it.
+		_soundEngine.Play("connect");
 
 		// ⚠️ Worlds keep a character per uuid. Signing in as someone other than the account the launcher has been
 		// playing as is legitimate, but it means different characters in the same worlds — said plainly, here,
@@ -313,6 +436,10 @@ public partial class Form1
 		{
 			_settings.MinecraftPlayOnline = true;
 			_settings.Save();
+
+			// Proved a moment ago, by the sign-in itself; asking Microsoft again would only repeat the cue.
+			_minecraftOnlineWorking = true;
+			ResetStatus();
 		}
 	}
 
@@ -327,6 +454,9 @@ public partial class Form1
 
 		MinecraftAccounts.Forget(_settings);
 		_settings.Save();
+		_minecraftOnlineWorking = null;
+		_soundEngine.Play("disconnect");
+		ResetStatus();
 		Speak(Loc.T("mcAccount.signedOut", name));
 	}
 
@@ -381,13 +511,18 @@ public partial class Form1
 
 				// ⚠️ Saved because Microsoft has already retired the refresh token that was just used. Skipping
 				// this leaves a stored sign-in that fails next time for no visible reason.
-				if (refreshed) _settings.Save();
+				if (refreshed)
+				{
+					_settings.Save();
+					_minecraftOnlineWorking = true;
+				}
 
 				return identity;
 			}
 			catch (MinecraftAuthException ex)
 			{
 				LogFailure("Minecraft", "Could not start an online session", ex);
+				_minecraftOnlineWorking = false;
 				ResetStatus();
 
 				if (SpeakBox(Loc.T("mc.launch.onlineFailed", MinecraftAuthMessage(ex)), Loc.T("mc.launch.onlineFailedTitle"),

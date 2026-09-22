@@ -53,6 +53,29 @@ public partial class Form1
 	/// games. Called both on a game switch and once at startup (a game restored from settings doesn't go through
 	/// SwitchActiveGame). Items are found recursively by their stable Name since they now live in submenus.
 	/// </summary>
+	/// <summary>
+	/// Names the View menu's "Open Log" item (F4) for the log it opens in this game — found by its stable Name.
+	///
+	/// ⚠️ Called from BOTH the game switch and startup. It used to live only in the switch, so a session restored
+	/// at startup kept the designer's "Open SMAPI Log File" in every game; Sean heard it in Minecraft.
+	/// </summary>
+	private void ConfigureLogMenuItemForGame()
+	{
+		if (MainMenuStrip?.Items["menuView"] is not ToolStripMenuItem viewMenu ||
+			viewMenu.DropDownItems["menuOpenLog"] is not ToolStripItem logItem)
+			return;
+
+		string key = GameProfiles.BaseId(_settings.ActiveGame) switch
+		{
+			GameProfiles.StardewValley  => "menu.openSmapiLog",
+			GameProfiles.MoonlightPeaks => "menu.openBepInExLog",
+			GameProfiles.Witcher3       => "menu.openWitcherLog",
+			GameProfiles.Minecraft      => "menu.openMinecraftLog",
+			_                           => "menu.openGameLog"
+		};
+		logItem.Text = Loc.T(key, GetShortcutString("OpenLogFile"));
+	}
+
 	private void ConfigureModsMenuForGame()
 	{
 		if (MainMenuStrip?.Items["menuMods"] is not ToolStripMenuItem modsMenu) return;
@@ -226,20 +249,7 @@ public partial class Form1
 		// Re-label the game-specific Mods items for the newly loaded game. Items are found by their stable
 		// Name (set in SetupAccessibleUI), not their visible text, so this keeps working when the UI is localized.
 		ConfigureModsMenuForGame();
-
-		// The View menu's "Open Log" item targets a different log per game (SMAPI for Stardew, the
-		// script extender log for Skyrim/FO4), so relabel it to match — found by its stable Name.
-		if (MainMenuStrip?.Items["menuView"] is ToolStripMenuItem viewMenu &&
-			viewMenu.DropDownItems["menuOpenLog"] is ToolStripItem logItem)
-		{
-			logItem.Text = GameProfiles.BaseId(game) switch
-			{
-				"StardewValley"  => Loc.T("menu.openSmapiLog", GetShortcutString("OpenLogFile")),
-				"MoonlightPeaks" => Loc.T("menu.openBepInExLog", GetShortcutString("OpenLogFile")),
-				"Witcher3"       => Loc.T("menu.openWitcherLog", GetShortcutString("OpenLogFile")),
-				_                => Loc.T("menu.openGameLog", GetShortcutString("OpenLogFile"))
-			};
-		}
+		ConfigureLogMenuItemForGame();
 
 		ApplyGameTabLabels(game);
 

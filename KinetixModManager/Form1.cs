@@ -464,6 +464,16 @@ public partial class Form1 : Form, IMessageFilter
 		// including a second copy of a game already known about, which is the case this whole pass exists for.
 		// Only additional copies are worth mentioning: on a first run everything is new, and reading the whole
 		// library back at someone is noise. Announced from the Shown handler, after the welcome.
+		//
+		// First, though, a copy recorded twice for one folder goes — it lists the same game twice in the games list.
+		// Only when nothing is filed under the extra key, here or on disk; see DropEmptyDuplicateInstalls.
+		List<string> duplicates = _settings.DropEmptyDuplicateInstalls(HasDataFiledUnder);
+		if (duplicates.Count > 0)
+		{
+			DiagnosticLog.Write("Games", "Removed a second record of the same game folder: " + string.Join(", ", duplicates));
+			_settings.Save();
+		}
+
 		_newlyDetectedCopies = RefreshDetectedGameInstalls()
 			.Where(key => GameProfiles.BaseId(key) != key)
 			.ToList();

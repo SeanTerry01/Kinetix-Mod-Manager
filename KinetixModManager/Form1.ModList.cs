@@ -109,8 +109,21 @@ public partial class Form1
 		// with the real explanation nowhere on screen.
 		if (!_nexusService.UsesNexus)
 		{
-			// No status set here on purpose. There is no connection to report, and the refresh below puts the
-			// title where it belongs.
+			// No Nexus connection to report. Minecraft in online play has a Microsoft one instead, checked once a
+			// run, as Nexus is: once proved, its resting title says so quietly, and a failure is not retried on
+			// every refresh — the launch tries again anyway. Unlike Nexus, a failure does not stop the refresh:
+			// the mods are on disk either way.
+			//
+			// ⚠️ The quiet branch matters as much as the check: a game switch leaves the title with no status at all,
+			// and a Nexus game gets its "Connected as" back from the else branch below. Minecraft had nothing, so
+			// switching away and back left a bare "Minecraft Kinetix Mod Manager".
+			if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.Minecraft))
+			{
+				if (_minecraftOnlineWorking is null && _settings.MinecraftPlayOnline && _settings.MinecraftAccount is not null)
+					await ConnectMinecraftAccountAsync();
+				else
+					ResetStatus();
+			}
 		}
 		else if (!_nexusService.IsValidated)
 		{

@@ -222,6 +222,27 @@ public partial class Form1
 	/// Existing entries are never repointed or removed. A folder that has gone missing may be a drive that isn't
 	/// plugged in, and throwing away that copy's key would orphan its mod list, its load order and its history.
 	/// </summary>
+	/// <summary>
+	/// True when anything in the manager's data folder is filed under <paramref name="installKey"/> — a
+	/// backups, downloads or deployment folder, or a file such as <c>search_history\&lt;key&gt;.json</c>. One level
+	/// down is where every per-game store lives.
+	/// </summary>
+	private static bool HasDataFiledUnder(string installKey)
+	{
+		try
+		{
+			var options = new EnumerationOptions { RecurseSubdirectories = true, MaxRecursionDepth = 1, IgnoreInaccessible = true };
+			return Directory.EnumerateFileSystemEntries(AppSettings.AppDataFolder, "*", options)
+				.Any(path => string.Equals(Path.GetFileNameWithoutExtension(path), installKey, StringComparison.OrdinalIgnoreCase));
+		}
+		catch (Exception ex)
+		{
+			// Not knowing counts as yes: this only decides whether a record may be deleted.
+			DiagnosticLog.WriteException("Games", "checking for data filed under " + installKey, ex);
+			return true;
+		}
+	}
+
 	private List<string> RefreshDetectedGameInstalls()
 	{
 		var newlyFound = new List<string>();

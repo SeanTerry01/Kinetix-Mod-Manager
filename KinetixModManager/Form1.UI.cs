@@ -224,8 +224,12 @@ public partial class Form1
 		grpGame.DropDownItems.Add(Loc.T("menu.uninstallScriptExtender"), null, delegate { UninstallScriptExtenderCommand(); }).Name = "menuUninstallSE";
 		// Minecraft only: the one game the manager starts itself, and so the one where who you play as, and
 		// whether that session can reach a server, are the manager's business. See Form1.MinecraftAccount.
-		grpGame.DropDownItems.Add(Loc.T("menu.minecraftAccount"), null,
-			delegate { Fire(ShowMinecraftAccountAsync(), "ShowMinecraftAccountAsync"); }).Name = "menuMinecraftAccount";
+		// Its words carry the current mode — "online play, connected as Sean" — refreshed as the menu opens, so the
+		// state is heard on the way past without opening anything.
+		ToolStripItem minecraftAccountItem = grpGame.DropDownItems.Add(MinecraftAccountMenuText(), null,
+			delegate { Fire(ShowMinecraftAccountAsync(), "ShowMinecraftAccountAsync"); });
+		minecraftAccountItem.Name = "menuMinecraftAccount";
+		grpGame.DropDownOpening += delegate { minecraftAccountItem.Text = MinecraftAccountMenuText(); };
 		grpGame.DropDownItems.Add(Loc.T("menu.editGameIni"), null, delegate { EditGameIni(); }).Name = "menuEditGameIni";
 		grpGame.DropDownItems.Add(Loc.T("menu.saveManager", GetShortcutString("SaveManager")), null, async delegate { await ShowSaveManager(); }).Name = "menuSaveManager";
 		grpGame.DropDownItems.Add(Loc.T("menu.prepUpdate"), null, delegate { PrepareForGameUpdate(); }).Name = "menuPrepUpdate";
@@ -1057,6 +1061,7 @@ public partial class Form1
 		// Apply the per-game Mods-menu labels/visibility for the game restored from settings (startup doesn't go
 		// through SwitchActiveGame when the active game is unchanged).
 		ConfigureModsMenuForGame();
+		ConfigureLogMenuItemForGame();
 		// Same reason, for the tab labels: the designer builds the tabs with Stardew's names, and a
 		// session that is restored rather than switched into never reaches the code that renames them.
 		ApplyGameTabLabels(_settings.ActiveGame);
