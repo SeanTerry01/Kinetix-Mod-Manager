@@ -44,7 +44,8 @@ public partial class Form1 : Form, IMessageFilter
 		ModPriority = 8,
 		PluginOrder = 9,
 		Creations = 10,
-		GameLog = 11
+		GameLog = 11,
+		MinecraftPacks = 12
 	}
 
 	/// <summary>
@@ -65,6 +66,7 @@ public partial class Form1 : Form, IMessageFilter
 		if (t == tabPluginOrder) return AppTab.PluginOrder;
 		if (t == tabCreations) return AppTab.Creations;
 		if (t == tabGameLog) return AppTab.GameLog;
+		if (t == tabMinecraftPacks) return AppTab.MinecraftPacks;
 		if (t == tabSmapiLog) return AppTab.SmapiLog;
 		return AppTab.Installed;
 	}
@@ -85,6 +87,7 @@ public partial class Form1 : Form, IMessageFilter
 			AppTab.PluginOrder  => tabPluginOrder,
 			AppTab.Creations    => tabCreations,
 			AppTab.GameLog      => tabGameLog,
+			AppTab.MinecraftPacks => tabMinecraftPacks,
 			AppTab.SmapiLog     => tabSmapiLog,
 			_                   => null
 		};

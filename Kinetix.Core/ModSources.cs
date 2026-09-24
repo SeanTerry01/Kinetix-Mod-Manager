@@ -57,6 +57,15 @@ public enum ModSourceCredential
 
 	/// <summary>A key, or a sign-in on the site that ends with the manager being given one.</summary>
 	ApiKeyOrSignIn,
+
+	/// <summary>
+	/// A key the site works perfectly well without, which unlocks things tied to the user's own account.
+	///
+	/// Modrinth: searching, downloading and updating need nothing, and a Modrinth key adds only the mods and packs
+	/// the user follows. Listed on the keys screen so it can be found, but never reported as missing — nobody
+	/// should be told they have something to set up for a site that is already working for them.
+	/// </summary>
+	OptionalApiKey,
 }
 
 /// <summary>Whether a source can be used right now, and if not, a sentence saying why.</summary>
@@ -100,6 +109,9 @@ public sealed class ModSourceInfo
 
 	/// <summary>True when the user has to set something up before this site will answer.</summary>
 	public bool NeedsCredential => Credential != ModSourceCredential.None;
+
+	/// <summary>True when the key only adds to a site that already works without one.</summary>
+	public bool CredentialIsOptional => Credential == ModSourceCredential.OptionalApiKey;
 
 	/// <summary>
 	/// The games whose mods this site carries, by <see cref="GameProfiles"/> id. Empty means "any game" —
@@ -178,7 +190,12 @@ public static class ModSources
 			HomeUrl = "https://modrinth.com/",
 			Abilities = ModSourceAbilities.Search | ModSourceAbilities.Download | ModSourceAbilities.Updates | ModSourceAbilities.Page,
 			Games = new[] { GameProfiles.Minecraft },
-			PageUrl = new Regex(@"modrinth\.com/(?:mod|plugin|datapack|resourcepack)/(?<id>[A-Za-z0-9!@$()`.+,_""\-]+)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+			// Optional: Modrinth answers everything without an account. A personal key — made on the site, with
+			// read and write access to the user's own data — lets the manager list and change what they follow.
+			// Modrinth's sign-in for other programs needs a secret the manager cannot keep, so a key it is.
+			Credential = ModSourceCredential.OptionalApiKey,
+			ApiKeyUrl = "https://modrinth.com/settings/pats",
+			PageUrl = new Regex(@"modrinth\.com/(?:mod|modpack|plugin|datapack|resourcepack)/(?<id>[A-Za-z0-9!@$()`.+,_""\-]+)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
 		},
 		new()
 		{
@@ -270,7 +287,8 @@ public static class ModSources
 		if (!string.IsNullOrEmpty(mod.NexusID) && !string.IsNullOrWhiteSpace(nexusGameDomain))
 			return $"https://www.nexusmods.com/{nexusGameDomain}/mods/{mod.NexusID}";
 
-		if (!string.IsNullOrEmpty(mod.ModrinthId)) return $"https://modrinth.com/mod/{mod.ModrinthId}";
+		if (!string.IsNullOrEmpty(mod.ModrinthId))
+			return $"https://modrinth.com/{(mod.IsModpack ? "modpack" : "mod")}/{mod.ModrinthId}";
 		if (!string.IsNullOrEmpty(mod.GitHubRepo)) return $"https://github.com/{mod.GitHubRepo}";
 
 		return null;

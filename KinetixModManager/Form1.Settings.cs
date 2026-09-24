@@ -101,6 +101,10 @@ public partial class Form1
 
 		cmbSettingsGame.Items.AddRange(pathTargets.Select(t => t.Label).ToArray());
 		int activeTarget = pathTargets.FindIndex(t => t.Key == _settings.ActiveGame);
+		// A modpack is never listed here — its folders are the manager's, not the player's to retype — so in a
+		// pack's session this opens on the player's own Minecraft rather than on some other game entirely.
+		if (activeTarget < 0) activeTarget = pathTargets.FindIndex(t =>
+			GameProfiles.IsGame(t.Key, GameProfiles.BaseId(_settings.ActiveGame)));
 		if (activeTarget < 0) activeTarget = pathTargets.FindIndex(t => GameProfiles.IsGame(t.Key, GameProfiles.StardewValley));
 		cmbSettingsGame.SelectedIndex = Math.Max(0, activeTarget);
 		tabPaths.Controls.Add(cmbSettingsGame, 0, pr++);

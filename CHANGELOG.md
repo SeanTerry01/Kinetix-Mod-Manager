@@ -1,5 +1,125 @@
 ﻿# Unreleased
 
+## ✨ Minecraft: modpacks
+
+A modpack is a whole modded setup someone has put together: its mods, their settings, and the exact Minecraft and
+Fabric versions they were made for. The manager now installs, runs, updates and removes Modrinth modpacks, and
+brings across the ones you already have in the Modrinth App.
+
+*   **Each pack is a Minecraft of its own, and your own Minecraft is never touched.** A pack gets its own folder
+    with its own mods, settings and worlds. Your mods, your worlds and your Minecraft version stay exactly as they
+    were. Minecraft's own files and Java are shared, so a pack costs its mods and nothing more.
+*   **Opening Minecraft asks which Minecraft**, once you have a pack: your own, or one of your packs, starting on
+    the one you used last. Packs are never listed among the games, so a pack is never mistaken for one. **Choose
+    Minecraft Setup** on the Game and Maintenance menu switches without closing the session.
+*   **A pack's session is a full session.** Its mods are listed, switched on and off, backed up, updated and
+    checked exactly like your own; the title bar and "session switched" say the pack's name; and F5 starts it,
+    saying the pack's name, on the exact Fabric version it was made with, from its own folder. That last part
+    matters more than it sounds: packs made for blind players keep their screen reader files at the top of their
+    folder, and the game only finds them when it is started from there.
+*   **A new Minecraft Packs tab**, right after Installed in every Minecraft session. Your own Minecraft is first,
+    then each pack, saying its Minecraft version, its accessibility mod, whether an update is waiting, and which
+    one is open. Enter on one offers what you can do with it: switch to it, play it, update it, copy a world into
+    it, open its folder, or delete it. Buttons above the list install from a file, search for packs, import from
+    the Modrinth App, and check every pack for updates.
+*   **Search for modpacks.** The search tab has a new **Search for** box in Minecraft sessions: Mods, Modpacks, or
+    Followed on Modrinth. Only Fabric packs are listed, each saying which Minecraft it is for. Enter installs one,
+    picking its newest finished release, not an alpha, even when the alpha is newer.
+*   **Install from a file** too: choose a `.mrpack` with **Install from file**, the same command as a single mod.
+*   **One question before anything happens**: the pack's name and version, the Minecraft and Fabric it runs on,
+    and how much it downloads. Afterwards, **you are told whether it will speak**: which accessibility mod it
+    includes, or a warning that it has none. Then you are offered one of your worlds to copy in, and asked whether
+    to play.
+*   **Copy a world into a pack**, from your own Minecraft or from another pack. It is copied, never moved. A
+    world last played in a newer Minecraft than the pack runs gets a warning first, because Minecraft cannot
+    safely open a world in an older version. Your original is never touched either way.
+*   **Updating a pack.** The update check finds newer versions of your packs; in a pack's own session the update
+    appears in Updates like any other. Before anything changes you hear what it will do: how much it downloads,
+    how many of the pack's old files go, and whether it moves the pack to another Minecraft version. Files already
+    up to date are not downloaded again. **Mods you added, your worlds and your `options.txt` are kept, and a mod
+    you switched off stays off**, even when its new version has a new file name. Everything the update removes
+    or replaces is backed up first.
+*   **Updating a pack's own mods one by one asks first.** They are a set the pack's maker tested together, and the
+    pack's own update brings them up to date as a set. In a pack's session, updating one of its mods warns and
+    asks, and Update All asks whether to update only the mods you added (the first choice) or the pack's too.
+    If you do update one yourself, the pack's next update replaces your copy with its own rather than leaving two
+    copies of one mod, which would stop the game starting.
+*   **Import from the Modrinth App**, on the Game and Maintenance menu and the Packs tab, works like the Mod
+    Organizer 2 import: pick a pack, and it is copied into the manager, worlds and settings included, while the
+    app's own copy is left exactly as it was. Both the current app and the older one (before 2025) are searched.
+    Packs that use Forge, NeoForge or Quilt are listed with the reason they cannot come across.
+*   **Remove Modrinth App Leftover Files**, on the Game and Maintenance menu, and offered once the last Modrinth App
+    pack with anything in it has been imported. The Modrinth App keeps its own copy of Minecraft, well over a
+    gigabyte, which the manager never uses. It will not touch the files while the app is installed or open, and
+    offers to start Windows' own uninstaller for it first. Any pack not yet brought across is named, with its worlds,
+    and importing it is the first choice offered. Only the app's four data folders are removed, and they go to the
+    Recycle Bin. The import list now also says which packs are already in the manager.
+*   **A pack installed from a file is still recognised.** The manager asks Modrinth which pack and version the
+    file is, from its checksum, so it can be updated later. The Modrinth App treats a pack installed from a file
+    as never updatable.
+*   **Deleting a pack** sends its folder to the Recycle Bin, after a question that names the worlds inside it —
+    and when nothing else uses the Minecraft version the pack brought, offers to remove that too.
+*   **Remove Unused Minecraft Versions**, on the Game and Maintenance menu and the Packs tab, lists every Minecraft
+    version that neither your own Minecraft nor any pack uses, with its size, and removes one or all of them. Only
+    each version's own files go; the sounds, libraries and Java versions share are kept. A version the official
+    launcher still has an installation for is named as such, and that installation is removed with it so the
+    launcher is not left with one that cannot start.
+*   **Nothing unsafe is written.** A pack is refused if any file would land outside its folder, would come from
+    anywhere but the four sites Modrinth allows for packs, or has no checksum. Every download is checked as it
+    arrives, and a pack that fails partway leaves nothing behind.
+*   **The Accessibility Suite Installer is for your own Minecraft**, and says so in a pack's session rather than
+    offering to install your accessibility mod beside the pack's, where the two would speak everything twice.
+*   **Installing Fabric for a pack leaves the official launcher alone.** No installation is added to it.
+*   **Only Fabric packs can be installed.** Forge, NeoForge and Quilt packs are named as such, not installed.
+
+## ✨ Every game: a warning before starting when the computer is nearly out of memory
+
+*   **Before any game starts, the manager checks how much memory Windows can still give it** — RAM and the page
+    file together, which is the limit that makes a game crash while loading, not merely run slowly.
+*   **When there is not enough, you hear it before anything starts**: how much is left, roughly what the game needs,
+    and the programs using the most, named the way you would recognise them and counted once however many windows
+    or tabs they have. Then you are asked whether to start anyway.
+*   **Silent otherwise**, which on almost every computer is every time. Skyrim, Fallout 4 and The Witcher 3 ask for
+    the most, because heavily modded they need several gigabytes; Minecraft asks for its own memory limit plus room
+    for Java.
+*   Found the hard way: a Minecraft modpack died twice at its first screen while another program held 58 GB, and
+    "the game crashed" was all that could be heard.
+
+## ✨ Modrinth: an optional key, for what you follow
+
+*   **Modrinth still needs no account.** Searching, downloading, updating and modpacks all work without one.
+*   **A Modrinth key adds what you follow.** Add one under **Mod source API keys** on the File menu, where
+    Modrinth is now listed as optional; it is never counted as something you still have to set up. The prompt
+    says exactly what to do on Modrinth's page, and which two permissions to tick.
+*   **The key is checked as soon as it is saved**: you hear "Connected to Modrinth as" your name, or that Modrinth
+    did not accept it.
+*   **Followed on Modrinth**, in the search tab's Search for box, lists the mods and packs you follow, ready to
+    install. With a key, Enter on any Modrinth result also offers **Follow on Modrinth** or **Stop following**.
+*   **Why a key and not a sign-in button:** Modrinth's sign-in for other programs needs a secret the program has
+    to keep, and a desktop program cannot keep one. A key you make yourself, with only the permissions you choose,
+    has no such problem.
+
+## 🐛 Minecraft 1.21 with Fabric closed three seconds after starting, and nothing said why
+
+*   **The game's classpath carried two copies of the same library.** Minecraft 1.21.10 ships ASM 9.6 and Fabric
+    brings ASM 9.9; the manager put both on the classpath, and Fabric refuses to start when it finds that. The
+    official launcher keeps only one, Fabric's, and now so does the manager. Minecraft 26.x ships no ASM of its
+    own, which is why your own setup never showed it: the first modpack on an older Minecraft did.
+*   **A crash now says why.** The manager used to hear the game start and stop and announce "game closed", with
+    the reason lost. It now reads what the game prints when it fails, says the one line that explains it, and
+    keeps everything in the manager's log for a bug report.
+*   **Minecraft now has a memory limit: 4 GB.** It had none, so Java was free to take up to a quarter of the
+    computer's memory, and a large pack asked for more at a moment Windows had none to give. The official launcher and
+    the Modrinth App both set one. If Minecraft does run out of memory, you are now told so in plain words, and what
+    to do, rather than "did not say why".
+*   **Your sign-in token is taken out of Java's crash files.** When Java crashes it writes a file (`hs_err_pid`)
+    into the game's folder holding the whole command it was started with, and an online session's command includes
+    the sign-in token. The manager now removes it from any such file after the game exits, and never copies it into
+    its own log.
+*   **But quitting is not a crash.** The accessibility modpack quits cleanly and then fails on its way out, after
+    the world is saved. Once the game has begun to stop because you asked it to, a messy exit is logged and not
+    reported.
+
 ## ✨ Minecraft: sign in, and play online or offline
 
 *   **You can now sign in to Minecraft from the manager**, and play on servers and Realms. Open the **Mods**

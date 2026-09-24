@@ -23,16 +23,33 @@ public partial class Form1
 	/// Minecraft has no install folder in the sense the other games do — no Steam library, no GOG entry, no
 	/// executable to find. <c>.minecraft</c> holds the mods, the config, the saves and the logs, so it plays
 	/// the part the game folder plays elsewhere and is stored in the same setting.
+	///
+	/// <para>
+	/// ⚠️ In a modpack session this is still the player's own <c>.minecraft</c>, and that is the point: it is the
+	/// SHARED half — versions, libraries, sounds, Java and the launcher's account files — which a pack uses and
+	/// never has a copy of. Anything the player's setup and a pack keep separately (mods, config, options, logs,
+	/// the accessibility mod's key file) comes from <see cref="MinecraftGameFolder"/> instead.
+	/// </para>
 	/// </summary>
 	private string MinecraftRootFolder()
 	{
-		if (!string.IsNullOrEmpty(_settings.CurrentGamePath) &&
-			MinecraftLayout.LooksLikeMinecraftRoot(_settings.CurrentGamePath))
-			return _settings.CurrentGamePath;
+		string own = MinecraftModpacks.IsPackKey(_settings.ActiveGame)
+			? _settings.GamePathOf(GameProfiles.Minecraft)
+			: _settings.CurrentGamePath;
+
+		if (!string.IsNullOrEmpty(own) && MinecraftLayout.LooksLikeMinecraftRoot(own))
+			return own;
 
 		string found = MinecraftLayout.FindRootFolder();
 		return found.Length > 0 ? found : MinecraftLayout.DefaultRootFolder;
 	}
+
+	/// <summary>
+	/// Where the game running in this session keeps what is its own: the loaded modpack's folder, or the player's
+	/// <c>.minecraft</c> when no pack is loaded. Its <c>mods</c>, <c>config</c>, <c>options.txt</c>, <c>logs</c>
+	/// and <c>saves</c> are this session's — see <see cref="MinecraftRootFolder"/> for the shared half.
+	/// </summary>
+	private string MinecraftGameFolder() => ActiveMinecraftPack()?.Folder ?? MinecraftRootFolder();
 
 	/// <summary>
 	/// What the Fabric row says after "Installed": the loader build and the Minecraft version it is for.
@@ -63,6 +80,10 @@ public partial class Form1
 	/// </summary>
 	private string MinecraftGameVersionInUse(string root)
 	{
+		// A pack is pinned by its maker, not by the player: its Minecraft version is whatever it was built on, and
+		// the player's own pinned version has nothing to do with it.
+		if (ActiveMinecraftPack() is { } pack) return pack.MinecraftVersion;
+
 		string pinned = _settings.MinecraftGameVersion;
 		return pinned.Length > 0 ? pinned : FabricInstaller.DetectInstalledGameVersion(root);
 	}
@@ -323,7 +344,7 @@ public partial class Form1
 	/// </summary>
 	private string FindMinecraftConfigFor(GameMod mod)
 	{
-		string configFolder = MinecraftLayout.ConfigFolderFor(MinecraftRootFolder());
+		string configFolder = MinecraftLayout.ConfigFolderFor(MinecraftGameFolder());
 		if (!Directory.Exists(configFolder) || string.IsNullOrEmpty(mod.UniqueId)) return "";
 
 		string single = Path.Combine(configFolder, mod.UniqueId + ".json");
@@ -409,8 +430,21 @@ public partial class Form1
 	/// </summary>
 	private async Task CheckMinecraftPlatformUpdatesAsync()
 	{
+		// ⚠️ EVERY way out of this method has to pass through the finally below. The update check counts its units
+		// and says "done" only when each has completed; the pack branch once returned before the try, so in a
+		// modpack's session the check ran forever — and, holding the one-check-at-a-time guard, blocked every check
+		// after it until the manager was restarted.
 		try
 		{
+			// A modpack pins its own Minecraft and Fabric; moving either would be the pack maker's call, not the
+			// player's, and would break the pack exactly the way the 26.3 move broke a hand-built setup. The pack
+			// as a whole is what gets updated — see CheckModpackUpdateAsync.
+			if (ActiveMinecraftPack() is { } pack)
+			{
+				await CheckModpackUpdateAsync(pack);
+				return;
+			}
+
 			string root = MinecraftRootFolder();
 			if (root.Length == 0) return;
 
@@ -814,7 +848,7 @@ public partial class Form1
 			return;
 		}
 
-		string modsFolder = MinecraftLayout.ModsFolderFor(root);
+		string modsFolder = MinecraftLayout.ModsFolderFor(MinecraftGameFolder());
 		var installed = new List<string>();
 		var notFound = new List<string>();
 
@@ -989,7 +1023,7 @@ public partial class Form1
 	private async Task<bool> UpdateMinecraftModAsync(GameMod mod, bool silent)
 	{
 		string root = MinecraftRootFolder();
-		string modsFolder = MinecraftLayout.ModsFolderFor(root);
+		string modsFolder = MinecraftLayout.ModsFolderFor(MinecraftGameFolder());
 		if (modsFolder.Length == 0) return false;
 
 		if (!silent) Speak(Loc.T("updates.downloading", mod.Name));
@@ -1076,12 +1110,21 @@ public partial class Form1
 	/// </summary>
 	private async Task OfferMinecraftSearchResultAsync(GameMod result)
 	{
-		string[] actions =
+		if (result.IsModpack)
+		{
+			await OfferModpackSearchResultAsync(result);
+			return;
+		}
+
+		var actions = new List<string>
 		{
 			Loc.T("mc.result.install"),
 			Loc.T("mc.result.describe"),
 			Loc.T("mc.result.page"),
 		};
+		// Only with a Modrinth key: see Form1.ModrinthAccount.
+		(string Label, Func<Task> Run)? follow = await FollowActionForAsync(result);
+		if (follow is { } f) actions.Add(f.Label);
 
 		string? chosen = ShowChoiceList(
 			Loc.T("mc.result.title", result.Name),
@@ -1094,6 +1137,7 @@ public partial class Form1
 
 		if (chosen == actions[1]) { SpeakLong(result.Description); return; }
 		if (chosen == actions[2]) { OpenModPage(); return; }
+		if (follow is { } toggle && chosen == toggle.Label) { await toggle.Run(); return; }
 
 		await DownloadAndInstallModrinthModAsync(result);
 	}
@@ -1158,7 +1202,7 @@ public partial class Form1
 	/// </summary>
 	private async Task InstallMinecraftJarAsync(string jarPath)
 	{
-		string modsFolder = MinecraftLayout.ModsFolderFor(MinecraftRootFolder());
+		string modsFolder = MinecraftLayout.ModsFolderFor(MinecraftGameFolder());
 
 		try
 		{
@@ -1290,11 +1334,26 @@ public partial class Form1
 	/// of state, the second silently overrides the first, and when it goes wrong the game starts, plays
 	/// normally and never speaks.
 	/// </summary>
-	private async Task LaunchMinecraftAsync()
+	/// <param name="pack">
+	/// A modpack to start instead of the player's own setup. It runs from its own folder on the exact Fabric build
+	/// it was made with — never "the newest Fabric installed", which is what the player's own setup uses and which
+	/// for a pack would be a guess.
+	/// </param>
+	private async Task LaunchMinecraftAsync(MinecraftPack? pack = null)
 	{
 		string root = MinecraftRootFolder();
 
-		string versionId = FabricInstaller.InstalledVersionIds(root).FirstOrDefault() ?? "";
+		// F5 in a pack's session starts that pack. Asked for rather than assumed by the caller, so the one key
+		// press means "play what I am looking at" wherever it comes from.
+		pack ??= ActiveMinecraftPack();
+
+		// Before anything is fetched or started: a game that would die while loading is warned about first. See
+		// LaunchMemoryCheck — the accessibility pack died twice this way with Minecraft itself using 2 GB.
+		if (!ConfirmEnoughMemoryToLaunch(_settings.ActiveGame, pack?.Name ?? GameDisplayName())) return;
+
+		if (pack != null && !await PrepareModpackForLaunchAsync(root, pack)) return;
+
+		string versionId = pack?.FabricVersionId ?? FabricInstaller.InstalledVersionIds(root).FirstOrDefault() ?? "";
 		if (versionId.Length == 0)
 		{
 			Speak(Loc.T("mc.launch.noFabricSpeak"));
@@ -1319,27 +1378,42 @@ public partial class Form1
 
 			if (!await FetchMissingLibrariesAsync(root, versionId)) return;
 
-			MinecraftLaunchPlan plan = MinecraftLauncher.BuildPlan(root, versionId, identity);
+			MinecraftLaunchPlan plan = MinecraftLauncher.BuildPlan(root, versionId, identity,
+				gameDirectory: pack?.Folder, maxMemoryMb: _settings.MinecraftMaxMemoryMb);
 
 			SetStatus(Loc.T("mc.launch.starting"));
 			// ⚠️ Which mode this launch is using is said out loud, every time. The difference between them is
 			// invisible until the player tries to join a server, and a silent difference is the class of failure
-			// this game's support exists to prevent.
-			Speak(Loc.T(identity.IsOffline ? "mc.launch.startingSpeak" : "mc.launch.startingOnlineSpeak", identity.Username));
+			// this game's support exists to prevent. A pack is named too, for the same reason: its worlds and its
+			// mods are not the player's own, and starting the wrong one is otherwise found out only in-game.
+			if (pack is null)
+				Speak(Loc.T(identity.IsOffline ? "mc.launch.startingSpeak" : "mc.launch.startingOnlineSpeak", identity.Username));
+			else
+				Speak(Loc.T(identity.IsOffline ? "mc.pack.startingSpeak" : "mc.pack.startingOnlineSpeak", pack.Name, identity.Username));
 
 			var start = new System.Diagnostics.ProcessStartInfo(plan.JavaPath)
 			{
 				WorkingDirectory = plan.WorkingDirectory,
-				UseShellExecute = false
+				UseShellExecute = false,
+				// Read, so that a crash can say why. See MinecraftErrorOutput. Only the error stream: the ordinary
+				// output is the game's log, which is long, already on disk, and would have to be drained forever.
+				RedirectStandardError = true
 			};
 			foreach (string argument in plan.Arguments) start.ArgumentList.Add(argument);
 
 			// Built before the game starts, deliberately: it notes how long the previous run's log is so that
 			// the run about to begin is read from its own beginning. See MinecraftLogTail.
-			var log = new MinecraftLogTail(MinecraftLayout.LatestLogPathFor(root));
+			string logPath = pack?.LatestLogPath ?? MinecraftLayout.LatestLogPathFor(root);
+			var log = new MinecraftLogTail(logPath);
+			var errors = new MinecraftErrorOutput();
 
 			System.Diagnostics.Process? started = System.Diagnostics.Process.Start(start);
-			if (started != null) Fire(TrackMinecraftSessionAsync(started, log), "TrackMinecraftSessionAsync");
+			if (started != null)
+			{
+				started.ErrorDataReceived += (_, e) => errors.Add(e.Data);
+				started.BeginErrorReadLine();
+				Fire(TrackMinecraftSessionAsync(started, log, errors, logPath), "TrackMinecraftSessionAsync");
+			}
 		}
 		catch (Exception ex)
 		{
@@ -1359,14 +1433,23 @@ public partial class Form1
 	/// profile has no executable name at all. What the manager starts here IS the game, from first frame to
 	/// last, so waiting on the handle is both sufficient and exact.
 	/// </summary>
-	private async Task TrackMinecraftSessionAsync(System.Diagnostics.Process game, MinecraftLogTail log)
+	private async Task TrackMinecraftSessionAsync(
+		System.Diagnostics.Process game, MinecraftLogTail log, MinecraftErrorOutput errors, string logPath)
 	{
+		int? exitCode = null;
+		DateTime started = DateTime.Now.AddSeconds(-5);
+		bool askedToStop = false;
+
 		// The connect and disconnect cues, for the one game where they are not about Nexus at all. See
 		// MinecraftServerLog: Minecraft's mods come from Modrinth, which needs no account, so the connection
 		// worth hearing about is the player's to a server — and the client says so in its own log.
 		var server = new MinecraftServerSession();
 		using var stopFollowingLog = new CancellationTokenSource();
-		Task following = log.RunAsync(line => PlayServerCue(server, line), stopFollowingLog.Token);
+		Task following = log.RunAsync(line =>
+		{
+			if (MinecraftErrorOutput.IsShutdownLine(line)) askedToStop = true;
+			PlayServerCue(server, line);
+		}, stopFollowingLog.Token);
 
 		try
 		{
@@ -1384,6 +1467,9 @@ public partial class Form1
 			if (alive) SetStatus(Loc.T("launch.gameRunning"));
 
 			await game.WaitForExitAsync();
+
+			try { exitCode = game.ExitCode; }
+			catch (Exception ex) { DiagnosticLog.WriteException("Minecraft", "reading how the game exited", ex); }
 		}
 		catch (Exception ex)
 		{
@@ -1406,12 +1492,118 @@ public partial class Form1
 			}
 		}
 
+		// Quitting normally is exit code 0. Anything else is a crash, and "game closed" would be a lie by omission:
+		// the player hears the game start and stop and has no idea whether they did something or it broke.
+		//
+		// ⚠️ Except after the game has said it is stopping. Then the player asked it to quit and it did — something
+		// failed on the way OUT, after the world was saved, which is not the player's problem and must not read as a
+		// crash. See MinecraftErrorOutput.IsShutdownLine. Logged, so a real pattern can still be found later.
+		// Any Java crash file from this run loses its sign-in token now, whatever else happens — a crash file is
+		// exactly what gets attached to a bug report.
+		string gameFolder = Path.GetDirectoryName(Path.GetDirectoryName(logPath) ?? "") ?? "";
+		IReadOnlyList<string> javaCrashFile = CleanJavaCrashFiles(gameFolder, started);
+
+		if (exitCode is int code && code != 0)
+		{
+			if (askedToStop || LogShowsShutdown(logPath, started))
+			{
+				DiagnosticLog.Write("Minecraft", $"the game exited with code {code} after it had begun to stop; treated as a normal close");
+			}
+			else
+			{
+				ReportMinecraftCrash(code, errors, logPath, javaCrashFile);
+				return;
+			}
+		}
+
 		SetStatus(Loc.T("launch.gameClosed"));
 
 		// Returned to rest silently: "game closed" has just been spoken, and speaking the resting title over
 		// the top of it sounds like a second thing happened.
 		await Task.Delay(5000);
 		ResetStatus();
+	}
+
+	/// <summary>
+	/// Whether the game's log for THIS run records it beginning to stop — the second look, for when the game ended
+	/// before the log follower read its last lines. A log not written since the game started is an earlier run's,
+	/// and says nothing about this one.
+	/// </summary>
+	private static bool LogShowsShutdown(string logPath, DateTime startedAfter)
+	{
+		try
+		{
+			if (!File.Exists(logPath) || File.GetLastWriteTime(logPath) < startedAfter) return false;
+
+			using var stream = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+			using var reader = new StreamReader(stream);
+			for (string? line = reader.ReadLine(); line != null; line = reader.ReadLine())
+				if (MinecraftErrorOutput.IsShutdownLine(line)) return true;
+			return false;
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Minecraft", "reading the game's log after it exited", ex);
+			return false;
+		}
+	}
+
+	/// <summary>
+	/// Says that the game crashed, and why when Java said. Everything it printed goes to the manager's log, so a
+	/// report from a tester carries the whole trace and not only the one line that was read out.
+	/// </summary>
+	private void ReportMinecraftCrash(int exitCode, MinecraftErrorOutput errors, string logPath, IReadOnlyList<string> javaCrashFile)
+	{
+		IReadOnlyList<string> lines = errors.Lines;
+		DiagnosticLog.Write("Minecraft", $"the game exited with code {exitCode}; its error output follows ({lines.Count} lines)");
+		foreach (string line in lines) DiagnosticLog.Write("Minecraft", "  " + MinecraftErrorOutput.RedactSecrets(line));
+
+		ResetStatus();
+
+		// Out of memory first: it is the one cause the player can act on straight away, and Java says it in a way the
+		// summary below does not recognise as an error at all.
+		if (MinecraftErrorOutput.IsOutOfMemory(lines.Concat(javaCrashFile)))
+		{
+			SpeakBox(Loc.T("mc.launch.crashedOutOfMemory", _settings.MinecraftMaxMemoryMb / 1024.0),
+				Loc.T("mc.launch.crashedTitle"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+			return;
+		}
+
+		string reason = MinecraftErrorOutput.Summarise(lines);
+		SpeakBox(reason.Length > 0
+				? Loc.T("mc.launch.crashedBox", reason, logPath)
+				: Loc.T("mc.launch.crashedBoxNoDetail", logPath),
+			Loc.T("mc.launch.crashedTitle"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+	}
+
+	/// <summary>
+	/// Java's own crash files (<c>hs_err_pid*.log</c>) written into the game's folder during this run: their sign-in
+	/// token is taken out, and their opening lines returned — which is where Java says why it died. Empty when there
+	/// are none. See <see cref="MinecraftErrorOutput.RedactSecrets"/>.
+	/// </summary>
+	private static IReadOnlyList<string> CleanJavaCrashFiles(string gameFolder, DateTime startedAfter)
+	{
+		var opening = new List<string>();
+		try
+		{
+			if (!Directory.Exists(gameFolder)) return opening;
+
+			foreach (string file in Directory.EnumerateFiles(gameFolder, "hs_err_pid*.log"))
+			{
+				if (File.GetLastWriteTime(file) < startedAfter) continue;
+
+				string text = File.ReadAllText(file);
+				string clean = MinecraftErrorOutput.RedactSecrets(text);
+				if (!ReferenceEquals(clean, text) && clean != text) File.WriteAllText(file, clean);
+
+				opening.AddRange(clean.Split('\n').Take(25).Select(l => l.TrimEnd('\r')));
+			}
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Minecraft", "tidying Java's crash file", ex);
+		}
+		return opening;
 	}
 
 	/// <summary>

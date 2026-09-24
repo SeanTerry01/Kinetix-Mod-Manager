@@ -372,6 +372,11 @@ public partial class Form1
 	{
 		if (GameProfiles.Find(game) == null) return false;
 
+		// A modpack is installed when its folder still holds its record. It has no executable and is not a
+		// .minecraft, so none of the checks below could ever say yes to it.
+		if (MinecraftModpacks.IsPackKey(game))
+			return MinecraftModpacks.ForKey(game, MinecraftModpacks.PacksFolder) != null;
+
 		string gamePath = _settings.GamePaths.TryGetValue(game, out string? p) ? p : "";
 
 		if (FolderContainsGameExe(game, gamePath))
@@ -624,7 +629,7 @@ public partial class Form1
 				// to the "locate the folder" flow, exactly as it always did.
 				if (!installed[profile.Id] && !GameProfiles.IsGame(_settings.ActiveGame, profile.Id)) continue;
 				string gameId = profile.Id;
-				_menuGames.DropDownItems.Add(profile.DisplayName, null, delegate { SwitchActiveGame(gameId); });
+				_menuGames.DropDownItems.Add(profile.DisplayName, null, delegate { OpenGameSession(gameId); });
 				continue;
 			}
 
@@ -635,7 +640,7 @@ public partial class Form1
 			{
 				if (!installed[profile.Id] && _settings.ActiveGame != copy.Key) continue;
 				string key = copy.Key;
-				_menuGames.DropDownItems.Add(copy.DisplayName(label), null, delegate { SwitchActiveGame(key); });
+				_menuGames.DropDownItems.Add(copy.DisplayName(label), null, delegate { OpenGameSession(key); });
 			}
 		}
 
@@ -835,6 +840,9 @@ public partial class Form1
 			// Fired rather than awaited: the game's own files are fetched first when any are missing, and this
 			// path is not async. See FetchMissingLibrariesAsync.
 			if (GameProfiles.IsGame(game, GameProfiles.Minecraft)) { Fire(LaunchMinecraftAsync(), "LaunchMinecraftAsync"); return; }
+
+			// A game that would die while loading is warned about first. See LaunchMemoryCheck.
+			if (!ConfirmEnoughMemoryToLaunch(game, GameDisplayName())) return;
 
 			string gamePath = _settings.CurrentGamePath;
 			if (string.IsNullOrEmpty(gamePath) || !Directory.Exists(gamePath))

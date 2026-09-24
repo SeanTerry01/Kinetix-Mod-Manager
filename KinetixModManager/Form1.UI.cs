@@ -230,6 +230,26 @@ public partial class Form1
 			delegate { Fire(ShowMinecraftAccountAsync(), "ShowMinecraftAccountAsync"); });
 		minecraftAccountItem.Name = "menuMinecraftAccount";
 		grpGame.DropDownOpening += delegate { minecraftAccountItem.Text = MinecraftAccountMenuText(); };
+		// Minecraft only: which Minecraft this session is — the player's own or a modpack — and bringing packs across
+		// from the Modrinth App, the way Mod Organizer 2 setups are brought across for Skyrim and Fallout 4.
+		grpGame.DropDownItems.Add(Loc.T("menu.chooseMinecraftSetup"), null, delegate
+		{
+			IReadOnlyList<MinecraftPack> packs = MinecraftModpacks.FindInstalled(MinecraftModpacks.PacksFolder);
+			if (packs.Count == 0) { Speak(Loc.T("mc.pack.none")); return; }
+			if (ChooseMinecraftSetup(packs) is { } chosen) SwitchToMinecraftSetup(chosen);
+		}).Name = "menuChooseMinecraftSetup";
+		grpGame.DropDownItems.Add(Loc.T("menu.importModrinthApp"), null, delegate
+		{
+			Fire(ImportFromModrinthAppAsync(), "ImportFromModrinthAppAsync");
+		}).Name = "menuImportModrinthApp";
+		grpGame.DropDownItems.Add(Loc.T("menu.removeUnusedMinecraftVersions"), null, delegate
+		{
+			Fire(RemoveUnusedMinecraftVersionsAsync(), "RemoveUnusedMinecraftVersionsAsync");
+		}).Name = "menuRemoveUnusedMinecraftVersions";
+		grpGame.DropDownItems.Add(Loc.T("menu.removeModrinthAppLeftovers"), null, delegate
+		{
+			Fire(RemoveModrinthAppLeftoversAsync(), "RemoveModrinthAppLeftoversAsync");
+		}).Name = "menuRemoveModrinthAppLeftovers";
 		grpGame.DropDownItems.Add(Loc.T("menu.editGameIni"), null, delegate { EditGameIni(); }).Name = "menuEditGameIni";
 		grpGame.DropDownItems.Add(Loc.T("menu.saveManager", GetShortcutString("SaveManager")), null, async delegate { await ShowSaveManager(); }).Name = "menuSaveManager";
 		grpGame.DropDownItems.Add(Loc.T("menu.prepUpdate"), null, delegate { PrepareForGameUpdate(); }).Name = "menuPrepUpdate";
@@ -580,6 +600,22 @@ public partial class Form1
 		// Search history sits right after the search box and before the search-type selector, per user preference.
 		flowLayoutPanel2.Controls.Add(btnHistory);
 		flowLayoutPanel2.Controls.Add(cmbDiscoveryType);
+		// Minecraft only: search for mods, or for modpacks — whole setups that install as packs of their own.
+		_lblDiscoveryContent = new Label { Text = Loc.T("ui.searchForLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) };
+		cmbDiscoveryContent = new ComboBox
+		{
+			Width = 130,
+			Font = new Font("Segoe UI", 12f),
+			DropDownStyle = ComboBoxStyle.DropDownList,
+			AccessibleName = Loc.T("ui.searchForName")
+		};
+		cmbDiscoveryContent.Items.AddRange(new object[]
+			{ Loc.T("ui.searchForMods"), Loc.T("ui.searchForModpacks"), Loc.T("ui.searchForFollowed") });
+		cmbDiscoveryContent.SelectedIndex = 0;
+		bool minecraftSearch = GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.Minecraft);
+		_lblDiscoveryContent.Visible = cmbDiscoveryContent.Visible = minecraftSearch;
+		flowLayoutPanel2.Controls.Add(_lblDiscoveryContent);
+		flowLayoutPanel2.Controls.Add(cmbDiscoveryContent);
 		_lblDiscoveryCategory = new Label { Text = Loc.T("ui.nexusCategoryLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) };
 		flowLayoutPanel2.Controls.Add(_lblDiscoveryCategory);
 		flowLayoutPanel2.Controls.Add(cmbDiscoveryCategory);
@@ -650,6 +686,7 @@ public partial class Form1
 			AccessibleDescription = Loc.T("ui.creationsDesc")
 		};
 		tabCreations.Controls.Add(listCreations);
+		BuildMinecraftPacksTab();
 		tabSmapiLog = new TabPage(Loc.T("tab.smapiLog"));
 		TableLayoutPanel tableLayoutPanel5 = new TableLayoutPanel
 		{
@@ -1007,6 +1044,10 @@ public partial class Form1
 		tabWalkthroughs.Controls.Add(splitWalkthroughs);
 
 		mainTabs.TabPages.Add(tabInstalled);
+		// Minecraft Packs sits right after Installed in every Minecraft session — the player's own and each pack's.
+		// Added here as well as in SwitchActiveGame, because startup does not go through SwitchActiveGame.
+		if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.Minecraft))
+			mainTabs.TabPages.Add(tabMinecraftPacks);
 		// Mod Priority, Plugin Order, and Creations sit right after Installed (Skyrim/Fallout 4 only) so the load
 		// order controls are next to the mod list. This must match the order SwitchActiveGame inserts them in,
 		// otherwise the Creations tab would be missing when the app starts straight into a Bethesda session

@@ -446,6 +446,7 @@ public partial class Form1
 				case AppTab.PluginOrder:  listPluginOrder.Focus(); break;
 				case AppTab.Creations:    listCreations.Focus();   break;
 				case AppTab.GameLog:      listGameLog.Focus();     break;
+				case AppTab.MinecraftPacks: listMinecraftPacks.Focus(); break;
 				case AppTab.SmapiLog:     listLog.Focus();         break;
 			}
 		}
@@ -770,7 +771,8 @@ public partial class Form1
 			// The Fabric loader and the Minecraft version are not mods and have no page to offer, so Enter does the
 			// one thing they are for. See CheckMinecraftPlatformUpdatesAsync.
 			else if (list.Name == "listUpdates" && list.SelectedItem is StardewMod platform &&
-					 (platform.UniqueId == FabricLoaderRowId || platform.UniqueId == MinecraftVersionRowId))
+					 (platform.UniqueId == FabricLoaderRowId || platform.UniqueId == MinecraftVersionRowId ||
+					  platform.UniqueId == ModpackRowId))
 			{
 				Fire(DownloadAndInstallUpdate(platform), "DownloadAndInstallUpdate");
 			}

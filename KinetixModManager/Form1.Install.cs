@@ -45,8 +45,26 @@ public partial class Form1
 		// Moving to a new Minecraft version is never part of "update everything": it changes what the game is, and
 		// leaves behind any mod without a build for it. It stays in the list, to be chosen deliberately.
 		List<StardewMod> rows = listUpdates.Items.Cast<StardewMod>()
-			.Where(m => m.UniqueId != MinecraftVersionRowId).ToList();
+			.Where(m => m.UniqueId != MinecraftVersionRowId && m.UniqueId != ModpackRowId).ToList();
 		if (rows.Count == 0) return;
+		// A modpack's own mods are a set its maker tested together, so in a pack's session they are asked about as a
+		// group before anything else — with "only the ones you added" first, because that is the safe answer and
+		// the pack's own update will bring its mods up to date as a tested set. See CameWithPack.
+		List<StardewMod> packMods = rows.Where(CameWithPack).ToList();
+		if (packMods.Count > 0 && ActiveMinecraftPack() is { } activePack)
+		{
+			int yours = rows.Count - packMods.Count;
+			string onlyYours = Loc.T("mc.pack.updateAll.onlyYours", yours);
+			string all = Loc.T("mc.pack.updateAll.all", rows.Count);
+			var choices = new List<string>();
+			if (yours > 0) choices.Add(onlyYours);
+			choices.Add(all);
+
+			string? picked = ShowChoiceList(Loc.T("mc.pack.modUpdate.title"), Loc.T("mc.pack.updateAll.listName"),
+				choices, choices[0], Loc.T("mc.pack.updateAll.hint", packMods.Count, activePack.Name, yours));
+			if (picked is null) { Speak(Loc.T("common.changesCancelled")); return; }
+			if (picked == onlyYours) rows = rows.Except(packMods).ToList();
+		}
 		List<StardewMod> needPremium = _nexusService.IsPremium
 			? new List<StardewMod>()
 			: rows.Where(NeedsPremiumToUpdate).ToList();
@@ -657,6 +675,14 @@ public partial class Form1
 		};
 		if (openFileDialog.ShowDialog() == DialogResult.OK)
 		{
+			// A modpack is a whole setup, not a mod: it gets its own folder and leaves the player's mods alone.
+			if (minecraft &&
+				openFileDialog.FileName.EndsWith(MinecraftModpacks.FileExtension, StringComparison.OrdinalIgnoreCase))
+			{
+				Fire(InstallModpackFromFileAsync(openFileDialog.FileName), "InstallModpackFromFileAsync");
+				return;
+			}
+
 			if (minecraft &&
 				openFileDialog.FileName.EndsWith(MinecraftLayout.ModExtension, StringComparison.OrdinalIgnoreCase))
 			{

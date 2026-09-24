@@ -214,6 +214,26 @@ public static class FabricInstaller
 	/// </summary>
 	public static async Task<string> InstallAsync(string root, string gameVersion, string? loaderVersion = null)
 	{
+		string versionId = await WriteVersionJsonAsync(root, gameVersion, loaderVersion);
+
+		UpsertLauncherProfile(MinecraftLayout.LauncherProfilesPathFor(root), gameVersion, versionId);
+
+		return versionId;
+	}
+
+	/// <summary>
+	/// Installs one exact Fabric build for <paramref name="gameVersion"/> and nothing else — no launcher
+	/// installation, no claim on the Play button. Returns the version id that was written.
+	///
+	/// <para>
+	/// What a modpack needs. The manager starts a pack itself, from the pack's own folder, so the launcher never
+	/// has to know it exists — and telling it would be worse than useless: its entry would point at
+	/// <c>.minecraft</c>, where the player's own mods for some other Minecraft version live, and starting it from
+	/// the launcher would have Fabric refuse every one of them.
+	/// </para>
+	/// </summary>
+	public static async Task<string> WriteVersionJsonAsync(string root, string gameVersion, string? loaderVersion = null)
+	{
 		if (string.IsNullOrWhiteSpace(root)) throw new ArgumentException("No .minecraft folder.", nameof(root));
 
 		loaderVersion ??= await GetLatestStableLoaderVersionAsync(gameVersion);
@@ -223,8 +243,6 @@ public static class FabricInstaller
 		string path = VersionJsonPathFor(root, versionId);
 		Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 		File.WriteAllText(path, profileJson);
-
-		UpsertLauncherProfile(MinecraftLayout.LauncherProfilesPathFor(root), gameVersion, versionId);
 
 		return versionId;
 	}

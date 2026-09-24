@@ -760,6 +760,9 @@ public partial class Form1
 		case AppTab.Creations:
 			text = Loc.T("help.creations");
 			break;
+		case AppTab.MinecraftPacks:
+			text = Loc.T("help.minecraftPacks");
+			break;
 		case AppTab.GameLog:
 			text = Loc.T("help.gameLog", GetShortcutString("RefreshLog"), GetShortcutString("OpenLogFile"));
 			break;
@@ -881,8 +884,14 @@ public partial class Form1
 		try
 		{
 			int pageSize = _currentDiscoveryPageSize;
-			var (results, total) = await SearchActiveGameCatalogueAsync(
-				searchType, searchTerm, _currentDiscoveryPage, pageSize, language, category, alsoTheOthers);
+			// Modpacks are Modrinth's alone and are not filtered by the Minecraft version in use — a pack brings its
+			// own — so they skip the catalogue plan entirely.
+			var (results, total) = SearchingFollowed
+				? (loadMore ? (new List<GameMod>(), 0) : await ListFollowedAsync())
+				: SearchingForModpacks
+				? await ModrinthService.SearchModpacksAsync(searchTerm, (_currentDiscoveryPage - 1) * pageSize, pageSize)
+				: await SearchActiveGameCatalogueAsync(
+					searchType, searchTerm, _currentDiscoveryPage, pageSize, language, category, alsoTheOthers);
 			int offset = (_currentDiscoveryPage - 1) * pageSize;
 
 			// Drop the old inline "Load more" row (always last) before appending; firstNewIndex is then

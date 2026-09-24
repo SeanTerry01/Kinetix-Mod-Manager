@@ -219,6 +219,82 @@ public class MinecraftLauncherTests
 		Assert.Contains("authlib", paths[1]);
 	}
 
+	/// <summary>
+	/// The real shapes from Minecraft 1.21.10 and fabric-loader-0.17.3-1.21.10: the game ships ASM 9.6 with an
+	/// explicit download path, Fabric brings 9.9 by maven name. Both on the classpath and Fabric refuses to start
+	/// ("duplicate ASM classes found on classpath") — the accessibility modpack's first launch died that way.
+	/// </summary>
+	private static (JObject Game, JObject Fabric) Asm1_21_10() => (
+		JObject.Parse("""
+		{
+			"id": "1.21.10",
+			"libraries": [
+				{ "name": "org.ow2.asm:asm:9.6",
+				  "downloads": { "artifact": { "path": "org/ow2/asm/asm/9.6/asm-9.6.jar", "url": "https://libraries.minecraft.net/org/ow2/asm/asm/9.6/asm-9.6.jar" } } },
+				{ "name": "org.lwjgl:lwjgl:3.3.3",
+				  "downloads": { "artifact": { "path": "org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3.jar" } } },
+				{ "name": "org.lwjgl:lwjgl:3.3.3:natives-windows",
+				  "downloads": { "artifact": { "path": "org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3-natives-windows.jar" } },
+				  "rules": [ { "action": "allow", "os": { "name": "windows" } } ] }
+			]
+		}
+		"""),
+		JObject.Parse("""
+		{
+			"id": "fabric-loader-0.17.3-1.21.10",
+			"inheritsFrom": "1.21.10",
+			"libraries": [
+				{ "name": "org.ow2.asm:asm:9.9", "url": "https://maven.fabricmc.net/" },
+				{ "name": "net.fabricmc:fabric-loader:0.17.3", "url": "https://maven.fabricmc.net/" }
+			]
+		}
+		"""));
+
+	[Fact]
+	public void ALibraryNamedTwiceIsTakenOnceAndFabricsCopyWins()
+	{
+		(JObject game, JObject fabric) = Asm1_21_10();
+
+		IReadOnlyList<string> paths = MinecraftLauncher.LibraryPaths(MinecraftLauncher.Merge(fabric, game), Windows, X64);
+
+		Assert.Single(paths, p => p.Contains(Path.Combine("org", "ow2", "asm", "asm")));
+		Assert.Contains(Path.Combine("asm", "9.9", "asm-9.9.jar"), paths[0]);
+		Assert.DoesNotContain(paths, p => p.Contains("asm-9.6"));
+	}
+
+	[Fact]
+	public void ANativesJarIsNotMistakenForTheLibraryItBelongsTo()
+	{
+		(JObject game, JObject fabric) = Asm1_21_10();
+
+		IReadOnlyList<string> paths = MinecraftLauncher.LibraryPaths(MinecraftLauncher.Merge(fabric, game), Windows, X64);
+
+		Assert.Contains(paths, p => p.EndsWith("lwjgl-3.3.3.jar"));
+		Assert.Contains(paths, p => p.EndsWith("lwjgl-3.3.3-natives-windows.jar"));
+		Assert.Equal(4, paths.Count);
+	}
+
+	[Fact]
+	public void TheLosingCopyOfADuplicateIsNotFetched()
+	{
+		(JObject game, JObject fabric) = Asm1_21_10();
+
+		IReadOnlyList<MinecraftLauncher.MissingLibrary> missing = MinecraftLauncher.MissingLibraries(
+			MinecraftLauncher.Merge(fabric, game), "libraries", Windows, X64, _ => false);
+
+		Assert.DoesNotContain(missing, m => m.RelativePath.Contains("asm-9.6"));
+		Assert.Contains(missing, m => m.RelativePath.Contains("asm-9.9"));
+	}
+
+	[Theory]
+	[InlineData("org.ow2.asm:asm:9.6", "org.ow2.asm:asm")]
+	[InlineData("org.ow2.asm:asm:9.9", "org.ow2.asm:asm")]
+	[InlineData("org.lwjgl:lwjgl:3.3.3:natives-windows", "org.lwjgl:lwjgl:natives-windows")]
+	[InlineData("", "some/path.jar")]
+	[InlineData(null, "some/path.jar")]
+	public void ALibrarysIdentityIgnoresItsVersionButKeepsItsClassifier(string? coordinate, string expected) =>
+		Assert.Equal(expected, MinecraftLauncher.LibraryIdentity(coordinate, "some/path.jar"));
+
 	[Fact]
 	public void TheFabricProfilesMainClassReplacesTheGames()
 	{

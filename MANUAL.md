@@ -947,6 +947,166 @@ the game's own log and tells you plainly which happened the last time you played
 Fabric accepted. If the answer is that they did not load, it says so and tells you what to do about it. The
 full log is on the **Log** tab.
 
+### Modpacks
+
+A modpack is a whole modded setup someone has put together: its own mods, their settings, and the exact
+Minecraft and Fabric versions they were made for. The manager installs **Modrinth** modpacks, and only ones built
+for **Fabric**; a pack that needs Forge, NeoForge or Quilt is named as such rather than installed.
+
+**Each pack is a Minecraft of its own.** It gets its own folder with its own mods, settings and worlds, and your
+own Minecraft is not touched: your mods, your worlds and your Minecraft version stay exactly as they were. What a
+pack shares with your own Minecraft is only what is the same anyway, meaning Minecraft's game files and Java, so
+a second Minecraft version costs its game files once, not once per pack. Packs are kept in
+`%AppData%\AudiVentureGames\KinetixModManager\minecraft-packs`.
+
+#### Choosing which Minecraft
+
+Once you have a pack, **opening Minecraft asks which Minecraft**: your own, or one of your packs. The list starts
+on the one you used last, so opening the same one again is just Enter; Escape leaves things as they are. To
+switch without closing the session, choose **Choose Minecraft Setup** from **Game and Maintenance** on the Mods
+menu, or use the Minecraft Packs tab. Packs are never listed among the games.
+
+A pack's session works like any other. The Installed tab lists the pack's mods, and switching them off, backing
+up, updating and Ctrl+H all work on the pack. The title bar says "Minecraft:" and the pack's name. **F5 starts
+the pack** and says its name as it does. The Accessibility Suite Installer is for your own Minecraft and says so
+in a pack's session: a pack's maker has already chosen its accessibility mod, and adding yours beside it would
+make the game speak everything twice.
+
+#### The Minecraft Packs tab
+
+Right after Installed in every Minecraft session. **Your own Minecraft is first, then each pack**, saying its
+version, its Minecraft version, its accessibility mod (or "no accessibility mod"), whether an update is waiting,
+and "open now" on the one this session is.
+
+*   **Enter** on a pack offers what you can do with it: switch to it, play it now, update it (or check it for an
+    update), copy one of your worlds into it, open its folder, or delete it. On your own Minecraft, Enter offers
+    to switch back to it.
+*   **Delete** deletes a pack. Its folder goes to the Recycle Bin, and the question names the worlds inside it,
+    because a pack's worlds live in the pack.
+*   The buttons above the list: **Install Modpack from File**, **Search for Modpacks**, **Import from Modrinth
+    App**, and **Check Packs for Updates**.
+
+#### Finding and installing a pack
+
+*   **Search:** the search tab has a **Search for** box in Minecraft sessions, set to Mods, Modpacks, or Followed
+    on Modrinth. With Modpacks, each result says it is a modpack and which Minecraft it is for. Search with an
+    empty box to hear the most downloaded packs. Enter on a pack offers to install it; the manager picks its
+    newest finished release rather than a newer alpha, and says so when a pack has only test builds.
+*   **From a file:** choose a `.mrpack` file with **Install from file**, as you would a single mod.
+
+Either way you are asked once, told the pack's name and version, which Minecraft and Fabric it runs on, and how
+much it downloads. If that Minecraft version is not on your computer, it is downloaded too. When it is installed,
+**you are told whether it will speak**: which accessibility mod it includes, or a warning that it has none. If you
+have worlds elsewhere you are offered one to copy in, and then asked whether to play.
+
+A pack installed from a file is still recognised: the manager asks Modrinth which pack and version the file is,
+from its checksum, so it can be offered updates later.
+
+#### Copying a world into a pack
+
+From the pack's Enter menu, or when it is first installed. Your own Minecraft's worlds and other packs' worlds
+are listed, each saying where it is and which Minecraft it was last played in. **A world is copied, never moved**,
+so your original is untouched. A world last played in a newer Minecraft than the pack runs gets a warning first:
+Minecraft cannot safely open a world in an older version, and the copy may not load.
+
+#### Updating a pack
+
+**Check Packs for Updates** on the tab checks every pack; in a pack's own session, its update also appears on the
+Updates tab like any other. A pack from a file that Modrinth did not recognise, or one imported from the Modrinth
+App that it no longer linked, cannot be checked, and the manager says so.
+
+Before anything changes you are told what the update does: how many files it downloads and their size, how many
+of the pack's old files it removes, and whether it moves the pack to another Minecraft version, which cannot be
+undone for a world opened afterwards. Then:
+
+*   Files already on disk and up to date are not downloaded again.
+*   **What you added stays**: mods you installed into the pack yourself, your worlds, and your `options.txt`,
+    which holds your settings and keys.
+*   **A mod you switched off stays off**, even when its new version arrives under a new file name.
+*   **Everything the update removes or replaces is backed up first**, in the pack's backups folder.
+*   The new files are all downloaded before the pack is touched, so a failed download changes nothing.
+
+Update All on the Updates tab never includes a pack's update: it changes the whole setup, and is chosen on its own.
+
+**Updating the mods that came with a pack, one by one, asks first.** They are a set the pack's maker tested
+together, and the pack's own update brings them up to date as a set. In a pack's session, updating one of the
+pack's mods warns and asks; Update All asks whether to update only the mods you added (the first choice) or the
+pack's mods too. If you do update one yourself, the pack's next update replaces your copy with its own, rather
+than leaving two copies of one mod, which would stop the game starting.
+
+#### Importing from the Modrinth App
+
+**Import from Modrinth App**, on the Game and Maintenance menu or the Packs tab, works like the Mod Organizer 2
+import. It lists the Modrinth App's packs, each with its Minecraft version and how many mods it has, and the one
+you choose is **copied** into the manager, worlds and settings included. The Modrinth App's own copy is left
+exactly as it was and still works there. Both the current Modrinth App and the older one (before 2025) are
+searched. The Modrinth App can be open while you do this.
+
+#### Removing the Modrinth App's leftover files
+
+The Modrinth App keeps its own copy of Minecraft (game files, sounds, libraries and Java), well over a gigabyte, and
+the manager uses none of it. Once you have brought across what you want, **Remove Modrinth App Leftover Files** on
+**Game and Maintenance** clears it away. It is also offered straight after an import, once every Modrinth App pack
+with anything in it is in the manager.
+
+*   **Not while the Modrinth App is installed or open.** If it is installed, you are offered Windows' own uninstaller
+    for it (Windows may ask for permission). Follow it through, then press OK, and the manager checks it has gone.
+*   **Every pack not yet brought across is named first**, with its mods and worlds, and bringing one across is the
+    first choice. A leftover pack with no mods and no worlds is not counted.
+*   **Only the app's four data folders** are removed (`ModrinthApp` and `com.modrinth.theseus`, in both
+    `AppData\Roaming` and `AppData\Local`), and they go to the **Recycle Bin**. If one is too big for it, Windows asks
+    first, and saying no leaves it where it is.
+*   The packs you imported are real copies, so they are not affected.
+
+#### A Modrinth key (optional)
+
+Modrinth needs no account for anything above. A **Modrinth key** adds only the mods and packs you follow there.
+Add one under **Mod source API keys** on the File menu, where Modrinth is listed as optional. **Open the site to
+get a key** opens Modrinth's tokens page (sign in, or create an account, first). Choose **Create a PAT**, give it
+any name, tick **Read user data** and **Write user data**, choose when it expires, and choose **Create PAT**; the
+token starts with `mrp_`. When you save it, the manager checks it and says whose it is.
+
+With a key, **Followed on Modrinth** in the search tab's Search for box lists what you follow, ready to install,
+and Enter on any Modrinth result also offers **Follow on Modrinth** or **Stop following on Modrinth**.
+
+The manager uses a key rather than a "sign in with Modrinth" button because Modrinth's sign-in for other programs
+needs a secret the program keeps, and a program on your own computer cannot keep one.
+
+#### Removing Minecraft versions nothing uses
+
+Every Minecraft version the manager or the official launcher has installed stays on your computer until something
+removes it: 25 to 40 MB each, often with a Fabric folder beside it holding a second copy. **Remove Unused Minecraft
+Versions**, on **Game and Maintenance** or as a button on the Minecraft Packs tab, lists every version that neither
+your own Minecraft nor any pack uses, each with its size, and "Remove all" first. Choose one to remove it, or all of
+them; the list stays open while there is anything left in it.
+
+*   Only each version's own files are removed. The sounds, libraries and Java that versions share are kept.
+*   A version your game builds on is never offered: a Fabric setup depends on the plain Minecraft version under it.
+*   A version the official Minecraft launcher still has an installation for says so, and removing it removes that
+    installation too, so the launcher is not left with one that cannot start. Close the launcher first.
+*   A version is downloaded again if anything ever needs it.
+
+When you **delete a pack**, and nothing else uses the Minecraft version it brought, you are offered that version too.
+
+#### What the manager refuses
+
+A pack is a list of files someone else chose to put on your computer, so every one is checked first. A pack is not
+installed if any file would land outside its own folder, would be downloaded from anywhere but the four sites
+Modrinth allows for packs, or has no checksum. Every download is checked against its checksum as it arrives, and
+if anything fails, nothing is left behind.
+
+#### If the computer is nearly out of memory
+
+Before any game starts, the manager checks how much memory Windows can still give it. When there is not enough, you
+hear how much is left, roughly what the game needs, and the programs using the most, then are asked whether to start
+anyway. Close what you can first: a game started short of memory usually crashes while it loads. This applies to
+every game, not only Minecraft. Minecraft itself is limited to 4 GB, which is plenty even for a large pack.
+
+#### If a game closes straight after starting
+
+The manager now says why: it reads what the game printed when it failed, reads you the line that explains it, and
+keeps all of it in the manager's log for a bug report.
+
 ---
 
 ## Accessibility Suite Installer

@@ -184,9 +184,14 @@ public partial class Form1
 		// A site that will sign the user in is worth saying so, once, before they go hunting for a key on its
 		// website. Nexus is the one that does, and its flow is built and waiting on the manager being approved
 		// as an application — so this says what is true today rather than offering a button that cannot work.
-		string prompt = row.Source.Credential == ModSourceCredential.ApiKeyOrSignIn
-			? Loc.T("sourcekeys.promptOrSignIn", row.Source.DisplayName)
-			: Loc.T("sourcekeys.prompt", row.Source.DisplayName);
+		string prompt = row.Source.Credential switch
+		{
+			ModSourceCredential.ApiKeyOrSignIn => Loc.T("sourcekeys.promptOrSignIn", row.Source.DisplayName),
+			// Modrinth's is optional, and making one means ticking permissions on its site — so the prompt says
+			// which, and what the key is for, rather than leaving the user to guess at a list of twenty.
+			ModSourceCredential.OptionalApiKey => Loc.T("sourcekeys.promptModrinth"),
+			_ => Loc.T("sourcekeys.prompt", row.Source.DisplayName)
+		};
 
 		string? typed = ShowTextPrompt(
 			Loc.T("sourcekeys.askTitle", row.Source.DisplayName), prompt, "");
@@ -198,6 +203,10 @@ public partial class Form1
 		_settings.SetModSourceApiKey(row.Source.Id, typed.Trim());
 		_settings.Save();
 		Speak(Loc.T("sourcekeys.saved", row.Source.DisplayName));
+
+		// Checked there and then, so a key that was mistyped or made without the right permissions is found out
+		// now, and not the next time the followed list quietly comes back empty.
+		if (row.Source.Id == ModSources.Modrinth) Fire(CheckModrinthKeyAsync(), "CheckModrinthKeyAsync");
 		return true;
 	}
 
@@ -215,6 +224,7 @@ public partial class Form1
 
 		_settings.SetModSourceApiKey(row.Source.Id, "");
 		_settings.Save();
+		if (row.Source.Id == ModSources.Modrinth) { _modrinthUser = null; _modrinthFollowed = null; }
 		Speak(Loc.T("sourcekeys.removed", row.Source.DisplayName));
 		reload(row.Source.Id);
 	}

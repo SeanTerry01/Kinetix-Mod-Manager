@@ -165,6 +165,18 @@ public class GameMod
 	/// </summary>
 	public DateTimeOffset? LastDownloaded { get; set; }
 
+	/// <summary>
+	/// True for a Modrinth search result that is a modpack rather than a mod. Enter then installs it as a pack of
+	/// its own instead of dropping a jar into the mods folder.
+	/// </summary>
+	public bool IsModpack { get; set; }
+
+	/// <summary>
+	/// For a modpack search result: the Minecraft versions it has been made for, oldest first, as Modrinth lists
+	/// them. A pack runs on the version it was built on and no other, so this is part of what the row says.
+	/// </summary>
+	public IReadOnlyList<string> PackGameVersions { get; set; } = Array.Empty<string>();
+
 	/// <summary>True when this instance represents a pending update in the Updates tab.</summary>
 	public bool IsUpdateResult { get; set; }
 
@@ -264,7 +276,15 @@ public class GameMod
 			if (ShowSource && SourceId.Length > 0)
 				from = $"From {ModSources.Find(SourceId)?.DisplayName ?? SourceId}. ";
 
-			return $"{Name}{id}. {installed}{downloaded}{from}{popularity}{updated}{Description}";
+			// A modpack says so, and which Minecraft it is for, before anything else: it installs as a whole setup of
+			// its own rather than into the mods folder, and a pack for a version you do not want is one to skip.
+			string pack = "";
+			if (IsModpack)
+				pack = PackGameVersions.Count > 0
+					? $"Modpack for Minecraft {PackGameVersions[PackGameVersions.Count - 1]}. "
+					: "Modpack. ";
+
+			return $"{Name}{id}. {pack}{installed}{downloaded}{from}{popularity}{updated}{Description}";
 		}
 		string noteSuffix = string.IsNullOrEmpty(Note) ? "" : $" Note: {Note}.";
 		// Some mods genuinely carry no author or version — a Witcher 3 mod folder holds neither, because the

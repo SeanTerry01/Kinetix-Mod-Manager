@@ -20,7 +20,8 @@ public sealed record ModSourceKeyRow(ModSourceInfo Source, bool HasKey)
 	/// </para>
 	/// </summary>
 	public string Describe() =>
-		Loc.T(HasKey ? "sourcekeys.rowSaved" : "sourcekeys.rowMissing", Source.DisplayName);
+		Loc.T(HasKey ? "sourcekeys.rowSaved" : Source.CredentialIsOptional ? "sourcekeys.rowOptional" : "sourcekeys.rowMissing",
+			Source.DisplayName);
 
 	public override string ToString() => Describe();
 }
@@ -72,8 +73,12 @@ public static class ModSourceCredentials
 		}
 	}
 
-	/// <summary>How many of them are still waiting for one, for the line at the top of the screen.</summary>
-	public static int Missing(IReadOnlyList<ModSourceKeyRow> rows) => rows.Count(r => !r.HasKey);
+	/// <summary>
+	/// How many of them are still waiting for one, for the line at the top of the screen. An optional key is never
+	/// "waiting": the site works without it.
+	/// </summary>
+	public static int Missing(IReadOnlyList<ModSourceKeyRow> rows) =>
+		rows.Count(r => !r.HasKey && !r.Source.CredentialIsOptional);
 
 	/// <summary>
 	/// A sentence for the top of the screen: how many sites want a key and how many still have none.

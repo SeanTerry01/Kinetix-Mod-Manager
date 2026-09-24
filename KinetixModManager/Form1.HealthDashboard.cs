@@ -151,7 +151,8 @@ public partial class Form1
 	{
 		if (GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft != true) return null;
 
-		string root = MinecraftRootFolder();
+		// This session's log: a modpack writes its own, in its own folder.
+		string root = MinecraftGameFolder();
 		MinecraftLaunchOutcome outcome = MinecraftLaunchLog.ReadLatest(root);
 
 		// Never launched, or the log has been cleared: nothing to report either way, and inventing a warning

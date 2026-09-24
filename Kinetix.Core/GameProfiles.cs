@@ -359,6 +359,17 @@ public sealed class GameProfile
 	public ModSource ModSource { get; init; } = ModSource.Nexus;
 
 	/// <summary>
+	/// About how much memory the game needs Windows to still have available when it starts, in megabytes — checked
+	/// before launch, so a game that would crash while loading is warned about instead (see LaunchMemoryCheck).
+	///
+	/// <para>
+	/// Generous for the games people mod heavily: Skyrim, Fallout 4 and The Witcher 3 with texture mods and ENBs use
+	/// several gigabytes. Minecraft's is worked out from its own memory limit instead, since the manager sets that.
+	/// </para>
+	/// </summary>
+	public int MemoryNeededMb { get; init; } = 2048;
+
+	/// <summary>
 	/// True when a shop sells this game, i.e. there is a store page to send someone to and a store install to
 	/// detect. False for Minecraft, which Mojang sells directly and which installs as a Microsoft Store package
 	/// or a standalone launcher under the user's profile.
@@ -426,6 +437,7 @@ public static class GameProfiles
 		new GameProfile
 		{
 			Id                   = Fallout4,
+			MemoryNeededMb       = 6144,
 			LoaderLogFileName    = "f4se.log",
 			WikiApiUrl           = "https://fallout.fandom.com/api.php",
 			WikiArticleBase      = "https://fallout.fandom.com/wiki/",
@@ -493,6 +505,7 @@ public static class GameProfiles
 		new GameProfile
 		{
 			Id                   = MoonlightPeaks,
+			MemoryNeededMb       = 3072,
 			LoaderLogFileName    = "LogOutput.log",
 			WikiApiUrl           = "https://moonlightpeaks.wiki.gg/api.php",
 			WikiArticleBase      = "https://moonlightpeaks.wiki.gg/wiki/",
@@ -521,6 +534,7 @@ public static class GameProfiles
 		new GameProfile
 		{
 			Id                   = SkyrimSE,
+			MemoryNeededMb       = 6144,
 			LoaderLogFileName    = "skse64.log",
 			WikiApiUrl           = "https://en.uesp.net/w/api.php",
 			WikiArticleBase      = "https://en.uesp.net/wiki/",
@@ -550,6 +564,7 @@ public static class GameProfiles
 		new GameProfile
 		{
 			Id                   = StardewValley,
+			MemoryNeededMb       = 2048,
 			WikiApiUrl           = "https://stardewvalleywiki.com/mediawiki/api.php",
 			WikiArticleBase      = "https://stardewvalleywiki.com/",
 			DisplayName          = "Stardew Valley",
@@ -572,6 +587,7 @@ public static class GameProfiles
 		new GameProfile
 		{
 			Id                   = Witcher3,
+			MemoryNeededMb       = 6144,
 			LoaderLogFileName    = "WitcherAccess.log",
 			WikiApiUrl           = "https://witcher.fandom.com/api.php",
 			WikiArticleBase      = "https://witcher.fandom.com/wiki/",

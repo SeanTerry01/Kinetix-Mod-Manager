@@ -35,6 +35,8 @@
   <ItemGroup>
     <!-- Bethesda save files are LZ4-compressed; see SaveGame.cs. -->
     <PackageReference Include="K4os.Compression.LZ4" Version="1.3.8" />
+    <!-- The Modrinth App keeps its list of modpacks in SQLite (app.db); see ModrinthAppImport.cs. -->
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
     <!-- Every manifest, every API response and every settings file this layer reads. -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <!-- Zip, 7z and RAR in managed code; see ModArchive.cs for why the 7za.exe shell-out went away. -->

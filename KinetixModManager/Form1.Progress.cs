@@ -87,6 +87,11 @@ public partial class Form1 : IProgressDisplay
 	{
 		string game = _settings.ActiveGame;
 
+		// A modpack is named for itself, after the game — "Minecraft: Visually Impaired Access Mods+Fabric" — so the
+		// title bar and "session switched" both say which setup the mods on screen belong to.
+		if (MinecraftModpacks.ForKey(game, MinecraftModpacks.PacksFolder) is { } pack)
+			return Loc.T("mc.pack.sessionName", GameProfiles.DisplayNameFor(game), pack.Name);
+
 		// The store is named only when the user owns this game twice — then "which copy am I in?" is a real
 		// question the title bar and every report header should answer, and the mods on screen depend on it.
 		// With one copy this is empty and everything reads exactly as it did before copies existed.

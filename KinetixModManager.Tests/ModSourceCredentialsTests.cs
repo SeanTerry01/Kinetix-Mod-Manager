@@ -41,11 +41,24 @@ public class ModSourceCredentialsTests
 		Assert.Contains(ModSources.Nexus, listed);
 		Assert.Contains(ModSources.CurseForge, listed);
 
-		// Modrinth needs no account at all, GitHub needs none for public releases, and ModDrop is only ever
-		// a page to open. Listing them would be three rows saying "nothing to do here".
-		Assert.DoesNotContain(ModSources.Modrinth, listed);
+		// GitHub needs no account for public releases, and ModDrop is only ever a page to open. Listing them
+		// would be two rows saying "nothing to do here".
 		Assert.DoesNotContain(ModSources.GitHub, listed);
 		Assert.DoesNotContain(ModSources.ModDrop, listed);
+	}
+
+	[Fact]
+	public void ModrinthIsListedAsOptionalAndNeverAsMissing()
+	{
+		// Modrinth works without an account; a key only adds what the user follows. It is listed so it can be
+		// found, and it must never be counted as something still to set up — that would nag a Minecraft player
+		// about a site that is already working for them.
+		ModSourceKeyRow modrinth = Rows().Single(r => r.Source.Id == ModSources.Modrinth);
+
+		Assert.True(modrinth.Source.CredentialIsOptional);
+		Assert.Contains("Optional", modrinth.Describe());
+		Assert.DoesNotContain("No key yet. Press Enter", modrinth.Describe());
+		Assert.Equal(2, ModSourceCredentials.Missing(Rows()));
 	}
 
 	[Fact]
@@ -181,7 +194,17 @@ public class ModSourceCredentialsTests
 	[Fact]
 	public void ASiteThatNeedsNothingSaysSo()
 	{
-		Assert.Equal(ModSourceCredential.None, ModSources.Find(ModSources.Modrinth)!.Credential);
-		Assert.False(ModSources.Find(ModSources.Modrinth)!.NeedsCredential);
+		Assert.Equal(ModSourceCredential.None, ModSources.Find(ModSources.GitHub)!.Credential);
+		Assert.False(ModSources.Find(ModSources.GitHub)!.NeedsCredential);
+	}
+
+	[Fact]
+	public void ModrinthsKeyIsOptionalAndSaysWhereToMakeOne()
+	{
+		ModSourceInfo modrinth = ModSources.Find(ModSources.Modrinth)!;
+
+		Assert.Equal(ModSourceCredential.OptionalApiKey, modrinth.Credential);
+		Assert.True(modrinth.CredentialIsOptional);
+		Assert.Equal("https://modrinth.com/settings/pats", modrinth.ApiKeyUrl);
 	}
 }

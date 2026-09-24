@@ -107,6 +107,9 @@ public partial class Form1
 		// which account the session belongs to is a thing the manager decides.
 		if (FindMenuItem(modsMenu, "menuMinecraftAccount") is ToolStripItem accountItem)
 			accountItem.Visible = GameProfiles.IsGame(game, GameProfiles.Minecraft);
+		foreach (string name in new[] { "menuChooseMinecraftSetup", "menuImportModrinthApp", "menuRemoveUnusedMinecraftVersions", "menuRemoveModrinthAppLeftovers" })
+			if (FindMenuItem(modsMenu, name) is ToolStripItem packItem)
+				packItem.Visible = GameProfiles.IsGame(game, GameProfiles.Minecraft);
 		// Skyrim SE / Fallout 4-only items: script extender, conflict winners, load-order rules, safety restore,
 		// and the prepare/restore-for-update pair. All of them are about staged deployment or plugins.txt, which
 		// no other game has.
@@ -252,6 +255,8 @@ public partial class Form1
 		ConfigureLogMenuItemForGame();
 
 		ApplyGameTabLabels(game);
+		_activePackCache = default;
+		ShowMinecraftPacksTabFor(game);
 
 		if (GameProfiles.IsGame(game, GameProfiles.StardewValley))
 		{
@@ -517,6 +522,6 @@ public partial class Form1
 		string? gameId = GameProfiles.IdForDisplayName(selection);
 		if (gameId == null) return;
 
-		SwitchActiveGame(gameId);
+		OpenGameSession(gameId);
 	}
 }

@@ -1113,7 +1113,8 @@ public partial class Form1
 		var sources = new List<ModKeybinds>();
 		if (!GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.Minecraft)) return sources;
 
-		string root = MinecraftRootFolder();
+		// The session's own options and key file — a modpack keeps both in its own folder.
+		string root = MinecraftGameFolder();
 
 		List<MinecraftBinding> vanilla =
 			MinecraftControls.ReadVanillaBindings(Path.Combine(root, "options.txt"));

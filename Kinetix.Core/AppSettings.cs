@@ -578,6 +578,24 @@ public class AppSettings : IModScanContext
 	/// </summary>
 	public bool MinecraftPlayOnline { get; set; }
 
+	/// <summary>
+	/// Which Minecraft was opened last — the player's own (its install key) or a modpack's key — so that the
+	/// question asked when opening Minecraft starts on it, and opening the same setup again is one key press.
+	/// </summary>
+	public string LastMinecraftSetup { get; set; } = "";
+
+	/// <summary>
+	/// The most memory Minecraft may use, in megabytes — passed as <c>-Xmx</c>. 0 leaves it to Java.
+	///
+	/// <para>
+	/// ⚠️ Java's own default is a quarter of the computer's memory, and it grows toward that and keeps asking. The
+	/// official launcher and the Modrinth App both set a limit (2 GB); the manager set none, and an 80-mod pack asked
+	/// Windows for another gigabyte at a moment Windows had none to give, and died loading. 4 GB is room for a large
+	/// Fabric pack with Sodium and shaders, and small enough to leave the rest of the computer alone.
+	/// </para>
+	/// </summary>
+	public int MinecraftMaxMemoryMb { get; set; } = 4096;
+
 	public Dictionary<string, string> IgnoredVersions { get; set; } = new Dictionary<string, string>();
 
 	/// <summary>

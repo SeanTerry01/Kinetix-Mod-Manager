@@ -57,6 +57,20 @@ public partial class Form1
 		string game = _settings.ActiveGame;
 		string gameName = GameProfiles.DisplayNameFor(game);
 
+		// ⚠️ Not for a modpack. The suite sets up the player's own Minecraft around the accessibility mod THEY
+		// chose — and a pack has usually made that choice already. Run here, it would offer to install the player's
+		// mod beside the pack's, and the two rivals would speak everything twice. It would also pin the player's
+		// own Minecraft version to the pack's.
+		if (ActiveMinecraftPack() is { } pack)
+		{
+			IReadOnlyList<MinecraftSuiteMod> packMods = AccessModsInPack(pack);
+			SpeakBox(packMods.Count > 0
+					? Loc.T("mc.pack.suiteNotForPacks", pack.Name, packMods[0].DisplayName)
+					: Loc.T("mc.pack.suiteNotForPacksSilent", pack.Name),
+				Loc.T("mc.pack.suiteNotForPacksTitle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+			return;
+		}
+
 		// ⚠️ Minecraft asks BEFORE the list exists, and it is the one game that has to.
 		//
 		// Every other game's suite is a fixed list. Minecraft's is one of two rival accessibility mods plus

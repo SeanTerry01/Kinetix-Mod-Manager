@@ -298,8 +298,30 @@ public static class MinecraftLauncher
 	}
 
 	/// <summary>
+	/// Which library an entry is, whatever its version: <c>group:artifact</c>, plus the classifier when it has
+	/// one — so <c>org.ow2.asm:asm:9.6</c> and <c>org.ow2.asm:asm:9.9</c> are the same library, while
+	/// <c>org.lwjgl:lwjgl:3.3.3</c> and its <c>natives-windows</c> jar are two. Falls back to the path for an
+	/// entry with no usable name.
+	/// </summary>
+	public static string LibraryIdentity(string? coordinate, string relativePath)
+	{
+		string[] parts = (coordinate ?? "").Split(':');
+		if (parts.Length < 3) return relativePath;
+
+		return parts.Length > 3 ? $"{parts[0]}:{parts[1]}:{parts[3]}" : $"{parts[0]}:{parts[1]}";
+	}
+
+	/// <summary>
 	/// Every classpath entry for a resolved version, in order, as paths relative to <c>libraries\</c> — plus
 	/// the game jar last, which the caller supplies since it lives under <c>versions\</c>.
+	///
+	/// <para>
+	/// ⚠️ A library named twice is taken ONCE, the first time — and since <see cref="Merge"/> puts Fabric's
+	/// libraries first, that is Fabric's copy. The official launcher does the same. Taking both was invisible on
+	/// Minecraft 26.x, which ships no ASM of its own, and fatal on 1.21.x, which ships ASM 9.6 while Fabric
+	/// brings 9.9: Fabric checks for exactly this and refuses to start with "duplicate ASM classes found on
+	/// classpath". The player hears the game start and, three seconds later, close.
+	/// </para>
 	/// </summary>
 	public static IReadOnlyList<string> LibraryPaths(JObject resolved, string osName, string osArch)
 	{
@@ -314,7 +336,7 @@ public static class MinecraftLauncher
 				? explicitPath.Replace('/', Path.DirectorySeparatorChar)
 				: MavenToRelativePath((string?)library["name"] ?? "");
 
-			if (relative.Length > 0 && seen.Add(relative)) paths.Add(relative);
+			if (relative.Length > 0 && seen.Add(LibraryIdentity((string?)library["name"], relative))) paths.Add(relative);
 		}
 
 		return paths;
@@ -359,7 +381,8 @@ public static class MinecraftLauncher
 			string relative = (string?)artifact?["path"] is { Length: > 0 } explicitPath
 				? explicitPath.Replace('/', Path.DirectorySeparatorChar)
 				: MavenToRelativePath((string?)library["name"] ?? "");
-			if (relative.Length == 0 || !seen.Add(relative)) continue;
+			// The same rule as the classpath: a library the classpath will not use is not worth fetching.
+			if (relative.Length == 0 || !seen.Add(LibraryIdentity((string?)library["name"], relative))) continue;
 
 			if (exists(Path.Combine(librariesRoot, relative))) continue;
 
@@ -487,9 +510,23 @@ public static class MinecraftLauncher
 	/// Works out how to start <paramref name="versionId"/>, or throws with a sentence explaining what is
 	/// missing. Nothing is launched here.
 	/// </summary>
+	/// <param name="maxMemoryMb">The most memory Java may take, in megabytes, as <c>-Xmx</c>; 0 leaves it to Java. See AppSettings.MinecraftMaxMemoryMb.</param>
+	/// <param name="gameDirectory">
+	/// Where the game keeps its mods, config, saves and logs, when that is not <paramref name="root"/> — a
+	/// modpack's own folder. Everything shared between setups (versions, libraries, assets, Java, natives) still
+	/// comes from <paramref name="root"/>, so a pack costs its own mods and nothing more.
+	///
+	/// ⚠️ It is the process's working directory as well as <c>--gameDir</c>, and that is not tidiness. Packs
+	/// built for blind players put <c>Tolk.dll</c> and <c>nvdaControllerClient64.dll</c> at the top of their
+	/// folder, and the accessibility mod loads them from the working directory — started anywhere else, the game
+	/// runs perfectly and never speaks.
+	/// </param>
 	public static MinecraftLaunchPlan BuildPlan(
-		string root, string versionId, MinecraftIdentity identity, string? quickPlaySingleplayerWorld = null)
+		string root, string versionId, MinecraftIdentity identity, string? quickPlaySingleplayerWorld = null,
+		string? gameDirectory = null, int maxMemoryMb = 0)
 	{
+		string gameDir = string.IsNullOrEmpty(gameDirectory) ? root : gameDirectory!;
+
 		JObject resolved = ResolveVersion(root, versionId)
 			?? throw new InvalidOperationException(
 				$"Minecraft version '{versionId}' is not installed under {root}.");
@@ -524,7 +561,7 @@ public static class MinecraftLauncher
 			["auth_access_token"] = identity.AccessToken,
 			["user_type"]         = identity.UserType,
 			["version_name"]      = versionId,
-			["game_directory"]    = root,
+			["game_directory"]    = gameDir,
 			["assets_root"]       = Path.Combine(root, "assets"),
 			["assets_index_name"] = (string?)resolved["assetIndex"]?["id"] ?? (string?)resolved["assets"] ?? "",
 			["version_type"]      = (string?)resolved["type"] ?? "release",
@@ -540,7 +577,12 @@ public static class MinecraftLauncher
 		};
 
 		var args = new List<string>();
-		args.AddRange(BuildArguments(resolved["arguments"]?["jvm"], values, osName, osArch));
+		// The memory ceiling comes first, and only when the version file did not set one itself. See
+		// AppSettings.MinecraftMaxMemoryMb for why there has to be one.
+		List<string> jvm = BuildArguments(resolved["arguments"]?["jvm"], values, osName, osArch);
+		if (maxMemoryMb > 0 && !jvm.Any(a => a.StartsWith("-Xmx", StringComparison.Ordinal)))
+			args.Add($"-Xmx{maxMemoryMb}M");
+		args.AddRange(jvm);
 		args.Add((string?)resolved["mainClass"] ?? "net.minecraft.client.main.Main");
 		args.AddRange(BuildArguments(resolved["arguments"]?["game"], values, osName, osArch));
 
@@ -558,7 +600,7 @@ public static class MinecraftLauncher
 		{
 			JavaPath         = java,
 			Arguments        = args,
-			WorkingDirectory = root,
+			WorkingDirectory = gameDir,
 			VersionId        = versionId
 		};
 	}

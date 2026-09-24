@@ -53,7 +53,7 @@ public partial class Form1
 
 	private string GameLogFolder() =>
 		GameLogFiles.LoaderLogFolder(GameProfiles.Find(_settings.ActiveGame), _settings.CurrentGamePath,
-			GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true ? MinecraftRootFolder() : "");
+			GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true ? MinecraftGameFolder() : "");
 
 	private string PrimaryGameLogName() => GameProfiles.Find(_settings.ActiveGame)?.LoaderLogFileName ?? "";
 

@@ -562,6 +562,13 @@ public partial class Form1
                 if (await UpdateFabricLoaderAsync()) { RemoveUpdateRowsFor(mod); if (!silent) AnnounceUpdatesListEmptyIfFocused(); }
                 return;
             }
+            // The loaded modpack's own newer version. See CheckModpackUpdateAsync.
+            if (mod.UniqueId == ModpackRowId)
+            {
+                if (ActiveMinecraftPack() is { } pack && _packUpdates.TryGetValue(pack.Folder, out ModpackVersion? packUpdate))
+                    await UpdateModpackAsync(pack, packUpdate);
+                return;
+            }
             if (mod.UniqueId == MinecraftVersionRowId)
             {
                 if (await MoveToMinecraftVersionAsync(mod.LatestVersion ?? "", silent))
@@ -575,6 +582,16 @@ public partial class Form1
 
             try
             {
+                // One of a modpack's own mods: said, and asked, before anything changes. Update All asks its own
+                // question about the whole set, so a silent run is not interrupted here. See CameWithPack.
+                if (!silent && CameWithPack(mod) && ActiveMinecraftPack() is { } pack &&
+                    SpeakBox(Loc.T("mc.pack.modUpdate.confirm", mod.Name, pack.Name), Loc.T("mc.pack.modUpdate.title"),
+                        MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                {
+                    Speak(Loc.T("common.changesCancelled"));
+                    return;
+                }
+
                 if (!await UpdateMinecraftModAsync(mod, silent))
                 {
                     _soundEngine.Play("error");
