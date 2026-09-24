@@ -1588,6 +1588,13 @@ The single most common way a modded Bethesda game breaks is a **Steam or GOG upd
 
 Every time you load a Skyrim or Fallout 4 session, the manager quietly records the game's version. If it notices the version **changed since last time**, it warns you **once** — for example *"Skyrim Special Edition updated from version 1.6.640 to 1.6.1170 since you last opened the manager. SKSE and any DLL-based plugins almost always need a matching update before the game will launch."* When a script extender is installed it also offers to open its Nexus page so you can grab the matching build. It's a one-time heads-up per update, not a nag. (This is separate from the pre-launch check on **F5**, which verifies the script extender matches right before the game starts.)
 
+**The title bar says which version of the game is loaded, for every game** — read it any time with your screen
+reader's title command, such as **NVDA + T**. For example "Stardew Valley (1.6.15)", "The Witcher 3 (4.04c)",
+"Moonlight Peaks (1.2.7)", "Minecraft (26.3)", and for a Minecraft modpack the Minecraft version it runs on:
+"Minecraft (1.21.10): Visually Impaired Access Mods+Fabric". Each is read the way that game records it, which for The
+Witcher 3 and Moonlight Peaks is not the number on their program file. When a version cannot be read, the title shows
+the game's plain name rather than a guess.
+
 ### When the script extender is fine and the mods still don't load
 
 A matching SKSE/F4SE is only the **first link**. The full chain is:

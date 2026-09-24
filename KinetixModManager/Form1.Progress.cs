@@ -61,8 +61,9 @@ public partial class Form1 : IProgressDisplay
 	private string? _cachedGameDisplayKey;
 
 	/// <summary>
-	/// The active game's friendly display name, as shown in the title bar. For Skyrim and Fallout 4 this is the
-	/// product name (matching Steam) plus the exact build read from the game's exe — "Skyrim Special Edition
+	/// The active game's friendly display name, as shown in the title bar, with the installed version of every game —
+	/// "Stardew Valley (1.6.15)", "The Witcher 3 (4.04c)", "Minecraft (26.3)", and a pack's Minecraft version for a pack.
+	/// For Skyrim and Fallout 4 this is the product name (matching Steam) plus the exact build read from the game's exe — "Skyrim Special Edition
 	/// (1.6.1170)", "Fallout 4 (1.11.191)". We intentionally do NOT print "Anniversary Edition" / "Next-Gen":
 	/// those are paid DLC bundles whose ownership isn't detectable, and Bethesda's free 1.6 / next-gen updates
 	/// make an SE/old-gen copy report the same version as an AE/next-gen one — so labeling by version would wrongly
@@ -72,7 +73,9 @@ public partial class Form1 : IProgressDisplay
 	/// </summary>
 	internal string GameDisplayName()
 	{
-		string key = _settings.ActiveGame + "|" + _settings.CurrentGamePath;
+		// The Minecraft version is part of the key, so the title follows a move to a new version without anyone having
+		// to remember to clear it.
+		string key = _settings.ActiveGame + "|" + _settings.CurrentGamePath + "|" + _settings.MinecraftGameVersion;
 		if (_cachedGameDisplayName != null && _cachedGameDisplayKey == key)
 			return _cachedGameDisplayName;
 		_cachedGameDisplayKey = key;
@@ -87,10 +90,11 @@ public partial class Form1 : IProgressDisplay
 	{
 		string game = _settings.ActiveGame;
 
-		// A modpack is named for itself, after the game — "Minecraft: Visually Impaired Access Mods+Fabric" — so the
-		// title bar and "session switched" both say which setup the mods on screen belong to.
+		// A modpack is named for itself, after the game and the Minecraft version it runs on — "Minecraft (1.21.10):
+		// Visually Impaired Access Mods+Fabric" — so the title bar and "session switched" both say which setup the
+		// mods on screen belong to, and which Minecraft it is.
 		if (MinecraftModpacks.ForKey(game, MinecraftModpacks.PacksFolder) is { } pack)
-			return Loc.T("mc.pack.sessionName", GameProfiles.DisplayNameFor(game), pack.Name);
+			return Loc.T("mc.pack.sessionName", WithDetail(GameProfiles.DisplayNameFor(game), pack.MinecraftVersion), pack.Name);
 
 		// The store is named only when the user owns this game twice — then "which copy am I in?" is a real
 		// question the title bar and every report header should answer, and the mods on screen depend on it.
@@ -100,13 +104,20 @@ public partial class Form1 : IProgressDisplay
 			platform = GameProfiles.PlatformDisplayName(
 				_settings.InstallFor(game)?.Platform ?? GameProfiles.PlatformOf(game));
 
-		// Only Skyrim SE and Fallout 4 get a version suffix — they are the games whose exact build decides which
-		// mod files are compatible. Every other game is simply its own name; an unknown game or no session at all
-		// is the empty string, which the two title-bar callers already handle by showing the bare app title.
+		// Every game says which build of it is loaded, as Skyrim SE and Fallout 4 always have — read the way each game
+		// keeps it, which for two of them is not their executable's version (see GameVersionReader). An unknown game
+		// or no session at all is the empty string, which the two title-bar callers handle by showing the bare app
+		// title; a version that cannot be read leaves the plain name, never a guess.
 		if (!GameProfiles.IsAnyGame(game, GameProfiles.SkyrimSE, GameProfiles.Fallout4))
 		{
 			string plain = GameProfiles.DisplayNameFor(game);
-			return plain.Length > 0 && platform.Length > 0 ? $"{plain} ({platform})" : plain;
+			if (plain.Length == 0) return plain;
+
+			string version = GameProfiles.IsGame(game, GameProfiles.Minecraft)
+				? OwnMinecraftVersion()
+				: GameProfiles.Find(game) is { } profile ? GameVersionReader.ForGame(profile, _settings.CurrentGamePath) : "";
+
+			return WithDetail(plain, string.Join(" ", new[] { platform, version }.Where(p => p.Length > 0)));
 		}
 
 		string baseName = GameProfiles.Require(game).DisplayName;
@@ -125,6 +136,10 @@ public partial class Form1 : IProgressDisplay
 
 		return detail.Length > 0 ? $"{baseName} ({detail})" : baseName;
 	}
+
+	/// <summary>"Stardew Valley (1.6.15)", or the plain name when there is no detail to add.</summary>
+	private static string WithDetail(string name, string detail) =>
+		string.IsNullOrWhiteSpace(detail) ? name : $"{name} ({detail})";
 
 	/// <summary>Reads the major.minor.build of a Bethesda game's exe; null if missing or unreadable.</summary>
 	private static (int major, int minor, int build)? ReadGameRuntimeVersion(string game, string gamePath)

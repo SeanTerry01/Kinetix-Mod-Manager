@@ -72,6 +72,15 @@ brings across the ones you already have in the Modrinth App.
 *   **Installing Fabric for a pack leaves the official launcher alone.** No installation is added to it.
 *   **Only Fabric packs can be installed.** Forge, NeoForge and Quilt packs are named as such, not installed.
 
+## ✨ Every game says its version in the title bar
+
+*   **The title bar now names the installed version of every game**, as it long has for Skyrim and Fallout 4:
+    "Stardew Valley (1.6.15)", "The Witcher 3 (4.04c)", "Moonlight Peaks (1.2.7)", "Minecraft (26.3)". A Minecraft
+    modpack says the Minecraft version it runs on: "Minecraft (1.21.10): Visually Impaired Access Mods+Fabric".
+*   **Read the way each game keeps it.** For The Witcher 3 and Moonlight Peaks the number on the program file is the
+    wrong one — an internal build, and the version of the Unity engine — so the manager reads the version the game
+    itself goes by. When it cannot be read, the title shows the plain name, never a guess.
+
 ## ✨ Every game: a warning before starting when the computer is nearly out of memory
 
 *   **Before any game starts, the manager checks how much memory Windows can still give it** — RAM and the page

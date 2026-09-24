@@ -197,7 +197,12 @@ Minecraft Access.
 *   **Report it if:** anything happens to your own Minecraft, a pack starts without speaking when it said it would,
     a mod you switched off came back on, or a pack's session lists mods that are not the pack's.
 
-### 3.6a Low memory (any game)
+### 3.6a The version in the title bar (any game)
+
+*   Load each game you have and read the title (NVDA + T). It should name the version you actually have installed,
+    for example "Stardew Valley (1.6.15)". **If it names a version you do not have, say which game and what it said.**
+
+### 3.6b Low memory (any game)
 
 *   Before a game starts, the manager now checks the computer has memory to spare. You should normally hear nothing
     new. **If you ever hear a low-memory warning, please send it word for word**, with what was open at the time.
