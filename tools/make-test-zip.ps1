@@ -99,7 +99,10 @@ Two things it does share with your installed copy, which are worth knowing befor
    Both copies read and write %AppData%\AudiVentureGames\KinetixModManager - the same settings file, the same
    staged mods, downloads and backups. That is deliberate, so you are testing against your real setup, but it
    does mean this build can change things your installed copy will then see.
-   Please copy settings.json out of that folder before you start, so you can put it back if you want to.
+   Please copy settings.json out of that folder before you start - and PUT IT BACK before you open your
+   installed copy again. An older installed copy may not start at all with a settings file this build has
+   written, because this build knows about games and settings the older one has never heard of. Close this
+   build first, then copy your saved settings.json back over the new one.
 
 2. THE "MOD MANAGER DOWNLOAD" BUTTON FOLLOWS WHICHEVER COPY RAN LAST.
    The manager points Nexus's nxm:// links at itself every time it starts. While you are testing, those downloads
