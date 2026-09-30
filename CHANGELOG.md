@@ -84,14 +84,6 @@ brings across the ones you already have in the Modrinth App.
     Minecraft that is **Minecraft.net**, Mojang's own store.
 *   **"No supported games were detected" names all six games**, not the first three.
 
-## 🐛 United Minecraft was silent on a new install
-
-*   **United Minecraft speaks through Minecraft's own Narrator**, and a brand-new Minecraft starts with the Narrator
-    off, so the game played normally and said nothing but its window title. Before starting the game, the manager
-    now makes sure the Narrator is on whenever United Minecraft is installed, setting it to "System". If you had
-    switched it off yourself, you are told it was turned back on; Control plus B in the game changes it. Minecraft
-    Access, which does its own speaking, is left alone.
-
 ## 🐛 Ctrl+H showed none of United Minecraft's keys until you had changed one
 
 *   **United Minecraft only saves its keys once you change one**, and Ctrl+H read nothing else — so a new player,

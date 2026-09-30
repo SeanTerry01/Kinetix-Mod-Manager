@@ -915,10 +915,9 @@ The suite asks once and remembers. Everything either one needs is installed for 
 Fabric API or anything else underneath.
 
 **United Minecraft speaks through Minecraft's own Narrator**, so the Narrator has to be on. A brand-new Minecraft
-starts with it off, and the game is then completely silent. The manager takes care of this: each time it starts the
-game with United Minecraft installed, it makes sure the Narrator is on, set to "System" (menus and game messages). If
-you had turned it off, it tells you it switched it back on. In the game, **Control plus B** cycles the Narrator's
-modes. Minecraft Access does its own speaking, so the manager leaves the Narrator alone for it.
+starts with it off, and until United Minecraft switches it on for itself (its author plans to), the game can be
+completely silent on a new install. If it is, press **Control plus B** in the game: that cycles the Narrator's modes,
+and the first press turns it on.
 
 **Ctrl + H lists United Minecraft's keys from the start.** The mod only saves its keys once you change one, so the
 manager reads its default keys from the mod itself and shows any you have changed as you set them.
