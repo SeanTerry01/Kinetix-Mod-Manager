@@ -108,6 +108,20 @@ Load Minecraft from the **Games** menu. The manager expects the normal `.minecra
 *   **Listen to the install itself:** nothing should be said twice, and one summary at the end should say what was
     installed and what was not. You should land in the mod list afterwards, with the new mods in it.
 
+### 3.1a A computer with no Minecraft at all
+
+**Needs: a computer that has never had Minecraft installed** — or a spare Windows user account. ⚠️ Not a computer
+where Minecraft is already set up.
+
+*   Choose **Minecraft** from the games list. The "not found" screen should speak **Install Minecraft** first.
+*   Choose it. You should be asked for your accessibility mod, then asked about a large download with its size.
+    Say yes and let it finish.
+*   Afterwards Minecraft should load and the accessibility suite should open **without asking for the mod again**.
+    **Listen closely here:** say if the session starting ("Connecting…") talks over the suite opening.
+*   Try it once more and **say No** to the download: you should hear that Minecraft was not installed, and choosing
+    Minecraft again should bring back the same "not found" screen.
+*   **View Store Links** on that screen should offer only **Minecraft.net**, and open Mojang's store.
+
 ### 3.2 Starting the game (F5)
 
 *   **F5 starts the game itself**, with Fabric and your mods, and says **"Starting Minecraft online as"** or

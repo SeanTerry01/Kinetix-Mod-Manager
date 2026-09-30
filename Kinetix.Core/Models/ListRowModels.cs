@@ -90,4 +90,4 @@ public class LanguageOption
 		string.IsNullOrEmpty(Name) ? Loc.T("ui.anyLanguage") : (Count > 0 ? $"{Name} ({Count})" : Name);
 }
 
-public enum GameNotInstalledChoice { Cancel, Locate, Purchase }
+public enum GameNotInstalledChoice { Cancel, Locate, Purchase, Install }

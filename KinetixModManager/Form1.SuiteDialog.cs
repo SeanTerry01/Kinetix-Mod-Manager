@@ -52,7 +52,11 @@ public partial class Form1
 	/// <summary>The plugin GUID Moonlight Access registers itself under, used to spot it among installed mods.</summary>
 	private const string MoonlightAccessGuid = "com.moonlightaccess.core";
 
-	private void ShowAccessibilitySuiteDialog()
+	/// <param name="accessModJustChosen">
+	/// True when the player picked their Minecraft accessibility mod a moment ago — the Install Minecraft flow
+	/// asks first, because that choice decides which Minecraft version to install — so it is not asked twice.
+	/// </param>
+	private void ShowAccessibilitySuiteDialog(bool accessModJustChosen = false)
 	{
 		string game = _settings.ActiveGame;
 		string gameName = GameProfiles.DisplayNameFor(game);
@@ -82,7 +86,7 @@ public partial class Form1
 		//
 		// Asking first makes the list a consequence of the answer, which is what Sean asked for and what
 		// removes the bug in the same stroke.
-		if (GameProfiles.IsGame(game, GameProfiles.Minecraft) && EnsureAccessModChosen(alwaysAsk: true) is null)
+		if (GameProfiles.IsGame(game, GameProfiles.Minecraft) && EnsureAccessModChosen(alwaysAsk: !accessModJustChosen) is null)
 		{
 			Speak(Loc.T("common.changesCancelled"));
 			return;

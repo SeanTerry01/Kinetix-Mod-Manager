@@ -119,8 +119,8 @@ public class GameProfilesTests
             // an id means a store the manager will never detect an install for.
             //
             // Tied to the id rather than asserted for everyone, because Minecraft claims neither. Mojang sells
-            // Java Edition directly, so there is no Steam app id, no GOG product and no store page — and the
-            // empty string has to stay empty rather than drifting into a plausible-looking placeholder.
+            // Java Edition directly, so there is no Steam app id, no GOG product and no Steam or GOG page — and
+            // the empty string has to stay empty rather than drifting into a plausible-looking placeholder.
             if (!string.IsNullOrEmpty(profile.SteamAppId))
                 Assert.StartsWith("https://store.steampowered.com/", profile.SteamStoreUrl);
             else
@@ -128,6 +128,43 @@ public class GameProfilesTests
 
             Assert.Equal(string.IsNullOrEmpty(profile.GogProductId), string.IsNullOrEmpty(profile.GogStoreUrl));
         }
+    }
+
+    [Fact]
+    public void EveryGameCanBeBoughtSomewhere()
+    {
+        // The purchase list lists every game, so a game with nowhere to buy it is a list the user is sent into and
+        // cannot leave by any route but Escape. Minecraft was exactly that: offered Steam, which opened nothing.
+        foreach (GameProfile profile in GameProfiles.All)
+        {
+            Assert.NotEmpty(profile.StoreLinks);
+            foreach (GameStoreLink link in profile.StoreLinks)
+            {
+                Assert.False(string.IsNullOrWhiteSpace(link.StoreName), $"{profile.Id} has a store with no name");
+                Assert.StartsWith("https://", link.Url);
+            }
+        }
+    }
+
+    [Fact]
+    public void MinecraftIsSoldByMojangAndNotOfferedOnSteam()
+    {
+        var links = GameProfiles.Require(GameProfiles.Minecraft).StoreLinks;
+
+        GameStoreLink only = Assert.Single(links);
+        Assert.Equal("Minecraft.net", only.StoreName);
+        Assert.StartsWith("https://www.minecraft.net/", only.Url);
+    }
+
+    [Fact]
+    public void AGameIsOfferedOnlyTheStoresThatSellIt()
+    {
+        // Moonlight Peaks is on Steam and not GOG; Stardew is on both. Offered in the same order either way, so
+        // a player who has heard the list once finds Steam in the same place next time.
+        Assert.Equal(new[] { "Steam" },
+            GameProfiles.Require(GameProfiles.MoonlightPeaks).StoreLinks.Select(l => l.StoreName));
+        Assert.Equal(new[] { "Steam", "GOG (DRM-Free)" },
+            GameProfiles.Require(GameProfiles.StardewValley).StoreLinks.Select(l => l.StoreName));
     }
 
     // -------------------------------------------------------------------------

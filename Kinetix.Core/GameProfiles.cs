@@ -174,6 +174,33 @@ public sealed class GameProfile
 	/// <summary>The GOG store page, or <c>null</c> when it isn't sold on GOG.</summary>
 	public string? GogStoreUrl { get; init; }
 
+	/// <summary>
+	/// The page where the game's own publisher sells it, or <c>null</c> when it is only sold through a shop.
+	/// Minecraft's, because Mojang sells Java Edition itself and nowhere else.
+	/// </summary>
+	public string? PublisherStoreUrl { get; init; }
+
+	/// <summary>What the publisher's store is called in the list of places to buy the game, e.g. "Minecraft.net".</summary>
+	public string? PublisherStoreName { get; init; }
+
+	/// <summary>
+	/// Every place this game can be bought, in the order they are offered. Only the stores that actually sell it:
+	/// the purchase list used to offer Steam for every game, and for Minecraft, which Steam does not sell, pressing
+	/// Enter on it opened nothing and said nothing.
+	/// </summary>
+	public IReadOnlyList<GameStoreLink> StoreLinks
+	{
+		get
+		{
+			var links = new List<GameStoreLink>();
+			if (!string.IsNullOrEmpty(SteamStoreUrl)) links.Add(new GameStoreLink("Steam", SteamStoreUrl));
+			if (!string.IsNullOrEmpty(GogStoreUrl)) links.Add(new GameStoreLink("GOG (DRM-Free)", GogStoreUrl));
+			if (!string.IsNullOrEmpty(PublisherStoreUrl) && !string.IsNullOrEmpty(PublisherStoreName))
+				links.Add(new GameStoreLink(PublisherStoreName, PublisherStoreUrl));
+			return links;
+		}
+	}
+
 	/// <summary>Where the game usually installs, tried last when nothing else finds it.</summary>
 	public string DefaultInstallFolder { get; init; } = "";
 
@@ -370,9 +397,9 @@ public sealed class GameProfile
 	public int MemoryNeededMb { get; init; } = 2048;
 
 	/// <summary>
-	/// True when a shop sells this game, i.e. there is a store page to send someone to and a store install to
-	/// detect. False for Minecraft, which Mojang sells directly and which installs as a Microsoft Store package
-	/// or a standalone launcher under the user's profile.
+	/// True when a shop sells this game, i.e. there is a store install to detect. False for Minecraft, which
+	/// Mojang sells directly and which installs as a Microsoft Store package or a standalone launcher under the
+	/// user's profile. Where to buy a game is <see cref="StoreLinks"/>, which Minecraft does have.
 	/// </summary>
 	public bool IsSoldThroughAStore => !string.IsNullOrEmpty(SteamAppId) || !string.IsNullOrEmpty(GogProductId);
 
@@ -398,6 +425,9 @@ public sealed class GameProfile
 		return Path.Combine(gameFolder, ModsFolderRelativeToGame);
 	}
 }
+
+/// <summary>One place a game can be bought: the store's name as the user hears it, and its page.</summary>
+public sealed record GameStoreLink(string StoreName, string Url);
 
 /// <summary>
 /// The store a particular copy of a game was bought from. Two copies of one game are told apart by this, and it
@@ -475,12 +505,15 @@ public static class GameProfiles
 			AccessModSpeaksOnLinux = true,
 			// No store ids at all: Mojang sells Java Edition directly, and it arrives either as the Microsoft
 			// Store package Microsoft.MinecraftJavaEdition_8wekyb3d8bbwe or as the standalone launcher. Neither
-			// is a Steam or GOG install, so there is nothing here to detect a copy by and no store page to send
-			// anyone to. Detection lives in MinecraftLayout instead.
+			// is a Steam or GOG install, so there is nothing here to detect a copy by. Detection lives in
+			// MinecraftLayout instead. It is bought from Mojang's own store, which sells Java Edition only as the
+			// "Java & Bedrock Edition for PC" bundle.
 			SteamAppId           = "",
 			GogProductId         = null,
 			SteamStoreUrl        = "",
 			GogStoreUrl          = null,
+			PublisherStoreUrl    = "https://www.minecraft.net/en-us/store/minecraft-java-bedrock-edition-pc",
+			PublisherStoreName   = "Minecraft.net",
 			// The game "folder" for Minecraft is the .minecraft data folder, not an install directory — that is
 			// where mods, config, saves, logs and the launcher profiles all live, and it is the only path the
 			// manager ever needs. Resolved at startup rather than hard-coded so a relocated or per-profile

@@ -72,6 +72,29 @@ brings across the ones you already have in the Modrinth App.
 *   **Installing Fabric for a pack leaves the official launcher alone.** No installation is added to it.
 *   **Only Fabric packs can be installed.** Forge, NeoForge and Quilt packs are named as such, not installed.
 
+## ✨ Minecraft: buy it, or install it from nothing
+
+*   **Install Minecraft, straight from the "not found" prompt.** When Minecraft is not on the computer, the prompt now
+    offers **Install Minecraft** first. It asks which accessibility mod you want, then downloads the game, Java and
+    Fabric for you — asking before anything large downloads, and with no need for Mojang's launcher — loads the
+    session, and opens the accessibility suite to install your mod. It does not ask about the mod twice. If you
+    cancel, or it fails, you are told so and nothing half-installed is left behind.
+*   **Buying Minecraft works.** View Store Links offered Steam for every game, and Minecraft is not sold on Steam:
+    choosing it opened nothing and said nothing. The list now offers only the stores that sell each game, and for
+    Minecraft that is **Minecraft.net**, Mojang's own store.
+*   **"No supported games were detected" names all six games**, not the first three.
+
+## 🐛 A game found with Locate Installed Folder showed Stardew Valley's mods
+
+*   **Until the manager was restarted, a game you pointed it at by hand listed Stardew Valley's mods** instead of its
+    own. The game's own mods folder is now recorded along with it.
+
+## 🐛 A computer with only newer games could be told it had no supported game
+
+*   **The check made on starting knew only Stardew Valley, Skyrim and Fallout 4**, so with only The Witcher 3,
+    Moonlight Peaks or Minecraft installed, the manager could say no supported game was found. It now checks every
+    game.
+
 ## ✨ Every game says its version in the title bar
 
 *   **The title bar now names the installed version of every game**, as it long has for Skyrim and Fallout 4:

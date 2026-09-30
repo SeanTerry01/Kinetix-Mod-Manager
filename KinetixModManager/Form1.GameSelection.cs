@@ -423,7 +423,20 @@ public partial class Form1
 
 		string targetName = GameProfiles.Find(game)?.DisplayName ?? game;
 
-		GameNotInstalledChoice choice = ShowGameNotInstalledDialog(targetName);
+		// Minecraft is the one game the manager can install itself, straight from Mojang. Not for a modpack: a
+		// pack that is "not installed" has lost its folder, and installing Minecraft would not bring it back.
+		bool canInstall = GameProfiles.IsGame(game, GameProfiles.Minecraft) && !MinecraftModpacks.IsPackKey(game);
+
+		GameNotInstalledChoice choice = ShowGameNotInstalledDialog(targetName, canInstall);
+
+		if (choice == GameNotInstalledChoice.Install)
+		{
+			// Hundreds of megabytes, so it cannot happen in here: this answers a bool up a chain that must stay
+			// synchronous (see TryLocateGameFolder). The session stays as it is, and the install loads it itself
+			// once the game is really there.
+			BeginInvoke(new Action(async () => await InstallMinecraftFromNothingAsync(game)));
+			return false;
+		}
 
 		if (choice == GameNotInstalledChoice.Locate)
 		{
@@ -441,10 +454,11 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Tells the user the game wasn't detected and offers three accessible choices: locate the existing
-	/// install folder, view store links to buy it, or cancel. Returns which the user chose.
+	/// Tells the user the game wasn't detected and offers accessible choices: locate the existing install folder,
+	/// view store links to buy it, or cancel — and, for Minecraft, have the manager install it. Returns which the
+	/// user chose.
 	/// </summary>
-	private GameNotInstalledChoice ShowGameNotInstalledDialog(string gameName)
+	private GameNotInstalledChoice ShowGameNotInstalledDialog(string gameName, bool canInstall)
 	{
 		// Cancel is the default, so closing with Escape (or any other way out) answers Cancel — the safe answer,
 		// since it leaves the current session untouched.
@@ -466,7 +480,9 @@ public partial class Form1
 
 		Label lbl = new Label
 		{
-			Text = Loc.T("session.notInstalledPrompt", gameName),
+			Text = canInstall
+				? Loc.T("session.notInstalledPromptInstall", gameName)
+				: Loc.T("session.notInstalledPrompt", gameName),
 			Font = new Font("Segoe UI", 11f),
 			Dock = DockStyle.Fill
 		};
@@ -505,12 +521,29 @@ public partial class Form1
 		btnPurchase.Click += (s, e) => { choice = GameNotInstalledChoice.Purchase; closeView(); };
 		btnCancel.Click += (s, e) => { choice = GameNotInstalledChoice.Cancel; closeView(); };
 
+		// First, and where focus lands, when it is offered: someone who owns Minecraft but has never installed it
+		// is the likeliest person here, and nothing downloads without being asked — the accessibility mod is
+		// chosen and the download's size confirmed before a byte is fetched.
+		Button? btnInstall = null;
+		if (canInstall)
+		{
+			btnInstall = new Button
+			{
+				Text = Loc.T("session.installButton", gameName),
+				AutoSize = true,
+				Height = 40,
+				Font = new Font("Segoe UI", 11f, FontStyle.Bold)
+			};
+			btnInstall.Click += (s, e) => { choice = GameNotInstalledChoice.Install; closeView(); };
+			buttons.Controls.Add(btnInstall);
+		}
+
 		buttons.Controls.AddRange(new Control[] { btnLocate, btnPurchase, btnCancel });
 		layout.Controls.Add(buttons, 0, 1);
 		container.Controls.Add(layout);
 
 		ApplyScreenReaderPauses(container);
-		return btnLocate;
+		return btnInstall ?? btnLocate;
 		},
 		// Through the hint, so it follows the title rather than arriving ahead of it. See Form1.InlineView.
 		hint: Loc.T("session.notInstalledSpeak", gameName));
@@ -560,7 +593,23 @@ public partial class Form1
 			return false;
 		}
 
-		_settings.GamePaths[game] = chosen;
+		RecordGameFolder(game, chosen);
+		Speak(Loc.T("session.locatedSpeak", targetName));
+		return true;
+	}
+
+	/// <summary>
+	/// Records <paramref name="folder"/> as where <paramref name="game"/> lives, in every place that is kept, and
+	/// saves.
+	///
+	/// ⚠️ A game's location is in THREE settings — the session's path, the recorded copy's folder, and its mods
+	/// folder — and setting fewer leaves them disagreeing. The mods folder was the one missed here before: with
+	/// none recorded, <see cref="AppSettings.CurrentModsPath"/> falls back to Stardew's, so a game located by hand
+	/// showed Stardew's mods until the manager was restarted and startup filled it in.
+	/// </summary>
+	private void RecordGameFolder(string game, string folder)
+	{
+		_settings.GamePaths[game] = folder;
 
 		// Keep the recorded copy pointing at the same folder as the session, or the two disagree about where
 		// this copy's mods, saves and per-player data live. A copy located by hand tells us nothing about which
@@ -572,14 +621,17 @@ public partial class Form1
 			located = new GameInstall { Key = game, GameId = profile.Id, ModsInGameFolder = DefaultModsInGameFolder(profile) };
 			_settings.GameInstalls.Add(located);
 		}
-		located.Folder = chosen;
-		located.Platform = GogLibraryLocator.IsGogInstallAnyOf(chosen, GameProfiles.Require(game).AllGogProductIds)
+		located.Folder = folder;
+		located.Platform = GogLibraryLocator.IsGogInstallAnyOf(folder, GameProfiles.Require(game).AllGogProductIds)
 			? GamePlatform.Gog
 			: located.Platform;
 
+		// Stardew's first copy is left to the path it already has: its mods folder is mirrored into the legacy
+		// ModsPath field, and startup's own handling of it is what keeps the two in step.
+		if (located.Key != GameProfiles.StardewValley)
+			_settings.GameModsPaths[located.Key] = ResolveModsFolder(located);
+
 		_settings.Save();
-		Speak(Loc.T("session.locatedSpeak", targetName));
-		return true;
 	}
 
 	/// <summary>
@@ -649,10 +701,12 @@ public partial class Form1
 
 	private void ShowNoGamesInstalledFlow()
 	{
-		Speak(Loc.T("games.noneDetectedSpeak"));
+		// Built from the games themselves: written out by hand, this still named only the first three games after
+		// three more had been added.
+		Speak(Loc.T("games.noneDetectedSpeak", string.Join(", ", GameProfiles.AllDisplayNames)));
 
 		DialogResult result = SpeakBox(
-			Loc.T("games.noneDetectedBox"),
+			Loc.T("games.noneDetectedBox", string.Join("\n", GameProfiles.AllDisplayNames.Select(n => "- " + n))),
 			Loc.T("games.noneDetectedTitle"),
 			MessageBoxButtons.YesNo,
 			MessageBoxIcon.Information
@@ -768,11 +822,11 @@ public partial class Form1
 			AccessibleName = Loc.T("store.selectStorePage")
 		};
 		// Only offer the stores that actually sell this game — Moonlight Peaks, for one, is Steam only, and
-		// offering a GOG page that doesn't exist just sends the user to a dead end.
-		GameProfile? storeProfile = GameProfiles.All.FirstOrDefault(g => g.DisplayName == gameName);
-		lstStores.Items.Add("Steam");
-		if (storeProfile == null || !string.IsNullOrEmpty(storeProfile.GogStoreUrl))
-			lstStores.Items.Add("GOG (DRM-Free)");
+		// Minecraft is sold by Mojang alone. Steam used to be offered for every game, and for Minecraft pressing
+		// Enter on it opened nothing, said nothing and closed the list: a dead end with no sound at all.
+		IReadOnlyList<GameStoreLink> links =
+			GameProfiles.All.FirstOrDefault(g => g.DisplayName == gameName)?.StoreLinks ?? Array.Empty<GameStoreLink>();
+		foreach (GameStoreLink link in links) lstStores.Items.Add(link.StoreName);
 		WireAccessibleDialogList(lstStores);
 		layout.Controls.Add(lstStores, 0, 1);
 
@@ -795,23 +849,17 @@ public partial class Form1
 
 		btnOpen.Click += (s, e) =>
 		{
-			if (lstStores.SelectedIndex == -1) return;
-			string store = lstStores.SelectedItem?.ToString() ?? "";
-			bool isGog = store.StartsWith("GOG", StringComparison.OrdinalIgnoreCase);
-			GameProfile? chosen = GameProfiles.All.FirstOrDefault(g => g.DisplayName == gameName);
-			string url = chosen == null ? "" : (isGog ? chosen.GogStoreUrl ?? "" : chosen.SteamStoreUrl);
+			if (lstStores.SelectedIndex < 0 || lstStores.SelectedIndex >= links.Count) return;
+			GameStoreLink link = links[lstStores.SelectedIndex];
 
-			if (!string.IsNullOrEmpty(url))
+			try
 			{
-				try
-				{
-					Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-					Speak(Loc.T("store.openingPage", gameName, store));
-				}
-				catch (Exception ex)
-				{
-					SpeakBox(Loc.T("store.couldNotOpenLink", ex.Message));
-				}
+				Process.Start(new ProcessStartInfo(link.Url) { UseShellExecute = true });
+				Speak(Loc.T("store.openingPage", gameName, link.StoreName));
+			}
+			catch (Exception ex)
+			{
+				SpeakBox(Loc.T("store.couldNotOpenLink", ex.Message));
 			}
 			closeView();
 		};

@@ -802,10 +802,9 @@ public partial class Form1 : Form, IMessageFilter
 			// what the Games menu says and which mods they are about to see.
 			form.AnnounceNewlyDetectedCopies();
 
-			bool stardewInstalled = form.IsGameInstalled("StardewValley");
-			bool skyrimInstalled = form.IsGameInstalled("SkyrimSE");
-			bool falloutInstalled = form.IsGameInstalled("Fallout4");
-			bool anyInstalled = stardewInstalled || skyrimInstalled || falloutInstalled;
+			// Every game, not the first three: listed by hand, this told someone with only The Witcher 3, Moonlight
+			// Peaks or Minecraft that no supported game was installed.
+			bool anyInstalled = GameProfiles.AllIds.Any(form.IsGameInstalled);
 
 			// First launch: open Settings (modal) so a brand-new user can set their game folders and Nexus key
 			// right away — the Settings dialog works without a game loaded, and previously you had to pick a game

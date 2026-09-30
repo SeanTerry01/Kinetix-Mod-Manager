@@ -433,6 +433,79 @@ public partial class Form1
 		return false;
 	}
 
+	/// <summary>
+	/// Installs Minecraft on a computer that has never had it, then loads its session and opens the accessibility
+	/// suite — the Install Minecraft choice for someone who owns the game and has never used Mojang's launcher.
+	///
+	/// <para>
+	/// Nothing new is done here: this is the same fetch the suite installer and F5 already use, in the order a
+	/// fresh machine needs. The accessibility mod is asked about first because it decides which Minecraft version
+	/// to install — see <see cref="ChooseMinecraftVersionAsync"/> — and the suite is then told not to ask again.
+	/// </para>
+	///
+	/// <para>
+	/// ⚠️ The folder is recorded only once the game is really there. <c>.minecraft</c> counts as installed as soon
+	/// as it holds a <c>versions</c> folder, and the first thing fetched is a version's JSON, so recording it any
+	/// earlier would let a declined download leave a "Minecraft" that loads and cannot start. For the same reason
+	/// a folder this created is removed again if the install does not finish.
+	/// </para>
+	/// </summary>
+	private async Task InstallMinecraftFromNothingAsync(string game)
+	{
+		MinecraftSuiteMod? accessMod = EnsureAccessModChosen(alwaysAsk: true);
+		if (accessMod is null)
+		{
+			Speak(Loc.T("common.changesCancelled"));
+			return;
+		}
+
+		string root = MinecraftLayout.DefaultRootFolder;
+		bool createdRoot = !Directory.Exists(root);
+		string pinnedBefore = _settings.MinecraftGameVersion;
+
+		bool installed = false;
+		try
+		{
+			Directory.CreateDirectory(root);
+
+			// Fabric's install fetches the game first (EnsureMinecraftVersionAsync) and Java with it, asking before
+			// anything large downloads. It says for itself when the user declines or a download fails.
+			installed = await InstallFabricAsync(root, accessMod)
+				&& MinecraftLauncher.ReadVersionJson(root, _settings.MinecraftGameVersion) is not null;
+		}
+		catch (Exception ex)
+		{
+			LogFailure("Minecraft", "Could not install Minecraft", ex);
+		}
+
+		if (!installed)
+		{
+			// Put the pin back: the version was chosen for an install that did not happen.
+			_settings.MinecraftGameVersion = pinnedBefore;
+			_settings.Save();
+
+			if (createdRoot)
+			{
+				try { Directory.Delete(root, recursive: true); }
+				catch (Exception ex) { LogFailure("Minecraft", $"Could not remove the unfinished install at {root}", ex); }
+			}
+
+			// Always said. Some of the ways this fails — the version list unreachable, Fabric's own install
+			// failing — are only written to the log, and a silent return here would leave a player who asked for
+			// the game with no idea whether anything happened.
+			Speak(Loc.T("mc.game.freshNotInstalled"));
+			return;
+		}
+
+		RecordGameFolder(game, root);
+		SwitchActiveGame(game);
+
+		// SwitchActiveGame has said why when it refuses, so there is nothing to add if it did.
+		if (_settings.ActiveGame != game) return;
+
+		ShowAccessibilitySuiteDialog(accessModJustChosen: true);
+	}
+
 	/// <summary>Says what could not be fetched, and answers <c>false</c> so the caller stops.</summary>
 	private bool FailedToInstall(string gameVersion, int count)
 	{
