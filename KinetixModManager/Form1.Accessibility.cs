@@ -1118,9 +1118,13 @@ public partial class Form1
 
 		List<MinecraftBinding> vanilla =
 			MinecraftControls.ReadVanillaBindings(Path.Combine(root, "options.txt"));
-		List<MinecraftBinding> united =
+		// The mod's defaults, read from the installed jar, under whatever the player has changed. The keybind file
+		// only exists once a key HAS been changed, so without the defaults a new player saw none of the mod's keys.
+		string? unitedJar = UnitedMinecraftDefaults.FindJar(MinecraftLayout.ModsFolderFor(root));
+		List<MinecraftBinding> united = MinecraftControls.MergeUnitedMinecraft(
+			unitedJar is null ? new List<MinecraftBinding>() : UnitedMinecraftDefaults.Read(unitedJar),
 			MinecraftControls.ReadUnitedMinecraftBindings(
-				Path.Combine(root, MinecraftControls.UnitedMinecraftKeybindsFile));
+				Path.Combine(root, MinecraftControls.UnitedMinecraftKeybindsFile)));
 
 		// The game's own keys first, then the accessibility mod's — the same shape and the same order every
 		// other game uses. Two entries at the top level, each opening into its own sections, rather than one

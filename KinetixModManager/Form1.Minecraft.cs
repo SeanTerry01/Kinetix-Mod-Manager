@@ -1378,6 +1378,8 @@ public partial class Form1
 
 			if (!await FetchMissingLibrariesAsync(root, versionId)) return;
 
+			EnsureNarratorForUnitedMinecraft(root, pack, vanilla, versionId);
+
 			MinecraftLaunchPlan plan = MinecraftLauncher.BuildPlan(root, versionId, identity,
 				gameDirectory: pack?.Folder, maxMemoryMb: _settings.MinecraftMaxMemoryMb);
 
@@ -1420,6 +1422,42 @@ public partial class Form1
 			LogFailure("Minecraft", "Failed to start the game", ex);
 			SpeakBox(Loc.T("mc.launch.failedBox", FriendlyError(ex)), Loc.T("mc.launch.failedTitle"),
 				MessageBoxButtons.OK, MessageBoxIcon.Error);
+		}
+	}
+
+	/// <summary>
+	/// Switches Minecraft's Narrator on when United Minecraft is about to run with it off — the mod speaks only
+	/// through the Narrator, so otherwise the game is silent. See <see cref="MinecraftOptions"/>.
+	///
+	/// <para>
+	/// United Minecraft only, found by what is in the mods folder being started. Minecraft Access does its own
+	/// speaking, and turning the Narrator on beside it risks everything being said twice. A pack is covered too: a
+	/// pack built on United Minecraft is just as silent with its Narrator off.
+	/// </para>
+	///
+	/// <para>
+	/// Said only when the player's own setting was changed. Writing a first options.txt for a game that has never run
+	/// is not overriding anybody, so there is nothing to announce.
+	/// </para>
+	/// </summary>
+	private void EnsureNarratorForUnitedMinecraft(string root, MinecraftPack? pack, string vanillaId, string launchId)
+	{
+		string gameFolder = pack?.Folder ?? root;
+		string modsFolder = pack?.ModsFolder ?? MinecraftLayout.ModsFolderFor(root);
+		if (UnitedMinecraftDefaults.FindJar(modsFolder) is null) return;
+
+		try
+		{
+			NarratorFix fix = MinecraftOptions.EnsureNarratorOn(
+				Path.Combine(gameFolder, "options.txt"),
+				MinecraftOptions.DataVersionOf(root, launchId, vanillaId));
+
+			if (fix == NarratorFix.TurnedOn) Speak(Loc.T("mc.launch.narratorTurnedOn"));
+		}
+		catch (Exception ex)
+		{
+			// Not a reason to refuse to start the game: Ctrl+B in the game does the same thing.
+			LogFailure("Minecraft", "Could not switch Minecraft's Narrator on for United Minecraft", ex);
 		}
 	}
 

@@ -118,6 +118,10 @@ where Minecraft is already set up.
     Say yes and let it finish.
 *   Afterwards Minecraft should load and the accessibility suite should open **without asking for the mod again**.
     **Listen closely here:** say if the session starting ("Connecting…") talks over the suite opening.
+*   **With United Minecraft, press F5: the game should speak from its very first screen**, with nothing pressed in
+    the game first. (Before this fix a new install was silent until Control plus B turned Minecraft's Narrator on.)
+*   **Ctrl + H** in the manager should list United Minecraft's keys as well as Minecraft's own — for example
+    "Narrate coordinates" on C — even though no key has been changed yet.
 *   Try it once more and **say No** to the download: you should hear that Minecraft was not installed, and choosing
     Minecraft again should bring back the same "not found" screen.
 *   **View Store Links** on that screen should offer only **Minecraft.net**, and open Mojang's store.

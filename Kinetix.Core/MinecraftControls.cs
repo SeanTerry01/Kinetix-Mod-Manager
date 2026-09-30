@@ -209,6 +209,41 @@ public static class MinecraftControls
 		return bindings;
 	}
 
+	/// <summary>
+	/// United Minecraft's keys as the game will actually use them: the mod's defaults, with the player's own file
+	/// laid over the top.
+	///
+	/// <para>
+	/// The file alone is not enough, because the mod writes it only once a key has been changed — a new player has
+	/// no file, and their Ctrl+H showed none of the accessibility mod's keys (see
+	/// <see cref="UnitedMinecraftDefaults"/>). The defaults alone are not enough either, because they would read
+	/// back a key the player has since moved. So the file wins wherever it says anything, the defaults fill in
+	/// everything it does not, and an action only the file knows — from a newer or older build of the mod — is
+	/// kept rather than dropped.
+	/// </para>
+	/// </summary>
+	public static List<MinecraftBinding> MergeUnitedMinecraft(
+		IReadOnlyList<MinecraftBinding> defaults, IReadOnlyList<MinecraftBinding> fromFile)
+	{
+		var saved = new Dictionary<string, MinecraftBinding>(StringComparer.Ordinal);
+		foreach (MinecraftBinding binding in fromFile) saved[binding.Id] = binding;
+
+		var merged = new List<MinecraftBinding>();
+		var seen = new HashSet<string>(StringComparer.Ordinal);
+
+		// The mod's own order first — it is the order its keybind screen lists them in.
+		foreach (MinecraftBinding binding in defaults)
+		{
+			if (!seen.Add(binding.Id)) continue;
+			merged.Add(saved.TryGetValue(binding.Id, out MinecraftBinding? own) ? own : binding);
+		}
+
+		foreach (MinecraftBinding binding in fromFile)
+			if (seen.Add(binding.Id)) merged.Add(binding);
+
+		return merged;
+	}
+
 	/// <summary>The field naming the keybind file's layout; absent in the original flat one.</summary>
 	private const string SchemaVersionField = "schemaVersion";
 
