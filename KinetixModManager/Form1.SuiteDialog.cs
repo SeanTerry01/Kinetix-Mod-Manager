@@ -214,7 +214,8 @@ public partial class Form1
 			bool accessInstalled =
 				Directory.Exists(Path.Combine(gameFolder, "mods", "modWitcherAccess")) ||
 				Directory.Exists(Path.Combine(gameFolder, "mods", "~modWitcherAccess")) ||
-				File.Exists(Path.Combine(gameFolder, "bin", "x64", "WitcherAccess.asi"));
+				File.Exists(Path.Combine(Path.GetDirectoryName(GameProfiles.Require(GameProfiles.Witcher3).GameExePathIn(gameFolder)) ?? "",
+					"WitcherAccess.asi"));
 
 			// No source: WitcherAccess is still in testing and is installed by running its author's installer, so
 			// the manager reports on it and says where it stands rather than pretending it can fetch it. Install

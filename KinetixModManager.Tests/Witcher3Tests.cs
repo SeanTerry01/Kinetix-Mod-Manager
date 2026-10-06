@@ -71,7 +71,7 @@ public class Witcher3Tests
     {
         // Steam starts REDprelauncher, which is a graphical window a screen reader cannot use — and it is also
         // what picks between the DirectX 11 and DirectX 12 builds. bin\x64 is the DirectX 11 one, which is the
-        // build the accessibility mod is developed against.
+        // build the accessibility mod was developed against, so it stays preferred where a copy has it.
         GameProfile w3 = GameProfiles.Require(Game);
 
         Assert.True(w3.LaunchGameExeDirectly);
@@ -81,6 +81,52 @@ public class Witcher3Tests
         // Every other game still goes the normal route.
         foreach (GameProfile other in GameProfiles.All.Where(g => g.Id != Game))
             Assert.False(other.LaunchGameExeDirectly);
+    }
+
+    [Fact]
+    public void ARemasteredCopyWithOnlyTheDirectX12BuildIsStillFound()
+    {
+        // The Remastered update deleted bin\x64\witcher3.exe and kept only bin\x64_dx12\witcher3.exe. Knowing only
+        // the first, the manager called an installed copy "not installed" and dropped it from the Games menu.
+        GameProfile w3 = GameProfiles.Require(Game);
+        using var dir = new TempDir();
+        string dx12 = Path.Combine(dir.Path, "bin", "x64_dx12", "witcher3.exe");
+        Directory.CreateDirectory(Path.GetDirectoryName(dx12)!);
+        File.WriteAllText(dx12, "");
+
+        Assert.Equal(dx12, w3.GameExePathIn(dir.Path));
+        Assert.Equal(dir.Path, GogLibraryLocator.FindGameFolder(new[] { dir.Path }, w3.AllGameExeNames));
+        Assert.Equal(Path.GetDirectoryName(dx12), GameLogFiles.LoaderLogFolder(w3, dir.Path));
+
+        // Searching by the preferred name alone is exactly the bug.
+        Assert.Null(GogLibraryLocator.FindGameFolder(new[] { dir.Path }, w3.GameExeName));
+    }
+
+    [Fact]
+    public void ACopyWithBothBuildsStillStartsTheDirectX11One()
+    {
+        // Older copies, and stores that have not shipped the update, keep behaving exactly as before.
+        GameProfile w3 = GameProfiles.Require(Game);
+        using var dir = new TempDir();
+        foreach (string name in w3.AllGameExeNames)
+        {
+            string path = Path.Combine(dir.Path, name);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, "");
+        }
+
+        Assert.Equal(Path.Combine(dir.Path, "bin", "x64", "witcher3.exe"), w3.GameExePathIn(dir.Path));
+    }
+
+    [Fact]
+    public void WithNoExecutableAtAllThePreferredPathIsStillNamed()
+    {
+        // So a caller that checks File.Exists afterwards has a sensible path to report, rather than an empty one.
+        GameProfile w3 = GameProfiles.Require(Game);
+        using var dir = new TempDir();
+
+        Assert.Equal(Path.Combine(dir.Path, w3.GameExeName), w3.GameExePathIn(dir.Path));
+        Assert.Equal("", GameProfiles.Require(GameProfiles.Minecraft).GameExePathIn(dir.Path));
     }
 
     [Fact]

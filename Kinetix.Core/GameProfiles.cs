@@ -208,6 +208,40 @@ public sealed class GameProfile
 	public string GameExeName { get; init; } = "";
 
 	/// <summary>
+	/// Further places the game's executable may be, relative to the game folder, tried after
+	/// <see cref="GameExeName"/>.
+	///
+	/// A game can move its own executable in an update. The Witcher 3's "Remastered" update deleted the DirectX 11
+	/// build in <c>bin\x64</c> and left only the DirectX 12 one in <c>bin\x64_dx12</c> — and a manager that knew
+	/// only the first called a copy sitting plainly in its Steam library "not installed", and left it out of the
+	/// Games menu altogether. Older copies, and stores that have not shipped the update, still have the first.
+	/// </summary>
+	public IReadOnlyList<string> AlternateGameExeNames { get; init; } = Array.Empty<string>();
+
+	/// <summary>Every place the game's executable may be, relative to the game folder, the preferred one first.</summary>
+	public IEnumerable<string> AllGameExeNames =>
+		new[] { GameExeName }.Concat(AlternateGameExeNames).Where(name => !string.IsNullOrEmpty(name));
+
+	/// <summary>
+	/// The full path of the game's executable in the copy at <paramref name="gameFolder"/>: the first of
+	/// <see cref="AllGameExeNames"/> that exists there, or the preferred one when none does — so a caller that
+	/// goes on to check <see cref="File.Exists(string)"/> still gets a sensible path to name in a message.
+	/// <c>""</c> for a game with no executable (Minecraft) or no folder.
+	/// </summary>
+	public string GameExePathIn(string gameFolder)
+	{
+		if (string.IsNullOrEmpty(gameFolder) || string.IsNullOrEmpty(GameExeName)) return "";
+
+		foreach (string name in AllGameExeNames)
+		{
+			string path = Path.Combine(gameFolder, name);
+			if (File.Exists(path)) return path;
+		}
+
+		return Path.Combine(gameFolder, GameExeName);
+	}
+
+	/// <summary>
 	/// The mod loader's launcher executable, or <c>""</c> when the loader has none. Stardew and the Bethesda
 	/// games are started through their loader (SMAPI, SKSE, F4SE); BepInEx instead hooks the game through a
 	/// <c>winhttp.dll</c> shim, so the game's own exe loads mods and there is nothing separate to run.
@@ -226,7 +260,8 @@ public sealed class GameProfile
 	/// and Steam starts the launcher. The Witcher 3's is `REDprelauncher.exe`, which is a graphical window a
 	/// screen reader cannot use, and it is also what chooses between the DirectX 11 and DirectX 12 builds — so
 	/// going through it means a player may not be able to get past it, and may not land on the build their mods
-	/// expect. Starting `bin\x64\witcher3.exe` (the DirectX 11 build) skips both problems.
+	/// expect. Starting `witcher3.exe` directly skips both problems — the DirectX 11 build in `bin\x64` where the
+	/// copy still has one, otherwise the DirectX 12 build, which is all the Remastered update leaves.
 	/// </summary>
 	public bool LaunchGameExeDirectly { get; init; }
 
@@ -641,14 +676,17 @@ public static class GameProfiles
 			// Path.Combine rather than written as "bin\x64\witcher3.exe" for the same reason: a backslash is
 			// only a separator on Windows, and Path.Combine would treat the literal as one long file name off it.
 			GameExeName          = Path.Combine("bin", "x64", "witcher3.exe"),
+			// The Remastered update (2026) deleted the DirectX 11 build above and kept only this one; the game's own
+			// launcher-configuration.json now lists DirectX 12 as its only executable. Read off an updated Steam copy.
+			AlternateGameExeNames = new[] { Path.Combine("bin", "x64_dx12", "witcher3.exe") },
 			// Nothing to launch separately: The Witcher 3 loads the contents of its own mods folder, and the
 			// native part of an accessibility mod arrives as an .asi beside the exe, loaded however it starts.
 			LoaderExeName        = "",
 			LoaderDisplayName    = "",
 			// Skip REDprelauncher, which is what Steam would start: it is a graphical window a screen reader
 			// cannot use, and it is also what chooses between the DirectX 11 and DirectX 12 builds. The x64
-			// folder is the DirectX 11 one, which is the build the accessibility mod is developed against
-			// (x64_dx12 holds the other).
+			// folder is the DirectX 11 one, which the accessibility mod was developed against, so it is still
+			// preferred wherever a copy has it; a Remastered copy has only x64_dx12.
 			LaunchGameExeDirectly = true,
 			Layout               = ModLayout.Witcher3Mods,
 			ModsFolderRelativeToGame = "mods",

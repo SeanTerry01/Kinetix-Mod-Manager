@@ -85,9 +85,11 @@ public static class GameVersionReader
 	// The Witcher 3
 	// -------------------------------------------------------------------------
 
-	private static string Witcher3Exe(string gameFolder) =>
-		new[] { Path.Combine(gameFolder, "bin", "x64", "witcher3.exe"), Path.Combine(gameFolder, "bin", "x64_dx12", "witcher3.exe") }
-			.FirstOrDefault(File.Exists) ?? "";
+	private static string Witcher3Exe(string gameFolder)
+	{
+		string exe = GameProfiles.Require(GameProfiles.Witcher3).GameExePathIn(gameFolder);
+		return File.Exists(exe) ? exe : "";
+	}
 
 	private static readonly Regex Witcher3VersionString = new(@"v (\d+\.\d{2}[a-z]?)(?=[^0-9A-Za-z.])", RegexOptions.Compiled);
 

@@ -51,9 +51,10 @@ public static class GameLogFiles
 			return string.IsNullOrEmpty(gameFolder) ? "" : Path.Combine(gameFolder, "BepInEx");
 
 		// The Witcher 3 writes no log of its own, but the mods that hook it do, and they write beside the
-		// game's executable — which is where a player asking "why did my mod not load" needs to be sent.
+		// game's executable — which is where a player asking "why did my mod not load" needs to be sent. Whichever
+		// build the copy has: a Remastered copy runs from bin\x64_dx12, and an old log left in bin\x64 is stale.
 		if (game.IsWitcher3)
-			return string.IsNullOrEmpty(gameFolder) ? "" : Path.Combine(gameFolder, "bin", "x64");
+			return string.IsNullOrEmpty(gameFolder) ? "" : Path.GetDirectoryName(game.GameExePathIn(gameFolder)) ?? "";
 
 		if (game.IsMinecraft)
 			return string.IsNullOrEmpty(minecraftRoot) ? "" : Path.Combine(minecraftRoot, "logs");

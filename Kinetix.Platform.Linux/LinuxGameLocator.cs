@@ -97,7 +97,7 @@ public sealed class LinuxGameLocator : IGameLocator
 		// in an ordinary folder read as not installed on a machine where it plainly was.
 		try
 		{
-			string? heroic = HeroicLibraryLocator.FindGameFolder(Home, game.GameExeName);
+			string? heroic = HeroicLibraryLocator.FindGameFolder(Home, game.AllGameExeNames);
 			if (!string.IsNullOrEmpty(heroic)) return heroic;
 		}
 		catch (Exception ex)

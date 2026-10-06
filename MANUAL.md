@@ -686,7 +686,7 @@ The Witcher 3 needs no mod loader — no SMAPI, no script extender, no BepInEx. 
 *   **Editing the game's settings**: **Mods → Edit Game Configuration** opens `user.settings` and `input.settings` in the accessible settings editor. They are INI files despite the extension.
 *   **Saves** live in `Documents\The Witcher 3\gamesaves` and are handled by the Save Manager.
 *   **The log tab** shows the logs that mods write beside the game's executable in `bin\x64` — the game itself keeps none.
-*   **Launching with F5 skips the game's launcher.** The Witcher 3 normally starts through `REDprelauncher.exe`, a graphical window that a screen reader cannot use, and that launcher is also what chooses between the DirectX 11 and DirectX 12 builds. The manager starts `bin\x64\witcher3.exe` directly instead — the **DirectX 11** build, which is the one the accessibility mod is developed against — wherever your copy of the game is installed.
+*   **Launching with F5 skips the game's launcher.** The Witcher 3 normally starts through `REDprelauncher.exe`, a graphical window that a screen reader cannot use, and that launcher is also what chooses between the DirectX 11 and DirectX 12 builds. The manager starts `witcher3.exe` directly instead, wherever your copy of the game is installed. It starts the **DirectX 11** build in `bin\x64`, which the accessibility mod was developed against, when your copy has one. The Remastered update removed that build, so on an updated copy it starts the DirectX 12 build in `bin\x64_dx12`.
 
 ### The Keybind Reader (Moonlight Peaks)
 

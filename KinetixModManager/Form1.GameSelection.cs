@@ -177,7 +177,7 @@ public partial class Form1
 			{
 				Consider(GogLibraryLocator.FindGameFolder(
 					GogLibraryLocator.DefaultRoots(GetGogGalaxyPath(), GogLibraryLocator.FixedDriveRoots()),
-					profile.GameExeName), GamePlatform.Gog);
+					profile.AllGameExeNames), GamePlatform.Gog);
 			}
 		}
 		catch (Exception ex) { DiagnosticLog.WriteException("Detect", "looking for a GOG copy of the game", ex); }
@@ -651,7 +651,7 @@ public partial class Form1
 		// instead; without this the game reports itself not installed on a machine it is plainly installed on.
 		if (profile.IsMinecraft) return MinecraftLayout.LooksLikeMinecraftRoot(path);
 
-		if (File.Exists(Path.Combine(path, profile.GameExeName))) return true;
+		if (profile.AllGameExeNames.Any(name => File.Exists(Path.Combine(path, name)))) return true;
 		return !string.IsNullOrEmpty(profile.LoaderExeName) &&
 			   File.Exists(Path.Combine(path, profile.LoaderExeName));
 	}
@@ -905,11 +905,13 @@ public partial class Form1
 			// launch, and falling back to it is not a degraded path.
 			string exeName = string.IsNullOrEmpty(profile.LoaderExeName) ? profile.GameExeName : profile.LoaderExeName;
 
-			string exePath = Path.Combine(gamePath, exeName);
+			string exePath = string.IsNullOrEmpty(profile.LoaderExeName)
+				? profile.GameExePathIn(gamePath)
+				: Path.Combine(gamePath, exeName);
 
 			if (!File.Exists(exePath))
 			{
-				exePath = Path.Combine(gamePath, profile.GameExeName);
+				exePath = profile.GameExePathIn(gamePath);
 			}
 
 			if (!File.Exists(exePath))

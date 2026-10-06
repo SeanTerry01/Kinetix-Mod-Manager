@@ -107,9 +107,19 @@ public static class GogLibraryLocator
 	/// same thing for someone who installed a single game straight into it. The search stops one level down: a
 	/// game's own subfolders hold its data, and walking into them would turn a quick check into a disk crawl.
 	/// </summary>
-	public static string? FindGameFolder(IEnumerable<string> roots, string exeName)
+	public static string? FindGameFolder(IEnumerable<string> roots, string exeName) =>
+		FindGameFolder(roots, new[] { exeName });
+
+	/// <summary>
+	/// The folder under <paramref name="roots"/> holding any of <paramref name="exeNames"/> — for a game whose
+	/// executable has lived in more than one place (see <see cref="GameProfile.AlternateGameExeNames"/>).
+	/// </summary>
+	public static string? FindGameFolder(IEnumerable<string> roots, IEnumerable<string> exeNames)
 	{
-		if (string.IsNullOrEmpty(exeName)) return null;
+		List<string> names = exeNames.Where(n => !string.IsNullOrEmpty(n)).ToList();
+		if (names.Count == 0) return null;
+
+		bool Holds(string folder) => names.Any(n => File.Exists(Path.Combine(folder, n)));
 
 		foreach (string root in roots)
 		{
@@ -117,10 +127,10 @@ public static class GogLibraryLocator
 			{
 				if (string.IsNullOrEmpty(root) || !Directory.Exists(root)) continue;
 
-				if (File.Exists(Path.Combine(root, exeName))) return root;
+				if (Holds(root)) return root;
 
 				foreach (string folder in Directory.EnumerateDirectories(root))
-					if (File.Exists(Path.Combine(folder, exeName)))
+					if (Holds(folder))
 						return folder;
 			}
 			catch (Exception ex)

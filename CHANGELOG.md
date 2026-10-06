@@ -1,5 +1,12 @@
 ﻿# Unreleased
 
+## 🐛 The Witcher 3 Remastered was "not installed"
+
+*   **After the Remastered update, The Witcher 3 vanished from the Games menu**, and choosing it from the game list
+    said it was not installed. The update removed the game's DirectX 11 build, and the manager was looking for
+    that one alone. It now finds the DirectX 12 build as well, and F5 starts it. A copy that still has the
+    DirectX 11 build keeps starting that one, as before.
+
 ## ✨ Minecraft: modpacks
 
 A modpack is a whole modded setup someone has put together: its mods, their settings, and the exact Minecraft and

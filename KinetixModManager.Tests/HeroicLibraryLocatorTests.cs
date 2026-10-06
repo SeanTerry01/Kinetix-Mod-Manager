@@ -195,6 +195,6 @@ public class HeroicLibraryLocatorTests : IDisposable
 	{
 		// Minecraft has none, and guessing would be worse than answering nothing.
 		Assert.Null(HeroicLibraryLocator.FindGameFolder(_home, ""));
-		Assert.Null(HeroicLibraryLocator.FindGameFolder(_home, null));
+		Assert.Null(HeroicLibraryLocator.FindGameFolder(_home, (string?)null));
 	}
 }

@@ -139,25 +139,34 @@ public static class HeroicLibraryLocator
 	/// <see cref="GogLibraryLocator"/> does it: what Heroic or the user called the folder is not something to
 	/// guess at, and the executable is the one name the game itself decides.
 	/// </summary>
-	public static string? FindGameFolder(string home, string? exeName)
+	public static string? FindGameFolder(string home, string? exeName) =>
+		FindGameFolder(home, new[] { exeName ?? "" });
+
+	/// <summary>
+	/// The folder holding any of <paramref name="exeNames"/>, among everything Heroic has installed, or null — for
+	/// a game whose executable has lived in more than one place (see <see cref="GameProfile.AlternateGameExeNames"/>).
+	/// </summary>
+	public static string? FindGameFolder(string home, IEnumerable<string> exeNames)
 	{
-		if (string.IsNullOrWhiteSpace(exeName)) return null;
+		List<string> names = exeNames.Where(n => !string.IsNullOrWhiteSpace(n)).ToList();
+		if (names.Count == 0) return null;
+
+		bool Holds(string folder) => names.Any(n => File.Exists(Path.Combine(folder, n)));
 
 		foreach (string folder in InstalledFolders(home))
 		{
 			try
 			{
-				if (File.Exists(Path.Combine(folder, exeName))) return folder;
+				if (Holds(folder)) return folder;
 
 				// Heroic's record sometimes names the folder a game was installed *into* rather than the one
 				// the game ended up in, which for a Windows game under a prefix is one level up.
-				string? deeper = Directory.EnumerateDirectories(folder)
-					.FirstOrDefault(d => File.Exists(Path.Combine(d, exeName)));
+				string? deeper = Directory.EnumerateDirectories(folder).FirstOrDefault(Holds);
 				if (deeper != null) return deeper;
 			}
 			catch (Exception ex)
 			{
-				DiagnosticLog.WriteException("Detect", $"looking for {exeName} under {folder}", ex);
+				DiagnosticLog.WriteException("Detect", $"looking for {names[0]} under {folder}", ex);
 			}
 		}
 
