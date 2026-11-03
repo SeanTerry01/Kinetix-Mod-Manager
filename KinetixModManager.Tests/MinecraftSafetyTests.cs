@@ -129,6 +129,52 @@ public sealed class MinecraftSafetyTests : IDisposable
 		Assert.False(File.Exists(Path.Combine(mods, "mod-2.0.jar")));
 	}
 
+	[Fact]
+	public void AFileOfTheSameNameIsNotDeletedWhenAnotherCopyWillNotGo()
+	{
+		if (!OperatingSystem.IsWindows()) return;
+
+		string mods = Path.Combine(_root, "mods");
+		string other = Jar(mods, "mod-old-name.jar", "somemod");
+		string sameName = Jar(mods, "mod-2.0.jar", "somemod");
+		string incoming = Jar(Path.Combine(_root, "downloads"), "mod-2.0.jar", "somemod");
+
+		using (new FileStream(other, FileMode.Open, FileAccess.Read, FileShare.Read))
+			ModInstaller.InstallFile(incoming, mods);
+
+		Assert.True(File.Exists(sameName), "It was the only other copy, and deleting it could leave no working mod.");
+	}
+
+	[Fact]
+	public void AnUnfinishedBackupIsNeverListed()
+	{
+		string backups = Path.Combine(_root, "backups");
+		Directory.CreateDirectory(backups);
+		string jar = Jar(Path.Combine(_root, "mods"), "any.jar", "any");
+
+		BackupStore.CreateBackup(jar, "Any", backups);
+
+		Assert.Single(Directory.GetFiles(backups, "*.zip"));
+		Assert.Empty(Directory.GetFiles(backups, "*.kinetix-part"));
+	}
+
+	[Fact]
+	public void AnAbandonedPartIsCleared()
+	{
+		string backups = Path.Combine(_root, "backups");
+		Directory.CreateDirectory(backups);
+		string old = Path.Combine(backups, "Gone_1.zip.kinetix-part");
+		string recent = Path.Combine(backups, "Running_2.zip.kinetix-part");
+		File.WriteAllText(old, "x");
+		File.WriteAllText(recent, "x");
+		File.SetLastWriteTimeUtc(old, DateTime.UtcNow.AddHours(-2));
+
+		BackupStore.CreateBackup(Jar(Path.Combine(_root, "mods"), "any.jar", "any"), "Any", backups);
+
+		Assert.False(File.Exists(old));
+		Assert.True(File.Exists(recent), "Another backup may still be writing it.");
+	}
+
 	[Theory]
 	[InlineData("Create: Fabric")]
 	[InlineData("What? \"Mod\"")]

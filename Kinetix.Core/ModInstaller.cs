@@ -87,6 +87,7 @@ public static class ModInstaller
 		Directory.CreateDirectory(modsFolder);
 
 		string destination = Path.Combine(modsFolder, Path.GetFileName(downloadedPath));
+		bool wasAlreadyThere = File.Exists(destination);
 		if (!string.Equals(downloadedPath, destination, StringComparison.OrdinalIgnoreCase))
 			File.Copy(downloadedPath, destination, overwrite: true);
 
@@ -108,7 +109,8 @@ public static class ModInstaller
 
 		// Two copies stop the game starting, usually because the running game holds the old one. Taking the new one back
 		// out leaves a game that still starts on the old mod, and the caller says so.
-		if (couldNotRemove.Count > 0)
+		// Not if it overwrote a file of the same name: that would delete the only working copy of that name.
+		if (couldNotRemove.Count > 0 && !wasAlreadyThere)
 		{
 			try { File.Delete(destination); }
 			catch (Exception ex) { DiagnosticLog.WriteException("Install", $"taking back the new copy at {destination}", ex); }

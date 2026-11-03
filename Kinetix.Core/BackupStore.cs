@@ -78,8 +78,32 @@ public static class BackupStore
 		// two backups started at the same instant cannot settle on the same one. Checking File.Exists first
 		// and opening afterwards is the obvious spelling and is a race — six threads all see nothing there,
 		// all pick the same name, and five of them fail. Found by running six at once.
-		using FileStream target = ClaimName(backupsPath, modName);
+		//
+		// ⚠️ Under another name until it is whole. A forced close partway through left a damaged zip listed as a good
+		// backup, which then failed on the day it was needed.
+		SweepAbandonedBackups(backupsPath);
+		string partial = "";
+		try
+		{
+			using (FileStream target = ClaimName(backupsPath, modName, out partial))
+				WriteBackup(target, folderPath, oneFile, progress);
 
+			File.Move(partial, partial[..^PartialSuffix.Length]);
+		}
+		catch
+		{
+			try { if (partial.Length > 0) File.Delete(partial); }
+			catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+			{
+				DiagnosticLog.WriteException("Backup", $"clearing the unfinished backup {partial}", ex);
+			}
+			throw;
+		}
+	}
+
+	/// <summary>Writes the zip. See <see cref="CreateBackup"/>.</summary>
+	private static void WriteBackup(FileStream target, string folderPath, bool oneFile, IProgress<double>? progress)
+	{
 		if (oneFile)
 		{
 			// Zipped rather than copied, so a backup is one kind of thing whatever the mod is shaped like and
@@ -150,8 +174,9 @@ public static class BackupStore
 	/// </summary>
 	private static string SafeName(string modName) => WindowsFileName.StripInvalid(modName).Trim();
 
-	private static FileStream ClaimName(string backupsPath, string modName)
+	private static FileStream ClaimName(string backupsPath, string modName, out string partial)
 	{
+		partial = "";
 		string stamp = $"{SafeName(modName)}_{DateTime.Now.ToString(StampFormat)}";
 
 		// CreateNew is the whole point: it fails rather than overwrites, so whichever caller wins the race
@@ -160,12 +185,35 @@ public static class BackupStore
 		for (int attempt = 1; attempt <= 50; attempt++)
 		{
 			string dest = Path.Combine(backupsPath, attempt == 1 ? stamp + ".zip" : $"{stamp}_{attempt}.zip");
+			partial = dest + PartialSuffix;
 
-			try { return new FileStream(dest, FileMode.CreateNew, FileAccess.Write, FileShare.None); }
-			catch (IOException) when (File.Exists(dest)) { /* somebody else has it; try the next */ }
+			FileStream claimed;
+			try { claimed = new FileStream(partial, FileMode.CreateNew, FileAccess.Write, FileShare.None); }
+			catch (IOException) when (File.Exists(partial)) { continue; /* somebody else has it; try the next */ }
+
+			// In this order. Another backup finishing moves its file to the real name, so the claim has to be held before
+			// looking there, or both could end up wanting it.
+			if (!File.Exists(dest)) return claimed;
+			claimed.Dispose();
+			File.Delete(partial);
 		}
 
 		throw new IOException($"Could not find a free backup name for {modName} in {backupsPath}.");
+	}
+
+	private const string PartialSuffix = ".kinetix-part";
+
+	/// <summary>Clears what a forced close left behind. An hour old, so another backup still being written is never touched.</summary>
+	private static void SweepAbandonedBackups(string backupsPath)
+	{
+		foreach (string file in Directory.GetFiles(backupsPath, "*" + PartialSuffix))
+		{
+			try { if (File.GetLastWriteTimeUtc(file) < DateTime.UtcNow.AddHours(-1)) File.Delete(file); }
+			catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+			{
+				DiagnosticLog.WriteException("Backup", $"clearing the abandoned backup {file}", ex);
+			}
+		}
 	}
 
 	/// <summary>

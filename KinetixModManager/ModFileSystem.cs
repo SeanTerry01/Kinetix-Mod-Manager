@@ -1894,7 +1894,7 @@ public static class ModFileSystem
 				string full = Path.GetFullPath(Path.Combine(gameFolder, relative));
 
 				// Never step outside the game folder, whatever the manifest says.
-				if (!full.StartsWith(Path.GetFullPath(gameFolder), StringComparison.OrdinalIgnoreCase)) continue;
+				if (!full.StartsWith(Path.TrimEndingDirectorySeparator(Path.GetFullPath(gameFolder)) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) continue;
 				if (!File.Exists(full)) continue;
 
 				File.SetAttributes(full, FileAttributes.Normal);
@@ -1947,7 +1947,7 @@ public static class ModFileSystem
 				string outOfGame = Path.GetFullPath(Path.Combine(parked, relative));
 
 				// Never step outside the game folder, whatever the manifest says.
-				if (!inGame.StartsWith(Path.GetFullPath(gameFolder), StringComparison.OrdinalIgnoreCase)) continue;
+				if (!inGame.StartsWith(Path.TrimEndingDirectorySeparator(Path.GetFullPath(gameFolder)) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) continue;
 
 				string from = enable ? outOfGame : inGame;
 				string to = enable ? inGame : outOfGame;
