@@ -815,13 +815,19 @@ public partial class Form1
 			psi.ArgumentList.Add(gameFolder);
 			psi.ArgumentList.Add("--no-prompt");
 
+			// Whether the exe exists says nothing on an update, because it always did. So a failed update was reported as
+			// installed, with the old version still there. Going by the file being rewritten also covers an installer that
+			// reports nothing through its exit code.
+			string smapiExe = Path.Combine(gameFolder, "StardewModdingAPI.exe");
+			DateTime? writtenBefore = File.Exists(smapiExe) ? File.GetLastWriteTimeUtc(smapiExe) : null;
+
 			await Task.Run(() =>
 			{
 				using Process? proc = Process.Start(psi);
 				proc?.WaitForExit();
 			});
 
-			bool installed = File.Exists(Path.Combine(gameFolder, "StardewModdingAPI.exe"));
+			bool installed = File.Exists(smapiExe) && File.GetLastWriteTimeUtc(smapiExe) != writtenBefore;
 			if (installed)
 			{
 				Speak(Loc.T("suite.smapiInstalled"));

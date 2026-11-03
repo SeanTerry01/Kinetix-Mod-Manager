@@ -191,6 +191,11 @@ public partial class Form1
 
 	private async Task CheckForUpdates(List<StardewMod> group)
 	{
+		// Read now, while this is the game the check is for. A queued request reading it later asked the other game's
+		// page about this mod's id, and a row for an unrelated mod landed on the new game's list.
+		string game = _settings.ActiveGame;
+		string domain = _nexusService.CurrentGameDomain;
+
 		try
 		{
 			string? latestVersion = null;
@@ -211,14 +216,16 @@ public partial class Form1
 			}
 			else if (!string.IsNullOrEmpty(group[0].NexusID))
 			{
-				latestVersion = await _nexusService.GetLatestVersionAsync(group[0].NexusID ?? "");
+				latestVersion = await _nexusService.GetLatestVersionAsync(group[0].NexusID ?? "", domain);
+				if (latestVersion == null) Interlocked.Increment(ref _updateChecksUnanswered);
 			}
 			else if (!string.IsNullOrEmpty(group[0].GitHubRepo))
 			{
 				latestVersion = await GetGitHubLatestReleaseVersionAsync(group[0].GitHubRepo ?? "");
+				if (latestVersion == null) Interlocked.Increment(ref _updateChecksUnanswered);
 			}
 
-			if (latestVersion == null) return;
+			if (latestVersion == null || _settings.ActiveGame != game) return;
 
 			string key = DownloadKey(group[0]);
 			// What's installed from this download: what we recorded when we installed it, or — for a mod that
@@ -235,6 +242,7 @@ public partial class Form1
 			{
 				string? fromFiles = await NewestMainFileVersion(group[0].NexusID!);
 				if (IsNewerVersion(installedVersion, fromFiles)) latestVersion = fromFiles!;
+				if (_settings.ActiveGame != game) return;
 			}
 
 			if (_settings.IgnoredVersions.TryGetValue(group[0].UniqueId, out string? ignored) && ignored == latestVersion)
@@ -259,6 +267,11 @@ public partial class Form1
 				listUpdates.EndUpdate();
 			});
 		}
+		catch (Exception ex)
+		{
+			Interlocked.Increment(ref _updateChecksUnanswered);
+			DiagnosticLog.WriteException("Updates", $"checking {group[0].Name} for updates", ex);
+		}
 		finally
 		{
 			CompleteUpdateCheckUnit();
@@ -271,6 +284,13 @@ public partial class Form1
 	/// single-batch guard, plays the completion cue, and announces the final result. Shared by every
 	/// check unit so the cue and announcement fire exactly once regardless of how many sources ran.
 	/// </summary>
+	// Lookups in this check that got no usable answer, so the result can say so rather than call everything current.
+	private int _updateChecksUnanswered;
+
+	// The game the running check is for, and whether another check was refused while it ran on after a game switch.
+	private string? _updateCheckGame;
+	private bool _checkAgainWhenFree;
+
 	// A SMAPI program update found during the smapi.io check, surfaced only after the whole update
 	// run finishes so its prompt doesn't interrupt the mod-update announcement. Null when none.
 	private (string Current, string Latest, string Url)? _pendingSmapiUpdate;
@@ -320,6 +340,23 @@ public partial class Form1
 			_isLoading = false;
 			// This batch is done; release the guard so the next update check can start.
 			Interlocked.Exchange(ref _updateCheckRunning, 0);
+
+			// The check was for a game that is no longer open, so its result means nothing here. Its rows go, and the
+			// open game gets the check it was refused while this one was winding down.
+			if (_updateCheckGame != _settings.ActiveGame)
+			{
+				_pendingSmapiUpdate = null;
+				_pendingMinecraftUpdate = null;
+				bool again = _checkAgainWhenFree;
+				_checkAgainWhenFree = false;
+				Invoke(delegate
+				{
+					listUpdates.Items.Clear();
+					if (again) Fire(RefreshModList(checkUpdates: true), "RefreshModList");
+				});
+				return;
+			}
+
 			_soundEngine.Play("load_complete");
 			var pendingSmapi = _pendingSmapiUpdate;
 			_pendingSmapiUpdate = null;
@@ -329,9 +366,13 @@ public partial class Form1
 			Invoke(delegate
 			{
 				DropUpToDateUpdateRows();
+				// "All mods are up-to-date" is a claim about every mod. With Nexus down, or the day's requests used up, every
+				// lookup failed and it was said anyway, so someone was told all was well by a check that learned nothing.
+				bool someUnanswered = Volatile.Read(ref _updateChecksUnanswered) > 0;
 				string message = listUpdates.Items.Count > 0
 					? Loc.T("updates.checkComplete", listUpdates.Items.Count)
-					: Loc.T("updates.checkCompleteNone");
+					: Loc.T(someUnanswered ? "updates.checkFoundNoneSoFar" : "updates.checkCompleteNone");
+				if (someUnanswered) message += " " + Loc.T("updates.someUnanswered");
 				// Tell the user when some mods couldn't be checked at all (no Nexus/GitHub link), so an
 				// "all up to date" result isn't taken to cover a manually-added mod that was really just skipped.
 				if (unchecked_ > 0)
@@ -357,6 +398,7 @@ public partial class Form1
 	/// </summary>
 	private async Task CheckUpdatesViaSmapiApi(List<StardewMod> installed, string smapiVersion, string gameVersion)
 	{
+		string game = _settings.ActiveGame;
 		try
 		{
 			var entries = new List<(string Id, string Version, IEnumerable<string> UpdateKeys)>();
@@ -459,7 +501,7 @@ public partial class Form1
 				Invoke(delegate
 				{
 					listUpdates.BeginUpdate();
-					if (!listUpdates.Items.Contains(mod))
+					if (_settings.ActiveGame == game && !listUpdates.Items.Contains(mod))
 					{
 						mod.IsUpdateResult = true;
 						listUpdates.Items.Add(mod);
@@ -474,6 +516,7 @@ public partial class Form1
 		catch (Exception ex)
 		{
 			LogFailure("SmapiUpdate", "SMAPI update check failed", ex);
+			Interlocked.Increment(ref _updateChecksUnanswered);
 		}
 		finally
 		{
@@ -499,7 +542,8 @@ public partial class Form1
 
 		// SMAPI's installer updates an existing install in place, so the same routine used for a fresh
 		// install performs the update; it self-reports success/failure by voice and handles its own fallback.
-		await InstallSmapiAsync(DetectGameFolder("StardewValley"));
+		// The open copy, not the first one detection finds: with two copies of the game, this updated the other one.
+		await InstallSmapiAsync(_settings.CurrentGamePath is { Length: > 0 } open ? open : DetectGameFolder("StardewValley"));
 	}
 
 	/// <summary>

@@ -46,7 +46,13 @@ public partial class Form1
 		SetStatus(Loc.T("tracked.checking"), speak: true);
 		string domain = _nexusService.CurrentGameDomain;
 
-		List<int> tracked = await _nexusService.GetTrackedModIdsAsync(domain);
+		List<int>? tracked = await _nexusService.GetTrackedModIdsAsync(domain);
+		if (tracked == null)
+		{
+			ResetStatus();
+			Speak(Loc.T("discovery.noAnswer"));
+			return;
+		}
 		if (tracked.Count == 0)
 		{
 			ResetStatus();
@@ -54,7 +60,13 @@ public partial class Form1
 			return;
 		}
 
-		HashSet<int> updated = await _nexusService.GetRecentlyUpdatedModIdsAsync("1m");
+		HashSet<int>? updated = await _nexusService.GetRecentlyUpdatedModIdsAsync("1m");
+		if (updated == null)
+		{
+			ResetStatus();
+			Speak(Loc.T("discovery.noAnswer"));
+			return;
+		}
 		var recent = tracked.Where(updated.Contains).ToList();
 
 		// Map installed Nexus ids to their installed version, so an installed tracked mod is only flagged when a

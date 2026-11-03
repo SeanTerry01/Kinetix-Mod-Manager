@@ -971,7 +971,9 @@ public partial class Form1
 			}
 			else
 			{
-				Speak((loadMore ? Loc.T("discovery.noMore") : Loc.T("discovery.none")) + hiddenByLanguage);
+				Speak(_nexusService.LastSearchFailed
+					? Loc.T("discovery.noAnswer")
+					: (loadMore ? Loc.T("discovery.noMore") : Loc.T("discovery.none")) + hiddenByLanguage);
 			}
 		}
 		catch (Exception ex)

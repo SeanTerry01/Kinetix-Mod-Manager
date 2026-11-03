@@ -63,15 +63,18 @@ public partial class Form1
 		// whose mods come from Modrinth, which has no accounts — opened the manager to the disconnect cue,
 		// Settings forced open, and an empty mod list, with nothing on screen explaining what was wanted.
 		// Nothing they could have done would have satisfied it, either: the key is not used for their game.
-		if (_nexusService.UsesNexus && string.IsNullOrEmpty(_settings.ApiKey))
+		//
+		// ⚠️ Nor does anyone need a key to see what is on their own disk. This used to return here, so local mods could
+		// not be listed, switched off or deleted until a key was given. The list comes first, then the question.
+		bool needsNexusKey = _nexusService.UsesNexus && string.IsNullOrEmpty(_settings.ApiKey);
+		if (needsNexusKey)
 		{
 			if (!_isSettingsOpen)
 			{
 				SetStatus(Loc.T("status.authRequired"));
 				_soundEngine.Play("disconnect");
-				ShowSettings();
 			}
-			return;
+			checkUpdates = false;
 		}
 		// Acquire the single-batch update-check guard. See _updateCheckRunning: it is held across the async
 		// checks and released either by their completion (CheckForUpdates) or by the finally below when none
@@ -85,8 +88,15 @@ public partial class Form1
 		bool doUpdateChecks = checkUpdates;
 		if (checkUpdates && Interlocked.CompareExchange(ref _updateCheckRunning, 1, 0) != 0)
 		{
-			Speak(Loc.T("modlist.updateInProgress"));
+			// A check still running for the game just left is being abandoned, not something to wait on. This game's own
+			// check runs once it has wound down. See CompleteUpdateCheckUnit.
+			if (_updateCheckGame != _settings.ActiveGame) _checkAgainWhenFree = true;
+			else Speak(Loc.T("modlist.updateInProgress"));
 			doUpdateChecks = false;
+		}
+		else if (checkUpdates)
+		{
+			_updateCheckGame = _settings.ActiveGame;
 		}
 
 		// Claim this pass. Two refreshes can overlap — a slow one started before a game switch and the switch's
@@ -126,17 +136,35 @@ public partial class Form1
 					ResetStatus();
 			}
 		}
+		else if (needsNexusKey)
+		{
+			// Said above. There is nothing to connect with, and the mods are on disk either way.
+		}
 		else if (!_nexusService.IsValidated)
 		{
 			SetStatus(Loc.T("status.connecting"));
-			if (!(await ValidateNexusConnection()))
+			NexusConnection connection = await _nexusService.CheckConnectionAsync();
+
+			// A switch during that wait makes this pass the wrong one, and the newer pass is on its way.
+			if (Superseded()) return;
+
+			if (connection == NexusConnection.Connected)
 			{
-				SetStatus(Loc.T("status.authFailed"));
-				_soundEngine.Play("error");
-				return;
+				SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser));
+				_soundEngine.Play("connect");
 			}
-			SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser));
-			_soundEngine.Play("connect");
+			else
+			{
+				// ⚠️ This used to return, leaving an empty list. Everything below reads the disk and needs no network, so
+				// being offline cost someone every mod they had, and the message blamed their key.
+				SetStatus(Loc.T(connection == NexusConnection.KeyRejected ? "status.authFailed" : "status.nexusUnreachable"));
+				_soundEngine.Play("error");
+				if (doUpdateChecks)
+				{
+					Interlocked.Exchange(ref _updateCheckRunning, 0);
+					doUpdateChecks = false;
+				}
+			}
 		}
 		else
 		{
@@ -355,6 +383,10 @@ public partial class Form1
 				LandOnFirstTab();
 			}
 		});
+
+		// After the list, so the mods are there behind the question rather than waiting on the answer to it.
+		if (needsNexusKey && !_isSettingsOpen) ShowSettings();
+
 		if (!doUpdateChecks)
 		{
 			return;
@@ -403,6 +435,7 @@ public partial class Form1
 			return;
 		}
 		_isLoading = true;
+		Interlocked.Exchange(ref _updateChecksUnanswered, 0);
 		Interlocked.Exchange(ref _activeChecks, unitCount);
 		Speak(Loc.T("modlist.checkingUpdates"));
 		Fire(RunLoadingLoop(), "RunLoadingLoop");

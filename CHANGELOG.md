@@ -16,6 +16,21 @@ as before.
     the last item from a list now finishes saying so before focus goes back. The same goes for "Opening the download
     page" before the browser takes over.
 
+## 🐛 Being offline is no longer mistaken for something else
+
+*   **Your mods are listed even when Nexus cannot be reached.** Being offline, rate limited or caught by an outage used
+    to leave an empty list and "Authentication Failed - Check API Key", about a key that was fine. Now you are told Nexus
+    did not answer, and only a key Nexus actually refuses is called a bad key. With no key at all, your mods are listed too.
+*   **"All mods are up-to-date" now means it.** With Nexus down or your requests used up, every lookup failed and this was
+    said anyway. You are now told that some mods could not be checked.
+*   **"No mods found" and "You aren't tracking any mods" now mean that, too**, rather than Nexus not answering.
+*   **Switching games during an update check is safe.** A slow check could put another game's mods on the Updates tab, with
+    unrelated versions, and the new game then never got its own check.
+*   **Starting a game with its loader missing now asks.** With SMAPI, SKSE or F4SE missing, the bare game started, with no
+    mods and no speech, and nothing said why.
+*   **A failed SMAPI update now says so**, and it updates the copy you have open if you own two. It used to report success
+    with the old version still there.
+*   **Being offline during a Minecraft update no longer says the mod has no build.**
 ## 🐛 A failed update can no longer cost you the mod
 
 *   **An update or reinstall now replaces the old copy last.** The new copy is built in full, the old one is backed

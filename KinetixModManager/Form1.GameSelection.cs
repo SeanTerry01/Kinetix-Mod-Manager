@@ -909,6 +909,16 @@ public partial class Form1
 
 			if (!File.Exists(exePath))
 			{
+				// The loader is what runs the mods. Falling back quietly started the bare game, with no accessibility mod
+				// and no speech, and nothing to say why. BepInEx games have had this question for a while.
+				if (!string.IsNullOrEmpty(profile.LoaderExeName) && _allInstalledMods.Any(m => !m.IsGroup && m.IsEnabled) &&
+					SpeakBox(Loc.T("launch.noLoaderBox", profile.LoaderDisplayName, GameDisplayName()), Loc.T("launch.noLoaderTitle", profile.LoaderDisplayName),
+						MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+				{
+					SetStatus(Loc.T("launch.cancelled"));
+					return;
+				}
+
 				exePath = profile.GameExePathIn(gamePath);
 			}
 

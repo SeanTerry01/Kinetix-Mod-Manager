@@ -46,6 +46,12 @@ public class NexusService
 	private readonly SemaphoreSlim _apiSemaphore = new SemaphoreSlim(5);
 	private readonly AppSettings _settings;
 
+	/// <summary>
+	/// Whether the last search got no answer. An empty result is otherwise the same either way, and an outage was reported
+	/// as "No mods found", a statement about the catalogue that nothing had actually learned.
+	/// </summary>
+	public bool LastSearchFailed { get; private set; }
+
 	/// <summary>Nexus username returned by the last successful <see cref="ValidateAsync"/> call.</summary>
 	public string NexusUser { get; private set; } = "Unknown User";
 
@@ -131,21 +137,36 @@ public class NexusService
 	/// On success, updates <see cref="NexusUser"/> and <see cref="IsPremium"/>.
 	/// </summary>
 	/// <returns><c>true</c> if the key is valid; <c>false</c> on any failure.</returns>
-	public async Task<bool> ValidateAsync()
+	public async Task<bool> ValidateAsync() => await CheckConnectionAsync() == NexusConnection.Connected;
+
+	/// <summary>
+	/// Asks Nexus whether the stored key works, and says which way it failed if it does not.
+	///
+	/// ⚠️ These are different problems with different answers. A network failure, a rate limit and an outage all used
+	/// to come back as plain false, which the user heard as "Authentication Failed - Check API Key", about a key that
+	/// was fine. Only a 401 means the key itself was refused.
+	/// </summary>
+	public async Task<NexusConnection> CheckConnectionAsync()
 	{
 		try
 		{
 			using var req = BuildRequest(HttpMethod.Get, "https://api.nexusmods.com/v1/users/validate.json");
-			var resp = await HttpClient.SendAsync(req);
+			// Shorter than the client's own limit, because a mod list that needs no network waits on this.
+			using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+			var resp = await HttpClient.SendAsync(req, timeout.Token);
 			CaptureRateLimit(resp);
-			if (!resp.IsSuccessStatusCode) { _validatedKey = ""; return false; }
+			if (!resp.IsSuccessStatusCode)
+			{
+				_validatedKey = "";
+				return resp.StatusCode == System.Net.HttpStatusCode.Unauthorized ? NexusConnection.KeyRejected : NexusConnection.Unreachable;
+			}
 			JObject json = JObject.Parse(await resp.Content.ReadAsStringAsync());
 			NexusUser = json["name"]?.ToString() ?? "User";
 			IsPremium  = (bool)(json["is_premium"] ?? (JToken)false);
 			_validatedKey = _settings.ApiKey;
-			return true;
+			return NexusConnection.Connected;
 		}
-		catch { _validatedKey = ""; return false; }
+		catch { _validatedKey = ""; return NexusConnection.Unreachable; }
 	}
 
 	// -------------------------------------------------------------------------
@@ -159,7 +180,8 @@ public class NexusService
 	/// </summary>
 	/// <param name="nexusId">Nexus Mods numeric mod ID.</param>
 	/// <returns>The latest version string, or <c>null</c> on failure or non-success status.</returns>
-	public async Task<string?> GetLatestVersionAsync(string nexusId)
+	/// <param name="domain">The game's page to ask. Read before a queued wait, or a game switch changes the answer.</param>
+	public async Task<string?> GetLatestVersionAsync(string nexusId, string? domain = null)
 	{
 		// Minecraft's mods come from Modrinth; a Nexus call for it would name no game at all.
 		if (!UsesNexus) return null;
@@ -168,7 +190,7 @@ public class NexusService
 		{
 			await Task.Delay(Random.Shared.Next(100, 1000));
 			using var req = BuildRequest(HttpMethod.Get,
-				$"https://api.nexusmods.com/v1/games/{CurrentGameDomain}/mods/{nexusId}.json");
+				$"https://api.nexusmods.com/v1/games/{domain ?? CurrentGameDomain}/mods/{nexusId}.json");
 			var resp = await HttpClient.SendAsync(req);
 			CaptureRateLimit(resp);
 			if (!resp.IsSuccessStatusCode) return null;
@@ -423,6 +445,8 @@ public class NexusService
 		string gqlQuery;
 		object variables;
 
+		LastSearchFailed = false;
+
 		// Build the filter as a dictionary so the optional language clause can be added conditionally.
 		// An empty/null language means "Any language" — no languageName clause is sent.
 		var filter = new Dictionary<string, object>
@@ -490,7 +514,7 @@ public class NexusService
 				Encoding.UTF8, "application/json");
 
 			var resp = await HttpClient.SendAsync(req);
-			if (!resp.IsSuccessStatusCode) return (new(), 0);
+			if (!resp.IsSuccessStatusCode) { LastSearchFailed = true; return (new(), 0); }
 
 			JObject data = JObject.Parse(await resp.Content.ReadAsStringAsync());
 			if (data["errors"] != null)
@@ -523,7 +547,7 @@ public class NexusService
 			}
 			return (results, total);
 		}
-		catch { return (new(), 0); }
+		catch { LastSearchFailed = true; return (new(), 0); }
 	}
 
 	/// <summary>
@@ -1001,10 +1025,10 @@ public class NexusService
 
 	/// <summary>
 	/// Fetches the numeric mod ids the connected user is tracking on Nexus, filtered to <paramref name="domain"/>
-	/// (the tracked list spans every game, so it is filtered here to the active game). Returns an empty list on any
-	/// failure. One API call regardless of how many mods are tracked.
+	/// (the tracked list spans every game, so it is filtered here to the active game). Null on any failure, which is
+	/// not the same as tracking nothing. One API call regardless of how many mods are tracked.
 	/// </summary>
-	public async Task<List<int>> GetTrackedModIdsAsync(string domain)
+	public async Task<List<int>?> GetTrackedModIdsAsync(string domain)
 	{
 		await _apiSemaphore.WaitAsync();
 		try
@@ -1012,7 +1036,7 @@ public class NexusService
 			using var req = BuildRequest(HttpMethod.Get, "https://api.nexusmods.com/v1/user/tracked_mods.json");
 			var resp = await HttpClient.SendAsync(req);
 			CaptureRateLimit(resp);
-			if (!resp.IsSuccessStatusCode) return new List<int>();
+			if (!resp.IsSuccessStatusCode) return null;
 
 			var ids = new List<int>();
 			foreach (JToken t in JArray.Parse(await resp.Content.ReadAsStringAsync()))
@@ -1022,16 +1046,16 @@ public class NexusService
 			}
 			return ids;
 		}
-		catch { return new List<int>(); }
+		catch { return null; }
 		finally { _apiSemaphore.Release(); }
 	}
 
 	/// <summary>
 	/// Fetches the set of mod ids for the active game that Nexus updated within <paramref name="period"/> ("1d",
 	/// "1w", or "1m"). One API call that lets the tracked-mods check find recently-updated mods without a per-mod
-	/// request. Returns an empty set on any failure.
+	/// request. Null on any failure.
 	/// </summary>
-	public async Task<HashSet<int>> GetRecentlyUpdatedModIdsAsync(string period)
+	public async Task<HashSet<int>?> GetRecentlyUpdatedModIdsAsync(string period)
 	{
 		// Minecraft's mods come from Modrinth; a Nexus call for it would name no game at all.
 		if (!UsesNexus) return new HashSet<int>();
@@ -1043,13 +1067,13 @@ public class NexusService
 			var resp = await HttpClient.SendAsync(req);
 			CaptureRateLimit(resp);
 			var set = new HashSet<int>();
-			if (!resp.IsSuccessStatusCode) return set;
+			if (!resp.IsSuccessStatusCode) return null;
 
 			foreach (JToken u in JArray.Parse(await resp.Content.ReadAsStringAsync()))
 				if ((int?)u["mod_id"] is int id) set.Add(id);
 			return set;
 		}
-		catch { return new HashSet<int>(); }
+		catch { return null; }
 		finally { _apiSemaphore.Release(); }
 	}
 
@@ -1393,4 +1417,17 @@ public class NexusService
 		req.Headers.Add("User-Agent", $"KinetixModManager/{AppVersion}");
 		return req;
 	}
+}
+
+/// <summary>The outcome of asking Nexus whether the stored API key works.</summary>
+public enum NexusConnection
+{
+	/// <summary>The key works.</summary>
+	Connected,
+
+	/// <summary>Nexus answered, and refused the key.</summary>
+	KeyRejected,
+
+	/// <summary>No usable answer: offline, rate limited, or an outage. Says nothing about the key.</summary>
+	Unreachable
 }

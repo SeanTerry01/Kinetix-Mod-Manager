@@ -468,6 +468,42 @@ public sealed class InstallOrderGuardTests
 	}
 
 	[Fact]
+	public void AFailedConnectionNeverStopsTheModsBeingListed()
+	{
+		// The mods are on disk. An outage used to return from here with the list empty and the key blamed.
+		string source = App("Form1.ModList.cs");
+		int failed = source.IndexOf("connection == NexusConnection.KeyRejected", StringComparison.Ordinal);
+		Assert.True(failed > 0);
+		int scan = source.IndexOf("ModScanner.ScanMods(", failed, StringComparison.Ordinal);
+
+		// From reporting the failure to the next branch of the refresh: nothing here may leave the method.
+		string afterFailure = source.Substring(failed, 500);
+		Assert.DoesNotContain("return;", afterFailure);
+		Assert.True(scan > failed);
+
+		// Nor may having no key at all stop the list being built.
+		int noKey = source.IndexOf("if (needsNexusKey)", StringComparison.Ordinal);
+		Assert.DoesNotContain("return;", source.Substring(noKey, source.IndexOf("Acquire the single-batch", noKey, StringComparison.Ordinal) - noKey));
+	}
+
+	[Fact]
+	public void AnUnansweredCheckIsNotReportedAsUpToDate()
+	{
+		string source = App("Form1.Updates.cs");
+		Assert.Contains("someUnanswered ? \"updates.checkFoundNoneSoFar\" : \"updates.checkCompleteNone\"", source);
+		Assert.Contains("if (latestVersion == null) Interlocked.Increment(ref _updateChecksUnanswered);", source);
+	}
+
+	[Fact]
+	public void AnUpdateCheckCannotLandOnTheWrongGame()
+	{
+		string source = App("Form1.Updates.cs");
+		Assert.Contains("GetLatestVersionAsync(group[0].NexusID ?? \"\", domain)", source);
+		Assert.Contains("if (latestVersion == null || _settings.ActiveGame != game) return;", source);
+		Assert.Contains("if (_updateCheckGame != _settings.ActiveGame)", source);
+	}
+
+	[Fact]
 	public void TheMultiPartAnswerReachesAnInstallForEveryLayout()
 	{
 		// A flag the Witcher 3 and BepInEx installs were never told about, so a second file replaced the first.

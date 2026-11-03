@@ -1127,6 +1127,7 @@ public partial class Form1
 	private async Task<string?> DownloadNewestMinecraftJarAsync(GameMod mod, string root)
 	{
 		string gameVersion = MinecraftGameVersionInUse(root);
+		Exception? failure = null;
 
 		try
 		{
@@ -1139,9 +1140,16 @@ public partial class Form1
 					return await ModrinthService.DownloadAsync(file, downloadsPath);
 			}
 		}
-		catch (Exception ex) { DiagnosticLog.WriteException("Modrinth", $"fetching the newest build of {mod.Name}", ex); }
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Modrinth", $"fetching the newest build of {mod.Name}", ex);
+			failure = ex;
+		}
 
-		if (string.IsNullOrEmpty(mod.GitHubRepo)) return null;
+		// Null means there is no build for this version, so a failure has to be something else. Being offline was reported
+		// as the mod having no build, which sends someone looking for the wrong thing.
+		if (string.IsNullOrEmpty(mod.GitHubRepo))
+			return failure == null ? null : throw new IOException(failure.Message, failure);
 
 		try
 		{
@@ -1160,9 +1168,11 @@ public partial class Form1
 			progress?.Complete();
 			return destination;
 		}
-		catch (Exception ex) { DiagnosticLog.WriteException("GitHub", $"fetching the newest release of {mod.Name}", ex); }
-
-		return null;
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("GitHub", $"fetching the newest release of {mod.Name}", ex);
+			throw new IOException(ex.Message, ex);
+		}
 	}
 
 	/// <summary>

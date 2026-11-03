@@ -847,7 +847,9 @@ public partial class Form1 : Form, IMessageFilter
 				}
 			}
 			if (form._settings.CheckForManagerUpdatesAtStartup)
-				await form.CheckForAppUpdates(manual: false);
+				// With a limit, because the mods cannot appear until this returns, and on a network that swallows requests that
+				// took half a minute of silence. A slow answer still arrives; it just no longer holds everything up.
+				await Task.WhenAny(form.CheckForAppUpdates(manual: false), Task.Delay(5000));
 
 			// Before the first-run wizard and before any session loads: if they own a game twice, that changes
 			// what the Games menu says and which mods they are about to see.
