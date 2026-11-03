@@ -253,7 +253,7 @@ public class SpokenStringGuardTests
     private static int PlaceholdersIn(string phrase)
     {
         int highest = -1;
-        foreach (Match m in Regex.Matches(phrase, @"(?<!\{)\{(\d+)[,:}]"))
+        foreach (Match m in Regex.Matches(phrase, @"(?<!\{)\{(\d+)[,:}|]"))
             highest = Math.Max(highest, int.Parse(m.Groups[1].Value));
         return highest + 1;
     }

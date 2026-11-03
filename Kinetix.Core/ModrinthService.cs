@@ -463,12 +463,18 @@ public static class ModrinthService
 		Directory.CreateDirectory(destinationFolder);
 		string path = Path.Combine(destinationFolder, file.FileName);
 
-		byte[] bytes = await KinetixHttp.Downloads.GetByteArrayAsync(file.Url);
-		string partial = path + ModArchive.PartialDownloadSuffix;
-		File.WriteAllBytes(partial, bytes);
-		File.Move(partial, path, overwrite: true);
-
-		return path;
+		CancellationToken cancel = RunningDownloads.Token;
+		RunningDownloads.Started();
+		try
+		{
+			byte[] bytes = await KinetixHttp.Downloads.GetByteArrayAsync(file.Url, cancel);
+			string partial = path + ModArchive.PartialDownloadSuffix;
+			File.WriteAllBytes(partial, bytes);
+			File.Move(partial, path, overwrite: true);
+			return path;
+		}
+		catch (Exception) when (cancel.IsCancellationRequested) { throw new DownloadCancelledException(); }
+		finally { RunningDownloads.Finished(); }
 	}
 
 	private static async Task<string> GetStringAsync(string url)

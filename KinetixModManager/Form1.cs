@@ -831,7 +831,9 @@ public partial class Form1 : Form, IMessageFilter
 				// Queued, not interrupting, so it follows the reader's description of the window instead of
 				// cutting it in half. Tolk keeps the order at any speech rate; the whole opening below relies on
 				// the same thing, which is what makes it safe for a user who reads much slower or faster.
-				form.Speak(Loc.T("app.started", form.GetShortcutString("Manual"), form.GetShortcutString("ContextHelp")));
+				form.Speak(form.ShortcutIsSet("Manual") && form.ShortcutIsSet("ContextHelp")
+					? Loc.T("app.started", form.GetShortcutString("Manual"), form.GetShortcutString("ContextHelp"))
+					: Loc.T("app.startedNoKeys"));
 				await WaitForSpeechAsync();
 
 				// Only when there is one. Starting with no session goes to the game list, which announces itself.
@@ -960,6 +962,16 @@ public partial class Form1 : Form, IMessageFilter
         if (_holdingForSpeech && m.Msg is WM_KEYDOWN or WM_SYSKEYDOWN)
         {
             if ((m.LParam.ToInt64() & RepeatFlag) == 0) _speechHoldSkipped = true;
+            return true;
+        }
+
+        // Stopping a download has to work from inside a screen too, such as the suite installing, and a prompt or view turns
+        // the window's key preview off. Everything else about the key is left to the ordinary path.
+        if (m.Msg == WM_KEYDOWN && OverlayIsOpen && (m.LParam.ToInt64() & RepeatFlag) == 0 && RunningDownloads.Any &&
+            _settings.Shortcuts.TryGetValue("CancelDownloads", out int cancelKey) && cancelKey != Shortcut.None &&
+            (int)((Keys)m.WParam.ToInt32() | Control.ModifierKeys) == cancelKey)
+        {
+            BeginInvoke(new Action(CancelRunningDownloads));
             return true;
         }
 

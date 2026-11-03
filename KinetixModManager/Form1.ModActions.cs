@@ -501,7 +501,7 @@ public partial class Form1
 			// says the key press worked. It is only spoken, not set as the status: "X is now disabled" is
 			// news about a moment, and leaving it in the title bar leaves it reading as the current state of
 			// the program long after it stopped being true.
-			Speak(Loc.T("modactions.toggleStatus", selectedMod.Name, selectedMod.IsEnabled ? Loc.T("modactions.enabled") : Loc.T("modactions.disabled")));
+			Speak(Loc.T("modactions.toggleStatus", selectedMod.Name, selectedMod.IsEnabled ? Loc.T("modactions.enabled") : Loc.T("modactions.disabled")) + HeldOffNote());
 
 			// Asset deployment and plugins.txt are reconciled inside RefreshModList, which re-scans the
 			// toggled enabled set and rewrites both for Skyrim/Fallout 4.

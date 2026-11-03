@@ -417,6 +417,22 @@ public sealed class GtkHeadSharedLogicTests : IDisposable
 	}
 
 	[Fact]
+	public void DeletingASwitchedOffModLeavesTheGamesOwnFile()
+	{
+		// Switching off parks the mod's copy, so what is at that path by then is not the mod's to delete.
+		string relative = Path.Combine("bin", "x64", "shared.dll");
+		string inGame = GameFile(relative, "from the mod");
+		string folder = WitcherMod(relative);
+		Witcher3ModFiles.SetExtrasEnabled(folder, false, GameProfiles.Witcher3, Log);
+		File.WriteAllText(inGame, "the game's own");
+
+		Witcher3ModFiles.RemoveExtras(folder, GameProfiles.Witcher3, Log);
+
+		Assert.Equal("the game's own", File.ReadAllText(inGame));
+		Assert.False(Directory.Exists(Path.Combine(_root, "game", Witcher3ModFiles.DisabledExtrasFolderName, "modCool")));
+	}
+
+	[Fact]
 	public void TheOutsideFileHelpersLeaveOtherGamesAlone()
 	{
 		string file = GameFile(Path.Combine("bin", "x64", "cool.asi"));

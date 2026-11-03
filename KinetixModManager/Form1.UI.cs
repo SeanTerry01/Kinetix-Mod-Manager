@@ -358,7 +358,9 @@ public partial class Form1
 		_installedSearchPause.Tick += delegate
 		{
 			_installedSearchPause.Stop();
-			FilterInstalledMods();
+			// A screen opened during the pause: the list is kept right, but a count would be read over that screen.
+			if (OverlayIsOpen) RebuildInstalledListBox();
+			else FilterInstalledMods();
 		};
 		txtSearchInstalled.TextChanged += delegate
 		{

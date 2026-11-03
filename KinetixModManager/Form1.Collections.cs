@@ -237,6 +237,12 @@ public partial class Form1
 				installedNames.Add(installedName);
 				installedDisplay.Add(cm.Name);
 			}
+			catch (DownloadCancelledException)
+			{
+				// Asked for, and already said, so the rest of the collection stops too.
+				skipped.Add(cm);
+				break;
+			}
 			catch (OperationCanceledException)
 			{
 				// The user cancelled this mod's FOMOD setup wizard — skip it and keep going, rather than failing.

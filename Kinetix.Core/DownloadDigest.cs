@@ -3,9 +3,33 @@ using System.Security.Cryptography;
 namespace KinetixModManager;
 
 /// <summary>The person asked for running downloads to stop.</summary>
-public sealed class DownloadCancelledException : OperationCanceledException
+/// <remarks>
+/// Not an <see cref="OperationCanceledException"/>. Install paths catch that as "the FOMOD wizard was cancelled", and carry on to
+/// the next mod.
+/// </remarks>
+public sealed class DownloadCancelledException : Exception
 {
 	public DownloadCancelledException() : base("The download was cancelled.") { }
+}
+
+/// <summary>
+/// Which downloads can be stopped. Shared, because they start from two places: the Nexus service and Modrinth's static calls.
+/// </summary>
+public static class RunningDownloads
+{
+	private static CancellationTokenSource _cancel = new();
+	private static int _running;
+
+	/// <summary>What a download about to start should watch. Read once, so a later cancel's replacement doesn't free it.</summary>
+	public static CancellationToken Token => Volatile.Read(ref _cancel).Token;
+
+	public static bool Any => Volatile.Read(ref _running) > 0;
+
+	public static void Started() => Interlocked.Increment(ref _running);
+	public static void Finished() => Interlocked.Decrement(ref _running);
+
+	/// <summary>Stops every download running now. Later ones aren't affected.</summary>
+	public static void CancelAll() => Interlocked.Exchange(ref _cancel, new CancellationTokenSource()).Cancel();
 }
 
 /// <summary>A download arrived, and it is not the file the site says it published.</summary>

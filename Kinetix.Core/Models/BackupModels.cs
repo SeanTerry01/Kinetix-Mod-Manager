@@ -16,6 +16,9 @@ public sealed class SafetyBackupMeta
 
 	/// <summary>Where a further file in this snapshot came from, such as a mod's own settings. Null when it holds none.</summary>
 	public string? ExtraFile { get; set; }
+
+	/// <summary>Whether the mods were being held out of the game when this was taken. Restoring puts that back as well.</summary>
+	public bool HeldOff { get; set; }
 }
 
 /// <summary>One restorable snapshot in the restore list.</summary>

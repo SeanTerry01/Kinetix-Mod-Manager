@@ -156,7 +156,7 @@ public static class MinecraftSuite
 	}
 
 	private static readonly Regex MinecraftVersionInName =
-		new(@"(?<![a-z])mc[-_ ]?(?<version>\d+(?:\.\d+)+(?:-[a-z]+-?\d+)?)", RegexOptions.IgnoreCase);
+		new(@"(?:(?<![a-z])mc[-_ ]?|\+)(?<version>\d+(?:\.\d+)+(?:-[a-z]+-?\d+)?)", RegexOptions.IgnoreCase);
 
 	private static bool NamesAMinecraftVersion(GitHubRelease release) =>
 		MinecraftVersionInName.IsMatch(release.TagName) || release.Assets.Any(a => MinecraftVersionInName.IsMatch(a.Name));

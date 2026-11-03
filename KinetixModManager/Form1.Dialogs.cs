@@ -98,6 +98,17 @@ public partial class Form1
 		hint: Loc.T("soundDemo.hint"));
 	}
 
+	/// <summary>
+	/// Themes live beside the program, and on an installed copy Windows refuses an ordinary user there. It reached the
+	/// generic "unexpected error" box, which said nothing about themes.
+	/// </summary>
+	private void SayThemeFolderRefused(Exception ex)
+	{
+		LogFailure("Themes", "Could not change the themes folder", ex);
+		_soundEngine.Play("error");
+		SpeakBox(Loc.T("themeMgr.folderRefused", themesPath));
+	}
+
 	/// <summary>Opens the audio theme manager dialog for creating, renaming, and switching sound themes.</summary>
 	private void ShowThemeManager()
 	{
@@ -156,12 +167,20 @@ public partial class Form1
 			// like it had done nothing, with no way to tell that from a failure.
 			if (Directory.Exists(themeFolder)) { Speak(Loc.T("themeMgr.nameTaken", themeName)); return; }
 
-			Directory.CreateDirectory(themeFolder);
-			foreach (string key in SoundEngine.SoundDescriptions.Keys)
+			try
 			{
-				Directory.CreateDirectory(Path.Combine(themeFolder, key));
+				Directory.CreateDirectory(themeFolder);
+				foreach (string key in SoundEngine.SoundDescriptions.Keys)
+				{
+					Directory.CreateDirectory(Path.Combine(themeFolder, key));
+				}
+				Directory.CreateDirectory(Path.Combine(themeFolder, "logo"));
 			}
-			Directory.CreateDirectory(Path.Combine(themeFolder, "logo"));
+			catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+			{
+				SayThemeFolderRefused(ex);
+				return;
+			}
 			Speak(Loc.T("themeMgr.created"));
 			LetSpeechFinish();
 			OpenFolder(themeFolder);
@@ -184,7 +203,12 @@ public partial class Form1
 					string soundFolder = Path.Combine(themeFolder, soundName);
 					if (!Directory.Exists(soundFolder))
 					{
-						Directory.CreateDirectory(soundFolder);
+						try { Directory.CreateDirectory(soundFolder); }
+						catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+						{
+							SayThemeFolderRefused(ex);
+							return;
+						}
 						foldersAdded++;
 					}
 				}
@@ -208,7 +232,12 @@ public partial class Form1
 				}
 				else if (SpeakBox(Loc.T("themeMgr.confirmDelete", themeName), Loc.T("common.confirm"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 				{
-					Directory.Delete(Path.Combine(themesPath, themeName), recursive: true);
+					try { Directory.Delete(Path.Combine(themesPath, themeName), recursive: true); }
+					catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+					{
+						SayThemeFolderRefused(ex);
+						return;
+					}
 					if (tempActiveTheme == themeName)
 					{
 						tempActiveTheme = "Default";

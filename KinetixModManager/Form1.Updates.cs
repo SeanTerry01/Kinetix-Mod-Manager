@@ -144,10 +144,9 @@ public partial class Form1
 	/// The newest version among the files a mod page offers as its main download, or <c>null</c> when there are
 	/// none to compare. Only ever used as a second opinion when the page's own version said the mod was current.
 	/// </summary>
-	private async Task<string?> NewestMainFileVersion(string nexusId)
+	private string? NewestMainFileVersion(List<string>? versions)
 	{
-		List<string> versions = await _nexusService.GetMainFileVersionsAsync(nexusId);
-		if (versions.Count == 0) return null;
+		if (versions == null || versions.Count == 0) return null;
 
 		// Highest rather than most recently uploaded. A page whose mod ships in parts has a MAIN file per part
 		// with a version of its own — Engine Fixes' preloader is version "7" beside a plugin at "7.0.21" — and
@@ -213,8 +212,9 @@ public partial class Form1
 				bool thorough = true;
 				if (!IsNewerVersion(installedVersion, latestVersion))
 				{
-					thorough = _nexusService.HasQuotaToSpare;
-					string? fromFiles = await NewestMainFileVersion(group[0].NexusID!);
+					List<string>? mainFiles = await _nexusService.GetMainFileVersionsAsync(group[0].NexusID!);
+					thorough = mainFiles != null;
+					string? fromFiles = NewestMainFileVersion(mainFiles);
 					if (IsNewerVersion(installedVersion, fromFiles)) latestVersion = fromFiles!;
 					if (_settings.ActiveGame != game) return;
 				}
@@ -661,6 +661,11 @@ public partial class Form1
                 }
                 else ResetStatus();
             }
+            catch (DownloadCancelledException)
+            {
+                // Asked for, and already said. The row stays, to be tried again.
+                ResetStatus();
+            }
             catch (Exception ex)
             {
                 _soundEngine.Play("error");
@@ -745,6 +750,12 @@ public partial class Form1
                     ResetStatus();
                     AnnounceUpdatesListEmptyIfFocused();
                 }
+                return;
+            }
+            catch (DownloadCancelledException)
+            {
+                // Asked for, and already said. The row stays, to be tried again.
+                ResetStatus();
                 return;
             }
             catch (Exception ex)

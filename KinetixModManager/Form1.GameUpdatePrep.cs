@@ -68,7 +68,7 @@ public partial class Form1
 			return;
 
 		SetStatus(Loc.T("prep.restoreWorking"));
-		_settings.DeploymentHeldOff.Remove(_settings.ActiveGame);
+		lock (_deploymentLock) _settings.DeploymentHeldOff.Remove(_settings.ActiveGame);
 		_settings.Save();
 		var forceAll = new HashSet<string>(
 			_allInstalledMods.Where(m => !m.IsGroup && m.IsEnabled).Select(PriorityKey),

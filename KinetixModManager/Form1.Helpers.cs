@@ -878,7 +878,7 @@ public partial class Form1
 				"SkyrimSE" => "Skyrim",
 				_ => GameProfiles.DisplayNameFor(_settings.ActiveGame)
 			};
-			text = Loc.T("help.walkthroughs", activeGameWalkthroughTitle, GetShortcutString("CycleFocus"));
+			text = Loc.T("help.walkthroughs", activeGameWalkthroughTitle, ShortcutIsSet("CycleFocus") ? GetShortcutString("CycleFocus") + " or Tab" : "Tab");
 			break;
 		case AppTab.Profiles:
 			text = Loc.T("help.profiles");
@@ -966,9 +966,6 @@ public partial class Form1
 	{
 		// Enter twice on "Load more" jumped a page and added the rows twice.
 		if (loadMore && _discoveryRunning > 0) return;
-		// A newer search replaces this one. Its results, or results arriving after a game switch, must not land in the list.
-		int search = ++_discoverySearch;
-		string searchGame = _settings.ActiveGame;
 
 		// Only a game whose mods come from Nexus needs a Nexus key to search. Minecraft's come from Modrinth,
 		// which has no accounts — and this used to send a Minecraft player away to log in to a service their
@@ -1020,6 +1017,10 @@ public partial class Form1
 		string phrase = loadMore ? Loc.T("discovery.loadingMore") : DiscoveryStartPhrase(searchType, searchTerm, category);
 		Speak(phrase);
 		SetStatus(phrase, speak: false);
+		// A newer search replaces this one. Its results, or results arriving after a game switch, must not land in the list.
+		// Claimed here and not at the top, or a search refused above would have orphaned the running one.
+		int search = ++_discoverySearch;
+		string searchGame = _settings.ActiveGame;
 		_discoveryRunning++;
 		try
 		{
@@ -1033,6 +1034,8 @@ public partial class Form1
 				: await SearchActiveGameCatalogueAsync(
 					searchType, searchTerm, _currentDiscoveryPage, pageSize, language, category, alsoTheOthers);
 			if (search != _discoverySearch || _settings.ActiveGame != searchGame) return;
+			// A page that failed to arrive wasn't read, so the next Load more asks for it again.
+			if (loadMore && _nexusService.LastSearchFailed && results.Count == 0) _currentDiscoveryPage--;
 			int offset = (_currentDiscoveryPage - 1) * pageSize;
 
 			// Drop the old inline "Load more" row (always last) before appending; firstNewIndex is then
@@ -1077,6 +1080,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
+			if (loadMore) _currentDiscoveryPage--;
 			SpeakBox(Loc.T("discovery.errorBox", FriendlyError(ex)));
 		}
 		finally

@@ -140,6 +140,12 @@ public partial class Form1
 		return conflicts;
 	}
 
+	/// <summary>
+	/// A sentence to add to anything that would otherwise sound as though a mod reached the game while it is being held out.
+	/// </summary>
+	private string HeldOffNote() =>
+		_settings.DeploymentHeldOff.Contains(_settings.ActiveGame) ? " " + Loc.T("loadorder.heldNote") : "";
+
 	/// <summary>Held by whichever pass is changing the game folder, because a refresh and an install can both want to.</summary>
 	private readonly object _deploymentLock = new();
 
@@ -185,7 +191,7 @@ public partial class Form1
 
 		CreateSafetyBackup(Loc.T("safety.reasonRebuild"));
 		SetStatus(Loc.T("loadorder.rebuilding"));
-		_settings.DeploymentHeldOff.Remove(_settings.ActiveGame);
+		lock (_deploymentLock) _settings.DeploymentHeldOff.Remove(_settings.ActiveGame);
 		_settings.Save();
 		var forceAll = new HashSet<string>(
 			_allInstalledMods.Where(m => !m.IsGroup && m.IsEnabled).Select(PriorityKey),

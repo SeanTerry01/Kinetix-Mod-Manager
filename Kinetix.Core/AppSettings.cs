@@ -1055,8 +1055,9 @@ public class AppSettings : IModScanContext
 				Shortcut.Letter('D') | Shortcut.Shift | Shortcut.Control
 			},
 			{
+				// S for stop. C is taken: Ctrl+Shift+C is Close Session, set on its menu item, not in this table.
 				"CancelDownloads",
-				Shortcut.Letter('C') | Shortcut.Shift | Shortcut.Control
+				Shortcut.Letter('S') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"OpenErrorLog",

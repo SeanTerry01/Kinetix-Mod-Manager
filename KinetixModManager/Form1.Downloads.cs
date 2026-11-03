@@ -73,7 +73,8 @@ public partial class Form1
 	/// </summary>
 	private void CancelRunningDownloads()
 	{
-		if (!_nexusService.AnyDownloadRunning)
+		// Between two mods of an Update All nothing is downloading for a moment, and that run still has to stop.
+		if (!_nexusService.AnyDownloadRunning && !isUpdatingAll)
 		{
 			Speak(Loc.T("downloads.noneRunning"));
 			return;

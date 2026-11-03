@@ -1864,6 +1864,10 @@ public static class ModFileSystem
 		if (GameProfiles.Find(activeGame)?.IsWitcher3 != true) return;
 		if (string.IsNullOrEmpty(gameFolder) || string.IsNullOrEmpty(modFolderPath)) return;
 
+		// ⚠️ A file this mod has parked is not in the game: what sits at that path is the game's own, put back when the mod was
+		// switched off, or another mod's. Deleting the mod deleted that too, and only verifying the game could bring it back.
+		var parkedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
 		try
 		{
 			// A mod that is currently disabled has these files parked outside the game; delete that copy too, or
@@ -1871,7 +1875,12 @@ public static class ModFileSystem
 			string parked = Path.Combine(
 				gameFolder, WitcherDisabledExtrasFolderName,
 				Witcher3ModSettings.BareName(Path.GetFileName(modFolderPath.TrimEnd(Path.DirectorySeparatorChar))));
-			if (Directory.Exists(parked)) ForceDeleteDirectory(parked);
+			if (Directory.Exists(parked))
+			{
+				foreach (string file in Directory.GetFiles(parked, "*", SearchOption.AllDirectories))
+					parkedFiles.Add(Path.GetRelativePath(parked, file));
+				ForceDeleteDirectory(parked);
+			}
 		}
 		catch (Exception ex)
 		{
@@ -1890,11 +1899,12 @@ public static class ModFileSystem
 			{
 				string? relative = entry?.ToString();
 				if (string.IsNullOrEmpty(relative)) continue;
+				if (parkedFiles.Contains(relative.Replace('/', Path.DirectorySeparatorChar))) continue;
 
 				string full = Path.GetFullPath(Path.Combine(gameFolder, relative));
 
 				// Never step outside the game folder, whatever the manifest says.
-				if (!full.StartsWith(Path.TrimEndingDirectorySeparator(Path.GetFullPath(gameFolder)) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) continue;
+				if (!full.StartsWith(WithTrailingSeparator(Path.GetFullPath(gameFolder)), StringComparison.OrdinalIgnoreCase)) continue;
 				if (!File.Exists(full)) continue;
 
 				File.SetAttributes(full, FileAttributes.Normal);
@@ -1947,7 +1957,7 @@ public static class ModFileSystem
 				string outOfGame = Path.GetFullPath(Path.Combine(parked, relative));
 
 				// Never step outside the game folder, whatever the manifest says.
-				if (!inGame.StartsWith(Path.TrimEndingDirectorySeparator(Path.GetFullPath(gameFolder)) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) continue;
+				if (!inGame.StartsWith(WithTrailingSeparator(Path.GetFullPath(gameFolder)), StringComparison.OrdinalIgnoreCase)) continue;
 
 				string from = enable ? outOfGame : inGame;
 				string to = enable ? inGame : outOfGame;
@@ -2530,6 +2540,10 @@ public static class ModFileSystem
 	/// <summary>Deletes a directory tree robustly: clears read-only attributes first (the common cause of an
 	/// "access is denied" on delete) and retries a few times for a transient lock (e.g. an antivirus scanning a
 	/// freshly written file).</summary>
+	/// <summary>A folder as a prefix, so "game" does not match "game2", and a drive root such as "D:\\" keeps its one separator.</summary>
+	private static string WithTrailingSeparator(string folder) =>
+		Path.EndsInDirectorySeparator(folder) ? folder : folder + Path.DirectorySeparatorChar;
+
 	private static void ForceDeleteDirectory(string path) => ModOnDisk.DeleteDirectory(path);
 
 	/// <summary>Public entry point for deleting a mod's folder from the managed mods directory. Uses the same

@@ -46,10 +46,17 @@ public static class Witcher3ModFiles
 		string gameFolder = GameFolderOf(modFolderPath);
 		if (gameFolder.Length == 0) return;
 
+		// ⚠️ A file this mod has parked is not in the game: what sits at that path is the game's own, put back when the mod was
+		// switched off, or another mod's. Deleting the mod must not delete that.
+		var parkedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
 		try
 		{
 			// A switched-off mod has these parked rather than in the game, where the user cannot see them.
 			string parked = Path.Combine(gameFolder, DisabledExtrasFolderName, Witcher3ModSettings.BareName(FolderName(modFolderPath)));
+			if (Directory.Exists(parked))
+				foreach (string file in Directory.GetFiles(parked, "*", SearchOption.AllDirectories))
+					parkedFiles.Add(Path.GetRelativePath(parked, file));
 			ModOnDisk.DeleteDirectory(parked);
 		}
 		catch (Exception ex)
@@ -61,6 +68,8 @@ public static class Witcher3ModFiles
 		{
 			try
 			{
+				if (parkedFiles.Contains(relative.Replace('/', Path.DirectorySeparatorChar))) continue;
+
 				string full = Path.GetFullPath(Path.Combine(gameFolder, relative));
 
 				// Never step outside the game folder, whatever the manifest says.

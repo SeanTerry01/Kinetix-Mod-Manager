@@ -211,18 +211,21 @@ public class NexusService
 	/// worth an extra call; running the user out of API calls and failing every later check is not, so a low
 	/// remaining allowance answers with nothing and the check falls back to what the page said.
 	/// </summary>
-	public async Task<List<string>> GetMainFileVersionsAsync(string nexusId)
+	/// <returns>The versions, or null when the files could not be asked about, which isn't the same as there being nothing newer.</returns>
+	public async Task<List<string>?> GetMainFileVersionsAsync(string nexusId)
 	{
-		if (!HasQuotaToSpare) return new List<string>();
+		if (!HasQuotaToSpare) return null;
 
 		await _apiSemaphore.WaitAsync();
 		try
 		{
-			if (!HasQuotaToSpare) return new List<string>();
+			if (!HasQuotaToSpare) return null;
 			await Task.Delay(Random.Shared.Next(100, 1000));
-			return ModPartRules.MainFileVersions(await GetModFilesAsync(nexusId));
+			List<string> versions = ModPartRules.MainFileVersions(await GetModFilesAsync(nexusId));
+			// The file list answers empty when it fails, too.
+			return versions.Count == 0 ? null : versions;
 		}
-		catch { return new List<string>(); }
+		catch { return null; }
 		finally { _apiSemaphore.Release(); }
 	}
 
@@ -809,8 +812,8 @@ public class NexusService
 	public async Task DownloadFileWithProgressAsync(string uri, string destinationPath, IProgress<double>? progress = null, string? expectedDigest = null)
 	{
 		string partial = destinationPath + ModArchive.PartialDownloadSuffix;
-		CancellationToken cancel = Volatile.Read(ref _downloadsCancel).Token;
-		Interlocked.Increment(ref _downloadsRunning);
+		CancellationToken cancel = RunningDownloads.Token;
+		RunningDownloads.Started();
 		try
 		{
 			using HttpResponseMessage response = await KinetixHttp.Downloads.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cancel).ConfigureAwait(false);
@@ -837,18 +840,15 @@ public class NexusService
 		}
 		finally
 		{
-			Interlocked.Decrement(ref _downloadsRunning);
+			RunningDownloads.Finished();
 		}
 	}
 
 	/// <summary>Whether a file is being downloaded right now.</summary>
-	public bool AnyDownloadRunning => Volatile.Read(ref _downloadsRunning) > 0;
+	public bool AnyDownloadRunning => RunningDownloads.Any;
 
 	/// <summary>Stops every download running now. Later ones aren't affected.</summary>
-	public void CancelDownloads() => Interlocked.Exchange(ref _downloadsCancel, new CancellationTokenSource()).Cancel();
-
-	private CancellationTokenSource _downloadsCancel = new();
-	private int _downloadsRunning;
+	public void CancelDownloads() => RunningDownloads.CancelAll();
 
 	/// <summary>How long a transfer may go without a single byte arriving before it counts as stuck.</summary>
 	private static readonly TimeSpan DownloadStallTimeout = TimeSpan.FromSeconds(90);

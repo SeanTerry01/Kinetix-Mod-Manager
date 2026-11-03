@@ -81,9 +81,15 @@ public partial class Form1
 	}
 
 	/// <summary>What the player's own Fabric install is for. A modpack's Fabric sits in the same folder, and it isn't theirs.</summary>
-	private static string DetectOwnMinecraftVersion(string root) =>
-		FabricInstaller.DetectInstalledGameVersion(root,
+	private static string DetectOwnMinecraftVersion(string root)
+	{
+		string own = FabricInstaller.DetectInstalledGameVersion(root,
 			MinecraftModpacks.FindInstalled(MinecraftModpacks.PacksFolder).Select(p => p.FabricVersionId));
+
+		// A pack and the player can share one Fabric id. Leaving it out then made the player's own Fabric vanish, and the suite
+		// went on to choose a new Minecraft for them.
+		return own.Length > 0 ? own : FabricInstaller.DetectInstalledGameVersion(root);
+	}
 
 	/// <summary>
 	/// Makes sure an accessibility mod has been chosen, asking the first time and remembering the answer.
@@ -295,6 +301,7 @@ public partial class Form1
 		// Through the installer rather than straight to the folder: a differently named copy of the mod stops the game starting.
 		string downloaded = await ModrinthService.DownloadAsync(file, downloadsPath);
 		await InstallJarAsync(downloaded, modsFolder);
+		RecordDownloadInstalled(downloaded);
 		return downloaded;
 	}
 
@@ -335,6 +342,7 @@ public partial class Form1
 		await _nexusService.DownloadFileWithProgressAsync(jar.Url, path, null, jar.Digest);
 		// Through the installer rather than straight to the folder: a differently named copy of the mod stops the game starting.
 		await InstallJarAsync(path, modsFolder);
+		RecordDownloadInstalled(path);
 		return path;
 	}
 
@@ -345,7 +353,10 @@ public partial class Form1
 		req.Headers.UserAgent.ParseAdd($"KinetixModManager/{NexusService.AppVersion}");
 		using HttpResponseMessage resp = await NexusService.HttpClient.SendAsync(req);
 		NoteGitHubLimit(resp);
-		if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+		// Told to stop, or GitHub is unwell: that says nothing about this mod, so it has to read as not knowing.
+		// Anything else that refuses is this repository's own answer, gone or blocked, and one of those can't stop every move.
+		bool couldNotAsk = _gitHubPause.IsActive(DateTime.UtcNow) || (int)resp.StatusCode >= 500;
+		if (!couldNotAsk && !resp.IsSuccessStatusCode) return null;
 		resp.EnsureSuccessStatusCode();
 		return GitHubReleases.ParseList(await resp.Content.ReadAsStringAsync()) ?? throw new InvalidDataException("GitHub's answer could not be read.");
 	}
@@ -632,6 +643,12 @@ public partial class Form1
 					failed.Add(Path.GetFileName(library.RelativePath));
 				}
 			}
+			catch (DownloadCancelledException)
+			{
+				// Asked for, and already said. A box about missing libraries would be wrong.
+				ResetStatus();
+				return false;
+			}
 			catch (Exception ex)
 			{
 				LogFailure("Minecraft", $"Could not fetch {library.RelativePath}", ex);
@@ -861,6 +878,13 @@ public partial class Form1
 		// on, and a rival access mod coming back on says everything twice.
 		List<GameMod> mods = installed.Where(m => m.IsEnabled).ToList();
 
+		// Before anything is downloaded. Found only at the Fabric step, it wasted them all.
+		if (FabricInstaller.IsLauncherRunning())
+		{
+			SpeakBox(Loc.T("mc.fabric.closeLauncherBox"), Loc.T("mc.fabric.closeLauncherTitle"), MessageBoxButtons.OK);
+			return false;
+		}
+
 		Speak(Loc.T("mc.move.checking", newVersion));
 
 		Dictionary<GameMod, string> hashOf;
@@ -922,6 +946,7 @@ public partial class Form1
 		// access mod to be switched off on a new version: a silent game, with no way back offered.
 		var fetched = new List<(GameMod Mod, string Jar)>();
 		var couldNotUpdate = new List<GameMod>();
+		if (ready.Count > 0) Speak(Loc.T("mc.move.fetching", ready.Count, newVersion));
 		try
 		{
 			for (int i = 0; i < ready.Count; i++)
@@ -978,7 +1003,9 @@ public partial class Form1
 
 		string modsFolder = MinecraftLayout.ModsFolderFor(root);
 		int updated = 0;
-		foreach ((GameMod mod, string jar) in fetched)
+		// The access mod first, so that if it can't go in, nothing else has moved and the whole thing can be stepped back.
+		bool IsAccessMod(GameMod m) => string.Equals(m.UniqueId, accessMod.FabricModId, StringComparison.OrdinalIgnoreCase);
+		foreach ((GameMod mod, string jar) in fetched.OrderByDescending(f => IsAccessMod(f.Mod)).ToList())
 		{
 			try
 			{
@@ -987,6 +1014,21 @@ public partial class Form1
 				await InstallJarAsync(jar, modsFolder);
 				RecordDownloadInstalled(jar);
 				updated++;
+			}
+			catch (Exception ex) when (IsAccessMod(mod))
+			{
+				// Switching it off here would leave a silent game on a new version, which nobody agreed to. The new Fabric
+				// staying on disk does no harm, because F5 goes by the version in use.
+				LogFailure(mod.Name, $"Failed to update for Minecraft {newVersion}", ex);
+				_settings.MinecraftGameVersion = pinnedBefore;
+				_settings.Save();
+				try { if (pinnedBefore.Length > 0) FabricInstaller.RepointQuickPlay(root, FabricInstaller.ProfileKeyFor(pinnedBefore)); }
+				catch (Exception repoint) { DiagnosticLog.WriteException("Fabric", "pointing the launcher back after a stopped move", repoint); }
+
+				ResetStatus();
+				_soundEngine.Play("error");
+				SpeakBox(Loc.T("mc.move.accessModNotInstalled", accessMod.DisplayName, newVersion), Loc.T("mc.move.title", newVersion), MessageBoxButtons.OK);
+				return false;
 			}
 			catch (Exception ex)
 			{
@@ -1278,7 +1320,7 @@ public partial class Form1
 					return await ModrinthService.DownloadAsync(file, downloadsPath);
 			}
 		}
-		catch (Exception ex)
+		catch (Exception ex) when (ex is not DownloadCancelledException)
 		{
 			DiagnosticLog.WriteException("Modrinth", $"fetching the newest build of {mod.Name}", ex);
 			failure = ex;

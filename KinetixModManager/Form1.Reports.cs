@@ -318,7 +318,7 @@ public partial class Form1
 			}
 		}
 
-		string header = Loc.T("reports.verifyHeader", mod.Name, inPlace, missing, overridden);
+		string header = Loc.T("reports.verifyHeader", mod.Name, inPlace, missing, overridden) + HeldOffNote();
 		if (!mod.IsEnabled)
 			problems.Insert(0, new ReportRow { Text = Loc.T("reports.verifyDisabledNote") });
 		ShowReportDialog(Loc.T("reports.verifyTitle"), header, Loc.T("reports.verifyAllInPlace"), problems, null);
@@ -522,7 +522,7 @@ public partial class Form1
 			? Loc.T(rows.Count == 1 ? "reports.itemCountOne" : "reports.itemCount", rows.Count)
 				+ (actionHint != null ? ". " + actionHint : "")
 			: emptyMessage);
-		if (hasRows && _aiService.IsConfigured) opening += ". " + Loc.T("ai.reportHint", GetShortcutString("DiagnoseAi"));
+		if (hasRows && _aiService.IsConfigured) opening += ". " + (ShortcutIsSet("DiagnoseAi") ? Loc.T("ai.reportHint", GetShortcutString("DiagnoseAi")) : Loc.T("ai.reportHintNoKey"));
 		// A finding-level advisory (e.g. the loose-files explanation): spoken as context in the opening so the
 		// list rows themselves can stay short and scannable, rather than each carrying a paragraph.
 		if (hasRows && !string.IsNullOrEmpty(openingNote)) opening += ". " + openingNote;

@@ -41,7 +41,7 @@
 
 ## ✨ Cancel a download
 
-*   **Ctrl+Shift+C stops downloads**, and stops Update All. A large file could only be stopped by closing the manager.
+*   **Ctrl+Shift+S stops downloads**, and stops Update All. A large file could only be stopped by closing the manager.
 *   **Downloads no longer slow the keyboard**, because they stopped working through the window's own message queue.
 *   **The manager's own installer, SMAPI's installer and GitHub installs are checked against the checksum GitHub publishes**, and
     thrown away if they don't match. This catches a file damaged or changed on the way. It can't prove who made a release.

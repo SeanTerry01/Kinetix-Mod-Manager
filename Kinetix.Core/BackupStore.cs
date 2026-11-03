@@ -21,7 +21,6 @@ public static class BackupStore
 {
 	/// <summary>The timestamp appended to a backup's file name, and the length that suffix always occupies.</summary>
 	private const string StampFormat = "yyyyMMdd_HHmmss";
-	private const int StampLength = 16;   // "_" + 15 characters of stamp
 
 	/// <summary>
 	/// The mod name a backup file belongs to, with its timestamp removed.
@@ -33,9 +32,9 @@ public static class BackupStore
 	public static string ModNameFromFileName(string path)
 	{
 		string name = Path.GetFileNameWithoutExtension(path);
-		return name.Length > StampLength && name[name.Length - StampLength] == '_'
-			? name.Substring(0, name.Length - StampLength)
-			: name;
+		// The ending "_2" is a second backup within the same second. Read as part of the name, it hid that backup from pruning.
+		System.Text.RegularExpressions.Match stamped = System.Text.RegularExpressions.Regex.Match(name, @"^(?<mod>.+)_\d{8}_\d{6}(?:_\d+)?$");
+		return stamped.Success ? stamped.Groups["mod"].Value : name;
 	}
 
 	/// <summary>
@@ -189,7 +188,8 @@ public static class BackupStore
 
 			FileStream claimed;
 			try { claimed = new FileStream(partial, FileMode.CreateNew, FileAccess.Write, FileShare.None); }
-			catch (IOException) when (File.Exists(partial)) { continue; /* somebody else has it; try the next */ }
+			// Either: whoever held it may have finished and moved it to the real name a moment ago.
+			catch (IOException) when (File.Exists(partial) || File.Exists(dest)) { continue; /* somebody else has it; try the next */ }
 
 			// In this order. Another backup finishing moves its file to the real name, so the claim has to be held before
 			// looking there, or both could end up wanting it.
@@ -222,7 +222,11 @@ public static class BackupStore
 	public static void PruneBackups(string modName, string backupsPath, int maxCount)
 	{
 		if (!Directory.Exists(backupsPath)) return;
-		var files = Directory.GetFiles(backupsPath, SafeName(modName) + "_*.zip")
+		// Told apart by the whole name. The pattern alone also matches "Foo_Patch" when pruning "Foo", which deleted another mod's backups.
+		string safe = SafeName(modName);
+		var files = Directory.GetFiles(backupsPath, safe + "_*.zip")
+			.Where(p => ModNameFromFileName(p) is var name &&
+				(string.Equals(name, safe, StringComparison.OrdinalIgnoreCase) || string.Equals(name, safe + "_Delete", StringComparison.OrdinalIgnoreCase)))
 			.Select(p => new FileInfo(p))
 			.OrderByDescending(f => f.CreationTime)
 			.ToList();

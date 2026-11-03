@@ -18,6 +18,13 @@ public sealed class MinecraftSafetyTests : IDisposable
 		return File.ReadAllText(Path.Combine(dir!.FullName, "KinetixModManager", file));
 	}
 
+	private static string AppPath(string file)
+	{
+		DirectoryInfo? dir = new DirectoryInfo(AppContext.BaseDirectory);
+		while (dir != null && !File.Exists(Path.Combine(dir.FullName, "KinetixModManager.slnx"))) dir = dir.Parent;
+		return Path.Combine(dir!.FullName, "KinetixModManager", file);
+	}
+
 	private static GitHubRelease Release(string tag, params string[] assets) =>
 		new(tag, assets.Select(a => new GitHubAsset(a, "https://example.test/" + a, 1)).ToList());
 
@@ -143,6 +150,71 @@ public sealed class MinecraftSafetyTests : IDisposable
 			ModInstaller.InstallFile(incoming, mods);
 
 		Assert.True(File.Exists(sameName), "It was the only other copy, and deleting it could leave no working mod.");
+	}
+
+	[Fact]
+	public void NoCommandClaimsAKeyAMenuItemAlreadyHas()
+	{
+		// A menu item's own key fires before the window's, so a command given the same one is never reached: Cancel Downloads
+		// on Ctrl+Shift+C closed the game session instead.
+		var settings = new AppSettings();
+		settings.InitializeDefaults();
+		var defaults = settings.Shortcuts.Values.ToHashSet();
+
+		foreach (string file in Directory.GetFiles(Path.GetDirectoryName(AppPath("Form1.cs"))!, "Form1*.cs"))
+			foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(
+				File.ReadAllText(file), @"ShortcutKeys\s*=\s*((?:Keys\.\w+(?:\s*\|\s*)?)+)"))
+			{
+				int combination = 0;
+				foreach (string part in m.Groups[1].Value.Split('|', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+					combination |= part["Keys.".Length..] switch
+					{
+						"Control" => Shortcut.Control,
+						"Shift" => Shortcut.Shift,
+						"Alt" => Shortcut.Alt,
+						var key when key.Length == 1 => Shortcut.Letter(key[0]),
+						var key => (int)Enum.Parse<System.ConsoleKey>(key),
+					};
+				Assert.False(defaults.Contains(combination), $"{m.Value} in {Path.GetFileName(file)} is also a default shortcut.");
+			}
+	}
+
+	[Fact]
+	public void ATagWithOnlyAVersionAfterThePlusStillNamesIt()
+	{
+		// Fabric API's own shape. Newest is for another Minecraft, so it is not offered.
+		var releases = new[] { Release("0.161.0+26.3") };
+
+		Assert.Null(MinecraftSuite.ReleaseForGameVersion(releases, "26.2", mustNameIt: false));
+		Assert.Equal("0.161.0+26.3", MinecraftSuite.ReleaseForGameVersion(releases, "26.3", mustNameIt: false)!.TagName);
+	}
+
+	[Fact]
+	public void PruningOneModLeavesAnotherWhoseNameStartsTheSame()
+	{
+		string backups = Path.Combine(_root, "backups");
+		Directory.CreateDirectory(backups);
+		string jar = Jar(Path.Combine(_root, "mods"), "any.jar", "any");
+		BackupStore.CreateBackup(jar, "modFoo_Patch", backups);
+		BackupStore.CreateBackup(jar, "modFoo", backups);
+
+		BackupStore.PruneBackups("modFoo", backups, 0);
+
+		var left = Directory.GetFiles(backups, "*.zip").Select(BackupStore.ModNameFromFileName).ToList();
+		Assert.Equal("modFoo_Patch", Assert.Single(left));
+	}
+
+	[Fact]
+	public void AMoveCannotSwitchOffTheAccessModAfterThePinMoved()
+	{
+		string move = App("Form1.Minecraft.cs");
+		int start = move.IndexOf("private async Task<bool> MoveToMinecraftVersionAsync", StringComparison.Ordinal);
+		int pin = move.IndexOf("_settings.MinecraftGameVersion = newVersion", start, StringComparison.Ordinal);
+		int stopped = move.IndexOf("mc.move.accessModNotInstalled", pin, StringComparison.Ordinal);
+		int switching = move.IndexOf("MinecraftMovePlan.FailedThatMustGoOff", pin, StringComparison.Ordinal);
+
+		Assert.True(stopped > pin && (switching < 0 || stopped < switching));
+		Assert.Contains("OrderByDescending(f => IsAccessMod(f.Mod))", move);
 	}
 
 	[Fact]

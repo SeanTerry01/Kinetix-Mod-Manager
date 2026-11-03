@@ -240,6 +240,12 @@ public partial class Form1
 					installedNames.Add(installedName);
 					installed.Add(req.ModName);
 				}
+				catch (DownloadCancelledException)
+				{
+					// Asked for, and already said, so the rest stop too.
+					manual.Add(req);
+					break;
+				}
 				catch (OperationCanceledException)
 				{
 					manual.Add(req); // user cancelled the FOMOD wizard — leave it for a manual pass

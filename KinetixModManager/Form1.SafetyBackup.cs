@@ -50,6 +50,7 @@ public partial class Form1
 				ModPriority = new List<string>(_settings.ModPriority.TryGetValue(_settings.ActiveGame, out var mp) ? mp : new List<string>()),
 				PluginOrder = new List<string>(_settings.PluginOrder.TryGetValue(_settings.ActiveGame, out var po) ? po : new List<string>()),
 				ExtraFile = extraFile,
+				HeldOff = _settings.DeploymentHeldOff.Contains(_settings.ActiveGame),
 			};
 			if (extraFile != null && File.Exists(extraFile))
 				File.Copy(extraFile, Path.Combine(dir, SafetyExtraFileName), overwrite: true);
@@ -219,9 +220,20 @@ public partial class Form1
 			if (item.Meta.ExtraFile is { Length: > 0 } extra)
 			{
 				string saved = Path.Combine(item.Dir, SafetyExtraFileName);
-				if (File.Exists(saved)) File.Copy(saved, extra, overwrite: true);
+				if (File.Exists(saved))
+				{
+					if (Path.GetDirectoryName(extra) is { Length: > 0 } extraFolder) Directory.CreateDirectory(extraFolder);
+					File.Copy(saved, extra, overwrite: true);
+				}
 				// It did not exist before the change, so it goes.
 				else if (File.Exists(extra)) File.Delete(extra);
+			}
+
+			// The snapshot taken before a purge has to undo the purge, and left held, the deployment below would do nothing.
+			lock (_deploymentLock)
+			{
+				if (item.Meta.HeldOff) _settings.DeploymentHeldOff.Add(game);
+				else _settings.DeploymentHeldOff.Remove(game);
 			}
 
 			// Reinstate the saved load order in settings so the manager's state matches the restored files.

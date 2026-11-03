@@ -201,7 +201,7 @@ public partial class Form1
 				string value = option.AllowedValues[list.SelectedIndex];
 				if (!on.Remove(value)) on.Add(value);
 				list.Items[list.SelectedIndex] = RowText(value);
-				Speak(RowText(value));
+				Speak(RowText(value), interrupt: true);
 			};
 
 			done.Click += delegate

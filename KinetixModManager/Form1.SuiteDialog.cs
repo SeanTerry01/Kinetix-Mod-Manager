@@ -836,8 +836,20 @@ public partial class Form1
 	private async Task ShowSuiteOnceSettledAsync(bool accessModJustChosen)
 	{
 		string game = _settings.ActiveGame;
-		while (Volatile.Read(ref _refreshInFlight) > 0) await Task.Delay(25);
-		if (_settings.ActiveGame == game && !_shuttingDown && !OverlayIsOpen) ShowAccessibilitySuiteDialog(accessModJustChosen);
+		long sayAt = Environment.TickCount64 + 1000;
+		while (Volatile.Read(ref _refreshInFlight) > 0)
+		{
+			// A large setup takes many seconds to read, and this was silence after asking for the suite.
+			if (sayAt != 0 && Environment.TickCount64 >= sayAt)
+			{
+				Speak(Loc.T("suite.waitingForList"));
+				sayAt = 0;
+			}
+			await Task.Delay(25);
+		}
+		if (_settings.ActiveGame != game || _shuttingDown) return;
+		if (OverlayIsOpen) { Speak(Loc.T("suite.waitedTooLong")); return; }
+		ShowAccessibilitySuiteDialog(accessModJustChosen);
 	}
 
 	/// <summary>Whether a mod with this id is installed and switched on. See <see cref="HasModUniqueId"/> for how ids are matched.</summary>
