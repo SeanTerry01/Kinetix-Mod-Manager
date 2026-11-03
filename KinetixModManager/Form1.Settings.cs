@@ -1198,9 +1198,12 @@ public partial class Form1
 			// Required only when the loaded game actually needs it. Everything below is the whole of Save, so
 			// demanding a key unconditionally meant a Minecraft player could not change any setting at all
 			// until they supplied one that would never be used.
-			if (keyIsRequired && string.IsNullOrEmpty(text2))
+			// A question rather than a refusal. Every other setting on every tab used to be held hostage to this one, for
+			// someone who only has local mods.
+			if (keyIsRequired && string.IsNullOrEmpty(text2) &&
+				SpeakBox(Loc.T("settings.errApiKeyBox"), Loc.T("ui.appTitle"), MessageBoxButtons.YesNo) != DialogResult.Yes)
 			{
-				SpeakBox(Loc.T("settings.errApiKeyBox"));
+				return;
 			}
 			else
 			{

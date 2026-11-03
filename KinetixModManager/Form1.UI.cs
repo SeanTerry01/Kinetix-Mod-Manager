@@ -145,7 +145,7 @@ public partial class Form1
 		grpSelected.DropDownItems.Add(ShortcutLabel("menu.viewChangelog", "ViewChangelog"), null, delegate { ViewModChangelog(); });
 		grpSelected.DropDownItems.Add(ShortcutLabel("menu.viewDescription", "ViewDescription"), null, delegate { ViewModDescription(); });
 		grpSelected.DropDownItems.Add(ShortcutLabel("menu.endorse", "Endorse"), null, delegate { EndorseSelectedMod(); });
-		grpSelected.DropDownItems.Add(Loc.T("menu.verifyDeployment"), null, delegate { VerifyModDeployment(); });
+		grpSelected.DropDownItems.Add(Loc.T("menu.verifyDeployment"), null, delegate { VerifyModDeployment(); }).Name = "menuVerifyDeployment";
 		toolStripMenuItem2.DropDownItems.Add(grpSelected);
 
 		// Submenu: installing and updating mods.
@@ -202,7 +202,7 @@ public partial class Form1
 		grpHealth.DropDownItems.Add(ShortcutLabel("menu.checkBrokenMods", "CheckBrokenMods"), null, async delegate { await ShowBrokenModsReport(); });
 		grpHealth.DropDownItems.Add(ShortcutLabel("menu.fileConflicts", "FileConflicts"), null, delegate { ShowFileConflictsReport(); });
 		grpHealth.DropDownItems.Add(Loc.T("menu.updateCoverage"), null, async delegate { await ShowUpdateCoverageReport(); }).Name = "menuUpdateCoverage";
-		grpHealth.DropDownItems.Add(ShortcutLabel("menu.pluginSlots", "PluginSlots"), null, delegate { AnnouncePluginSlotUsage(); });
+		grpHealth.DropDownItems.Add(ShortcutLabel("menu.pluginSlots", "PluginSlots"), null, delegate { AnnouncePluginSlotUsage(); }).Name = "menuPluginSlots";
 		grpHealth.DropDownItems.Add(Loc.T("menu.resetIgnoredReqs"), null, delegate { ResetIgnoredRequirements(); });
 		toolStripMenuItem2.DropDownItems.Add(grpHealth);
 

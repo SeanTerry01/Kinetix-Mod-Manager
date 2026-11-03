@@ -416,3 +416,66 @@ public sealed class OperationGateTests
 		Assert.True(gate.IsBusy);
 	}
 }
+
+/// <summary>The manager's own documents read as words. Line for line, so a search result still lands in the right place.</summary>
+public sealed class DocumentCleaningTests
+{
+	private static string Clean(string content)
+	{
+		var node = new DocNode("Topic") { Content = content };
+		DocOutline.CleanForReading(new[] { node });
+		return node.Content!;
+	}
+
+	[Theory]
+	[InlineData("*   **F5**: Launch the game.", "F5: Launch the game.")]
+	[InlineData("- A plain item", "A plain item")]
+	[InlineData("Use the `mods` folder.", "Use the mods folder.")]
+	[InlineData("### A heading in the text", "A heading in the text")]
+	[InlineData("> A quotation", "A quotation")]
+	[InlineData("See [Searching a Document](#searching-a-document-ctrl--f) for more.", "See Searching a Document for more.")]
+	public void PunctuationThatIsOnlyLayoutGoes(string line, string expected)
+	{
+		Assert.Equal(expected, Clean(line));
+	}
+
+	[Fact]
+	public void ADividingLineBecomesBlank()
+	{
+		Assert.Equal("", Clean("---"));
+	}
+
+	[Fact]
+	public void ALinkToAWebsiteKeepsItsAddress()
+	{
+		// The pane offers it: Enter on the line opens it.
+		Assert.Contains("https://example.com", Clean("See [the site](https://example.com) for more."));
+	}
+
+	[Fact]
+	public void ANumberedStepKeepsItsNumber()
+	{
+		Assert.Equal("1. Do this first.", Clean("1. Do this first."));
+	}
+
+	[Fact]
+	public void TheNumberOfLinesDoesNotChange()
+	{
+		// A search result is a line number, so this is what keeps it pointing at the right place.
+		string cleaned = Clean("# Title\n\n*   item\n---\ntext");
+
+		Assert.Equal(5, cleaned.Split('\n').Length);
+	}
+
+	[Fact]
+	public void SubTopicsAreCleanedToo()
+	{
+		var child = new DocNode("Child") { Content = "**bold**" };
+		var parent = new DocNode("Parent");
+		parent.Children.Add(child);
+
+		DocOutline.CleanForReading(new[] { parent });
+
+		Assert.Equal("bold", child.Content);
+	}
+}

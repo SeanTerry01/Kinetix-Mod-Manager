@@ -704,7 +704,7 @@ public partial class Form1
 		// Built from the games themselves: written out by hand, this still named only the first three games after
 		// three more had been added.
 		DialogResult result = SpeakBox(
-			Loc.T("games.noneDetectedBox", string.Join("\n", GameProfiles.AllDisplayNames.Select(n => "- " + n))),
+			Loc.T("games.noneDetectedBox", string.Join(", ", GameProfiles.AllDisplayNames)),
 			Loc.T("games.noneDetectedTitle"),
 			MessageBoxButtons.YesNo,
 			MessageBoxIcon.Information

@@ -1,5 +1,21 @@
 ﻿# Unreleased
 
+## 💬 What is said is true, and easier to hear
+
+*   **Directions that led nowhere are fixed.** "Link it first with Control plus L" opened the wrong prompt, "Find New Mods" is a
+    tab that does not exist, and "open Downloads History" pointed at the wrong list.
+*   **"Returned to filtered view" said the opposite of what had just happened**, and "Auto-updates Enabled" promised something
+    the manager does not do. "PERMANENTLY DELETE" did not say a backup is kept. All corrected.
+*   **Save Anyway.** Settings refused to save anything at all without a Nexus API key. It now asks, and nobody with local mods
+    is sent back to Settings on every refresh.
+*   **The Setup Wizard can now finish for a Minecraft player**, who was told forever that a key they do not need was not done.
+*   **Important words come first** in the warnings before launching a game, now that they are the only thing said.
+*   **"1 mods" is now "1 mod"** in the messages you hear most.
+*   **The manual and this change log read as words**, without the punctuation that was only there for layout, such as the stars
+    around a bold word. A screen reader could read those out.
+*   **Menu items that could never work on your game are hidden** rather than refusing when chosen.
+*   **Fewer raw errors and paths in the middle of a sentence**, in the install messages and the longest of the others.
+*   **The manual and README are corrected**, with a new section on what you will hear first.
 ## ⌨️ The keyboard, everywhere
 
 *   **A question can be read again.** If something cut a prompt off, you were left answering a question you had not heard.

@@ -10,7 +10,7 @@ You choose which game you're managing from the **Games** menu (press **Alt**, th
 2.  **Configuring Paths**: The app attempts to find your mods folder automatically for the selected game (the `Mods` folder for Stardew Valley, the `Data` folder for Skyrim Special Edition and Fallout 4, the `BepInEx\plugins` folder for Moonlight Peaks, the `mods` folder for The Witcher 3, or the `mods` folder inside `.minecraft` for Minecraft). It detects games on **any drive**, including secondary Steam libraries, and finds both the Steam and GOG copies of the games sold on both. If it succeeds, the path will be pre-filled. If not, please use the "Browse" button in settings to select it.
     *   **If a game can't be found**, picking it offers a small dialog with three choices — **Locate Installed Folder** (browse to the folder yourself, useful for unusual install locations or when running under Linux/Wine, where you point it at the game folder on your `Z:` drive), **View Store Links** (where to buy the game — only the stores that actually sell it, so Minecraft offers **Minecraft.net**), or **Cancel**.
     *   **For Minecraft there is a fourth choice, Install Minecraft, and it comes first.** If you own Minecraft but have never installed it, choose it: the manager asks which accessibility mod you want, then downloads the game, Java and the Fabric mod loader into the normal `.minecraft` folder — asking before anything large downloads — with no need for Mojang's launcher. It then loads Minecraft and opens the accessibility suite to install your mod. To play, sign in with **Mods → Game and Maintenance → Minecraft Account**.
-3.  **Nexus Integration**: To search for mods or check for updates, you **must** provide a **Nexus Mods API Key** (sometimes called a Nexus ID). This is a standard requirement for all mod managers. See the **"Nexus Mods Setup"** section below for instructions on how to get yours for free.
+3.  **Nexus Integration**: To search Nexus for mods or check it for updates, you need a **Nexus Mods API Key**. Minecraft needs no key, because its mods come from Modrinth. See the **"Nexus Mods Setup"** section below for instructions on how to get yours for free.
 4.  **Closing Settings**: If you aren't ready to configure everything yet, you can press **Escape** or click **Cancel** to close the settings and browse the app. You can reopen this screen at any time by pressing **Ctrl + P**.
 5.  **Getting Help**: 
     *   Press **F1** at any time to open this manual. It opens as a navigable list: arrow **Up / Down** through the sections, press **Right Arrow or Enter** to open a section that has sub-topics, **Left Arrow or Backspace** to go back, and **Tab** to move into the text on the right and read it line by line. Press **Ctrl + F** to search the whole manual for a phrase — see [Searching a Document](#searching-a-document-ctrl--f).
@@ -20,6 +20,18 @@ You choose which game you're managing from the **Games** menu (press **Alt**, th
 7.  **On the game list**: while the "select a game" list is showing — at startup, or after you close a session — **F1** (manual), **F2** (change log), and **Ctrl + P** (Settings) all work, so you can read the manual or set a game folder before loading anything. When you close one of those windows, focus returns to the game list. **Escape** exits the manager.
 
 ---
+
+## What You Will Hear First
+
+The logo plays, then the manager welcomes you and says how to reach the manual. On your very first run the Setup Wizard opens: choose your game, add a Nexus API key if your game uses Nexus (Minecraft does not), and check the game folder. After that you land on the first tab.
+
+Three things are worth knowing from the start:
+
+*   **Shift + F1** lists the shortcuts for the tab you are on.
+*   **Alt** opens the menus.
+*   **When a question is cut off**, press **Shift + Tab** from its choices to reach the question, and use the arrow keys to read it. Nothing is answered until you choose.
+
+**With NVDA 2026.3 or newer**, the manager can tell when NVDA has finished a sentence, so long sentences are not cut off at slow speech rates, and a long-running job does not build up a queue of progress figures. Other screen readers work as before.
 
 ## Nexus Mods Setup: Obtaining Your API Key
 
@@ -192,7 +204,7 @@ What happens next depends on where you were:
 *   **You were in that game already.** Nothing changes: the mod downloads and you are asked whether to install it, as always.
 *   **You were in a different game.** The mod is downloaded first — a download link expires within minutes, so waiting is not an option — and then you are asked what to do:
     *   **Switch to that game and install it now.** The manager loads the mod's game and carries on with the install.
-    *   **Save it for that game and stay here.** Nothing about your session changes. The mod is filed under its own game, so the next time you load that game it is waiting in **Downloads History** (Ctrl + Shift + W), one keypress from installed.
+    *   **Save it for that game and stay here.** Nothing about your session changes. The mod is filed under its own game, so the next time you load that game it is waiting in **Install a Download Not Yet Installed** (Ctrl + Shift + P), one keypress from installed.
     *   **Escape** does the same as saving it, and says so. The download is never thrown away.
 *   **No game was open.** There is nothing to interrupt, so the manager loads the mod's game and installs it, telling you which game it went to.
 *   **You own that game twice.** You are asked which copy the mod is for. The link does not say, and the two copies are separate setups — installing into one does not install into the other.
@@ -237,12 +249,12 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **F3**: Open the **Mod Documentation** viewer for the active game's accessibility mod (see "Mod Documentation Viewer" below). Inside any of the three document viewers, F3 instead moves to the next search result.
 *   **Shift + F1**: **Context Help** - Speaks the shortcuts for your current tab.
 *   **Ctrl + F** (inside the F1, F2 or F3 viewer): Search the whole document for a phrase; **F3** / **Shift + F3** then step through the results. See "Searching a Document" below.
-*   **F5**: Launch the active game through its mod loader (SMAPI for Stardew Valley, SKSE for Skyrim Special Edition, F4SE for Fallout 4).
+*   **F5**: Launch the active game through its mod loader (SMAPI for Stardew Valley, SKSE for Skyrim Special Edition, F4SE for Fallout 4, BepInEx for Moonlight Peaks, and directly for The Witcher 3 and Minecraft).
 *   **F6**: **Cycle Focus** - Jump between the tab headers and the primary list in each tab (and the web view in the Wiki tab).
 *   **F9**: **Diagnose Log with AI** - Send the current SMAPI or game log to your chosen AI provider for a plain-language explanation and fixes (opt-in; see "AI Log Diagnosis" below).
 *   **Alt**: Access the Menu Bar.
 *   **Ctrl + P**: Open the **Settings Dashboard**.
-*   **Ctrl + L**: Change/Login with Nexus API Key.
+*   **Ctrl + L**: Change/Login with Nexus API Key. With a mod selected in the Installed list it links that mod instead, as Ctrl + K does; on the SMAPI log it uploads the log.
 *   **Ctrl + Shift + A**: Speak your remaining Nexus **API requests** for this hour and today (see "Checking Your Nexus API Requests" below).
 *   **Ctrl + D**: Open your `downloads` folder.
 *   **Ctrl + B**: Open your `backups` folder.
@@ -252,7 +264,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Ctrl + H**: Open the **Game and Mod Controls** viewer for the active game (a navigable drill-down of every control — see "Game and Mod Controls Viewer" below).
 *   **Ctrl + Shift + H**: Open your **Search History** for the active game (see "Searching for Mods" below).
 *   **Ctrl + Shift + F7**: Turn **Curation Mode** on or off — the switch that reveals the commands for building your own Suggested Mods list. Works either way round, since turning it on is what it is for (see "Suggested Mods" below).
-*   **F7**: **Mark or unmark** the selected mod as a suggested mod. Works in the **Installed Mods** list and in **Find New Mods**. Only while Curation Mode is on.
+*   **F7**: **Mark or unmark** the selected mod as a suggested mod. Works in the **Installed Mods** list and in **Search for Mods**. Only while Curation Mode is on.
 *   **Shift + F7**: Open **the mods you have marked**, across every game, where their categories and reasons can be edited. Only while Curation Mode is on.
 *   **Escape**: Close the Manual, Settings, or Sound Demo windows.
 
@@ -269,7 +281,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Ctrl + G**: Open the mod's page on Nexus Mods.
 *   **Ctrl + Shift + E**: **Endorse or un-endorse** the selected mod on Nexus Mods (see "Endorsing Mods" below).
 *   **Ctrl + Shift + G**: **View Selected Mod's Changelog** - the selected mod's version history from Nexus (see "Mod Changelog and Full Description" below).
-*   **Ctrl + Shift + I**: **View Selected Mod's Full Description** - the selected mod's complete Nexus page description (see below). Both also work in the Updates and Find New Mods lists.
+*   **Ctrl + Shift + I**: **View Selected Mod's Full Description** - the selected mod's complete Nexus page description (see below). Both also work in the Updates and Search for Mods lists.
 *   **Ctrl + Y**: **View Dependencies** - Opens the dependency view for the selected mod: what it *requires* (and whether each is installed) and what is *required by* it (other installed mods that depend on it). See "Dependency View and Resolver" below.
 *   **Ctrl + Q**: **Resolve Missing Requirements** - Finds every missing required mod for the selected mod and, on Skyrim/Fallout 4 and Minecraft, offers to download and install them automatically. See "Dependency View and Resolver" below.
 *   **Ctrl + Shift + B**: **Check for Broken Mods** - Cross-references your installed mods against the community compatibility list and reports any known to be broken, abandoned, obsolete, or incompatible. See "Checking Your Mods" below.
@@ -303,7 +315,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Enter (on a search result)**: Restore the full log view and **jump** to that specific line.
 *   **Ctrl + Q**: **Quick-Fix** detected issue (if a missing mod is found).
 *   **Ctrl + L**: Upload log to SMAPI.io for troubleshooting help.
-*   **F4**: Open the raw log file in Notepad.
+*   **F4**: Open the raw log file inside the manager.
 
 ### Search & Updates Tabs
 *   **Enter**: 
@@ -324,7 +336,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 ### Log Tab Shortcuts (Skyrim & Fallout 4 only)
 *The **Log** tab (shown as "Fallout 4 Logs" or "Skyrim Logs") appears only for those games. See the "Game Logs" section below.*
 *   **Ctrl + Shift + R**: **Refresh** the log — re-reads it live, even while the game is running.
-*   **F4**: Open the currently selected log file in Notepad.
+*   **F4**: Open the currently selected log file inside the manager.
 *   **Ctrl + C**: Copy the selected line(s) to the clipboard.
 
 ### Wiki Tab Shortcuts
@@ -340,7 +352,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 
 ## How the Mods Menu Is Organized
 
-The **Mods** menu (press **Alt**, then arrow to **Mods**) keeps its most common actions — **Install from Archive**, **Update All Mods**, and **Launch Game** — at the top, and groups everything else into **submenus** so you're not faced with one long list. Arrow to a submenu and press **Right Arrow** or **Enter** to open it. The submenus are:
+The **Mods** menu (press **Alt**, then arrow to **Mods**) keeps its most common actions — **Install from File**, **Update All Available**, and **Launch** — at the top, and groups everything else into **submenus** so you're not faced with one long list. Arrow to a submenu and press **Right Arrow** or **Enter** to open it. The submenus are:
 
 *   **Selected Mod** — actions on the mod highlighted in your list: edit note, settings, config file, or manifest; view dependencies; resolve missing requirements; view changelog or description; endorse; verify files.
 
@@ -349,11 +361,11 @@ There are three ways into a mod's own files and settings, and it's worth knowing
 *   **Ctrl + E — Change Selected Mod's Settings.** The usual one. Where the mod's author has described its settings — a Content Patcher pack, a Mod Configuration Menu, a BepInEx config, or an ordinary Stardew config the manager can make sense of — you get a **list to arrow through** with the author's own explanation of each setting and the values it accepts, rather than a file to type into.
 *   **Ctrl + Shift + M — Edit Selected Mod's Config File Directly.** The same `config.json` opened as text in the JSON editor. Use it for a setting the author never described, or a value outside the ones they listed, which a list of choices cannot offer. Most mods only write a config file the first time the game runs with the mod enabled, so a brand-new mod may not have one yet.
 *   **Ctrl + M — Edit Selected Mod's Manifest.** The mod's identity — its name, version and update links — rather than its settings.
-*   **Install and Update Mods** — auto-match Nexus IDs, reinstall a downloaded mod, and check tracked mods for updates.
+*   **Install and Update Mods** — auto-match Nexus IDs, install a download not yet installed, reinstall a downloaded mod, tidy mod folder names, and check tracked mods for updates.
 *   **Suggested Mods** — read the suggested mods for this game, and import or export a list. With **Curation Mode** switched on it also holds the commands for building a list of your own: mark or unmark the selected mod, review the mods you have marked, and manage your categories. Those three are not shown while Curation Mode is off, so the menu never offers you a command you cannot use. See "Suggested Mods" below.
 *   **Profiles and Collections** — save a profile, export or install a Collection, import from Mod Organizer 2.
-*   **Health and Reports** — Check My Setup, Check Mod Requirements, Check for Broken Mods, File Conflicts, Update Coverage Report, Plugin Slot Usage, and Reset Ignored Requirements.
-*   **Load Order and Files** (Skyrim & Fallout 4 only) — auto-sort, choose file-conflict winners, load-order rules, rebuild or purge deployment, and export or import your load order. This whole submenu is hidden for Stardew Valley.
+*   **Health and Reports** — Check My Setup, Check Mod Requirements, Check for Broken Mods, File Conflicts, Update Coverage Report, Plugin Slot Usage, and Reset Hidden Requirement Warnings.
+*   **Load Order and Files** (Skyrim & Fallout 4 only) — auto-sort, choose file-conflict winners, load-order rules, rebuild or purge deployment, and export or import your load order. This whole submenu is hidden for every other game.
 *   **Game and Maintenance** — install the accessibility suite, uninstall the script extender, edit game INI files, manage save games, prepare for and restore after a game update, and restore a safety backup.
 
 Every command still has its usual keyboard shortcut, which works no matter which submenu it now lives in.
@@ -486,7 +498,7 @@ The **Search for Mods** tab allows you to browse and search for mods on Nexus Mo
 
 ## Downloading Mods from Nexus Mods (Two Ways)
 
-Whenever you're on a mod's page on the Nexus Mods website — whether you got there from the Find New Mods tab, the Accessibility Suite Installer, or the Updates tab — there are **two** ways to download it, and **either one works**. A common misunderstanding is that the only way is "Manual Download" followed by Ctrl+I; in fact the **"Mod Manager Download"** button is usually the easier choice, because the manager then installs the mod for you.
+Whenever you're on a mod's page on the Nexus Mods website — whether you got there from the Search for Mods tab, the Accessibility Suite Installer, or the Updates tab — there are **two** ways to download it, and **either one works**. A common misunderstanding is that the only way is "Manual Download" followed by Ctrl+I; in fact the **"Mod Manager Download"** button is usually the easier choice, because the manager then installs the mod for you.
 
 On the mod's **Files** tab, each file has two buttons:
 
@@ -573,7 +585,7 @@ To **clear** a note, open it with **Ctrl + Shift + O**, delete all the text, and
 
 ## Mod Changelog and Full Description
 
-For any mod that comes from Nexus, you can pull two things straight from its Nexus page into a readable, scrollable window — without opening a browser. Both work on the selected mod in the **Installed Mods**, **Updates**, or **Find New Mods** list, and both read the content aloud when they open (press **Escape** to close, or arrow through the text at your own pace).
+For any mod that comes from Nexus, you can pull two things straight from its Nexus page into a readable, scrollable window — without opening a browser. Both work on the selected mod in the **Installed Mods**, **Updates**, or **Search for Mods** list, and both read the content aloud when they open (press **Escape** to close, or arrow through the text at your own pace).
 
 *   **Ctrl + Shift + G — Changelog:** the mod's version history, newest version first, so you can see exactly what changed — handy before deciding to update, or after, to know what you got.
 *   **Ctrl + Shift + I — Full Description:** the complete write-up from the mod's Nexus page, not the short one-line summary. The page's formatting is converted to plain text so it reads cleanly.
@@ -590,7 +602,7 @@ Both need you to be connected with your Nexus API key, and both fetch live from 
 
 Endorsing a mod on Nexus Mods is a quick way to thank its author — endorsements are the main way authors see that people value their work. Kinetix lets you do it without leaving the app.
 
-1.  Select a mod that came from Nexus in your **Installed Mods**, **Updates**, or **Find New Mods** list.
+1.  Select a mod that came from Nexus in your **Installed Mods**, **Updates**, or **Search for Mods** list.
 2.  Press **Ctrl + Shift + E**.
 3.  The manager checks whether you have already endorsed it, then asks the matching question — **"Endorse [mod] on Nexus?"** if you haven't, or **"Remove your endorsement from [mod]?"** if you have. Press **Yes** to confirm or **No** to cancel; nothing happens until you confirm.
 4.  The result is spoken, for example "Endorsed [mod]."
@@ -683,8 +695,8 @@ The Witcher 3 needs no mod loader — no SMAPI, no script extender, no BepInEx. 
     *   **The manager records what the installer did**, by comparing the game folder before and after, so it knows which files outside the mod folder belong to that mod.
     *   **Deleting the mod offers to run its own uninstaller** if it registered one — that uninstaller holds the installer's list of every file it wrote, which is more than the manager could work out for itself. Saying no still removes the mod folder.
     *   **Disabling the mod moves those outside files out of the game** into a holding folder called `_KinetixDisabledMods`, and enabling puts them back unchanged. This matters: a plugin sitting beside the game's executable is loaded by the game whatever the mod folder is called, so renaming the folder alone would leave a "disabled" mod still running.
-*   **Editing the game's settings**: **Mods → Edit Game Configuration** opens `user.settings` and `input.settings` in the accessible settings editor. They are INI files despite the extension.
-*   **Saves** live in `Documents\The Witcher 3\gamesaves` and are handled by the Save Manager.
+*   **Editing the game's settings**: **Mods → Edit Game Settings (INI Files)** opens `user.settings` and `input.settings` in the accessible settings editor. They are INI files despite the extension.
+*   **Saves** live in `Documents\The Witcher 3\gamesaves`. The Save Manager is for Skyrim and Fallout 4, so these are left to the game.
 *   **The log tab** shows the logs that mods write beside the game's executable in `bin\x64` — the game itself keeps none.
 *   **Launching with F5 skips the game's launcher.** The Witcher 3 normally starts through `REDprelauncher.exe`, a graphical window that a screen reader cannot use, and that launcher is also what chooses between the DirectX 11 and DirectX 12 builds. The manager starts `witcher3.exe` directly instead, wherever your copy of the game is installed. It starts the **DirectX 11** build in `bin\x64`, which the accessibility mod was developed against, when your copy has one. The Remastered update removed that build, so on an updated copy it starts the DirectX 12 build in `bin\x64_dx12`.
 
@@ -726,7 +738,7 @@ For the **Mod Documentation** viewer (**F3**) this means a link now reads as its
 
 ## Mod Documentation Viewer (F3)
 
-Press **F3** at any time (or choose **Help → Mod Documentation**) to open the how-to-play documentation for the accessibility mod that matches your current game — **Stardew Access** for Stardew Valley, **Skyrim Access** for Skyrim Special Edition, or **Fallout 4 Access** for Fallout 4. This saves you hunting for a README on your computer or searching for it on GitHub.
+Press **F3** at any time (or choose **Help → Mod Documentation**) to open the how-to-play documentation for the accessibility mod that matches your current game — **Stardew Access** for Stardew Valley, **Skyrim Access** for Skyrim Special Edition, **Fallout 4 Access** for Fallout 4, and the matching mod for the other games. This saves you hunting for a README on your computer or searching for it on GitHub.
 
 It opens in the **same navigable window as the User Manual**:
 
@@ -743,7 +755,7 @@ How it stays current and works offline:
 *   In the background it also **refreshes from the source** — the live GitHub documentation for Stardew Access, or (when you are logged in to Nexus) the mod's current Nexus page for Skyrim Access and Fallout 4 Access. The refreshed copy is shown the **next** time you open the viewer.
 *   For exact, up-to-the-minute keybindings of an installed mod, the **Game and Mod Controls** viewer (**Ctrl + H**) reads the live keys from the mod's config/MCM; the Mod Documentation viewer is the broader "how do I use this mod" guide.
 
-F3 is the default shortcut and can be remapped in **Settings → Shortcut Manager** (the action is named "ModDocs").
+F3 is the default shortcut and can be remapped in **Help → Shortcut Customization**, where it is listed as Mod Documentation.
 
 ---
 
@@ -841,8 +853,7 @@ in recent memory, and the version it asks for is not something most computers ha
 told the size. It is installed alongside your game, inside your `.minecraft` folder, and nothing else on the
 computer is changed.
 
-**None of this needs an account or a password.** Signing in stays the launcher's job; the manager only reads
-who you already are.
+**None of this needs an account or a password,** unless you choose to sign in with Minecraft Account for online play.
 
 **Nothing is downloaded when nothing is missing.** The check reads what is already on the disk and only asks
 Mojang when something is genuinely absent, so it costs nothing on a normal launch and the game still starts
@@ -1125,7 +1136,7 @@ The dialog shows a **status list**, with one line per required mod telling you w
 
 **How "installed" is decided.** The script extender counts as installed when **its files** are in the game folder — the versioned runtime file (`skse64_1_6_1170.dll`) or the loader (`skse64_loader.exe`). The runtime file *is* the script extender; the loader is one convenient way to start it. This matters on **GOG** especially, where many players load SKSE through the SSE Engine Fixes preloader and have no loader at all: judging by the loader alone reported their working SKSE as missing. Launching is unaffected — the manager starts the game through the loader where there is one and through the game's own program where there is not.
 
-**Which script extender have I got? (Skyrim & Fallout 4)** SKSE and F4SE install as loose files in the game folder rather than as mods, so they never appear in your mod list — and this status list is where you can ask what is installed. The version reported is the version of the file that will **actually load for your game build**, which is not always the newest file present: installing a newer script extender replaces the loader but only adds its own build's file, leaving the previous one in place for the game you are still running. Their line gives you both numbers that matter: *"F4SE (Script Extender): Installed, version 0.7.9, built for game 1.11.240, which matches your game."* The first is the script extender's own version, as written on its download page; the second is the game build it was compiled against, which is what decides whether it loads at all. If the two don't line up the line says so — *"built for game 1.11.221, but your game is 1.11.240, so it will not load — reinstall it"* — and pressing **Install Missing Mods** puts the matching build in place. The line may also mention files "left by earlier installs and now unused": each version of the script extender ships its own file named for the game build it serves, and installing a new one leaves the previous file behind. That is normal and harmless — the script extender only ever loads the file matching the game you are running — and the manager mentions it only so a file you never chose to keep isn't a mystery.
+**Which script extender have I got? (Skyrim & Fallout 4)** SKSE and F4SE install as loose files in the game folder rather than as mods, so they never appear in your mod list — and this status list is where you can ask what is installed. The version reported is the version of the file that will **actually load for your game build**, which is not always the newest file present: installing a newer script extender replaces the loader but only adds its own build's file, leaving the previous one in place for the game you are still running. Their line gives you both numbers that matter: *"F4SE (Script Extender): Installed, version 0.7.9, built for game 1.11.240, which matches your game."* The first is the script extender's own version, as written on its download page; the second is the game build it was compiled against, which is what decides whether it loads at all. If the two don't line up the line says so — *"built for game 1.11.221, but your game is 1.11.240, so it will not load — reinstall it"* — and pressing **Install Missing Suite Mods** puts the matching build in place. The line may also mention files "left by earlier installs and now unused": each version of the script extender ships its own file named for the game build it serves, and installing a new one leaves the previous file behind. That is normal and harmless — the script extender only ever loads the file matching the game you are running — and the manager mentions it only so a file you never chose to keep isn't a mystery.
 
 There are two ways to get the missing mods:
 
@@ -1162,7 +1173,7 @@ The **Accessibility Suite** above is the set of mods a game *needs* before it ca
 
 These are two separate lists with two separate promises, and it is worth keeping them straight. Everything in the suite is required. **Nothing in the Suggested Mods list is required** — every entry is optional, several of them make the game easier as well as more reachable, and each one tells you *why* it is there so you can decide for yourself rather than taking the list's word for it.
 
-Open it from the **Mods** menu → **Suggested Mods** → **"Suggested Mods for This Game"**. It has no keyboard shortcut by default, but you can give it one in **Settings → Shortcut Manager** (the action is named "SuggestedMods").
+Open it from the **Mods** menu → **Suggested Mods** → **"Suggested Mods for This Game"**. It has no keyboard shortcut by default, but you can give it one in **Help → Shortcut Customization**.
 
 ### Reading the list
 
@@ -1202,10 +1213,10 @@ Curation Mode is off to begin with, and while it is off the Suggested Mods subme
 
 With Curation Mode on:
 
-*   **F7** — **mark** the mod you are on as one worth suggesting, or **unmark** it if it is already on your list. This works both in your **Installed Mods** list and in **Find New Mods**, which matters: you can suggest a mod you have never installed, instead of having to install something on all six games just to recommend it.
+*   **F7** — **mark** the mod you are on as one worth suggesting, or **unmark** it if it is already on your list. This works both in your **Installed Mods** list and in **Search for Mods**, which matters: you can suggest a mod you have never installed, instead of having to install something on all six games just to recommend it.
 *   **Shift + F7** — open **the mods you have marked**, across every game.
 
-All three can be remapped in **Settings → Shortcut Manager** (the actions are named "CurationMode", "MarkSuggestion" and "SuggestedList"). That is worth knowing if your screen reader already claims one of them: F7 was chosen because it is the last bare function key the manager does not use, but a screen-reader add-on can lay claim to any key, in which case the app never sees it and rebinding is the fix.
+All three can be remapped in **Help → Shortcut Customization**. That is worth knowing if your screen reader already claims one of them: F7 was chosen because it is the last bare function key the manager does not use, but a screen-reader add-on can lay claim to any key, in which case the app never sees it and rebinding is the fix.
 
 Marking a mod asks you two things. First a **category** — what kind of wall this mod removes — picked from a list. Then a **reason**, in one line. The reason is the part worth taking care over: *"Auto-Fishing"* tells a reader nothing, whereas *"the fishing minigame is a moving bar with no audio cue"* tells them at once whether they need it. You can leave the reason empty and it will say so, but the entry is much less use that way.
 
@@ -1421,7 +1432,7 @@ On a save in the list:
 
 ## Smart Game Launching (F5)
 The manager does more than just launch the game:
-*   It announces when it starts launching the game through its mod loader (SMAPI for Stardew Valley, SKSE for Skyrim Special Edition, F4SE for Fallout 4). Moonlight Peaks has no separate loader to run — BepInEx hooks the game itself — so for that game the manager **asks Steam to start it**, which is also what stops the game restarting itself (see below).
+*   It announces when it starts launching the game through its mod loader (SMAPI for Stardew Valley, SKSE for Skyrim Special Edition, F4SE for Fallout 4, BepInEx for Moonlight Peaks, and directly for The Witcher 3 and Minecraft). Moonlight Peaks has no separate loader to run — BepInEx hooks the game itself — so for that game the manager **asks Steam to start it**, which is also what stops the game restarting itself (see below).
 *   It speaks and displays *"Game is loaded and running"* once the game is active.
 *   It detects when you close the game and announces *"Game closed."*
     *   **Why that isn't always instant.** A Steam game started from its own program file notices it wasn't launched by Steam and **restarts itself** — the game loads, your mods load and announce themselves, and then the whole thing shuts down and starts again about fifteen seconds later. The manager used to take that first shutdown at face value and announce *"Game closed"* while the game was in fact still starting. It now follows the game itself rather than the program it started, and allows for a restart during the first few minutes of a session, so a startup restart is no longer mistaken for you quitting. Once a session has been running a while, closing the game is announced within a few seconds as before.
@@ -1491,7 +1502,7 @@ The reports in the **Mods menu → Health and Reports** submenu help you spot pr
 
 If you'd rather run everything at once than open each report separately, choose **Check My Setup** (or press **Ctrl + Shift + K**). It runs all the individual checks in one pass — the **Windows runtime** (see below), **missing requirements** (missing masters, script extender, and Nexus requirements), the **plugin limit**, **incomplete mods** (a mod that needs two downloads and only got one, such as SSE Engine Fixes without its preloader — press **Enter** on that line to fetch the missing part), **files no longer used** (a part of a mod your game version has outgrown, such as the Engine Fixes preloader on Skyrim 1.7.99 and newer — **Enter** offers to send it to the Recycle Bin), **known-broken or incompatible mods**, and **file conflicts** — and gives you a **single spoken summary** broken down by category, for example *"Setup health check found 3 problems: 1 missing requirement, 2 broken or incompatible mods."* If everything's fine it says *"No problems found. Your setup looks healthy."*
 
-The findings then appear as one combined list, most serious first. Each row keeps the same actions it has in its own report: press **Enter** to search for or open a missing mod, **Delete** to hide a requirement warning that doesn't apply to you, or **F9** to ask the AI about that finding (if AI is set up). You stay in the list after fetching a missing part or removing a leftover one, and that line disappears once it's fixed. Only searching for a missing mod takes you out of the list, because the search happens on the Find New Mods tab. This is the quickest way to check a setup is sound — for example after installing several mods, or before launching.
+The findings then appear as one combined list, most serious first. Each row keeps the same actions it has in its own report: press **Enter** to search for or open a missing mod, **Delete** to hide a requirement warning that doesn't apply to you, or **F9** to ask the AI about that finding (if AI is set up). You stay in the list after fetching a missing part or removing a leftover one, and that line disappears once it's fixed. Only searching for a missing mod takes you out of the list, because the search happens on the Search for Mods tab. This is the quickest way to check a setup is sound — for example after installing several mods, or before launching.
 
 #### The Windows runtime check
 
@@ -1512,7 +1523,7 @@ This shows where your mods collide.
 ### Check Mod Requirements (Ctrl + Shift + Q)
 This scans your **enabled** mods and lists anything they need but don't have. Press **Enter** on a line to act on it.
 
-*   **Stardew Valley:** required mods that are **missing, disabled, or older** than a mod asks for — including the host mod a content pack (such as a Content Patcher pack) needs. Enter offers to **search** for the missing mod in the Find New Mods tab.
+*   **Stardew Valley:** required mods that are **missing, disabled, or older** than a mod asks for — including the host mod a content pack (such as a Content Patcher pack) needs. Enter offers to **search** for the missing mod in the Search for Mods tab.
     *   A required mod is named by the `UniqueID` in its manifest, and that id is matched **ignoring capitalisation and stray spaces**, exactly as SMAPI matches it. Authors do not always agree on how to spell one — Producer Framework Mod calls itself `Digus.ProducerFrameworkMod` while the packs that need it ask for `DIGUS.ProducerFrameworkMod` — and the game loads them regardless, so this report treats them as the same mod too.
     *   Where the same mod is installed twice, an **enabled** copy is what counts, since that is the copy the game will load.
 *   **Skyrim & Fallout 4:** plugins whose **master file isn't installed** (a missing master stops a plugin loading), a **missing script extender** (SKSE/F4SE) — or one installed for a **different game version**, which from inside the game looks exactly the same, because it never loads — and each mod's **Nexus "Requirements"** that you don't have installed. Enter opens the missing mod's page. Because the Nexus part checks each mod online, a large load order can take a moment — the title bar shows the progress.
@@ -1696,7 +1707,7 @@ For Skyrim Special Edition and Fallout 4, a **Log** tab — shown as **"Skyrim L
 *   **Filter dropdown**: Choose **Full Log**, or **Errors and Warnings** to keep only the lines that look like problems. As you move through the choices, the manager tells you how many lines each one shows.
 *   **Search box**: Type text and press **Enter** to keep only matching lines.
 *   **Refresh**: Press **Ctrl + Shift + R** to re-read the log at any time, even while the game is running — handy right after a crash.
-*   **Open or copy**: Press **F4** to open the selected log in Notepad, or **Ctrl + C** to copy the selected line(s) to the clipboard.
+*   **Open or copy**: Press **F4** to open the selected log inside the manager, or **Ctrl + C** to copy the selected line(s) to the clipboard.
 
 (For Stardew Valley, the equivalent is the **SMAPI Log** tab described elsewhere in this manual. For Moonlight Peaks, it is the **BepInEx Log** tab described below.)
 

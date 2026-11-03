@@ -134,7 +134,7 @@ public partial class Form1
 		// against nothing would look like it had worked while changing nothing at all.
 		if (!UpdateCoverage.HasUpdateLink(mod))
 		{
-			Speak(Loc.T("updates.markNoLink", mod.Name));
+			Speak(Loc.T("updates.markNoLink", mod.Name, GetShortcutString("ManualID")));
 			return;
 		}
 
@@ -370,7 +370,7 @@ public partial class Form1
 				// lookup failed and it was said anyway, so someone was told all was well by a check that learned nothing.
 				bool someUnanswered = Volatile.Read(ref _updateChecksUnanswered) > 0;
 				string message = listUpdates.Items.Count > 0
-					? Loc.T("updates.checkComplete", listUpdates.Items.Count)
+					? Loc.T(listUpdates.Items.Count == 1 ? "updates.checkCompleteOne" : "updates.checkComplete", listUpdates.Items.Count)
 					: Loc.T(someUnanswered ? "updates.checkFoundNoneSoFar" : "updates.checkCompleteNone");
 				if (someUnanswered) message += " " + Loc.T("updates.someUnanswered");
 				// Tell the user when some mods couldn't be checked at all (no Nexus/GitHub link), so an

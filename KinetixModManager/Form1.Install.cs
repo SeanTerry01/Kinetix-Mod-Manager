@@ -91,7 +91,7 @@ public partial class Form1
 			// When some updates are bundled, the download count is lower than the mod count. Say both so "1 download"
 			// never looks like it is skipping the other mods it actually updates.
 			string confirmMsg = mods.Count == totalMods
-				? Loc.T("updateAll.confirm", totalMods)
+				? Loc.T(totalMods == 1 ? "updateAll.confirmOne" : "updateAll.confirm", totalMods)
 				: Loc.T("updateAll.confirmGrouped", totalMods, mods.Count);
 			// Said before the confirmation rather than after the run: somebody deciding whether to start needs to know
 			// that some of what they are looking at is not included.
@@ -518,7 +518,7 @@ public partial class Form1
 
 		if (choice == CrossGameDownloadAction.SaveForLater)
 		{
-			OnUi(() => SpeakBox(Loc.T("nxm.savedFor", fileName, targetName)));
+			OnUi(() => SpeakBox(Loc.T("nxm.savedFor", fileName, targetName, GetShortcutString("InstallPendingDownload"))));
 			return false;
 		}
 
@@ -532,7 +532,7 @@ public partial class Form1
 		// install into whatever session survived that refusal.
 		if (!GameProfiles.IsGame(_settings.ActiveGame, game.Id))
 		{
-			OnUi(() => SpeakBox(Loc.T("nxm.savedFor", fileName, targetName)));
+			OnUi(() => SpeakBox(Loc.T("nxm.savedFor", fileName, targetName, GetShortcutString("InstallPendingDownload"))));
 			return false;
 		}
 
@@ -1025,7 +1025,7 @@ public partial class Form1
 		{
 			// A denied path is almost always an external lock: the game still running, antivirus/Controlled Folder
 			// Access guarding the mods folder, or a file held open elsewhere. Say so rather than a bare path error.
-			ReportInstallFailure(Loc.T("install.failedAccess", ex.Message), spokenName, silent);
+			ReportInstallFailure(Loc.T("install.failedAccess", FriendlyError(ex)), spokenName, silent);
 			return false;
 		}
 		catch (ModArchiveContentException ex)
@@ -1038,7 +1038,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			ReportInstallFailure(Loc.T("install.failed", ex.Message), spokenName, silent);
+			ReportInstallFailure(Loc.T("install.failed", FriendlyError(ex)), spokenName, silent);
 			return false;
 		}
 		finally

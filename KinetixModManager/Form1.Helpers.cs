@@ -148,7 +148,7 @@ public partial class Form1
 		// puzzling without the other.
 		int groups = listInstalled.Items.OfType<StardewMod>().Count(m => m.IsGroup);
 		string counts = groups == 0
-			? Loc.T("modlist.found", _installedMatchCount)
+			? Loc.T(_installedMatchCount == 1 ? "modlist.foundOne" : "modlist.found", _installedMatchCount)
 			: Loc.T("modlist.foundWithGroups", _installedMatchCount, listInstalled.Items.Count, groups);
 
 		if (!readerNamesTheChange)
@@ -830,7 +830,7 @@ public partial class Form1
 			text = Loc.T("help.discovery", GetShortcutString("ReadDescription"));
 			break;
 		case AppTab.Wiki:
-			text = Loc.T("help.wiki");
+			text = Loc.T("help.wiki", GameDisplayName());
 			break;
 		case AppTab.Walkthroughs:
 			string activeGameWalkthroughTitle = GameProfiles.BaseId(_settings.ActiveGame) switch
@@ -929,7 +929,7 @@ public partial class Form1
 		// game has nothing to do with, rather than searching.
 		if (_nexusService.UsesNexus && string.IsNullOrEmpty(_settings.ApiKey))
 		{
-			Speak(Loc.T("discovery.loginFirst"));
+			Speak(Loc.T("discovery.loginFirst", GetShortcutString("Login")));
 			return;
 		}
 		if (!loadMore)
@@ -1014,7 +1014,7 @@ public partial class Form1
 
 			if (results.Count > 0)
 			{
-				Speak((loadMore ? Loc.T("discovery.added", results.Count) : Loc.T("discovery.found", results.Count))
+				Speak((loadMore ? Loc.T("discovery.added", results.Count) : Loc.T(results.Count == 1 ? "discovery.foundOne" : "discovery.found", results.Count))
 					+ hiddenByLanguage);
 				// Fresh search lands on the first result; Load more lands on the first new result.
 				listDiscovery.SelectedIndex = loadMore ? firstNewIndex : 0;

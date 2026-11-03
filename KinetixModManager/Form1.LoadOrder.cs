@@ -429,7 +429,7 @@ public partial class Form1
 			string conflict = (wins, loses) switch
 			{
 				(> 0, > 0) => Loc.T("loadorder.conflictBoth", wins, loses),
-				(> 0, 0)   => Loc.T("loadorder.conflictWins", wins),
+				(> 0, 0)   => Loc.T(wins == 1 ? "loadorder.conflictWinsOne" : "loadorder.conflictWins", wins),
 				(0, > 0)   => Loc.T("loadorder.conflictLoses", loses),
 				_          => ""
 			};

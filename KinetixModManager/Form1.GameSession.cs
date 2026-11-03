@@ -101,8 +101,10 @@ public partial class Form1
 		}
 		// The save manager follows the saves: every game that keeps a save folder the manager can find, which is
 		// the Bethesda pair and The Witcher 3.
+		// Skyrim and Fallout 4 only, until something can read another game's saves: The Witcher 3 has a saves folder, and
+		// offering this there only ended in "not available".
 		if (FindMenuItem(modsMenu, "menuSaveManager") is ToolStripItem saveItem)
-			saveItem.Visible = !string.IsNullOrEmpty(profile?.SavesFolderName);
+			saveItem.Visible = bethesda;
 		// Signing in is Minecraft's alone: it is the only game the manager launches itself, so the only one where
 		// which account the session belongs to is a thing the manager decides.
 		if (FindMenuItem(modsMenu, "menuMinecraftAccount") is ToolStripItem accountItem)
@@ -114,7 +116,8 @@ public partial class Form1
 		// and the prepare/restore-for-update pair. All of them are about staged deployment or plugins.txt, which
 		// no other game has.
 		foreach (string name in new[] { "menuUninstallSE", "menuConflictWinners", "menuAddLoadRule",
-			"menuManageLoadRules", "menuRestoreSafety", "menuPrepUpdate", "menuRestoreUpdate" })
+			"menuManageLoadRules", "menuRestoreSafety", "menuPrepUpdate", "menuRestoreUpdate",
+			"menuVerifyDeployment", "menuPluginSlots", "menuImportMO2" })
 			if (FindMenuItem(modsMenu, name) is ToolStripItem item) item.Visible = bethesda;
 		// The whole load-order/files submenu is Skyrim/Fallout 4 only; hide it for Stardew rather than show a group
 		// of "not applicable" items.

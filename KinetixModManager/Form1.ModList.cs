@@ -67,14 +67,14 @@ public partial class Form1
 		// ⚠️ Nor does anyone need a key to see what is on their own disk. This used to return here, so local mods could
 		// not be listed, switched off or deleted until a key was given. The list comes first, then the question.
 		bool needsNexusKey = _nexusService.UsesNexus && string.IsNullOrEmpty(_settings.ApiKey);
-		if (needsNexusKey)
+		// Once, because every refresh gets here, and being sent to Settings each time would make the list unusable.
+		bool askForNexusKey = needsNexusKey && !_isSettingsOpen && !_askedForNexusKey;
+		if (needsNexusKey) checkUpdates = false;
+		if (askForNexusKey)
 		{
-			if (!_isSettingsOpen)
-			{
-				SetStatus(Loc.T("status.authRequired"));
-				_soundEngine.Play("disconnect");
-			}
-			checkUpdates = false;
+			_askedForNexusKey = true;
+			SetStatus(Loc.T("status.authRequired"));
+			_soundEngine.Play("disconnect");
 		}
 		// Acquire the single-batch update-check guard. See _updateCheckRunning: it is held across the async
 		// checks and released either by their completion (CheckForUpdates) or by the finally below when none
@@ -355,7 +355,7 @@ public partial class Form1
 		});
 
 		// After the list, so the mods are there behind the question rather than waiting on the answer to it.
-		if (needsNexusKey && !_isSettingsOpen) ShowSettings();
+		if (askForNexusKey) ShowSettings();
 
 		if (!doUpdateChecks)
 		{

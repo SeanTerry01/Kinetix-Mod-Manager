@@ -252,6 +252,35 @@ public static class DocOutline
 	}
 
 	/// <summary>
+	/// Takes the Markdown punctuation off a document the manager wrote itself, so it reads as words in the text pane.
+	/// Line for line, so a search result still lands where it should, and a link's address stays: it is what the pane offers.
+	///
+	/// ⚠️ Only for the manual and the change log. A mod's own README is the author's document, and a config file or log
+	/// can mean those characters literally.
+	/// </summary>
+	public static void CleanForReading(IEnumerable<DocNode> nodes)
+	{
+		foreach (DocNode node in nodes)
+		{
+			if (!string.IsNullOrEmpty(node.Content))
+				node.Content = string.Join("\n", node.Content.Replace("\r\n", "\n").Split('\n').Select(CleanLineForReading));
+			CleanForReading(node.Children);
+		}
+	}
+
+	private static string CleanLineForReading(string line)
+	{
+		string s = line.Trim();
+		if (Regex.IsMatch(s, @"^(?:-{3,}|\*{3,}|_{3,})$")) return "";     // a dividing line
+		s = Regex.Replace(s, @"^(?:[*+-])\s+", "");                      // leading list marker
+		s = Regex.Replace(s, @"^#{1,6}\s+", "");                         // a heading used as body text
+		s = Regex.Replace(s, @"^>\s?", "");                              // a quotation mark
+		s = Regex.Replace(s, @"\[([^\]]+)\]\(#[^)]*\)", "$1");           // a link within the document
+		s = s.Replace("**", "").Replace("`", "");
+		return s;
+	}
+
+	/// <summary>
 	/// Enough of a matching line to tell it apart from the others, centred on the phrase.
 	///
 	/// A manual's lines are whole paragraphs, and a results list that reads a paragraph per row is not a list

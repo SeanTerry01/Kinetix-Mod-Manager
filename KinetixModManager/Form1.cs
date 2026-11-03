@@ -307,6 +307,8 @@ public partial class Form1 : Form, IMessageFilter
 	/// </summary>
 	private string? _scannedGame;
 
+	private bool _askedForNexusKey;
+
 	private bool ModListIsTrustworthy => _scannedGame != null && _scannedGame == _settings.ActiveGame;
 
 	private List<LogEntry> _fullLogEntries = new List<LogEntry>();

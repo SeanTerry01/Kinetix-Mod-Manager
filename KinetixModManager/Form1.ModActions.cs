@@ -678,7 +678,8 @@ public partial class Form1
 			for (int waited = 0; waited < 120 && ModFileSystem.UninstallerStillRegistered(uninstaller); waited++)
 				await Task.Delay(500);
 
-			Speak(Loc.T("modactions.uninstallerFinished", uninstaller.DisplayName));
+			// The wait above gives up after a minute, so being here does not mean it is gone.
+			Speak(Loc.T(ModFileSystem.UninstallerStillRegistered(uninstaller) ? "modactions.uninstallerNotFinished" : "modactions.uninstallerFinished", uninstaller.DisplayName));
 		}
 		catch (Exception ex)
 		{

@@ -28,7 +28,7 @@ public partial class Form1
 	{
 		if (!IsBethesdaGame)
 		{
-			Speak(Loc.T("saves.notApplicable"));
+			Speak(Loc.T("saves.notApplicable", GameDisplayName()));
 			return;
 		}
 

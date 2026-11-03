@@ -37,8 +37,8 @@ A fully keyboard-driven, screen-reader-compatible mod manager for **Stardew Vall
 If you own the same game on both Steam and GOG, both copies appear in the menu and each keeps its own mods.
 
 Minecraft is the exception to the rule that a game needs its own launcher: press **F5** and the manager starts
-the game itself, with Fabric and your mods loaded, without going near the Minecraft launcher. You still sign in
-through the launcher once.
+the game itself, with Fabric and your mods loaded, without going near the Minecraft launcher. It can sign in to
+your Microsoft account for online play, or play offline.
 
 Switch the active game from the **Games** menu.
 
@@ -56,7 +56,7 @@ Switch the active game from the **Games** menu.
 ## Getting Started
 
 1. Download the latest `KinetixModManager_Setup.exe` from the [Releases](https://github.com/SeanTerry01/Kinetix-Mod-Manager/releases) page and run the installer.
-2. Launch `KinetixModManager.exe`. On first launch, the Settings dialog opens automatically.
+2. Launch `KinetixModManager.exe`. On first launch, the Setup Wizard opens.
 3. Choose your active game from the **Games** menu, then confirm or browse to that game's `Mods` folder.
 4. Paste your Nexus Mods API key — either in Settings, or from **File → Mod source API keys...**, which lists every site that wants one. Skip this entirely if you are here for Minecraft.
 5. Press **Save Settings**. The app connects and loads your mod list.
@@ -77,7 +77,7 @@ Press **F1** at any time to open the full User Manual, or **Shift + F1** for con
 | Install from .zip | Ctrl + I |
 | Search the other mod sources too (Discovery list) | Alt + O |
 | Search installed mods | Ctrl + F |
-| Check/update all mods | Ctrl + U |
+| Update all mods | Ctrl + U |
 | Save profile | Ctrl + S |
 | View dependencies | Ctrl + Y |
 | Quick-fix missing dep | Ctrl + Q |

@@ -46,6 +46,7 @@ public partial class Form1
 		foreach (KeyValuePair<string, int> shortcut in _settings.Shortcuts)
 			mappings.AppendLine($"* {ShortcutNames.For(shortcut.Key)}: {GetShortcutString(shortcut.Key)}");
 		roots.Add(new DocNode(Loc.T("manual.currentKeyMappings")) { Content = mappings.ToString() });
+		DocOutline.CleanForReading(roots);
 
 		ShowDocDrilldown(roots, Loc.T("manual.windowTitle"), Loc.T("manual.toc"), Loc.T("manual.topicInfo"));
 	}
@@ -63,6 +64,7 @@ public partial class Form1
 		// DocOutline.CollapseRedundantLevels removes, so opening a version lists its change categories directly.
 		List<DocNode> roots = DocOutline.ParseTree(File.ReadAllLines(path));
 		DocOutline.CollapseRedundantLevels(roots);
+		DocOutline.CleanForReading(roots);
 		ShowDocDrilldown(roots, Loc.T("changelog.windowTitle"), Loc.T("changelog.toc"), Loc.T("changelog.topicInfo"));
 	}
 
