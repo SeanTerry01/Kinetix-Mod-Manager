@@ -1646,6 +1646,8 @@ public partial class Form1
 		{
 			if (!HasModUniqueId(rival.FabricModId)) continue;
 
+			// This can land in the middle of an install, with the run's progress still being read.
+			LetSpeechFinish();
 			Speak(Loc.T("mc.rival.speak", rival.DisplayName, chosen.DisplayName));
 			SpeakBox(
 				Loc.T("mc.rival.box", rival.DisplayName, chosen.DisplayName),

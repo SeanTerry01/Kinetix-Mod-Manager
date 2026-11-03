@@ -1801,6 +1801,7 @@ public partial class Form1
 				Speak(Loc.T("config.saved", fileLabel));
 				onSaveSuccess?.Invoke();
 				saved = true;
+				LetSpeechFinish();
 				closeView();
 			}
 			catch (Exception ex)

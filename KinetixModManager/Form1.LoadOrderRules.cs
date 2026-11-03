@@ -65,6 +65,7 @@ public partial class Form1
 					e.Handled = e.SuppressKeyPress = true;
 					if (AddRule(subject.Name, target)) Speak(Loc.T("rules.addedAfter", subject.Name, target));
 					else Speak(Loc.T("rules.duplicate"));
+					LetSpeechFinish();
 					closeView();
 				}
 				else if (e.KeyCode == Keys.B)
@@ -72,6 +73,7 @@ public partial class Form1
 					e.Handled = e.SuppressKeyPress = true;
 					if (AddRule(target, subject.Name)) Speak(Loc.T("rules.addedBefore", subject.Name, target));
 					else Speak(Loc.T("rules.duplicate"));
+					LetSpeechFinish();
 					closeView();
 				}
 			};
@@ -137,7 +139,7 @@ public partial class Form1
 				int idx = list.SelectedIndex;
 				list.Items.Remove(item);
 				_soundEngine.Play("disable");
-				if (list.Items.Count == 0) { Speak(Loc.T("rules.removedLast")); closeView(); return; }
+				if (list.Items.Count == 0) { Speak(Loc.T("rules.removedLast")); LetSpeechFinish(); closeView(); return; }
 				list.SelectedIndex = Math.Min(idx, list.Items.Count - 1);
 				Speak(Loc.T("rules.removed", list.Items.Count));
 			};

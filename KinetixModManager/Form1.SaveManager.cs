@@ -212,7 +212,7 @@ public partial class Form1
 		int idx = list.SelectedIndex;
 		list.Items.Remove(row);
 		_soundEngine.Play("disable");
-		if (list.Items.Count == 0) { Speak(Loc.T("saves.deletedLast")); closeView(); return; }
+		if (list.Items.Count == 0) { Speak(Loc.T("saves.deletedLast")); LetSpeechFinish(); closeView(); return; }
 		list.SelectedIndex = Math.Min(idx, list.Items.Count - 1);
 		Speak(Loc.T("saves.deleted", list.Items.Count));
 	}

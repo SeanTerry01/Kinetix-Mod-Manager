@@ -124,10 +124,9 @@ public partial class Form1
 	/// <para>
 	/// The wait is the reader's <em>reaction</em> time, not its speaking time — how long it takes to notice the
 	/// selection changed and begin describing it, measured at around 70ms. That does not vary with the user's
-	/// speech rate, which is what makes it safe to wait out where waiting for speech to <em>finish</em> would not
-	/// be: IsSpeaking is reliable only for the bridge's own voice on Windows, so any such wait is really
-	/// a guess at how fast the user has their reader set. Announcing straight away instead put the numbers ahead
-	/// of the reader every time, which is the whole problem this exists to fix.
+	/// speech rate. Asking whether the reader is speaking cannot replace it, even where the reader can answer: until
+	/// it has begun the answer is no, the same as when it has nothing to say. Announcing straight away instead put
+	/// the numbers ahead of the reader every time, which is the whole problem this exists to fix.
 	/// </para>
 	///
 	/// <para>
@@ -866,6 +865,7 @@ public partial class Form1
 		if (!loadMore && browsingCategory && category.Length == 0)
 		{
 			Speak(Loc.T("discovery.pickCategoryFirst"));
+			LetSpeechFinish();
 			cmbDiscoveryCategory?.Focus();
 			return;
 		}
@@ -1330,13 +1330,26 @@ public partial class Form1
 	/// UI thread's message loop to be running, so blocking that thread to wait for speech means the speech does
 	/// not start until the wait is over.
 	///
-	/// <see cref="IAnnouncer.IsSpeaking"/> is only ever "probably not" on Windows — Tolk answers it reliably
-	/// for its own SAPI voice and most screen readers return false even while talking — so a fixed minimum
-	/// sized to the sentence is waited out regardless, then it stops early once speech is known to be done, or
-	/// at the hard cap. A platform that answers this properly, as speech-dispatcher does, simply exits sooner.
+	/// A reader that can say when it has finished (<see cref="IAnnouncer.IsSpeakingForCertain"/>) is simply asked,
+	/// so this ends with the sentence at any speech rate, and <paramref name="minMs"/> does not apply.
+	///
+	/// Any other reader cannot say: <see cref="IAnnouncer.IsSpeaking"/> is only ever "probably not", and most
+	/// return false even while talking. So a fixed minimum sized to the sentence is waited out regardless, which
+	/// is a guess at how fast the user has their reader set, then it stops at the hard cap.
 	/// </summary>
 	private async Task WaitForSpeechAsync(int minMs = 2500, int maxMs = 12000)
 	{
+		if (_announcer.IsSpeakingForCertain is not null)
+		{
+			var watch = new SpeechFinishWatch(Environment.TickCount64, maxMs);
+			while (_announcer.IsSpeakingForCertain is bool speaking
+				&& !watch.IsFinished(Environment.TickCount64, speaking))
+			{
+				await Task.Delay(25);
+			}
+			return;
+		}
+
 		const int step = 100;
 		int elapsed = 0;
 		while (elapsed < maxMs)

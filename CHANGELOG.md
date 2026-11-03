@@ -1,5 +1,21 @@
 ﻿# Unreleased
 
+## ✨ With NVDA 2026.3 or newer, the manager waits until a sentence has actually finished
+
+NVDA 2026.3 added a way for a program to ask whether it is still speaking, and the manager now asks. Until now, the
+only option was to guess how long a sentence would take, and that guess was wrong for anyone whose speech rate was
+faster or slower than it assumed. JAWS, older versions of NVDA and SAPI do not offer this, so they carry on exactly
+as before.
+
+*   **The accessibility suite no longer talks over itself.** Everything it says as it runs ("Downloading Fabric API",
+    "Fabric API installed", "setup complete") used to be thrown away by whatever came next. You now hear all of it,
+    and then the summary or the mod list. Press any key to skip the rest and move on straight away.
+*   **Startup and shutdown fit your speech rate.** The opening and the goodbye wait for the sentence itself, not a
+    fixed time. At a fast rate that means no pause after it has finished; at a slow rate, no cut-off.
+*   **A sentence spoken as a screen closes is heard.** Saving a settings file, adding a load order rule, or removing
+    the last item from a list now finishes saying so before focus goes back. The same goes for "Opening the download
+    page" before the browser takes over.
+
 ## 🐛 The Witcher 3 Remastered was "not installed"
 
 *   **After the Remastered update, The Witcher 3 vanished from the Games menu**, and choosing it from the game list

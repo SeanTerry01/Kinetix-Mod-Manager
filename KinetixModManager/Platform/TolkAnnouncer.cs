@@ -10,9 +10,14 @@ namespace KinetixModManager;
 /// <para>
 /// Tolk is a native DLL loaded by P/Invoke and resolved from <c>lib\</c> at startup. Everything awkward
 /// about it is kept in this one class so that nothing above the interface has to know: that it can be
-/// unloaded from underneath the program when NVDA restarts, that <see cref="IsSpeaking"/> is only truthful
+/// unloaded from underneath the program when NVDA restarts, that its own <c>IsSpeaking</c> is only truthful
 /// about its own SAPI voice, and that <see cref="Silence"/> cannot tell the program's speech from the
 /// reader's own.
+/// </para>
+///
+/// <para>
+/// NVDA 2026.3 and newer can say whether they are speaking, which Tolk does not know to ask, so that one question
+/// goes to NVDA directly. See <see cref="NvdaController"/>.
 /// </para>
 ///
 /// <para>
@@ -59,10 +64,27 @@ internal sealed class TolkAnnouncer : IAnnouncer
 	{
 		get
 		{
+			if (IsSpeakingForCertain is bool certain) return certain;
+
 			// Tolk answers this reliably only for its own SAPI voice; most readers do not report it back at
 			// all. False therefore means "probably not", and callers that need certainty use timing instead.
 			try { return Tolk.IsLoaded() && Tolk.IsSpeaking(); }
 			catch { return false; }
+		}
+	}
+
+	public bool? IsSpeakingForCertain
+	{
+		get
+		{
+			try
+			{
+				// Only when NVDA is the reader Tolk is speaking through. With JAWS in charge and NVDA also running,
+				// NVDA would truthfully answer no about a sentence it was never given.
+				if (!Tolk.IsLoaded() || Tolk.DetectScreenReader() != "NVDA") return null;
+				return NvdaController.TryIsSpeaking(out bool speaking) ? speaking : null;
+			}
+			catch { return null; }
 		}
 	}
 

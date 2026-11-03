@@ -176,6 +176,7 @@ public partial class Form1
 	{
 		string url = $"https://www.nexusmods.com/{_nexusService.CurrentGameDomain}/mods/{known.NexusModId}?tab=files";
 		Speak(Loc.T("modparts.openingFilesTab", known.DisplayName));
+		LetSpeechFinish();
 		try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
 		catch (Exception ex) { LogError(known.DisplayName, "Could not open " + url + ": " + ex.Message); }
 	}

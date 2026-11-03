@@ -131,7 +131,7 @@ public partial class Form1
 					int idx = list.SelectedIndex;
 					list.Items.Remove(item);
 					_soundEngine.Play("disable");
-					if (list.Items.Count == 0) { Speak(Loc.T("safety.deletedLast")); closeView(); return; }
+					if (list.Items.Count == 0) { Speak(Loc.T("safety.deletedLast")); LetSpeechFinish(); closeView(); return; }
 					list.SelectedIndex = Math.Min(idx, list.Items.Count - 1);
 					Speak(Loc.T("safety.deleted", list.Items.Count));
 				}

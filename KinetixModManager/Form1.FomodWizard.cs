@@ -350,6 +350,7 @@ public partial class Form1
 			{
 				outcome = BuildResult();
 				Speak(Loc.T("fomod.installing"));
+				LetSpeechFinish();
 				closeView();
 			}
 			else

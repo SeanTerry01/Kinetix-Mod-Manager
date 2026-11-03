@@ -25,9 +25,9 @@ public partial class Form1
 	/// <summary>
 	/// How long a screen reader takes to finish reacting to a window becoming the foreground one.
 	///
-	/// The reader's reaction is not something the app can suppress or wait on — <c>Tolk.IsSpeaking</c> does not
-	/// answer this question — so it is waited out. 400ms is the figure the startup landing already uses, arrived
-	/// at the same way and against the same readers.
+	/// The reader's reaction is not something the app can suppress or ask about — even a reader that can say it is
+	/// speaking says no until it has begun — so it is waited out. 400ms is the figure the startup landing already
+	/// uses, arrived at the same way and against the same readers.
 	/// </summary>
 	private const int ReaderReactionMs = 400;
 
@@ -77,6 +77,51 @@ public partial class Form1
 			System.Threading.Thread.Sleep(15);
 		}
 	}
+
+	/// <summary>
+	/// Lets what has been said finish before something takes the focus, because a focus change throws away whatever
+	/// the reader still has queued. Call it where a sentence must be heard and the next line moves focus away: a view
+	/// closing, a browser opening, a prompt at the end of a run of progress lines.
+	///
+	/// A reader that cannot say when it has finished returns from this at once, exactly as if it were not here.
+	///
+	/// ⚠️ Do not add this to a headline immediately before its own prompt: <c>Speak("Up to date."); SpeakBox("You are
+	/// on the latest version.");</c>. The prompt's question cuts the headline off today, so only the prompt is heard.
+	/// Waiting would make every such pair say the same thing twice.
+	///
+	/// Any key press ends the wait, and is used up doing so: the user has heard enough, and the key must not also
+	/// act on a view that is about to close. See <see cref="PreFilterMessage"/>. Pumped rather than awaited because
+	/// most callers are ordinary event handlers, for the same reason as <see cref="WaitOutReaderReaction"/>.
+	/// </summary>
+	private void LetSpeechFinish(int maxMs = 60000)
+	{
+		if (InvokeRequired || _announcer.IsSpeakingForCertain is null) return;
+
+		bool alreadyHolding = _holdingForSpeech;
+		if (!alreadyHolding) _speechHoldSkipped = false;
+		_holdingForSpeech = true;
+		try
+		{
+			var watch = new SpeechFinishWatch(Environment.TickCount64, maxMs);
+			while (_announcer.IsSpeakingForCertain is bool speaking
+				&& !watch.IsFinished(Environment.TickCount64, speaking))
+			{
+				if (_shuttingDown || IsDisposed || _speechHoldSkipped) return;
+				Application.DoEvents();
+				System.Threading.Thread.Sleep(15);
+			}
+		}
+		finally
+		{
+			_holdingForSpeech = alreadyHolding;
+		}
+	}
+
+	/// <summary>True while <see cref="LetSpeechFinish"/> is waiting, so a key press can end the wait.</summary>
+	private bool _holdingForSpeech;
+
+	/// <summary>Set when a key press has ended the wait. See <see cref="LetSpeechFinish"/>.</summary>
+	private bool _speechHoldSkipped;
 
 	/// <summary>
 	/// Speaks a modal prompt's message so the screen reader reads it reliably. The announcement is posted on a

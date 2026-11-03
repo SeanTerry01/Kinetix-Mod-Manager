@@ -54,13 +54,24 @@ public interface IAnnouncer : IDisposable
 	/// <summary>
 	/// Whether speech is being produced right now.
 	///
-	/// Treat a <c>false</c> here as "probably not" rather than as fact. The Windows implementation can only
-	/// answer reliably for its own SAPI voice; most screen readers do not report it back through the bridge
-	/// at all, so callers wait on timing rather than on this. speech-dispatcher answers this properly, so a
-	/// Linux implementation can do better — and code above this interface should be written so that better
-	/// is an improvement rather than a behaviour change.
+	/// Treat a <c>false</c> here as "probably not" rather than as fact. Most screen readers do not report it back
+	/// through the bridge at all. Code that has to know should ask <see cref="IsSpeakingForCertain"/>, which
+	/// says when it does not know, rather than this, which cannot.
 	/// </summary>
 	bool IsSpeaking { get; }
+
+	/// <summary>
+	/// Whether speech is being produced right now, or <c>null</c> when this reader cannot say.
+	///
+	/// <c>null</c> is the ordinary answer: JAWS, NVDA before 2026.3, SAPI through the bridge, and Linux all give
+	/// it, and every caller must keep working by timing when they do. Only a real answer may be used to skip a
+	/// wait.
+	///
+	/// A <c>false</c> means no sound is being made, not that nothing is coming: a sentence just handed over has not
+	/// started, and a reader that has just seen the focus move has not yet decided what to say. See
+	/// <see cref="SpeechFinishWatch"/>.
+	/// </summary>
+	bool? IsSpeakingForCertain => null;
 
 	/// <summary>
 	/// Whether anything is listening at all.

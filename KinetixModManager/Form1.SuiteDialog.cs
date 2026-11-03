@@ -381,6 +381,7 @@ public partial class Form1
 			Speak(item.IsInstalled
 				? Loc.T("suite.openInstalledPage", item.Name)
 				: Loc.T("suite.openDownloadPage", item.Name));
+			LetSpeechFinish();
 			try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
 			catch (Exception ex) { LogFailure(item.Name, "Failed to open download page", ex); }
 		};
@@ -617,13 +618,16 @@ public partial class Form1
 				// refreshing afterwards would change the list underneath an announcement that had already been
 				// made — the same ordering fault that made the list announcement wrong for eight attempts.
 				await RefreshModList(checkUpdates: false);
+
+				// Tolk queues, but the queue drains far slower than the code runs, so at this point the whole run
+				// — "Downloading Fabric API", "Fabric API installed", "setup complete" — is still waiting to be
+				// read, and what comes next takes the focus and throws it away. Hear it out first.
+				LetSpeechFinish();
 				closeView();
 
-				// ⚠️ This box SPEAKS OVER everything the install just said, and no amount of reordering will
-				// stop it. Tolk queues, but the queue drains far slower than the code runs, so by the time the
-				// box appears the whole run — "Downloading Fabric API", "Fabric API installed", "setup
-				// complete" — is still waiting to be read. A dialog takes focus and the reader abandons the
-				// queue to read it. Moving the box later only moves what gets destroyed.
+				// ⚠️ A reader that cannot say when it has finished is not held above, so for those this box still
+				// SPEAKS OVER everything the install just said, and no amount of reordering will stop it. Moving
+				// the box later only moves what gets destroyed.
 				//
 				// So the box is a SUPERSET of what it interrupts: it names what was installed as well as what
 				// was not. Then losing the queue costs nothing, because the box says all of it.
@@ -825,6 +829,7 @@ public partial class Form1
 			else
 			{
 				Speak(Loc.T("suite.smapiUnconfirmed"));
+				LetSpeechFinish();
 				Process.Start(new ProcessStartInfo("https://smapi.io") { UseShellExecute = true });
 			}
 			return installed;
@@ -833,6 +838,7 @@ public partial class Form1
 		{
 			LogFailure("SMAPI", "Automatic SMAPI install failed", ex);
 			Speak(Loc.T("suite.smapiAutoFailed"));
+			LetSpeechFinish();
 			Process.Start(new ProcessStartInfo("https://smapi.io") { UseShellExecute = true });
 			return false;
 		}

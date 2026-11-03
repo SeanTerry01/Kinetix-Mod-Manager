@@ -759,9 +759,9 @@ public partial class Form1 : Form, IMessageFilter
 				// Here there is nothing queued to lose, and the welcome below interrupts the reader's account of
 				// the window, which the app is about to say better anyway.
 				//
-				// ⚠️ Nothing waits on how long any of this takes to speak, deliberately: Tolk reports IsSpeaking
-				// reliably only for its own voice, so any such wait is really a guess at the user's speech rate.
-				// Tolk queues, so the opening below stays in order at any rate.
+				// ⚠️ The order below does not depend on how long any of this takes to speak, deliberately: most
+				// readers cannot say when they have finished, so for them any such wait is really a guess at the
+				// user's speech rate. Tolk queues, so the opening stays in order at any rate.
 				for (int i = 0; i < 40 && GetForegroundWindow() != form.Handle; i++)
 				{
 					await Task.Delay(25);
@@ -896,6 +896,17 @@ public partial class Form1 : Form, IMessageFilter
 	/// </summary>
     public bool PreFilterMessage(ref Message m)
     {
+        const int WM_KEYDOWN = 0x0100, WM_SYSKEYDOWN = 0x0104, RepeatFlag = 0x40000000;
+
+        // A key pressed while LetSpeechFinish is waiting ends the wait and goes no further. The key that started
+        // the wait may still be held and auto-repeating; that is not a decision to skip anything, but it is kept
+        // from reaching the view too, or a held Enter would press Save again.
+        if (_holdingForSpeech && m.Msg is WM_KEYDOWN or WM_SYSKEYDOWN)
+        {
+            if ((m.LParam.ToInt64() & RepeatFlag) == 0) _speechHoldSkipped = true;
+            return true;
+        }
+
         // Intercept WM_KEYDOWN before it reaches the WebView2 host window.
         // WebView2 runs in a separate process and would otherwise swallow F6 or Shift+Tab.
         if (m.Msg == 0x0100)
