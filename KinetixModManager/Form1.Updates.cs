@@ -314,7 +314,7 @@ public partial class Form1
 	{
 		if (Interlocked.Decrement(ref _activeChecks) <= 0)
 		{
-			_isLoading = false;
+			_updateCheckPulse?.End();
 			// This batch is done; release the guard so the next update check can start.
 			Interlocked.Exchange(ref _updateCheckRunning, 0);
 
@@ -881,7 +881,7 @@ public partial class Form1
 	/// </summary>
 	private void AnnounceUpdatesListEmptyIfFocused()
 	{
-		if (_isLoading || listUpdates.Items.Count != 0 || CurrentTab() != AppTab.Updates)
+		if (IsLoading || listUpdates.Items.Count != 0 || CurrentTab() != AppTab.Updates)
 			return;
 		// Focusing fires GotFocus -> List_Enter -> AnnounceListEmpty; if it is already focused that path does not
 		// fire, so call the announcer directly too. AnnounceListEmpty de-dupes, so this never doubles up.
@@ -1144,10 +1144,16 @@ public partial class Form1
 
 	private async Task AutoMatchNexusIDs()
 	{
+		// Twice from the menu was two runs talking over each other, each spending the same requests.
+		if (Interlocked.Exchange(ref _autoMatchRunning, 1) == 1)
+		{
+			Speak(Loc.T("updates.autoMatchAlready"));
+			return;
+		}
+
 		int matchCount = 0;
 		int totalMods = 0;
-		_isLoading = true;
-		Fire(RunLoadingLoop(), "RunLoadingLoop");
+		LoadingPulse pulse = StartLoadingPulse();
 		Speak(Loc.T("updates.autoMatchStart"));
 
 		try
@@ -1158,7 +1164,7 @@ public partial class Form1
 			if (totalMods == 0)
 			{
 				Speak(Loc.T("updates.noUnmatched"));
-				_isLoading = false;
+				pulse.End();
 				_soundEngine.Play("load_complete");
 				return;
 			}
@@ -1247,7 +1253,7 @@ public partial class Form1
 			// missing something are fetched, so running it again costs nothing.
 			int detailed = await FillInMissingNexusDetailsAsync();
 
-			_isLoading = false;
+			pulse.End();
 			// The rescan first, so the list reloading cannot cut off the one sentence that matters.
 			await RefreshModList(checkUpdates: false);
 			_soundEngine.Play("load_complete");
@@ -1257,12 +1263,18 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			_isLoading = false;
+			pulse.End();
 			_soundEngine.Play("error");
 			LogFailure("AutoMatch", "Auto-match failed", ex);
 			SpeakBox(Loc.T("updates.autoMatchFailBox", FriendlyError(ex)), Loc.T("common.error"));
 		}
+		finally
+		{
+			Volatile.Write(ref _autoMatchRunning, 0);
+		}
 	}
+
+	private int _autoMatchRunning;
 
     private async Task CheckForAppUpdates(bool manual)
 	{
@@ -1310,10 +1322,9 @@ public partial class Form1
 	private async Task DownloadAndInstallAppUpdateAsync(NexusService.AppReleaseInfo release)
 	{
 		string originalTitle = Text;
+		LoadingPulse pulse = StartLoadingPulse();
 		try
 		{
-			_isLoading = true;
-			Fire(RunLoadingLoop(), "RunLoadingLoop");
 			Speak(Loc.T("updates.downloadingUpdate"));
 
 			if (!Directory.Exists(downloadsPath))
@@ -1327,7 +1338,7 @@ public partial class Form1
 			await _nexusService.DownloadFileWithProgressAsync(release.DownloadUrl, destinationPath, progress, release.Digest);
 			progress.Complete();
 
-			_isLoading = false;
+			pulse.End();
 			Speak(Loc.T("updates.downloadComplete"));
 
 			string installerPath = destinationPath;
@@ -1368,7 +1379,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			_isLoading = false;
+			pulse.End();
 			Text = originalTitle;
 			LogFailure("AppUpdate", "Self-update failed", ex);
 			SpeakBox(Loc.T("updates.selfUpdateFailBox", FriendlyError(ex)), Loc.T("updates.updateErrorTitle"));

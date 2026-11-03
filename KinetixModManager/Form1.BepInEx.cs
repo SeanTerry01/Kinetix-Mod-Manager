@@ -275,10 +275,10 @@ public partial class Form1
 	private async Task<bool> InstallBepInExAsync(string gameRoot)
 	{
 		string tempDir = Path.Combine(Path.GetTempPath(), "KinetixBepInEx_" + Path.GetRandomFileName());
+		LoadingPulse pulse = StartLoadingPulse();
 
 		try
 		{
-			_isLoading = true;
 			SetStatus(Loc.T("bepinex.installing", BepInExPinnedVersion));
 
 			Directory.CreateDirectory(tempDir);
@@ -303,7 +303,7 @@ public partial class Form1
 				_settings.Save();
 			}
 
-			_isLoading = false;
+			pulse.End();
 			_soundEngine.Play("load_complete");
 			Speak(Loc.T("bepinex.installedSpeak", BepInExPinnedVersion));
 
@@ -313,7 +313,7 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
-			_isLoading = false;
+			pulse.End();
 			LogFailure("BepInEx", "Install failed", ex);
 			SpeakBox(
 				Loc.T("bepinex.installFailedBox", FriendlyError(ex)),

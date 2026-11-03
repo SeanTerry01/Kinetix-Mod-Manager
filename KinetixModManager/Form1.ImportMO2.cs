@@ -58,7 +58,7 @@ public partial class Form1
 
 		// Soft game check: refuse only if the instance is confidently for a different supported game.
 		string? iniGame = Mo2GameToInternal(Mo2GetValue(ini, "General/gameName"));
-		if (iniGame != null && !string.Equals(iniGame, game, StringComparison.OrdinalIgnoreCase))
+		if (iniGame != null && !GameProfiles.IsGame(game, iniGame))
 		{
 			SpeakBox(Loc.T("mo2.gameMismatch", GameDisplayName(iniGame), GameDisplayName(game)));
 			return;
@@ -113,7 +113,20 @@ public partial class Form1
 
 					string dest = Path.Combine(destRoot, m.Enabled ? m.Name : "." + m.Name);
 					SetStatus(Loc.T("mo2.copying", i + 1, mods.Count, m.Name), speak: false);
-					Mo2CopyModFolder(src, dest);
+					// Under another name until it has all arrived. A copy that failed part way counted as already imported on
+					// the next run, because the folder existed, so that mod stayed broken for good.
+					string partial = dest + ".kinetix-new";
+					try
+					{
+						if (Directory.Exists(partial)) ModOnDisk.DeleteDirectory(partial);
+						Mo2CopyModFolder(src, partial);
+						ModOnDisk.MoveDirectory(partial, dest);
+					}
+					catch
+					{
+						if (Directory.Exists(partial)) ModOnDisk.DeleteDirectory(partial);
+						throw;
+					}
 					copied++;
 				}
 			});

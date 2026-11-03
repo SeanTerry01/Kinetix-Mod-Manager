@@ -1184,8 +1184,16 @@ public partial class Form1
 			}
 			else
 			{
+				List<(string Game, string OldPath, bool Remove)> leftBehind = AskAboutDeploymentsLeftBehind(_settings.GamePaths, tempGamePaths);
 				_settings.GameModsPaths = tempModsPaths;
-				_settings.GamePaths = tempGamePaths;
+				int notRemoved;
+				lock (_deploymentLock)
+				{
+					// Together, so a refresh can't deploy into the new folder against the old folder's record, or the reverse.
+					_settings.GamePaths = tempGamePaths;
+					notRemoved = SettleDeploymentsLeftBehind(leftBehind);
+				}
+				if (notRemoved > 0) SpeakBox(Loc.T("gamepath.someStayed", notRemoved));
 				if (tempModsPaths.TryGetValue(GameProfiles.StardewValley, out string? sdPath))
 				{
 					_settings.ModsPath = sdPath;

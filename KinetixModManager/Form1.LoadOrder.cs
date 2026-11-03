@@ -147,6 +147,7 @@ public partial class Form1
 		if (!IsBethesdaGame) return new List<FileConflict>();
 		if (!ModListIsTrustworthy) return _lastConflicts;
 		string game = _settings.ActiveGame;
+		if (_settings.DeploymentHeldOff.Contains(game)) return _lastConflicts;
 		string gameRoot = _settings.CurrentGamePath;
 		if (string.IsNullOrEmpty(gameRoot) || !Directory.Exists(gameRoot)) return _lastConflicts;
 
@@ -181,6 +182,8 @@ public partial class Form1
 
 		CreateSafetyBackup(Loc.T("safety.reasonRebuild"));
 		SetStatus(Loc.T("loadorder.rebuilding"));
+		_settings.DeploymentHeldOff.Remove(_settings.ActiveGame);
+		_settings.Save();
 		var forceAll = new HashSet<string>(
 			_allInstalledMods.Where(m => !m.IsGroup && m.IsEnabled).Select(PriorityKey),
 			StringComparer.OrdinalIgnoreCase);
@@ -199,8 +202,7 @@ public partial class Form1
 	/// Manual command (Mods menu): removes every file the manager has deployed into the game folder, returning it
 	/// to its un-modded state, after a strong confirmation. The installed mods themselves are left completely
 	/// intact in the mod store — only the deployed (hard-linked/copied) files tracked by the deployment manifest
-	/// are removed. Because the manager re-deploys automatically, enabling a mod or changing the load order
-	/// afterwards re-applies everything; use Rebuild Mod Deployment to re-apply immediately. plugins.txt is left
+	/// are removed. They stay out until Rebuild Mod Deployment, even across a restart. plugins.txt is left
 	/// as-is: the plugin files it names are now gone from the Data folder, so the game loads vanilla either way.
 	/// </summary>
 	private void PurgeDeployment()
@@ -230,8 +232,15 @@ public partial class Form1
 
 		CreateSafetyBackup(Loc.T("safety.reasonPurge"));
 		SetStatus(Loc.T("loadorder.purging"));
-		int removed = ModFileSystem.PurgeDeployment(gameRoot, manifest, LogError);
-		manifest.Save(game);
+		int removed;
+		lock (_deploymentLock)
+		{
+			// Held first, so a refresh that was already waiting for the lock finds it and doesn't put everything back.
+			_settings.DeploymentHeldOff.Add(game);
+			removed = ModFileSystem.PurgeDeployment(gameRoot, manifest, LogError);
+			manifest.Save(game);
+		}
+		_settings.Save();
 		int notRemoved = manifest.Failures;
 		_lastConflicts = new List<FileConflict>();
 		RefreshModPriorityList();
@@ -240,6 +249,49 @@ public partial class Form1
 		_soundEngine.Play("load_complete");
 		Speak(notRemoved == 0 ? Loc.T("loadorder.purged", removed) : Loc.T("loadorder.purgedSome", removed, notRemoved));
 		ResetStatus();
+	}
+
+	/// <summary>
+	/// A changed game folder leaves the old one's deployed files where they are. The record is only of paths inside the
+	/// game folder, so left alone it would claim those files are in the new one, and the next pass wouldn't put them there.
+	/// The old folder gone means the game was moved with its files, and then the record is still true.
+	/// Asked before any lock is taken: a prompt runs a message loop, and code it runs could otherwise re-enter the lock.
+	/// </summary>
+	private List<(string Game, string OldPath, bool Remove)> AskAboutDeploymentsLeftBehind(Dictionary<string, string> before, Dictionary<string, string> after)
+	{
+		var answers = new List<(string Game, string OldPath, bool Remove)>();
+		foreach ((string game, string oldPath) in before)
+		{
+			after.TryGetValue(game, out string? newPath);
+			if (!GameFolderChange.LeavesFilesBehind(oldPath, newPath, Directory.Exists(oldPath))) continue;
+
+			int deployed = DeploymentManifest.Load(game).Deployed.Count;
+			if (deployed == 0) continue;
+
+			bool remove = SpeakBox(Loc.T("gamepath.leftBehindBox", GameDisplayName(game), deployed, oldPath),
+				Loc.T("gamepath.leftBehindTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes;
+			answers.Add((game, oldPath, remove));
+		}
+		return answers;
+	}
+
+	/// <summary>Acts on those answers and forgets the old folder's files. Returns how many could not be removed.</summary>
+	private int SettleDeploymentsLeftBehind(List<(string Game, string OldPath, bool Remove)> answers)
+	{
+		int notRemoved = 0;
+		foreach ((string game, string oldPath, bool remove) in answers)
+		{
+			DeploymentManifest manifest = DeploymentManifest.Load(game);
+			if (remove)
+			{
+				ModFileSystem.PurgeDeployment(oldPath, manifest, LogError);
+				notRemoved += manifest.Failures;
+			}
+			// Whatever is still there belongs to a folder that is no longer the game's.
+			manifest.Deployed.Clear();
+			manifest.Save(game);
+		}
+		return notRemoved;
 	}
 
 	// -------------------------------------------------------------------------

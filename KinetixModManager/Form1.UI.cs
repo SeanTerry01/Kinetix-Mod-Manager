@@ -346,13 +346,24 @@ public partial class Form1
 		};
 		txtSearchInstalled.KeyDown += (_, e) =>
 		{
-			if (e.KeyCode != Keys.Down || listInstalled.Items.Count == 0) return;
+			if (e.KeyCode != Keys.Down) return;
+			// Moving to the list within the pause must land on what was typed for, not on the list before it.
+			if (_installedSearchPause.Enabled) { _installedSearchPause.Stop(); FilterInstalledMods(); }
+			if (listInstalled.Items.Count == 0) return;
 			e.Handled = e.SuppressKeyPress = true;
 			listInstalled.Focus();
 		};
+		// Each letter regrouped the list and queued a count to be read, so the reader went on reading counts after typing stopped.
+		_installedSearchPause = new System.Windows.Forms.Timer { Interval = 300 };
+		_installedSearchPause.Tick += delegate
+		{
+			_installedSearchPause.Stop();
+			FilterInstalledMods();
+		};
 		txtSearchInstalled.TextChanged += delegate
 		{
-			FilterInstalledMods();
+			_installedSearchPause.Stop();
+			_installedSearchPause.Start();
 		};
 		cmbCategoryFilter = new ComboBox
 		{

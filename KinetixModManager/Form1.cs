@@ -272,7 +272,6 @@ public partial class Form1 : Form, IMessageFilter
 	/// <summary>The selectable "results per load" values, shared by the Discovery tab and Settings combos.</summary>
 	private static readonly int[] DiscoveryPageSizeOptions = { 10, 20, 30, 50, 100 };
 
-	private bool _isLoading;
 
 	// Set while expanding/collapsing a mod group so RebuildInstalledListBox does not speak the selected
 	// item itself. The screen reader already reads the group line (which states "Expanded"/"Collapsed")
@@ -351,6 +350,7 @@ public partial class Form1 : Form, IMessageFilter
 	private ListBox listLog = null!;
 	private TextBox txtSearch = null!;
 	private TextBox txtSearchInstalled = null!;
+	private System.Windows.Forms.Timer _installedSearchPause = null!;
 	private TextBox txtSearchLog = null!;
 	private ComboBox cmbDiscoveryType = null!;
 	private ComboBox cmbDiscoveryLanguage = null!;

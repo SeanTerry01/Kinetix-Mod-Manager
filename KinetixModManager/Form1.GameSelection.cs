@@ -896,6 +896,9 @@ public partial class Form1
 			// A game that would die while loading is warned about first. See LaunchMemoryCheck.
 			if (!ConfirmEnoughMemoryToLaunch(game, GameDisplayName())) return;
 
+			// Easily forgotten by the time the game starts with none of its mods.
+			if (_settings.DeploymentHeldOff.Contains(game)) Speak(Loc.T("launch.modsHeldOff"));
+
 			string gamePath = _settings.CurrentGamePath;
 			if (string.IsNullOrEmpty(gamePath) || !Directory.Exists(gamePath))
 			{

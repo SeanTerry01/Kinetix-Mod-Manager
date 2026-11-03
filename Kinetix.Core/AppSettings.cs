@@ -413,6 +413,12 @@ public class AppSettings : IModScanContext
 	public Dictionary<string, Dictionary<string, NexusCheckRecord>> NexusChecks { get; set; } = new();
 
 	/// <summary>
+	/// The games whose mods were taken out of the game folder on purpose, by a purge or before a game update. Nothing
+	/// goes back in until the person asks, because every refresh re-deploys otherwise.
+	/// </summary>
+	public HashSet<string> DeploymentHeldOff { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+	/// <summary>
 	/// The downloads the manager has installed, per game: <c>game -> file names in its downloads folder</c>.
 	///
 	/// Every archive stays in the downloads folder whether it was installed or not, so this is the only thing that
@@ -898,6 +904,7 @@ public class AppSettings : IModScanContext
 
 		if (InstalledDownloadVersions == null) InstalledDownloadVersions = new Dictionary<string, Dictionary<string, string>>();
 		NexusChecks ??= new Dictionary<string, Dictionary<string, NexusCheckRecord>>();
+		DeploymentHeldOff ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		InstalledArchives ??= new Dictionary<string, List<string>>();
 		// Set once, the first time a version that keeps the record starts, and never moved after.
 		InstalledArchivesSince ??= DateTime.Now;

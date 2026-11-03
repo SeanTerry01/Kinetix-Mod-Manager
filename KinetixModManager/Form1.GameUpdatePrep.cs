@@ -37,8 +37,15 @@ public partial class Form1
 
 		CreateSafetyBackup(Loc.T("prep.reason"));
 		SetStatus(Loc.T("prep.working"));
-		int removed = ModFileSystem.PurgeDeployment(gameRoot, manifest, LogError);
-		manifest.Save(game);
+		int removed;
+		lock (_deploymentLock)
+		{
+			// Or the next refresh puts everything back while the game is updating.
+			_settings.DeploymentHeldOff.Add(game);
+			removed = ModFileSystem.PurgeDeployment(gameRoot, manifest, LogError);
+			manifest.Save(game);
+		}
+		_settings.Save();
 		_lastConflicts = new List<FileConflict>();
 		RefreshModPriorityList();
 		RefreshPluginOrderList();
@@ -61,6 +68,8 @@ public partial class Form1
 			return;
 
 		SetStatus(Loc.T("prep.restoreWorking"));
+		_settings.DeploymentHeldOff.Remove(_settings.ActiveGame);
+		_settings.Save();
 		var forceAll = new HashSet<string>(
 			_allInstalledMods.Where(m => !m.IsGroup && m.IsEnabled).Select(PriorityKey),
 			StringComparer.OrdinalIgnoreCase);

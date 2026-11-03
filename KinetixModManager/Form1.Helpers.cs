@@ -598,9 +598,9 @@ public partial class Form1
 	/// </summary>
 	private async void AnnounceListEmpty(ListBox list)
 	{
-		if (_isLoading || _shuttingDown) return;
+		if (IsLoading || _shuttingDown) return;
 		await Task.Delay(120);
-		if (list.IsDisposed || !list.Focused || list.Items.Count != 0 || _isLoading) return;
+		if (list.IsDisposed || !list.Focused || list.Items.Count != 0 || IsLoading) return;
 
 		long now = Environment.TickCount64;
 		if (ReferenceEquals(_lastEmptyList, list) && now - _lastEmptyTicks < 1000) return;
@@ -913,6 +913,12 @@ public partial class Form1
 	/// </summary>
 	private async Task RunDiscovery(bool loadMore = false, bool alsoTheOthers = false)
 	{
+		// Enter twice on "Load more" jumped a page and added the rows twice.
+		if (loadMore && _discoveryRunning > 0) return;
+		// A newer search replaces this one. Its results, or results arriving after a game switch, must not land in the list.
+		int search = ++_discoverySearch;
+		string searchGame = _settings.ActiveGame;
+
 		// Only a game whose mods come from Nexus needs a Nexus key to search. Minecraft's come from Modrinth,
 		// which has no accounts — and this used to send a Minecraft player away to log in to a service their
 		// game has nothing to do with, rather than searching.
@@ -963,6 +969,7 @@ public partial class Form1
 		string phrase = loadMore ? Loc.T("discovery.loadingMore") : DiscoveryStartPhrase(searchType, searchTerm, category);
 		Speak(phrase);
 		SetStatus(phrase, speak: false);
+		_discoveryRunning++;
 		try
 		{
 			int pageSize = _currentDiscoveryPageSize;
@@ -974,6 +981,7 @@ public partial class Form1
 				? await ModrinthService.SearchModpacksAsync(searchTerm, (_currentDiscoveryPage - 1) * pageSize, pageSize)
 				: await SearchActiveGameCatalogueAsync(
 					searchType, searchTerm, _currentDiscoveryPage, pageSize, language, category, alsoTheOthers);
+			if (search != _discoverySearch || _settings.ActiveGame != searchGame) return;
 			int offset = (_currentDiscoveryPage - 1) * pageSize;
 
 			// Drop the old inline "Load more" row (always last) before appending; firstNewIndex is then
@@ -997,6 +1005,7 @@ public partial class Form1
 			if (!loadMore && !string.IsNullOrEmpty(language))
 			{
 				int unfiltered = await _nexusService.GetUnfilteredModCountAsync();
+				if (search != _discoverySearch || _settings.ActiveGame != searchGame) return;
 				if (unfiltered > total)
 					hiddenByLanguage = " " + Loc.T("discovery.languageHiding", total, unfiltered, language);
 			}
@@ -1021,11 +1030,15 @@ public partial class Form1
 		}
 		finally
 		{
+			_discoveryRunning--;
 			// "Running search…" / "Loading more…" are transient; return the title to the resting status
 			// (Nexus connection or "Ready") so it never sits on a stale "Loading more…" forever.
-			ResetStatus();
+			if (search == _discoverySearch) ResetStatus();
 		}
 	}
+
+	private int _discoverySearch;
+	private int _discoveryRunning;
 
 	/// <summary>
 	/// Fills the Discovery "Language" dropdown with the languages that actually have mods for the active game
@@ -1470,15 +1483,49 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Plays a periodic loading sound while update checks are in flight (<c>_isLoading</c> is true).
+	/// Plays a periodic loading sound while anything that started a <see cref="LoadingPulse"/> is still running.
 	/// Exits and plays the completion sound once all pending checks finish.
 	/// </summary>
 	private async Task RunLoadingLoop()
 	{
-		while (_isLoading)
+		// Something starting within a pulse of the last one finishing finds this loop still going, and it carries on.
+		if (Interlocked.Exchange(ref _pulseRunning, 1) == 1) return;
+		try
 		{
-			_soundEngine.Play("loading_indicator");
-			await Task.Delay(1500);
+			while (IsLoading)
+			{
+				_soundEngine.Play("loading_indicator");
+				await Task.Delay(1500);
+			}
+		}
+		finally
+		{
+			Volatile.Write(ref _pulseRunning, 0);
+		}
+	}
+
+	private int _pulseRunning;
+	private int _loadingCount;
+	private LoadingPulse? _updateCheckPulse;
+
+	/// <summary>Whether anything long-running is under way. Was one flag, so a BepInEx install finishing ended an update check's pulse.</summary>
+	private bool IsLoading => Volatile.Read(ref _loadingCount) > 0;
+
+	private LoadingPulse StartLoadingPulse()
+	{
+		Interlocked.Increment(ref _loadingCount);
+		Fire(RunLoadingLoop(), "RunLoadingLoop");
+		return new LoadingPulse(this);
+	}
+
+	/// <summary>One operation's share of the pulse. Ending it twice counts once, as failure paths may well do.</summary>
+	private sealed class LoadingPulse(Form1 owner)
+	{
+		private int _ended;
+
+		public void End()
+		{
+			if (Interlocked.Exchange(ref _ended, 1) == 0) Interlocked.Decrement(ref owner._loadingCount);
 		}
 	}
 }

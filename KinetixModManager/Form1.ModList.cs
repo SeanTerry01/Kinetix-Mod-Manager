@@ -404,7 +404,6 @@ public partial class Form1
 		int unitCount = list.Count + (runSmapi ? 1 : 0) + (minecraft ? 1 : 0);
 		if (unitCount == 0)
 		{
-			_isLoading = false;
 			_soundEngine.Play("load_complete");
 			// When there are unlinked mods present, point the user at Auto-match rather than a dead-end message.
 			Speak(_updateUnlinkedMods.Count > 0
@@ -412,11 +411,10 @@ public partial class Form1
 				: Loc.T("modlist.noUpdateSources"));
 			return;
 		}
-		_isLoading = true;
+		_updateCheckPulse = StartLoadingPulse();
 		Interlocked.Exchange(ref _updateChecksUnanswered, 0);
 		Interlocked.Exchange(ref _activeChecks, unitCount);
 		Speak(Loc.T("modlist.checkingUpdates"));
-		Fire(RunLoadingLoop(), "RunLoadingLoop");
 		launchedChecks = true;
 		if (runSmapi)
 		{
