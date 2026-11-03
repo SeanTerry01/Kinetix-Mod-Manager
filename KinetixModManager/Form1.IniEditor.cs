@@ -176,7 +176,7 @@ public partial class Form1
         // Deliberately silent, as in the other three settings editors: this list IS the view, and the view has
         // just said "Editing <file>" as its title and "N settings, press Enter…" as its hint. A name here — "<file>
         // settings" — is the same sentence a third time before the user has heard a single setting. See
-        // SilentAccessibleName and Form1.StardewConfig.
+        // SilentAccessibleName and NewSettingsList.
         var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = SilentAccessibleName, IntegralHeight = false, HorizontalScrollbar = true };
 
         void Reload(int selectIndex)

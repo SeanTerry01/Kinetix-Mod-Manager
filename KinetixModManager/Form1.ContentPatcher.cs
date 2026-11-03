@@ -44,20 +44,7 @@ public partial class Form1
 		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
 		ShowInlineView(Loc.T("cpconfig.title", modName), (container, closeView) =>
 		{
-			var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
-			layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-
-			var list = new ListBox
-			{
-				Dock = DockStyle.Fill,
-				Font = new Font("Segoe UI", 12f),
-				// Silent for the same reason as the Stardew settings list: the view's title and hint have already
-				// named it twice on the way in. See SilentAccessibleName and Form1.StardewConfig.
-				AccessibleName = SilentAccessibleName,
-				IntegralHeight = false,
-				HorizontalScrollbar = true
-			};
+			ListBox list = NewSettingsList();
 
 			void Reload(int selectIndex)
 			{
@@ -79,17 +66,7 @@ public partial class Form1
 			}
 			Reload(0);
 
-			var btnClose = new Button { Text = Loc.T("cpconfig.closeBtn"), AutoSize = true, AccessibleName = Loc.T("cpconfig.closeName") };
-			var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
-			buttons.Controls.Add(btnClose);
-
-			layout.Controls.Add(list, 0, 0);
-			layout.Controls.Add(buttons, 0, 1);
-			container.Controls.Add(layout);
-
-			// Position on entry and on every arrow, plus Left/Right suppression — the shared wiring every list
-			// in the app uses (see Form1.Helpers).
-			WireAccessibleDialogList(list);
+			Button btnClose = AddSettingsListLayout(container, list, Loc.T("cpconfig.closeBtn"), Loc.T("cpconfig.closeName"));
 
 			// Writes one answer through to the pack's config, reporting rather than failing silently.
 			bool Apply(CpConfigOption option, string newValue)

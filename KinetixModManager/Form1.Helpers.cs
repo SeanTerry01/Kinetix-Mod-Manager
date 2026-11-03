@@ -187,6 +187,48 @@ public partial class Form1
 		KeepLeftAndRightOffTheSelection(list);
 	}
 
+	/// <summary>
+	/// The list a mod's settings view shows, unfilled and not yet wired, so that filling it says nothing: the caller
+	/// selects its first row and then hands it to <see cref="AddSettingsListLayout"/>.
+	/// </summary>
+	private static ListBox NewSettingsList()
+	{
+		var list = new ListBox
+		{
+			Dock = DockStyle.Fill,
+			Font = new Font("Segoe UI", 12f),
+			// Deliberately silent. The rule is that a control the user lands on keeps a real name, but this list IS the
+			// view, and the view has just said "<mod> Settings" as its title and "N settings, press Enter…" as its hint.
+			// A name here is the same sentence a third time, which is the repetition the silent name exists to stop.
+			AccessibleName = SilentAccessibleName,
+			IntegralHeight = false,
+			HorizontalScrollbar = true
+		};
+		return list;
+	}
+
+	/// <summary>
+	/// Lays out a settings view: <paramref name="list"/> filling the space with a Close button below it, in that tab
+	/// order, and gives the list the announcements every list has. Returns the button for the caller to connect.
+	/// </summary>
+	private Button AddSettingsListLayout(Control container, ListBox list, string closeText, string closeName)
+	{
+		var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
+		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+		var btnClose = new Button { Text = closeText, AutoSize = true, AccessibleName = closeName };
+		var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
+		buttons.Controls.Add(btnClose);
+
+		layout.Controls.Add(list, 0, 0);
+		layout.Controls.Add(buttons, 0, 1);
+		container.Controls.Add(layout);
+
+		WireAccessibleDialogList(list);
+		return btnClose;
+	}
+
 	/// <summary>A list box moves its selection on Left and Right as well as Up and Down, which here reads as losing your place.</summary>
 	private static void KeepLeftAndRightOffTheSelection(ListBox list)
 	{

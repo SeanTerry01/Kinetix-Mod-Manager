@@ -33,20 +33,7 @@ public partial class Form1
 		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
 		ShowInlineView(Loc.T("mcm.title", modName), (container, closeView) =>
 		{
-			var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
-			layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-
-			var list = new ListBox
-			{
-				Dock = DockStyle.Fill,
-				Font = new Font("Segoe UI", 12f),
-				// Silent for the same reason as the Stardew settings list: the view's title and hint have already
-				// named it twice on the way in. See SilentAccessibleName and Form1.StardewConfig.
-				AccessibleName = SilentAccessibleName,
-				IntegralHeight = false,
-				HorizontalScrollbar = true
-			};
+			ListBox list = NewSettingsList();
 
 			void Reload(int selectIndex)
 			{
@@ -65,15 +52,7 @@ public partial class Form1
 			}
 			Reload(0);
 
-			var btnClose = new Button { Text = Loc.T("mcm.closeBtn"), AutoSize = true, AccessibleName = Loc.T("mcm.closeName") };
-			var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
-			buttons.Controls.Add(btnClose);
-
-			layout.Controls.Add(list, 0, 0);
-			layout.Controls.Add(buttons, 0, 1);
-			container.Controls.Add(layout);
-
-			WireAccessibleDialogList(list);
+			Button btnClose = AddSettingsListLayout(container, list, Loc.T("mcm.closeBtn"), Loc.T("mcm.closeName"));
 
 			void EditSelected()
 			{
