@@ -1120,7 +1120,7 @@ public partial class Form1
 			catch (Exception ex)
 			{
 				_soundEngine.Play("error");
-				SpeakBox(Loc.T("settings.aiRefreshFail", ex.Message), Loc.T("ai.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				SpeakBox(Loc.T("settings.aiRefreshFail", ex.Message), Loc.T("ai.title"), MessageBoxButtons.OK);
 			}
 			finally { aiRefreshBusy = false; }
 		};
@@ -1151,7 +1151,7 @@ public partial class Form1
 			catch (Exception ex)
 			{
 				_soundEngine.Play("error");
-				SpeakBox(Loc.T("settings.aiTestFail", ex.Message), Loc.T("ai.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				SpeakBox(Loc.T("settings.aiTestFail", ex.Message), Loc.T("ai.title"), MessageBoxButtons.OK);
 			}
 			finally { aiTestBusy = false; }
 		};
@@ -1173,7 +1173,7 @@ public partial class Form1
 			tempModsPaths[currentEditingGame] = tPath.Text.Trim();
 			tempGamePaths[currentEditingGame] = tGamePath.Text.Trim();
 
-			if (_settings.ActiveGame != "None")
+			if (_settings.ActiveGame != GameProfiles.NoGame)
 			{
 				// TryGetValue, not the indexer: the active copy's key is not guaranteed to be in these maps —
 				// a second copy detected this session may not have been given a path yet, and throwing here

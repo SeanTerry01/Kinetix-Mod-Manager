@@ -164,12 +164,6 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Opens the selected mod's <c>config.json</c> in the built-in JSON editor (Ctrl+S to save) so the user
-	/// can change mod settings directly from the manager (for example, the screen the Stardew Valley "Skip
-	/// Intro" mod skips to). Most mods only generate their config file the first time the game runs with the
-	/// mod enabled, so this reports gracefully when no config exists yet.
-	/// </summary>
-	/// <summary>
 	/// The BepInEx settings file belonging to <paramref name="mod"/>, or <c>null</c> when it has none.
 	///
 	/// BepInEx names these files after the plugin's id rather than its folder, and writes the plugin's name and
@@ -263,11 +257,6 @@ public partial class Form1
 		EditModKeepingPlace(mod, () => OpenModSettingsFor(mod));
 	}
 
-	/// <summary>
-	/// Opens whichever settings editor suits <paramref name="mod"/>: the choices its author declared where they
-	/// can be read (Content Patcher, a Mod Configuration Menu, a BepInEx config, a Stardew config the manager can
-	/// make sense of), and the raw JSON editor only when nothing better is available.
-	/// </summary>
 	/// <summary>
 	/// The player's <c>user.settings</c> — where The Witcher 3 keeps every mod's settings, in the player's
 	/// documents rather than anywhere near the mod.
@@ -397,7 +386,8 @@ public partial class Form1
 		// The value already in the file still says whether it is a yes/no, a number or text, and many mods ship
 		// the labels for their in-game settings menu — enough for a settings list rather than raw JSON. A mod
 		// holding nothing editable that way falls through to the JSON editor below.
-		if (_settings.ActiveGame == GameProfiles.StardewValley &&
+		// IsGame, so a second copy of the game gets the settings list too rather than the raw JSON editor.
+		if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley) &&
 			ShowStardewModSettings(mod.Name, mod.FolderPath))
 			return;
 
@@ -570,7 +560,7 @@ public partial class Form1
 			confirm += Loc.T("modactions.deleteDependentsWarning", dependents.Count,
 				string.Join("\n", dependents.Take(10)));
 
-		if (SpeakBox(confirm, Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation) != DialogResult.Yes)
+		if (SpeakBox(confirm, Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo) != DialogResult.Yes)
 			return;
 
 		using IDisposable busy = BeginModOperation();
@@ -587,7 +577,7 @@ public partial class Form1
 				ResetStatus();
 				_soundEngine.Play("error");
 				SpeakBox(Loc.T("modactions.deleteNoBackupBox", stardewMod.Name), Loc.T("modactions.deleteNoBackupTitle"),
-					MessageBoxButtons.OK, MessageBoxIcon.Warning);
+					MessageBoxButtons.OK);
 				return;
 			}
 
@@ -641,7 +631,7 @@ public partial class Form1
 
 		if (SpeakBox(Loc.T("modactions.runUninstallerBox", uninstaller.DisplayName),
 				Loc.T("modactions.runUninstallerTitle"),
-				MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+				MessageBoxButtons.YesNo) != DialogResult.Yes)
 			return;
 
 		SetStatus(Loc.T("modactions.uninstallerRunning", uninstaller.DisplayName));

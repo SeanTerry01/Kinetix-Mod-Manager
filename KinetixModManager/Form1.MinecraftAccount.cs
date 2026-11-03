@@ -432,7 +432,7 @@ public partial class Form1
 		// One question, and the box carries the news with it: a message box flushes the speech queue, so
 		// speaking the result first would lose half of it to the box's own announcement.
 		if (SpeakBox(Loc.T("mcAccount.signedInAsk", session.Username) + warning, Loc.T("mcAccount.signedInTitle"),
-				MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+				MessageBoxButtons.YesNo) == DialogResult.Yes)
 		{
 			_settings.MinecraftPlayOnline = true;
 			_settings.Save();
@@ -449,7 +449,7 @@ public partial class Form1
 		if (name.Length == 0) return;
 
 		if (SpeakBox(Loc.T("mcAccount.signOutConfirm", name), Loc.T("mcAccount.signOutTitle"),
-				MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+				MessageBoxButtons.YesNo) != DialogResult.Yes)
 			return;
 
 		MinecraftAccounts.Forget(_settings);
@@ -527,7 +527,7 @@ public partial class Form1
 				ResetStatus();
 
 				if (SpeakBox(Loc.T("mc.launch.onlineFailed", MinecraftAuthMessage(ex)), Loc.T("mc.launch.onlineFailedTitle"),
-						MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+						MessageBoxButtons.YesNo) != DialogResult.Yes)
 					return null;
 			}
 			finally
@@ -540,7 +540,7 @@ public partial class Form1
 		if (offline is null)
 		{
 			SpeakBox(Loc.T("mc.launch.noAccountBox"), Loc.T("mc.launch.noAccountTitle"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 		}
 
 		return offline;
@@ -560,7 +560,7 @@ public partial class Form1
 		// MinecraftAuth. It goes to the log, not to the player.
 		LogFailure("Minecraft", "Sign-in failed", ex);
 
-		SpeakBox(MinecraftAuthMessage(ex), Loc.T("mcAccount.failTitle"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+		SpeakBox(MinecraftAuthMessage(ex), Loc.T("mcAccount.failTitle"), MessageBoxButtons.OK);
 	}
 
 	/// <summary>The sentence a player is given for a failure — what happened and what to do about it.</summary>

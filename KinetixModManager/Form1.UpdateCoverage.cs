@@ -98,7 +98,7 @@ public partial class Form1
 	/// </summary>
 	private async Task ShowUpdateCoverageReport()
 	{
-		if (_settings.ActiveGame == "None") return;
+		if (_settings.ActiveGame == GameProfiles.NoGame) return;
 
 		Speak(Loc.T("coverage.gathering"));
 		// Recover what the manager can before reporting: links from the original downloads (exact), then

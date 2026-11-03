@@ -257,7 +257,7 @@ public partial class Form1 : Form, IMessageFilter
 
 			// Only when a session is still open: closing one (Ctrl+Shift+C) already plays this, so exiting
 			// afterwards would sound the disconnect for a session that was torn down some time ago.
-			if (_settings.ActiveGame != "None")
+			if (_settings.ActiveGame != GameProfiles.NoGame)
 			{
 				await _soundEngine.PlayAsync("disconnect");
 			}
@@ -504,7 +504,7 @@ public partial class Form1 : Form, IMessageFilter
 		{
 			// Only Stardew's FIRST copy is handled above (it is the one mirrored into the legacy ModsPath field);
 			// a second Stardew copy is an ordinary install like any other and resolves here.
-			if (install.Key == GameProfiles.StardewValley) continue;
+			if (GameProfiles.IsFirstCopy(install.Key, GameProfiles.StardewValley)) continue;
 
 			string current = _settings.GameModsPaths.TryGetValue(install.Key, out string? existing) ? existing : "";
 			if (!string.IsNullOrEmpty(current) && Directory.Exists(current)) continue;
@@ -560,7 +560,7 @@ public partial class Form1 : Form, IMessageFilter
 		if (lines.Count == 0) return;
 
 		string message = Loc.T("copies.foundBox", string.Join("\n", lines));
-		SpeakBox(message, Loc.T("copies.foundTitle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+		SpeakBox(message, Loc.T("copies.foundTitle"), MessageBoxButtons.OK);
 	}
 
 	/// <summary>Says so if the settings file was damaged. Silently starting over reads as losing everything for no reason.</summary>
@@ -848,7 +848,7 @@ public partial class Form1 : Form, IMessageFilter
 				await WaitForSpeechAsync();
 
 				// Only when there is one. Starting with no session goes to the game list, which announces itself.
-				if (form._settings.ActiveGame != "None")
+				if (form._settings.ActiveGame != GameProfiles.NoGame)
 				{
 					form.Speak(Loc.T("app.sessionLoaded", form.GameDisplayName()));
 					await WaitForSpeechAsync();
@@ -875,7 +875,7 @@ public partial class Form1 : Form, IMessageFilter
 			// silently so they aren't nagged after upgrading.
 			if (!form._settings!.HasCompletedFirstRun)
 			{
-				bool fresh = string.IsNullOrEmpty(form._settings.ApiKey) && form._settings.ActiveGame == "None";
+				bool fresh = string.IsNullOrEmpty(form._settings.ApiKey) && form._settings.ActiveGame == GameProfiles.NoGame;
 				form._settings.HasCompletedFirstRun = true;
 				form._settings.Save();
 				if (fresh)
@@ -885,7 +885,7 @@ public partial class Form1 : Form, IMessageFilter
 				}
 			}
 
-			if (form._settings.ActiveGame == "None")
+			if (form._settings.ActiveGame == GameProfiles.NoGame)
 			{
 				// How to choose a game, and only then where you are — the reader's own version of the second half
 				// arrived in the middle of the opening and was swallowed with the caption, so it is said here
@@ -929,7 +929,7 @@ public partial class Form1 : Form, IMessageFilter
 				// The previously active game is no longer installed (e.g. settings carried over
 				// from another PC) but other supported games are. Return to the game-selection
 				// screen rather than loading another game's mods by mistake.
-				form.SwitchActiveGame("None");
+				form.SwitchActiveGame(GameProfiles.NoGame);
 			}
 
 			// The opening has had its say; lists may announce themselves again from here. Held until after the
@@ -941,7 +941,7 @@ public partial class Form1 : Form, IMessageFilter
 			// If no supported game is installed at all, guide the user to purchase one. This also
 			// covers a saved-but-uninstalled active game with no other game present (in which case
 			// we deliberately neither refreshed nor reset above, so no wrong mods were loaded).
-			if (!anyInstalled && form._settings.ActiveGame != "None")
+			if (!anyInstalled && form._settings.ActiveGame != GameProfiles.NoGame)
 			{
 				form.ShowNoGamesInstalledFlow();
 			}

@@ -350,7 +350,11 @@ public partial class Form1
 	private void OpenFolder(string folder)
 	{
 		try { Process.Start(new ProcessStartInfo("explorer.exe", $"\"{folder}\"") { UseShellExecute = true }); }
-		catch (Exception ex) { LogFailure("Minecraft", $"Could not open {folder}", ex); }
+		catch (Exception ex)
+		{
+			LogFailure("Files", $"Could not open {folder}", ex);
+			Speak(Loc.T("store.couldNotOpenLink", FriendlyError(ex)));
+		}
 	}
 
 	/// <summary>The same file picker as Install from file, offering modpacks only.</summary>
@@ -386,7 +390,7 @@ public partial class Form1
 			? Loc.T("mc.pack.deleteConfirm", pack.Name)
 			: Loc.T("mc.pack.deleteConfirmWorlds", pack.Name, worlds.Count, string.Join(", ", worlds));
 
-		if (SpeakBox(question, Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo, MessageBoxIcon.Warning)
+		if (SpeakBox(question, Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo)
 			!= DialogResult.Yes)
 		{
 			Speak(Loc.T("common.changesCancelled"));
@@ -407,7 +411,7 @@ public partial class Form1
 			// The usual cause is the game still running from that folder, holding its files open.
 			LogFailure("Minecraft", $"Could not delete the modpack {pack.Name}", ex);
 			SpeakBox(Loc.T("mc.pack.deleteFailed", pack.Name, FriendlyError(ex)), Loc.T("common.error"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 			return;
 		}
 

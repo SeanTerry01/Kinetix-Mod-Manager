@@ -35,7 +35,7 @@ public partial class Form1
 	private void SetupAccessibleUI()
 	{
 		// Startup title: the active game with its detected Skyrim/Fallout edition + build (see GameDisplayName).
-		string gameName = _settings.ActiveGame == "None" ? "" : GameDisplayName();
+		string gameName = _settings.ActiveGame == GameProfiles.NoGame ? "" : GameDisplayName();
 		Text = string.IsNullOrEmpty(gameName) ? Loc.T("ui.appTitle") : Loc.T("ui.appTitleGame", gameName);
 		base.Size = new Size(1000, 700);
 		base.KeyPreview = true;
@@ -89,13 +89,13 @@ public partial class Form1
 		_menuCloseSessionItem = new ToolStripMenuItem(Loc.T("menu.closeSession"), null, delegate { CloseGameSession(); })
 		{
 			ShortcutKeys = Keys.Control | Keys.Shift | Keys.C,
-			Visible = (_settings.ActiveGame != "None")
+			Visible = (_settings.ActiveGame != GameProfiles.NoGame)
 		};
 		_menuFile.DropDownItems.Add(_menuCloseSessionItem);
 
 		_menuCloseSeparator = new ToolStripSeparator
 		{
-			Visible = (_settings.ActiveGame != "None")
+			Visible = (_settings.ActiveGame != GameProfiles.NoGame)
 		};
 		_menuFile.DropDownItems.Add(_menuCloseSeparator);
 
@@ -272,11 +272,11 @@ public partial class Form1
 		});
 		toolStripMenuItem3.DropDownItems.Add(ShortcutLabel("menu.openDownloads", "OpenDownloads"), null, delegate
 		{
-			Process.Start("explorer.exe", downloadsPath);
+			OpenFolder(downloadsPath);
 		});
 		toolStripMenuItem3.DropDownItems.Add(ShortcutLabel("menu.openBackups", "OpenBackups"), null, delegate
 		{
-			Process.Start("explorer.exe", backupsPath);
+			OpenFolder(backupsPath);
 		});
 		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.freeUpSpace"), null, delegate
 		{
@@ -1100,7 +1100,7 @@ public partial class Form1
 		InitializeGameSelectionPanel();
 		base.Controls.Add(menuStrip);
 
-		bool noGame = _settings.ActiveGame == "None";
+		bool noGame = _settings.ActiveGame == GameProfiles.NoGame;
 		if (noGame)
 		{
 			if (!base.Controls.Contains(_gameSelectionPanel))

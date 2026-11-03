@@ -27,19 +27,6 @@ public static class ModHealth
 	}
 
 	/// <summary>
-	/// Resolves each mod's declared dependencies against the other installed mods, marking whether the required
-	/// mod is present, enabled, and new enough.
-	///
-	/// Matching ignores case and surrounding whitespace, because a UniqueID is hand-typed in two places by two
-	/// different authors and they do not always agree: Producer Framework Mod calls itself
-	/// "Digus.ProducerFrameworkMod", while the PPJA packs that need it ask for "DIGUS.ProducerFrameworkMod".
-	/// SMAPI matches ids case-insensitively and loads them happily, so a case-sensitive comparison here reported
-	/// a requirement as "not installed" while the mod sat right there in the list, enabled.
-	///
-	/// When two copies of the same mod are installed, an enabled one satisfies the dependency in preference to a
-	/// disabled one — that is what the game will load, so reporting the disabled copy would be equally untrue.
-	/// </summary>
-	/// <summary>
 	/// Whether these two entries are the same mod — the installed copy and what an update left in its place.
 	///
 	/// <para>

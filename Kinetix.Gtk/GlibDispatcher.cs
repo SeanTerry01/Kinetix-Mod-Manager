@@ -35,17 +35,4 @@ public sealed class GlibDispatcher : IDispatcher
 		});
 	}
 
-	public Task<T> InvokeAsync<T>(Func<T> function)
-	{
-		if (IsOnUiThread) return Task.FromResult(function());
-
-		var done = new TaskCompletionSource<T>();
-		GLib.Functions.IdleAdd(GLib.Constants.PRIORITY_DEFAULT_IDLE, () =>
-		{
-			try { done.SetResult(function()); }
-			catch (Exception ex) { done.SetException(ex); }
-			return false;
-		});
-		return done.Task;
-	}
 }

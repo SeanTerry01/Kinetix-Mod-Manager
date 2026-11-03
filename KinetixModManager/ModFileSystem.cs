@@ -135,12 +135,6 @@ public static class ModFileSystem
 		Witcher3ModSettings.Remove(settingsPath, Path.GetFileName(modFolderPath.TrimEnd(Path.DirectorySeparatorChar)));
 	}
 
-	/// <summary>
-	/// Finds Skyrim/Fallout 4 plugins whose declared master files are not available among the supplied mods
-	/// (or the base game/DLC masters) — the classic "missing master" that stops a plugin loading. Each result
-	/// is the plugin, the mod that ships it, and the master that can't be found. Reads masters from the TES4
-	/// header via <see cref="ReadPluginMasters"/>; only considers the given (typically enabled) mods.
-	/// </summary>
 	/// <summary>A declared master that won't satisfy a plugin: missing entirely, or present but not active.</summary>
 	public sealed class MasterIssue
 	{
@@ -378,11 +372,6 @@ public static class ModFileSystem
 	// via a small [Archive] block in Fallout4Custom.ini. Skyrim SE deliberately isn't covered here: it loads loose
 	// files by default, so the toggle would be a misleading no-op there.
 
-	/// <summary>
-	/// Full path to the custom INI that holds the archive-invalidation [Archive] block, or <c>null</c> for any game
-	/// where the toggle doesn't apply (everything except Fallout 4). Uses Fallout4Custom.ini — the file the engine
-	/// merges over its generated Fallout4.ini — so the toggle is non-destructive and never edits a game-owned INI.
-	/// </summary>
 	/// <summary>
 	/// Every BepInEx plugin's configuration file for a Moonlight Peaks install, as (display label, full path)
 	/// pairs sorted by label. BepInEx writes one <c>.cfg</c> per plugin that has settings, into
@@ -1293,12 +1282,6 @@ public static class ModFileSystem
 		}
 	}
 
-	/// <summary>
-	/// Finalises a prepared Bethesda mod folder: backs up and removes any prior version, copies the
-	/// prepared <paramref name="sourceFolder"/> into the mods directory, and writes the manager manifest.
-	/// Shared by the normal flat-copy install and the FOMOD pipeline. When <paramref name="fomodInfo"/>
-	/// is supplied its Name/Author/Version seed the manifest (a Nexus lookup still overrides when available).
-	/// </summary>
 	/// <summary>
 	/// Reserved subfolder inside a mod where the manager keeps the mod's own documentation (README, guides,
 	/// keybind lists). Deployment skips it, so it never reaches the game's Data folder.

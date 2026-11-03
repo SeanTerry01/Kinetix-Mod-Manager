@@ -20,7 +20,7 @@ public partial class Form1
 	/// <summary>Entry point (Mods menu / shortcut): lists the active game's downloaded archives for re-install.</summary>
 	private void ShowDownloadsHistory()
 	{
-		if (_settings.ActiveGame == "None")
+		if (_settings.ActiveGame == GameProfiles.NoGame)
 		{
 			Speak(Loc.T("downloads.noGame"));
 			return;
@@ -117,7 +117,7 @@ public partial class Form1
 	/// </summary>
 	private void ShowPendingDownloads()
 	{
-		if (_settings.ActiveGame == "None")
+		if (_settings.ActiveGame == GameProfiles.NoGame)
 		{
 			Speak(Loc.T("downloads.noGame"));
 			return;
@@ -314,7 +314,7 @@ public partial class Form1
 	private void DeleteDownload(Action closeView, ListBox list, DownloadItem item)
 	{
 		if (SpeakBox(Loc.T("downloads.deleteConfirm", Path.GetFileName(item.FullPath)), Loc.T("downloads.deleteTitle"),
-				MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+				MessageBoxButtons.YesNo) != DialogResult.Yes)
 			return;
 
 		try

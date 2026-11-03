@@ -66,7 +66,7 @@ public partial class Form1
 			if (version is null)
 			{
 				SpeakBox(Loc.T("mc.pack.result.noFabric", result.Name), Loc.T("mc.pack.notInstalledTitle"),
-					MessageBoxButtons.OK, MessageBoxIcon.Information);
+					MessageBoxButtons.OK);
 				return;
 			}
 
@@ -81,7 +81,7 @@ public partial class Form1
 		{
 			LogFailure("Minecraft", $"Could not fetch the modpack {result.Name}", ex);
 			SpeakBox(Loc.T("mc.pack.result.fetchFailed", result.Name, FriendlyError(ex)), Loc.T("mc.pack.notInstalledTitle"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 		}
 	}
 
@@ -207,7 +207,7 @@ public partial class Form1
 		{
 			LogFailure("Minecraft", $"Could not fetch {pack.Name} {update.VersionNumber}", ex);
 			SpeakBox(Loc.T("mc.pack.result.fetchFailed", pack.Name, FriendlyError(ex)), Loc.T("mc.pack.update.title"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 			return;
 		}
 
@@ -239,7 +239,7 @@ public partial class Form1
 		if (index.MinecraftVersion != pack.MinecraftVersion)
 			question += "\n\n" + Loc.T("mc.pack.update.movesVersion", pack.MinecraftVersion, index.MinecraftVersion);
 
-		if (SpeakBox(question, Loc.T("mc.pack.update.title"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+		if (SpeakBox(question, Loc.T("mc.pack.update.title"), MessageBoxButtons.YesNo) != DialogResult.Yes)
 		{
 			Speak(Loc.T("common.changesCancelled"));
 			return;
@@ -251,7 +251,7 @@ public partial class Form1
 		{
 			LogFailure("Minecraft", $"Could not install Fabric {index.LoaderVersion}", ex);
 			SpeakBox(Loc.T("mc.pack.fabricFailed", pack.Name, index.LoaderVersion, FriendlyError(ex)),
-				Loc.T("mc.pack.update.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				Loc.T("mc.pack.update.title"), MessageBoxButtons.OK);
 			return;
 		}
 
@@ -273,7 +273,7 @@ public partial class Form1
 				{
 					DiscardStaging(staging);
 					SpeakBox(Loc.T("mc.pack.update.downloadFailed", pack.Name, failed.Count, string.Join(", ", failed.Take(5))),
-						Loc.T("mc.pack.update.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+						Loc.T("mc.pack.update.title"), MessageBoxButtons.OK);
 					return;
 				}
 			}
@@ -306,13 +306,13 @@ public partial class Form1
 			if (superseded.Count > 0)
 				done += "\n\n" + Loc.T("mc.pack.update.replacedYours", superseded.Count,
 					string.Join(", ", superseded.Select(s => Path.GetFileName(s.Path))));
-			SpeakBox(done, Loc.T("mc.pack.update.title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+			SpeakBox(done, Loc.T("mc.pack.update.title"), MessageBoxButtons.OK);
 		}
 		catch (Exception ex)
 		{
 			LogFailure("Minecraft", $"Could not update the modpack {pack.Name}", ex);
 			SpeakBox(Loc.T("mc.pack.update.failed", pack.Name, FriendlyError(ex)), Loc.T("mc.pack.update.title"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 		}
 		finally
 		{
@@ -471,7 +471,7 @@ public partial class Form1
 
 		if (found.Count == 0)
 		{
-			SpeakBox(Loc.T("mc.import.none"), Loc.T("mc.import.title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+			SpeakBox(Loc.T("mc.import.none"), Loc.T("mc.import.title"), MessageBoxButtons.OK);
 			return;
 		}
 
@@ -517,13 +517,13 @@ public partial class Form1
 			SpeakBox(!chosen.IsFabric
 					? Loc.T("mc.import.wrongLoader", chosen.Name, LoaderDisplayName(chosen.Loader))
 					: Loc.T("mc.import.unknownVersions", chosen.Name),
-				Loc.T("mc.import.title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+				Loc.T("mc.import.title"), MessageBoxButtons.OK);
 			return;
 		}
 
 		string root = MinecraftRootFolder();
 		if (SpeakBox(Loc.T("mc.import.confirm", chosen.Name, chosen.MinecraftVersion, chosen.LoaderVersion, chosen.ModCount),
-				Loc.T("mc.import.title"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+				Loc.T("mc.import.title"), MessageBoxButtons.YesNo) != DialogResult.Yes)
 		{
 			Speak(Loc.T("common.changesCancelled"));
 			return;
@@ -535,7 +535,7 @@ public partial class Form1
 		{
 			LogFailure("Minecraft", $"Could not install Fabric {chosen.LoaderVersion}", ex);
 			SpeakBox(Loc.T("mc.pack.fabricFailed", chosen.Name, chosen.LoaderVersion, FriendlyError(ex)),
-				Loc.T("mc.import.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				Loc.T("mc.import.title"), MessageBoxButtons.OK);
 			return;
 		}
 
@@ -587,7 +587,7 @@ public partial class Form1
 			DiscardStaging(staging);
 			LogFailure("Minecraft", $"Could not import {chosen.Name}", ex);
 			SpeakBox(Loc.T("mc.import.failed", chosen.Name, FriendlyError(ex)), Loc.T("mc.import.title"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 		}
 	}
 
@@ -672,7 +672,7 @@ public partial class Form1
 		string offer = Loc.T("mc.world.offer", pack.Name, sources.Count);
 		if (askFirst &&
 			SpeakBox(preamble is null ? offer : preamble + "\n\n" + offer, Loc.T("mc.world.title"),
-				MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+				MessageBoxButtons.YesNo) != DialogResult.Yes)
 			return true;
 
 		var labels = new Dictionary<string, MinecraftWorld>(StringComparer.Ordinal);
@@ -695,7 +695,7 @@ public partial class Form1
 		// copy, and a player may well want to try.
 		if (IsNewerThanPack(chosen, pack) &&
 			SpeakBox(Loc.T("mc.world.newer", chosen.Name, chosen.LastPlayedVersion, pack.Name, pack.MinecraftVersion),
-				Loc.T("mc.world.title"), MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+				Loc.T("mc.world.title"), MessageBoxButtons.YesNo) != DialogResult.Yes)
 		{
 			Speak(Loc.T("common.changesCancelled"));
 			return true;
@@ -711,7 +711,7 @@ public partial class Form1
 		{
 			LogFailure("Minecraft", $"Could not copy the world {chosen.Name}", ex);
 			SpeakBox(Loc.T("mc.world.failed", chosen.Name, FriendlyError(ex)), Loc.T("mc.world.title"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 		}
 	
 		return true;

@@ -54,7 +54,7 @@ public partial class Form1
 		// focus, so a held Backspace in a text box still repeats the way typing is supposed to.
 		if (isAutoRepeat) return;
 
-		if (_settings.ActiveGame == "None")
+		if (_settings.ActiveGame == GameProfiles.NoGame)
 		{
 			// On the game-selection screen most shortcuts act on a mod list that isn't loaded yet, but the
 			// app-wide ones still make sense and are needed here — Settings in particular, since that is where
@@ -167,12 +167,12 @@ public partial class Form1
 		if (IsShortcut(e, "OpenDownloads"))
 		{
 			e.SuppressKeyPress = true;
-			Process.Start("explorer.exe", downloadsPath);
+			OpenFolder(downloadsPath);
 		}
 		if (IsShortcut(e, "OpenBackups"))
 		{
 			e.SuppressKeyPress = true;
-			Process.Start("explorer.exe", backupsPath);
+			OpenFolder(backupsPath);
 		}
 		if (IsShortcut(e, "ManualID"))
 		{

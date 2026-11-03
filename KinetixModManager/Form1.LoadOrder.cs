@@ -177,7 +177,7 @@ public partial class Form1
 			return;
 		}
 		if (SpeakBox(Loc.T("loadorder.rebuildConfirm"), Loc.T("loadorder.rebuildTitle"),
-				MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+				MessageBoxButtons.YesNo) != DialogResult.Yes)
 			return;
 
 		CreateSafetyBackup(Loc.T("safety.reasonRebuild"));
@@ -226,7 +226,7 @@ public partial class Form1
 			return;
 		}
 		if (SpeakBox(Loc.T("loadorder.purgeConfirm", manifest.Deployed.Count), Loc.T("loadorder.purgeTitle"),
-				MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+				MessageBoxButtons.YesNo) != DialogResult.Yes)
 			return;
 
 		CreateSafetyBackup(Loc.T("safety.reasonPurge"));
@@ -365,7 +365,7 @@ public partial class Form1
 		}
 
 		if (SpeakBox(Loc.T("loadorder.importConfirm"), Loc.T("loadorder.importTitle"),
-				MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+				MessageBoxButtons.YesNo) != DialogResult.Yes)
 			return;
 
 		_settings.ModPriority[game] = new List<string>(data.ModPriority);

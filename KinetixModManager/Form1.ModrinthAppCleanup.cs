@@ -89,7 +89,7 @@ public partial class Form1
 
 		if (ModrinthAppRunning())
 		{
-			SpeakBox(Loc.T("mc.cleanup.running"), Loc.T("mc.cleanup.title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+			SpeakBox(Loc.T("mc.cleanup.running"), Loc.T("mc.cleanup.title"), MessageBoxButtons.OK);
 			return;
 		}
 
@@ -132,7 +132,7 @@ public partial class Form1
 			}
 		}
 		else if (SpeakBox(Loc.T("mc.cleanup.confirm", FormatBytes(size), folders.Count, string.Join(", ", folders)),
-					 Loc.T("mc.cleanup.title"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+					 Loc.T("mc.cleanup.title"), MessageBoxButtons.YesNo) != DialogResult.Yes)
 		{
 			Speak(Loc.T("common.changesCancelled"));
 			return;
@@ -167,7 +167,7 @@ public partial class Form1
 		if (stopped) Speak(Loc.T("mc.cleanup.stopped"));
 		else if (failed.Count > 0)
 			SpeakBox(Loc.T("mc.cleanup.someFailed", string.Join(", ", failed)), Loc.T("mc.cleanup.title"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 		else Speak(Loc.T("mc.cleanup.done"));
 	}
 
@@ -188,7 +188,7 @@ public partial class Form1
 	private async Task<bool> UninstallModrinthAppAsync(string uninstaller)
 	{
 		if (SpeakBox(Loc.T("mc.cleanup.stillInstalled"), Loc.T("mc.cleanup.title"),
-				MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+				MessageBoxButtons.YesNo) != DialogResult.Yes)
 		{
 			Speak(Loc.T("common.changesCancelled"));
 			return false;
@@ -209,17 +209,17 @@ public partial class Form1
 		{
 			LogFailure("Minecraft", "Could not start the Modrinth App's uninstaller", ex);
 			SpeakBox(Loc.T("mc.cleanup.uninstallFailed", FriendlyError(ex)), Loc.T("mc.cleanup.title"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 			return false;
 		}
 
-		SpeakBox(Loc.T("mc.cleanup.waitForUninstaller"), Loc.T("mc.cleanup.title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+		SpeakBox(Loc.T("mc.cleanup.waitForUninstaller"), Loc.T("mc.cleanup.title"), MessageBoxButtons.OK);
 
 		// A moment for Windows to finish updating its list after the uninstaller's last window closes.
 		await Task.Delay(1000);
 		if (ModrinthAppUninstaller() != null)
 		{
-			SpeakBox(Loc.T("mc.cleanup.stillThere"), Loc.T("mc.cleanup.title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+			SpeakBox(Loc.T("mc.cleanup.stillThere"), Loc.T("mc.cleanup.title"), MessageBoxButtons.OK);
 			return false;
 		}
 
@@ -240,7 +240,7 @@ public partial class Form1
 		if (anythingLeft) return;
 
 		if (SpeakBox(Loc.T("mc.cleanup.offerAfterImport"), Loc.T("mc.cleanup.title"),
-				MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+				MessageBoxButtons.YesNo) == DialogResult.Yes)
 			await RemoveModrinthAppLeftoversAsync(offeredAfterImport: true);
 	}
 }

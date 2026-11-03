@@ -47,8 +47,7 @@ public partial class Form1
 		bool closed = false;
 		void Close() => closed = true;
 
-		// The heading is PAINTED, not built as a control — see the comment on MARGIN below for why nothing that
-		// holds the title as text can live in this view.
+		// The heading is PAINTED, not built as a control. See the comment on the Paint handler below for why.
 		var headingFont = new Font("Segoe UI", 14f * TextScaleFactor(), FontStyle.Bold);
 		int headingHeight = TextRenderer.MeasureText(title, headingFont).Height + 8;
 

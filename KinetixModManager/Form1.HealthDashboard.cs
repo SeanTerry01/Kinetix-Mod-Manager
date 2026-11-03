@@ -30,7 +30,7 @@ public partial class Form1
 	/// </summary>
 	private async Task RunHealthCheck()
 	{
-		if (_settings.ActiveGame == "None")
+		if (_settings.ActiveGame == GameProfiles.NoGame)
 		{
 			Speak(Loc.T("health.noGame"));
 			return;
@@ -127,15 +127,6 @@ public partial class Form1
 			listName: Loc.T("health.listName"), rebuildRows: RebuildAfterAction);
 	}
 
-	/// <summary>
-	/// A Health Check finding for a broken Visual C++ runtime, or null when it is healthy or cannot be judged.
-	///
-	/// Unlike every other check here this one is not about the active game — it is about the machine, and a
-	/// problem it finds affects all of them. It earns its place in a mod manager's health check because the mods
-	/// most likely to be silenced by it are the accessibility mods, and their failure mode is silence: the game
-	/// launches, says nothing, and leaves no error for a screen reader to find. Pointing at the runtime is the
-	/// difference between a five-minute repair and a lost evening.
-	/// </summary>
 	/// <summary>
 	/// Whether the last run of Minecraft actually had its mods, or <c>null</c> for any other game and when
 	/// there is nothing to report.

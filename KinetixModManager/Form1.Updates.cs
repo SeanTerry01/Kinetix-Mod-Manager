@@ -161,20 +161,6 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Queries the Nexus Mods REST API or GitHub Releases for the latest version of a group of mods that share
-	/// one download, and lists that download once when it has a newer release. Rate-limited by
-	/// <c>_apiSemaphore</c> for Nexus.
-	///
-	/// The comparison deliberately isn't "each mod's manifest version versus the mod page's version". Those are
-	/// different things: a "1.0.2" release routinely contains manifests that still say "1.0.0", and one download
-	/// often installs several mods that each carry a version of their own. Comparing them offered an update that
-	/// installing could never satisfy — the files arrived, the manifests still said the old number, and the mod
-	/// came back next check. With two mods in one download they came back alternately, because installing it
-	/// rewrote both folders and undid whatever the previous round had settled. So we compare what we know is
-	/// installed (recorded at install time), falling back to the newest manifest version in the group, and list
-	/// one row for the download rather than one per mod inside it.
-	/// </summary>
-	/// <summary>
 	/// The newest version among the files a mod page offers as its main download, or <c>null</c> when there are
 	/// none to compare. Only ever used as a second opinion when the page's own version said the mod was current.
 	/// </summary>
@@ -539,7 +525,7 @@ public partial class Form1
 		_soundEngine.Play("load_complete");
 		if (SpeakBox(
 				Loc.T("updates.smapiBox", current, latest),
-				Loc.T("updates.smapiTitle"), MessageBoxButtons.YesNo, MessageBoxIcon.Information) != DialogResult.Yes)
+				Loc.T("updates.smapiTitle"), MessageBoxButtons.YesNo) != DialogResult.Yes)
 			return;
 
 		// SMAPI's installer updates an existing install in place, so the same routine used for a fresh
@@ -652,7 +638,7 @@ public partial class Form1
                 // question about the whole set, so a silent run is not interrupted here. See CameWithPack.
                 if (!silent && CameWithPack(mod) && ActiveMinecraftPack() is { } pack &&
                     SpeakBox(Loc.T("mc.pack.modUpdate.confirm", mod.Name, pack.Name), Loc.T("mc.pack.modUpdate.title"),
-                        MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                        MessageBoxButtons.YesNo) != DialogResult.Yes)
                 {
                     Speak(Loc.T("common.changesCancelled"));
                     return;
@@ -955,12 +941,6 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// If <paramref name="original"/> was disabled before being updated, re-disables the freshly installed copy
-	/// (updates always install a mod enabled), so updating never silently turns a mod back on. The new copy is
-	/// matched by Nexus ID or GitHub repo; its folder is renamed to the disabled form (a leading dot) and the mod
-	/// list re-reconciled so deployment and plugins.txt reflect the disabled state.
-	/// </summary>
-	/// <summary>
 	/// Mods left switched off by an Update All, so the batch can say so once at the end rather than asking about
 	/// each one in the middle of a run the user started precisely to avoid answering things.
 	/// </summary>
@@ -993,7 +973,7 @@ public partial class Form1
 		// In a batch nothing is asked: the run is unattended by design, and the state the user chose is kept. The
 		// end of the run says which mods that happened to.
 		if (!silent && SpeakBox(Loc.T("updates.enableAfterUpdate", updated.Name, updated.Version),
-				Loc.T("updates.enableAfterUpdateTitle"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+				Loc.T("updates.enableAfterUpdateTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 		{
 			_soundEngine.Play("enable");
 			Speak(Loc.T("updates.leftEnabled", updated.Name));

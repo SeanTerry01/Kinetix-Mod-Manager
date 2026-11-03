@@ -213,7 +213,7 @@ public partial class Form1
 			// Said plainly rather than retried. Mojang publishing no build of this runtime for this machine is
 			// a fact, and no amount of downloading will change it.
 			SpeakBox(Loc.T("mc.game.javaUnavailableBox", gameVersion, component, platform),
-				Loc.T("mc.game.javaTitle"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				Loc.T("mc.game.javaTitle"), MessageBoxButtons.OK);
 			return "";
 		}
 
@@ -277,7 +277,7 @@ public partial class Form1
 
 			string title = gameFiles == 0 ? Loc.T("mc.game.javaTitle") : Loc.T("mc.game.title", gameVersion);
 
-			if (SpeakBox(question, title, MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+			if (SpeakBox(question, title, MessageBoxButtons.YesNo) != DialogResult.Yes)
 			{
 				Speak(Loc.T("common.changesCancelled"));
 				return false;
@@ -509,7 +509,7 @@ public partial class Form1
 	private bool FailedToInstall(string gameVersion, int count)
 	{
 		SpeakBox(Loc.T("mc.game.failedBox", gameVersion, count), Loc.T("mc.game.failedTitle"),
-			MessageBoxButtons.OK, MessageBoxIcon.Warning);
+			MessageBoxButtons.OK);
 		return false;
 	}
 
@@ -523,7 +523,7 @@ public partial class Form1
 	private bool AskToGoOnWithoutMojang(string gameVersion)
 	{
 		return SpeakBox(Loc.T("mc.game.offlineBox", gameVersion), Loc.T("mc.game.offlineTitle"),
-			MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes;
+			MessageBoxButtons.YesNo) == DialogResult.Yes;
 	}
 
 	/// <summary>Fetches and parses a JSON document, or <c>null</c> when it could not be had.</summary>

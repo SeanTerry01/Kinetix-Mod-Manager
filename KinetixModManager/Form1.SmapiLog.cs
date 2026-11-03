@@ -83,7 +83,7 @@ public partial class Form1
 	/// </summary>
 	private void RefreshSmapiLog()
 	{
-		if (_settings.ActiveGame == "None") return;
+		if (_settings.ActiveGame == GameProfiles.NoGame) return;
 		if (listLog == null)
 		{
 			return;

@@ -104,12 +104,6 @@ run successfully end to end, but it is the newest and most involved code in the 
     Structures, Enchantments, Potions, Redstone, Food, Tools, Weapons, Armor, Villagers — not several hundred.
     ⚠️ This changed for **every** game's wiki, so a quick listen on Stardew or Skyrim is worth it.
 
-#### Deliberately not in this release
-*   **Online (signed-in) Minecraft.** The code is designed for it and the Azure app registration is done and
-    proven, but Mojang has not yet approved the app. Poll with `tools\mcauth-probe.py`: **403 = still pending,
-    200 = approved.** Offline mode is complete and is the sensible everyday mode; online is a later addition
-    with no rework, and only servers and Realms need it.
-
 ---
 
 ### 1.0a v1.5.2 — still outstanding

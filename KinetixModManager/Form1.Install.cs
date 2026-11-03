@@ -71,7 +71,7 @@ public partial class Form1
 
 		if (needPremium.Count == rows.Count)
 		{
-			SpeakBox(Loc.T("updateAll.premiumBox"), Loc.T("updateAll.premiumTitle"), MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+			SpeakBox(Loc.T("updateAll.premiumBox"), Loc.T("updateAll.premiumTitle"), MessageBoxButtons.OK);
 		}
 		else
 		{
@@ -192,7 +192,6 @@ public partial class Form1
 		return listBox.SelectedItem as StardewMod;
 	}
 
-	/// <summary>Opens the Nexus Mods page for the selected mod in the default browser.</summary>
 	/// <summary>Whether updating this mod needs a Nexus Premium account. The rule lives in the core.</summary>
 	private bool NeedsPremiumToUpdate(GameMod mod) => ModSources.NeedsNexusPremium(_settings.ActiveGame, mod);
 
@@ -254,14 +253,6 @@ public partial class Form1
 		catch (Exception ex) { LogFailure(stardewMod.Name, "Failed to open the mod page", ex); }
 	}
 
-	/// <summary>
-	/// Backs a mod up with the user's chosen progress feedback, off the UI thread.
-	///
-	/// Zipping a large mod takes long enough to matter, and doing it on the UI thread froze the window with
-	/// nothing said — indistinguishable from a crash if you can't see the screen. <paramref name="displayName"/>
-	/// is what the progress announcement calls the mod, so it is the mod's name rather than the backup's
-	/// internal file stem.
-	/// </summary>
 	/// <summary>
 	/// Backs a mod up, and says whether it worked.
 	///
@@ -483,7 +474,7 @@ public partial class Form1
 		{
 			// With no session open there is nothing to interrupt, so the question is only worth asking when it
 			// would actually cost the user something.
-			if (_settings.ActiveGame == "None")
+			if (_settings.ActiveGame == GameProfiles.NoGame)
 			{
 				choice = CrossGameDownloadAction.SwitchAndInstall;
 			}
@@ -576,7 +567,7 @@ public partial class Form1
 		bool install = OnUi(() =>
 		{
 			ForceToForeground();
-			return SpeakBox(this, Loc.T("download.installNow", modName), Loc.T("download.successTitle"),
+			return SpeakBox(Loc.T("download.installNow", modName), Loc.T("download.successTitle"),
 				MessageBoxButtons.YesNo) == DialogResult.Yes;
 		});
 
@@ -696,11 +687,6 @@ public partial class Form1
 		}
 	}
 
-	/// <summary>
-	/// Confirmation shown by <see cref="InstallFromZip"/> when an install would overwrite a mod that's already
-	/// installed. Returns true to overwrite. On decline it announces that the existing copy was kept. Marshals to
-	/// the UI thread since the install pipeline may call it from a background continuation.
-	/// </summary>
 	/// <summary>
 	/// Clears what a crash or a forced close left behind: unpacked folders nothing will ever clean up, and part-finished
 	/// downloads. Only ones at least a day old, so nothing another run might still be using is touched.
@@ -822,9 +808,8 @@ public partial class Form1
 	{
 		SamePageChoice Ask()
 		{
-			DialogResult answer = SpeakBox(this,
-				Loc.T("install.samePageBox", downloadName, installedName),
-				Loc.T("install.reinstallTitle"), MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+			DialogResult answer = SpeakBox(Loc.T("install.samePageBox", downloadName, installedName),
+				Loc.T("install.reinstallTitle"), MessageBoxButtons.YesNoCancel);
 			if (answer == DialogResult.Yes) return SamePageChoice.Replace;
 			if (answer == DialogResult.No) return SamePageChoice.InstallAlongside;
 			Speak(Loc.T("install.reinstallKept", installedName));
@@ -837,9 +822,8 @@ public partial class Form1
 	{
 		bool Ask()
 		{
-			bool yes = SpeakBox(this,
-				Loc.T("install.reinstallConfirm", modName, string.IsNullOrWhiteSpace(version) ? "?" : version),
-				Loc.T("install.reinstallTitle"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
+			bool yes = SpeakBox(Loc.T("install.reinstallConfirm", modName, string.IsNullOrWhiteSpace(version) ? "?" : version),
+				Loc.T("install.reinstallTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes;
 			if (!yes) Speak(Loc.T("install.reinstallKept", modName));
 			return yes;
 		}
@@ -870,7 +854,7 @@ public partial class Form1
 		string installerName = Path.GetFileName(installerPath);
 
 		if (SpeakBox(Loc.T("install.runInstallerBox", installerName), Loc.T("install.runInstallerTitle"),
-				MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+				MessageBoxButtons.YesNo) != DialogResult.Yes)
 		{
 			Speak(Loc.T("install.installerDeclined"));
 			return false;

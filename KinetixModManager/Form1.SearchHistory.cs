@@ -134,7 +134,7 @@ public partial class Form1
 					// Answering No says nothing: the term is still there and about to be read out as focus
 					// returns to it, which says "not deleted" better than a message that talks over it.
 					if (SpeakBox(Loc.T("history.deleteConfirm", doomed), Loc.T("history.deleteTitle"),
-							MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+							MessageBoxButtons.YesNo) != DialogResult.Yes)
 						return;
 
 					int index = lstTerms.SelectedIndex;
@@ -180,7 +180,7 @@ public partial class Form1
 			btnClear.Click += delegate
 			{
 				var confirm = SpeakBox(Loc.T("history.clearConfirm"), Loc.T("history.clearTitle"),
-					MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+					MessageBoxButtons.YesNo);
 				if (confirm != DialogResult.Yes) return;
 				SearchHistoryStore.Clear(game);
 				entries = new List<SearchHistoryEntry>();

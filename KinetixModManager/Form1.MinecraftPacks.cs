@@ -53,7 +53,7 @@ public partial class Form1
 		{
 			LogFailure("Minecraft", $"Could not read the modpack {fileName}", ex);
 			SpeakBox(Loc.T("mc.pack.unreadable", fileName, FriendlyError(ex)), Loc.T("mc.pack.notInstalledTitle"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 			return;
 		}
 
@@ -91,7 +91,7 @@ public partial class Form1
 			MinecraftModpacks.FindInstalled(packsFolder), name, identified?.ProjectId ?? "");
 		if (same != null &&
 			SpeakBox(Loc.T("mc.pack.alreadyInstalled", same.Name, same.PackVersion), Loc.T("mc.pack.confirmTitle"),
-				MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+				MessageBoxButtons.YesNo) != DialogResult.Yes)
 		{
 			Speak(Loc.T("common.changesCancelled"));
 			return;
@@ -105,7 +105,7 @@ public partial class Form1
 			name, index.VersionId, index.MinecraftVersion, index.LoaderVersion,
 			index.Files.Count + overrides.Files.Count, FormatBytes(index.DownloadBytes));
 
-		if (SpeakBox(question, Loc.T("mc.pack.confirmTitle"), MessageBoxButtons.YesNo, MessageBoxIcon.Question)
+		if (SpeakBox(question, Loc.T("mc.pack.confirmTitle"), MessageBoxButtons.YesNo)
 			!= DialogResult.Yes)
 		{
 			Speak(Loc.T("common.changesCancelled"));
@@ -124,7 +124,7 @@ public partial class Form1
 		{
 			LogFailure("Minecraft", $"Could not install Fabric {index.LoaderVersion} for {index.MinecraftVersion}", ex);
 			SpeakBox(Loc.T("mc.pack.fabricFailed", name, index.LoaderVersion, FriendlyError(ex)),
-				Loc.T("mc.pack.notInstalledTitle"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				Loc.T("mc.pack.notInstalledTitle"), MessageBoxButtons.OK);
 			return;
 		}
 
@@ -147,7 +147,7 @@ public partial class Form1
 		if (!Directory.Exists(pack.Folder))
 		{
 			SpeakBox(Loc.T("mc.pack.folderMissing", pack.Name, pack.Folder), Loc.T("mc.launch.failedTitle"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 			return false;
 		}
 
@@ -162,7 +162,7 @@ public partial class Form1
 		{
 			LogFailure("Minecraft", $"Could not reinstall Fabric {pack.LoaderVersion} for the pack {pack.Name}", ex);
 			SpeakBox(Loc.T("mc.pack.fabricFailed", pack.Name, pack.LoaderVersion, FriendlyError(ex)),
-				Loc.T("mc.launch.failedTitle"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				Loc.T("mc.launch.failedTitle"), MessageBoxButtons.OK);
 			return false;
 		}
 	}
@@ -204,7 +204,7 @@ public partial class Form1
 			{
 				DiscardStaging(staging);
 				SpeakBox(Loc.T("mc.pack.downloadFailed", name, failed.Count, string.Join(", ", failed.Take(5))),
-					Loc.T("mc.pack.notInstalledTitle"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+					Loc.T("mc.pack.notInstalledTitle"), MessageBoxButtons.OK);
 				return null;
 			}
 
@@ -245,7 +245,7 @@ public partial class Form1
 			LogFailure("Minecraft", $"Could not install the modpack {name}", ex);
 			DiscardStaging(staging);
 			SpeakBox(Loc.T("mc.pack.installFailed", name, FriendlyError(ex)), Loc.T("mc.pack.notInstalledTitle"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 			return null;
 		}
 		finally
@@ -295,8 +295,7 @@ public partial class Form1
 			? Loc.T("mc.pack.playNow", pack.Name)
 			: installed + "\n\n" + Loc.T("mc.pack.playNow", pack.Name);
 
-		if (SpeakBox(playQuestion, Loc.T("mc.pack.installedTitle"), MessageBoxButtons.YesNo,
-				accessMods.Count == 0 && !offeredWorlds ? MessageBoxIcon.Warning : MessageBoxIcon.Question) == DialogResult.Yes)
+		if (SpeakBox(playQuestion, Loc.T("mc.pack.installedTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 			await LaunchMinecraftAsync(pack);
 	}
 
@@ -338,6 +337,6 @@ public partial class Form1
 			_ => Loc.T("mc.pack.problem.notAPack", fileName)
 		};
 
-		SpeakBox(message, Loc.T("mc.pack.notInstalledTitle"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+		SpeakBox(message, Loc.T("mc.pack.notInstalledTitle"), MessageBoxButtons.OK);
 	}
 }

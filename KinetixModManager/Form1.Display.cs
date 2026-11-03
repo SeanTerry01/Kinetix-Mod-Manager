@@ -66,26 +66,6 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Applies the current display settings to a transient dialog and its controls just before it is shown. Dialogs
-	/// are rebuilt each time they open, so their fonts are always at the designed size — no base-size tracking is
-	/// needed (the local dictionary is discarded with the dialog).
-	/// </summary>
-	private void StyleDialog(Form dialog)
-	{
-		// No-op when nothing is enabled, so a normal-vision user's dialogs are untouched.
-		if (_settings.DisplayContrast == DisplayContrast.Off && _settings.TextSize == TextSize.Normal) return;
-
-		var colors = ContrastColors(_settings.DisplayContrast);
-		float factor = TextScaleFactor();
-		if (colors is { } c) { dialog.BackColor = c.Back; dialog.ForeColor = c.Fore; }
-		var scratch = new Dictionary<Control, float>();
-		foreach (Control child in dialog.Controls)
-			ThemeControlTree(child, colors, factor, scratch);
-		if (dialog.MainMenuStrip != null)
-			ThemeMenu(dialog.MainMenuStrip, colors, factor);
-	}
-
-	/// <summary>
 	/// Recursively sets the contrast colours and scaled font on <paramref name="control"/> and its descendants.
 	/// Font sizes scale from the value captured in <paramref name="baseSizes"/> on first visit, so repeated calls
 	/// with different sizes don't compound. When <paramref name="colors"/> is null the control's colours are reset

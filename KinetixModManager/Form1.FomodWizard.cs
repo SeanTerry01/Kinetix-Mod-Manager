@@ -349,7 +349,7 @@ public partial class Form1
 		{
 			if (!ValidateStep(current, out string error))
 			{
-				SpeakBox(error, Loc.T("fomod.wizardTitle", config.ModuleName), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				SpeakBox(error, Loc.T("fomod.wizardTitle", config.ModuleName), MessageBoxButtons.OK);
 				return;
 			}
 			int next = NextVisible(current);

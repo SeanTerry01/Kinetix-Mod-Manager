@@ -71,7 +71,7 @@ public partial class Form1
 			SpeakBox(packMods.Count > 0
 					? Loc.T("mc.pack.suiteNotForPacks", pack.Name, packMods[0].DisplayName)
 					: Loc.T("mc.pack.suiteNotForPacksSilent", pack.Name),
-				Loc.T("mc.pack.suiteNotForPacksTitle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+				Loc.T("mc.pack.suiteNotForPacksTitle"), MessageBoxButtons.OK);
 			return;
 		}
 
@@ -495,7 +495,7 @@ public partial class Form1
 					Speak(Loc.T("suite.downloading", item.Name));
 
 					string? downloadUrl = null;
-					string zipName = $"{item.Name.Replace(" ", "")}_Install" + (item.Type == "Loader" ? ".7z" : ".zip");
+					string zipName = $"{item.Name.Replace(" ", "")}_Install" + ".zip";
 
 					if (item.Type == "GitHub")
 					{
@@ -538,59 +538,13 @@ public partial class Form1
 
 					if (!string.IsNullOrEmpty(downloadUrl))
 					{
-						if (downloadUrl.Contains("nexusmods.com"))
-						{
-							string nexusId = "42147"; // F4SE mod ID
-							if (_nexusService.IsPremium)
-							{
-								try
-								{
-									var tempMod = new GameMod { NexusID = nexusId, Name = item.Name };
-									ProgressAnnouncer dl = NewProgress(item.Name, installing: false);
-									string tempPath = await _nexusService.DownloadModUpdateAsync(tempMod, downloadsPath, dl);
-									dl.Complete();
-									if (item.Type == "Loader")
-									{
-										ProgressAnnouncer inst = NewProgress(item.Name, installing: true);
-										await ModFileSystem.InstallScriptExtenderAsync(tempPath, _settings.CurrentGamePath, game, LogError, inst);
-										inst.Complete();
-									}
-									else
-									{
-										await InstallFromZip(tempPath, nexusId);
-									}
-									continue;
-								}
-								catch (Exception ex)
-								{
-									LogFailure(item.Name, $"Nexus download failed", ex);
-								}
-							}
-							
-							// See the other manual-download site above for why nothing is spoken before the box.
-							needManualDownload.Add(item.Name);
-							Process.Start(new ProcessStartInfo(downloadUrl) { UseShellExecute = true });
-							SpeakBox(Loc.T("suite.manualDownloadBox2", item.Name), Loc.T("suite.manualDownloadTitle"));
-							continue;
-						}
-
 						try
 						{
 							byte[] bytes = await _nexusService.DownloadBytesAsync(downloadUrl);
 							string tempPath = Path.Combine(downloadsPath, zipName);
 							File.WriteAllBytes(tempPath, bytes);
 
-							if (item.Type == "Loader")
-							{
-								SetStatus(Loc.T("suite.installingItem", item.Name), speak: false);
-								ProgressAnnouncer inst = NewProgress(item.Name, installing: true);
-								await ModFileSystem.InstallScriptExtenderAsync(tempPath, _settings.CurrentGamePath, game, LogError, inst);
-								inst.Complete();
-							}
-							else
-							{
-								await InstallFromZip(tempPath);
-							}
+							await InstallFromZip(tempPath);
 						}
 						catch (Exception ex)
 						{
@@ -652,7 +606,7 @@ public partial class Form1
 					summary.AddRange(problems);
 
 					SpeakBox(string.Join("\n\n", summary), Loc.T("suite.summaryTitle"),
-						MessageBoxButtons.OK, MessageBoxIcon.Warning);
+						MessageBoxButtons.OK);
 				}
 
 				// ⚠️ Focus ends in the mod list, not back on the menu that opened the installer.
@@ -729,12 +683,12 @@ public partial class Form1
 		if (!ModFileSystem.IsScriptExtenderInstalled(game, gamePath))
 		{
 			SpeakBox(Loc.T("se.uninstallNotInstalledBox", seName), Loc.T("se.uninstallTitle", seName),
-				MessageBoxButtons.OK, MessageBoxIcon.Information);
+				MessageBoxButtons.OK);
 			return;
 		}
 
 		var confirm = SpeakBox(Loc.T("se.uninstallConfirm", seName), Loc.T("se.uninstallTitle", seName),
-			MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+			MessageBoxButtons.YesNo);
 		if (confirm != DialogResult.Yes) { Speak(Loc.T("se.uninstallCancelled")); return; }
 
 		try
@@ -743,12 +697,12 @@ public partial class Form1
 			string msg = usedManifest
 				? Loc.T("se.uninstallDone", seName, removed)
 				: Loc.T("se.uninstallDonePartial", seName, removed);
-			SpeakBox(msg, Loc.T("se.uninstallTitle", seName), MessageBoxButtons.OK, MessageBoxIcon.Information);
+			SpeakBox(msg, Loc.T("se.uninstallTitle", seName), MessageBoxButtons.OK);
 		}
 		catch (Exception ex)
 		{
 			SpeakBox(Loc.T("se.uninstallFailedBox", FriendlyError(ex)), Loc.T("common.error"),
-				MessageBoxButtons.OK, MessageBoxIcon.Error);
+				MessageBoxButtons.OK);
 		}
 	}
 
@@ -768,7 +722,7 @@ public partial class Form1
 		if (string.IsNullOrEmpty(gameFolder) || !File.Exists(Path.Combine(gameFolder, "Stardew Valley.exe")))
 		{
 			Speak(Loc.T("suite.smapiNotFoundSpeak"));
-			Process.Start(new ProcessStartInfo("https://smapi.io") { UseShellExecute = true });
+			OpenLink("https://smapi.io");
 			SpeakBox(
 				Loc.T("suite.smapiNotFoundBox"),
 				Loc.T("suite.smapiInstallTitle"));
@@ -836,7 +790,7 @@ public partial class Form1
 			{
 				Speak(Loc.T("suite.smapiUnconfirmed"));
 				LetSpeechFinish();
-				Process.Start(new ProcessStartInfo("https://smapi.io") { UseShellExecute = true });
+				OpenLink("https://smapi.io");
 			}
 			return installed;
 		}
@@ -845,7 +799,7 @@ public partial class Form1
 			LogFailure("SMAPI", "Automatic SMAPI install failed", ex);
 			Speak(Loc.T("suite.smapiAutoFailed"));
 			LetSpeechFinish();
-			Process.Start(new ProcessStartInfo("https://smapi.io") { UseShellExecute = true });
+			OpenLink("https://smapi.io");
 			return false;
 		}
 		finally

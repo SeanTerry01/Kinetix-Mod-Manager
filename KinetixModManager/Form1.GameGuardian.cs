@@ -55,7 +55,7 @@ public partial class Form1
 		{
 			// Offer to open the script-extender page so the user can grab a build matching the new runtime.
 			if (SpeakBox(Loc.T("guardian.updatedSe", productName, previousVersion, current, seName),
-					Loc.T("guardian.title"), MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+					Loc.T("guardian.title"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 			{
 				string seId = GameProfiles.IsGame(game, GameProfiles.SkyrimSE) ? "30379" : "42147"; // SKSE64 / F4SE Nexus ids
 				string url = $"https://www.nexusmods.com/{_nexusService.CurrentGameDomain}/mods/{seId}";
@@ -66,7 +66,7 @@ public partial class Form1
 		else
 		{
 			SpeakBox(Loc.T("guardian.updatedNoSe", productName, previousVersion, current),
-				Loc.T("guardian.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				Loc.T("guardian.title"), MessageBoxButtons.OK);
 		}
 	}
 }

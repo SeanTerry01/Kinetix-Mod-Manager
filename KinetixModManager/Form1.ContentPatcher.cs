@@ -101,9 +101,14 @@ public partial class Form1
 			// Writes one answer through to the pack's config, reporting rather than failing silently.
 			bool Apply(CpConfigOption option, string newValue)
 			{
+				// Written first. Changing this first meant that after a failed write, which the user was told about, the next
+				// successful edit saved the value that had failed.
+				string? had = values.TryGetValue(option.Name, out string? current) ? current : null;
 				values[option.Name] = newValue;
 				if (ContentPatcherConfig.WriteValues(configPath, values)) return true;
 
+				if (had == null) values.Remove(option.Name);
+				else values[option.Name] = had;
 				Speak(Loc.T("cpconfig.saveFailed", option.Name));
 				return false;
 			}

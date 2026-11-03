@@ -191,7 +191,7 @@ public partial class Form1
 	{
 		string label = Path.GetFileNameWithoutExtension(row.Save.FilePath);
 		if (SpeakBox(Loc.T("saves.deleteConfirm", label), Loc.T("saves.deleteTitle"),
-				MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+				MessageBoxButtons.YesNo) != DialogResult.Yes)
 			return;
 
 		try

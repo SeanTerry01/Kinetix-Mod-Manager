@@ -136,7 +136,7 @@ public partial class Form1
 		if (FabricInstaller.IsLauncherRunning())
 		{
 			SpeakBox(Loc.T("mc.fabric.closeLauncherBox"), Loc.T("mc.fabric.closeLauncherTitle"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 			return false;
 		}
 
@@ -269,7 +269,7 @@ public partial class Form1
 
 		SpeakBox(
 			Loc.T("mc.install.noBuildBox", mod.DisplayName, _settings.MinecraftGameVersion),
-			Loc.T("mc.install.noBuildTitle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+			Loc.T("mc.install.noBuildTitle"), MessageBoxButtons.OK);
 	}
 
 	/// <summary>Fetches a Modrinth project's newest build for the pinned Minecraft version.</summary>
@@ -567,7 +567,7 @@ public partial class Form1
 		// Said plainly, and the launch is stopped: starting anyway produces a Java stack trace about a missing
 		// class, which tells the player nothing about what is wrong or what to do.
 		SpeakBox(Loc.T("mc.launch.librariesFailedBox", string.Join(", ", failed)),
-			Loc.T("mc.launch.librariesFailedTitle"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+			Loc.T("mc.launch.librariesFailedTitle"), MessageBoxButtons.OK);
 		return false;
 	}
 
@@ -666,7 +666,7 @@ public partial class Form1
 
 		if (SpeakBox(Loc.T("mc.update.availableBox", current, latest),
 				Loc.T("mc.update.availableTitle", latest),
-				MessageBoxButtons.YesNo, MessageBoxIcon.Information) != DialogResult.Yes)
+				MessageBoxButtons.YesNo) != DialogResult.Yes)
 		{
 			Speak(Loc.T("mc.update.availableLater", latest));
 			return;
@@ -791,7 +791,7 @@ public partial class Form1
 		MinecraftSuiteMod accessMod = ActiveAccessMod();
 		if (plan.SwitchesOffAccessMod(accessMod.FabricModId))
 			question += " " + Loc.T("mc.move.accessModWarning", accessMod.DisplayName);
-		if (SpeakBox(question, Loc.T("mc.move.title", newVersion), MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+		if (SpeakBox(question, Loc.T("mc.move.title", newVersion), MessageBoxButtons.YesNo) != DialogResult.Yes)
 		{
 			Speak(Loc.T("common.changesCancelled"));
 			return false;
@@ -878,7 +878,7 @@ public partial class Form1
 
 		bool anythingToKnow = switchedOff.Count > 0 || couldNotUpdate.Count > 0 || couldNotSwitchOff.Count > 0;
 		if (!silent && anythingToKnow)
-			SpeakBox(done, Loc.T("mc.move.title", newVersion), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+			SpeakBox(done, Loc.T("mc.move.title", newVersion), MessageBoxButtons.OK);
 		else
 			Speak(done);
 
@@ -948,8 +948,7 @@ public partial class Form1
 		string said = notFound.Count == 0
 			? Loc.T("deps.mcDone", installed.Count, string.Join(", ", installed))
 			: Loc.T("deps.mcDoneSome", installed.Count, notFound.Count, string.Join(", ", notFound), gameVersion);
-		SpeakBox(said, Loc.T("deps.resolveTitle"), MessageBoxButtons.OK,
-			notFound.Count == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+		SpeakBox(said, Loc.T("deps.resolveTitle"), MessageBoxButtons.OK);
 	}
 
 	/// <summary>
@@ -1026,14 +1025,6 @@ public partial class Form1
 			return new Dictionary<string, ModrinthFile>();
 		}
 	}
-
-	/// <summary>
-	/// Whether this installed mod's own declared Minecraft range accepts <paramref name="gameVersion"/> — which is
-	/// the difference between a mod that needs a new build and one that is already happy. See
-	/// <see cref="FabricVersionRange"/> for what that cost when nothing asked.
-	/// </summary>
-	private static bool AcceptsGameVersion(GameMod mod, string gameVersion) =>
-		FabricVersionRange.Accepts(DeclaredMinecraftRange(mod), gameVersion);
 
 	/// <summary>The Minecraft range a mod declares in its own jar, or null when it declares none or cannot be read.</summary>
 	private static string? DeclaredMinecraftRange(GameMod mod)
@@ -1239,7 +1230,7 @@ public partial class Form1
 				// version between the search and the download, and installing a build for another version
 				// would load nothing and say nothing.
 				SpeakBox(Loc.T("mc.install.noBuildBox", result.Name, gameVersion),
-					Loc.T("mc.install.noBuildTitle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+					Loc.T("mc.install.noBuildTitle"), MessageBoxButtons.OK);
 				return;
 			}
 
@@ -1252,7 +1243,7 @@ public partial class Form1
 			if (SpeakBox(
 					Loc.T("mc.download.installNowBox", result.Name, file.VersionNumber),
 					Loc.T("mc.download.installNowTitle"),
-					MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+					MessageBoxButtons.YesNo) != DialogResult.Yes)
 			{
 				Speak(Loc.T("mc.download.keptInDownloads"));
 				return;
@@ -1289,7 +1280,7 @@ public partial class Form1
 			if (info.IsUnreadable)
 			{
 				SpeakBox(Loc.T("mc.install.notAModBox", Path.GetFileName(jarPath)),
-					Loc.T("mc.install.notAModTitle"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+					Loc.T("mc.install.notAModTitle"), MessageBoxButtons.OK);
 				return;
 			}
 
@@ -1432,7 +1423,7 @@ public partial class Form1
 		if (versionId.Length == 0)
 		{
 			SpeakBox(Loc.T("mc.launch.noFabricBox"), Loc.T("mc.launch.noFabricTitle"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 			return;
 		}
 
@@ -1493,7 +1484,7 @@ public partial class Form1
 		{
 			LogFailure("Minecraft", "Failed to start the game", ex);
 			SpeakBox(Loc.T("mc.launch.failedBox", FriendlyError(ex)), Loc.T("mc.launch.failedTitle"),
-				MessageBoxButtons.OK, MessageBoxIcon.Error);
+				MessageBoxButtons.OK);
 		}
 	}
 
@@ -1639,7 +1630,7 @@ public partial class Form1
 		if (MinecraftErrorOutput.IsOutOfMemory(lines.Concat(javaCrashFile)))
 		{
 			SpeakBox(Loc.T("mc.launch.crashedOutOfMemory", _settings.MinecraftMaxMemoryMb / 1024.0),
-				Loc.T("mc.launch.crashedTitle"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+				Loc.T("mc.launch.crashedTitle"), MessageBoxButtons.OK);
 			return;
 		}
 
@@ -1647,7 +1638,7 @@ public partial class Form1
 		SpeakBox(reason.Length > 0
 				? Loc.T("mc.launch.crashedBox", reason, logPath)
 				: Loc.T("mc.launch.crashedBoxNoDetail", logPath),
-			Loc.T("mc.launch.crashedTitle"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+			Loc.T("mc.launch.crashedTitle"), MessageBoxButtons.OK);
 	}
 
 	/// <summary>
@@ -1724,7 +1715,7 @@ public partial class Form1
 			LetSpeechFinish();
 			SpeakBox(
 				Loc.T("mc.rival.box", rival.DisplayName, chosen.DisplayName),
-				Loc.T("mc.rival.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				Loc.T("mc.rival.title"), MessageBoxButtons.OK);
 		}
 	}
 }

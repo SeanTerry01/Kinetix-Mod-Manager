@@ -570,6 +570,17 @@ public partial class Form1
 		Speak(text);
 	}
 
+	/// <summary>Opens an address in the browser, saying so if it cannot. Thrown instead, this ended whatever called it.</summary>
+	private void OpenLink(string url)
+	{
+		try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
+		catch (Exception ex)
+		{
+			LogFailure("Files", $"Could not open {url}", ex);
+			Speak(Loc.T("store.couldNotOpenLink", FriendlyError(ex)));
+		}
+	}
+
 	/// <summary>Stops whatever the screen reader is currently saying, if one is listening.</summary>
 	private void SilenceSpeech() => _announcer.Silence();
 
@@ -701,7 +712,6 @@ public partial class Form1
 		}
 	}
 
-	/// <summary>Updates the bottom status-bar label with <paramref name="text"/>.</summary>
 	/// <summary>The status the title bar should rest at between operations: the Nexus connection when logged in,
 	/// otherwise a neutral "Ready". Only this should linger in the title — transient operation statuses
 	/// (installing, rebuilding, downloading, …) reset to it when they finish so the title never shows a stale
@@ -1276,23 +1286,6 @@ public partial class Form1
 		cmbDiscoveryCategory.Visible = wanted;
 
 		if (wanted && announce) Speak(Loc.T("discovery.categoryListShown"));
-	}
-
-	/// <summary>Maps a Nexus Mods numeric category ID to a human-readable category name.</summary>
-	private string MapNexusCategory(int id)
-	{
-		return id switch
-		{
-			1 => "Expansion", 
-			2 => "NPC", 
-			3 => "Portrait", 
-			4 => "Map", 
-			5 => "Crafting", 
-			6 => "Gameplay", 
-			7 => "Visual", 
-			8 => "Audio", 
-			_ => "General", 
-		};
 	}
 
 	/// <summary>

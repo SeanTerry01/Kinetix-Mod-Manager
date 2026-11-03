@@ -248,22 +248,6 @@ public static class FabricInstaller
 	}
 
 	/// <summary>
-	/// Adds or updates this game version's entry in <c>launcher_profiles.json</c>, and marks it as the most
-	/// recently used one.
-	///
-	/// <para>
-	/// ⚠️ The <c>lastUsed</c> bump is the point, not a detail. Modern <c>launcher_profiles.json</c> (version 6)
-	/// has no <c>selectedProfile</c> key — the launcher's Play button follows whichever installation was used
-	/// most recently, per its own <c>profileSorting</c> setting. Writing the profile without claiming that spot
-	/// leaves the user one dropdown away from launching vanilla, which starts, plays normally, and says nothing.
-	/// </para>
-	///
-	/// <para>
-	/// ⚠️ Do not call this while the launcher is running: it rewrites this file on exit and will discard the
-	/// change. See <see cref="IsLauncherRunning"/>.
-	/// </para>
-	/// </summary>
-	/// <summary>
 	/// Parses JSON without letting Json.NET turn date-shaped strings into <see cref="DateTime"/> values.
 	///
 	/// ⚠️ Not a nicety. <c>launcher_profiles.json</c> is full of ISO-8601 timestamps, and Json.NET recognises

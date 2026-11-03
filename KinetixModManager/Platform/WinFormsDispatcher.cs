@@ -33,20 +33,4 @@ internal sealed class WinFormsDispatcher : IDispatcher
 		catch (InvalidOperationException) { /* handle went away between the check and the call */ }
 	}
 
-	public Task<T> InvokeAsync<T>(Func<T> function)
-	{
-		if (IsOnUiThread) return Task.FromResult(function());
-
-		var done = new TaskCompletionSource<T>();
-		try
-		{
-			_owner.BeginInvoke(new Action(() =>
-			{
-				try { done.SetResult(function()); }
-				catch (Exception ex) { done.SetException(ex); }
-			}));
-		}
-		catch (Exception ex) { done.SetException(ex); }
-		return done.Task;
-	}
 }

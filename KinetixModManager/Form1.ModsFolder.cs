@@ -42,7 +42,7 @@ public partial class Form1
 		if (intoGameFolder && (string.IsNullOrEmpty(gameFolder) || !Directory.Exists(gameFolder)))
 		{
 			SpeakBox(Loc.T("modsfolder.needGameFolderBox"), Loc.T("modsfolder.title"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 			return false;
 		}
 
@@ -80,8 +80,7 @@ public partial class Form1
 			? Loc.T("modsfolder.confirmIntoGame", modCount, destination)
 			: Loc.T("modsfolder.confirmOutOfGame", modCount, destination);
 
-		if (SpeakBox(confirmBody, Loc.T("modsfolder.title"), MessageBoxButtons.YesNo,
-				intoGameFolder ? MessageBoxIcon.Warning : MessageBoxIcon.Question) != DialogResult.Yes)
+		if (SpeakBox(confirmBody, Loc.T("modsfolder.title"), MessageBoxButtons.YesNo) != DialogResult.Yes)
 		{
 			Speak(Loc.T("modsfolder.cancelled"));
 			return false;
@@ -98,19 +97,19 @@ public partial class Form1
 			LogFailure("Mods folder", $"Could not move '{source}' to '{destination}'", ex);
 			ResetStatus();
 			SpeakBox(Loc.T("modsfolder.failedBox", source, FriendlyError(ex)), Loc.T("modsfolder.title"),
-				MessageBoxButtons.OK, MessageBoxIcon.Error);
+				MessageBoxButtons.OK);
 			return false;
 		}
 
 		install.ModsInGameFolder = intoGameFolder;
 		install.Folder = proposed.Folder;
 		_settings.GameModsPaths[installKey] = destination;
-		if (GameProfiles.IsGame(installKey, GameProfiles.StardewValley) && installKey == GameProfiles.StardewValley)
+		if (GameProfiles.IsFirstCopy(installKey, GameProfiles.StardewValley))
 			_settings.ModsPath = destination;
 		_settings.Save();
 
 		ResetStatus();
-		SpeakBox(Loc.T("modsfolder.done", modCount, destination), Loc.T("modsfolder.title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+		SpeakBox(Loc.T("modsfolder.done", modCount, destination), Loc.T("modsfolder.title"), MessageBoxButtons.OK);
 
 		// The mod list is read from the path that just changed.
 		if (_settings.ActiveGame == installKey) RefreshAllData(checkUpdates: false);

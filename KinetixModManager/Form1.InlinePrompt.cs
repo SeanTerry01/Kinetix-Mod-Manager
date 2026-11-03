@@ -85,28 +85,19 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// The window a prompt should appear inside: the caller's own window if it named one, otherwise whichever
-	/// window of ours is active, falling back to the main window.
+	/// The window a prompt appears inside. There is only this one, unless it has gone or is being hidden on the way out.
 	/// </summary>
-	private Form? PromptHost(IWin32Window? owner)
-	{
-		if (owner is Form named && !named.IsDisposed && named.Visible) return named;
-
-		Form? active = Form.ActiveForm;
-		if (active != null && !active.IsDisposed && active.Visible) return active;
-
-		return !IsDisposed && Visible ? this : null;
-	}
+	private Form? PromptHost() => !IsDisposed && Visible ? this : null;
 
 	/// <summary>
-	/// Shows a prompt inside <paramref name="owner"/> (or the active window) and waits for an answer.
+	/// Shows a prompt inside the window and waits for an answer.
 	///
 	/// Falls back to a real <see cref="MessageBox"/> when there is no window to host it, or when called from a
 	/// background thread — a prompt that cannot be shown must never be a prompt that is silently skipped.
 	/// </summary>
-	private DialogResult ShowPrompt(IWin32Window? owner, string text, string caption, MessageBoxButtons buttons)
+	private DialogResult ShowPrompt(string text, string caption, MessageBoxButtons buttons)
 	{
-		Form? host = PromptHost(owner);
+		Form? host = PromptHost();
 		if (host == null || host.InvokeRequired)
 		{
 			SpeakPrompt(text);
@@ -158,8 +149,6 @@ public partial class Form1
 		// name and the enabled state of everything already in it.
 		Control? focusBefore = host.ActiveControl;
 		bool keyPreviewBefore = host.KeyPreview;
-		IButtonControl? acceptBefore = host.AcceptButton;
-		IButtonControl? cancelBefore = host.CancelButton;
 		string? hostNameBefore = host.AccessibleName;
 		var disabled = new List<Control>();
 
@@ -172,12 +161,9 @@ public partial class Form1
 		_overlayDepth++;
 		try
 		{
-			// The host's own Escape/Enter handling must not fire while the overlay is up — several windows close
-			// themselves on Escape, which would otherwise close the window out from under what is on top of it.
-			// Escape is delivered to the overlay's own controls instead, below.
+			// The window's own shortcuts must not fire while the overlay is up. Escape and Enter go to the overlay's
+			// own controls instead, below.
 			host.KeyPreview = false;
-			host.AcceptButton = null;
-			host.CancelButton = null;
 
 			// The window answers to nothing while something is over it. A screen reader that is made to describe
 			// the window — by focus touching the form, or by the window being pulled to the front — reads its
@@ -246,8 +232,6 @@ public partial class Form1
 						if (!restore.IsDisposed) restore.Enabled = true;
 
 					host.KeyPreview = keyPreviewBefore;
-					host.AcceptButton = acceptBefore;
-					host.CancelButton = cancelBefore;
 
 					// A list being worked through is brought up to date before focus goes back to it, or the row read
 					// out would be the one just dealt with. It may instead close itself, having nothing left in it,
@@ -420,9 +404,7 @@ public partial class Form1
 			button.Click += delegate { answer(chosen); };
 			button.KeyDown += delegate (object? s, KeyEventArgs e)
 			{
-				// Enter is handled here rather than left to the window's default button, because the prompt
-				// deliberately clears that while it is up — otherwise Enter would fire whatever the window
-				// behind considers its default action.
+				// Handled here, because a window with no default button does nothing with Enter.
 				if (e.KeyCode == Keys.Enter)
 				{
 					e.Handled = true;
@@ -459,28 +441,19 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Speaks a prompt's question. Immediately in the ordinary case: the choice buttons start out unnamed (see
-	/// BuildPromptPanel), so there is nothing from the screen reader to talk over or be cut off by.
+	/// Speaks a prompt's question, interrupting, the instant focus has landed on its first choice. Focus has just set the
+	/// reader off describing that choice, and cutting it off is what puts the question first.
 	///
-	/// The exception is a prompt raised just after the manager pulled itself to the front — the question asked
-	/// when a browser download lands. The reader is working out what to say about the new foreground window while
-	/// this runs, and finishes after it, wiping the question and leaving only the choices; that was heard as a
-	/// prompt that read out "Yes. No." and never said what it was asking. Speaking earlier cannot win that race,
-	/// so the question waits for it to pass instead. See <see cref="WhenReaderHasSettled"/>.
-	///
-	/// Just the question — the choice is not appended. Giving the buttons their names back a moment later is
-	/// itself a change the screen reader reports, so it announces "Yes, Alt Y" on its own straight afterwards;
-	/// saying it here as well had it read out twice.
+	/// Just the question: giving the buttons their names back a moment later is itself a change the reader reports, so it
+	/// announces "Yes, Alt Y" on its own straight afterwards. Saying it here as well had it read out twice. A prompt raised
+	/// straight after the window pulled itself to the front has already waited, in <see cref="WaitOutReaderReaction"/>.
 	/// </summary>
 	private void SpeakPromptQuestion(string text) => Speak(text, interrupt: true);
 
 	/// <summary>
-	/// Gives the choice buttons their real accessible names back, shortly after the prompt has been announced.
-	///
-	/// They open unnamed so the reader stays quiet while the question is read. By the time this runs the reader
-	/// has already taken the name it was going to announce for the initial focus, so restoring them now changes
-	/// nothing that has been said — it only means Tabbing between the choices from here on announces "Yes" and
-	/// "No" as it should.
+	/// Gives the choice buttons their real accessible names back, shortly after the question has been spoken. The change is
+	/// reported by the reader, which is what puts the choice after the question, and Tabbing between them then says "Yes"
+	/// and "No" as it should.
 	/// </summary>
 	private static void RestoreChoiceNames(Control root, PromptChoice[] choices)
 	{

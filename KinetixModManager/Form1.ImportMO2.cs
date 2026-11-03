@@ -93,7 +93,7 @@ public partial class Form1
 
 		int enabledCount = mods.Count(m => m.Enabled);
 		if (SpeakBox(Loc.T("mo2.confirm", profileName, mods.Count, enabledCount), Loc.T("mo2.title"),
-				MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+				MessageBoxButtons.YesNo) != DialogResult.Yes)
 		{
 			Speak(Loc.T("common.changesCancelled"));
 			return;

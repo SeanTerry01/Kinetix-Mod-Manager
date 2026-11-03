@@ -129,7 +129,7 @@ public partial class Form1
 			: Loc.T("launch.lowMemoryNoNames", FormatBytes(available), gameName, FormatBytes(needed));
 
 		_soundEngine.Play("error");
-		bool go = SpeakBox(question, Loc.T("launch.lowMemoryTitle"), MessageBoxButtons.YesNo, MessageBoxIcon.Warning)
+		bool go = SpeakBox(question, Loc.T("launch.lowMemoryTitle"), MessageBoxButtons.YesNo)
 			== DialogResult.Yes;
 		if (!go) Speak(Loc.T("launch.lowMemoryNotStarted", gameName));
 		return go;

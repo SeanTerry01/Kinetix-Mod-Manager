@@ -26,9 +26,6 @@ public interface IDispatcher
 	/// </summary>
 	void Post(Action action);
 
-	/// <summary>Runs <paramref name="function"/> on the UI thread and returns what it produced.</summary>
-	Task<T> InvokeAsync<T>(Func<T> function);
-
 	/// <summary>
 	/// Whether the caller is already on the UI thread, so it can skip the hop.
 	///

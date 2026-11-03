@@ -66,7 +66,7 @@ public partial class Form1
 		if (_aiService.IsConfigured)
 		{
 			if (SpeakBox(message + "\n\n" + Loc.T("ai.offerExplain"), Loc.T("ai.title"),
-					MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+					MessageBoxButtons.YesNo) == DialogResult.Yes)
 				AskAiAbout(Loc.T("ai.title"), Loc.T("ai.installFailQuestion", modName, message));
 		}
 		else
@@ -78,7 +78,7 @@ public partial class Form1
 	private bool EnsureAiReady()
 	{
 		if (_aiService.IsConfigured) return true;
-		SpeakBox(Loc.T("ai.notConfiguredBox"), Loc.T("ai.title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+		SpeakBox(Loc.T("ai.notConfiguredBox"), Loc.T("ai.title"), MessageBoxButtons.OK);
 		return false;
 	}
 
@@ -106,7 +106,7 @@ public partial class Form1
 			ResetStatus();
 			_soundEngine.Play("error");
 			LogFailure("AI", "Request failed", ex);
-			SpeakBox(Loc.T("ai.failed", ex.Message), Loc.T("ai.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+			SpeakBox(Loc.T("ai.failed", ex.Message), Loc.T("ai.title"), MessageBoxButtons.OK);
 		}
 	}
 
@@ -225,7 +225,7 @@ public partial class Form1
 			{
 				turns.RemoveAt(turns.Count - 1); // drop the unanswered question so a retry starts clean
 				_soundEngine.Play("error");
-				SpeakBox(Loc.T("ai.failed", ex.Message), Loc.T("ai.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				SpeakBox(Loc.T("ai.failed", ex.Message), Loc.T("ai.title"), MessageBoxButtons.OK);
 			}
 			finally
 			{

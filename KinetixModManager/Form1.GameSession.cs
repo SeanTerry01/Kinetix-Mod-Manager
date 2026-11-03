@@ -48,12 +48,6 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Applies the per-game Mods-menu state for the active game: relabels the launch and accessibility-suite items
-	/// with the game name, and shows the Skyrim/Fallout 4-only items and the load-order submenu only for those
-	/// games. Called both on a game switch and once at startup (a game restored from settings doesn't go through
-	/// SwitchActiveGame). Items are found recursively by their stable Name since they now live in submenus.
-	/// </summary>
-	/// <summary>
 	/// Names the View menu's "Open Log" item (F4) for the log it opens in this game — found by its stable Name.
 	///
 	/// ⚠️ Called from BOTH the game switch and startup. It used to live only in the switch, so a session restored
@@ -368,12 +362,12 @@ public partial class Form1
 		// A menu shortcut works whatever has focus, so Ctrl+Shift+C reached here with a view open over the session.
 		if (OverlayIsOpen) return;
 
-		SwitchActiveGame("None");
+		SwitchActiveGame(GameProfiles.NoGame);
 	}
 
 	private void UpdateMenuState()
 	{
-		bool hasGame = _settings.ActiveGame != "None";
+		bool hasGame = _settings.ActiveGame != GameProfiles.NoGame;
 		if (_menuCloseSessionItem != null)
 		{
 			_menuCloseSessionItem.Visible = hasGame;

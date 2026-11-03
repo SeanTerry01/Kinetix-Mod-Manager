@@ -21,7 +21,7 @@ public partial class Form1
 		long freed = 0;
 
 		// 1. The app-update extraction folder in the active game's downloads folder.
-		if (_settings.ActiveGame != "None")
+		if (_settings.ActiveGame != GameProfiles.NoGame)
 			freed += TryDeleteDir(Path.Combine(downloadsPath, "KMM_Update_Extracted"));
 
 		// 2. Stale extractor/installer staging dirs left in the system temp folder (older than an hour so a running

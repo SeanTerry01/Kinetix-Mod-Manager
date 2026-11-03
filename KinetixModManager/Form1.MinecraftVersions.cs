@@ -106,7 +106,7 @@ public partial class Form1
 		if (installations.Count > 0)
 			question += "\n\n" + Loc.T("mc.versions.launcherToo", string.Join(", ", installations));
 
-		if (SpeakBox(question, Loc.T("mc.versions.title"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+		if (SpeakBox(question, Loc.T("mc.versions.title"), MessageBoxButtons.YesNo) != DialogResult.Yes)
 		{
 			Speak(Loc.T("common.changesCancelled"));
 			return false;
@@ -116,7 +116,7 @@ public partial class Form1
 		if (installations.Count > 0 && FabricInstaller.IsLauncherRunning())
 		{
 			SpeakBox(Loc.T("mc.fabric.closeLauncherBox"), Loc.T("mc.fabric.closeLauncherTitle"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 			return false;
 		}
 
@@ -151,7 +151,7 @@ public partial class Form1
 
 		if (failed.Count > 0)
 			SpeakBox(Loc.T("mc.versions.someFailed", string.Join(", ", failed)), Loc.T("mc.versions.title"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 		else
 			Speak(Loc.T("mc.versions.removed", string.Join(", ", versions.Select(v => v.Id)), FormatBytes(freed)));
 

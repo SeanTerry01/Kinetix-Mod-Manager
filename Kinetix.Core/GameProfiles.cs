@@ -484,6 +484,13 @@ public static class GameProfiles
 	public const string NoGame = "None";
 
 	/// <summary>
+	/// Whether this install key is exactly the game's first copy, rather than a second one such as "StardewValley@Gog".
+	/// Nearly always the wrong question: <see cref="IsGame"/> is what asks about the game. This is for what only the first
+	/// copy has, such as Stardew's older single mods path.
+	/// </summary>
+	public static bool IsFirstCopy(string? installKey, string gameId) => installKey == gameId;
+
+	/// <summary>
 	/// Separates a game id from its platform in an install key. Chosen because no game id contains it, so an
 	/// install key can always be split back into its parts without ambiguity.
 	/// </summary>

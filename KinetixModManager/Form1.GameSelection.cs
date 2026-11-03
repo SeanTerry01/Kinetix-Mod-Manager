@@ -215,14 +215,6 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Brings <see cref="AppSettings.GameInstalls"/> up to date with what is on disk: records any copy detection
-	/// finds that isn't known yet, and fills in the store for copies carried over from an older settings file.
-	/// Returns the keys of copies that are genuinely new, so the caller can tell the user about them.
-	///
-	/// Existing entries are never repointed or removed. A folder that has gone missing may be a drive that isn't
-	/// plugged in, and throwing away that copy's key would orphan its mod list, its load order and its history.
-	/// </summary>
-	/// <summary>
 	/// True when anything in the manager's data folder is filed under <paramref name="installKey"/> — a
 	/// backups, downloads or deployment folder, or a file such as <c>search_history\&lt;key&gt;.json</c>. One level
 	/// down is where every per-game store lives.
@@ -587,8 +579,7 @@ public partial class Form1
 				SpeakBox(
 					Loc.T("session.locateInvalidBox", targetName),
 					Loc.T("session.notInstalledTitle"),
-					MessageBoxButtons.OK,
-					MessageBoxIcon.Warning);
+					MessageBoxButtons.OK);
 			}));
 			return false;
 		}
@@ -628,7 +619,7 @@ public partial class Form1
 
 		// Stardew's first copy is left to the path it already has: its mods folder is mirrored into the legacy
 		// ModsPath field, and startup's own handling of it is what keeps the two in step.
-		if (located.Key != GameProfiles.StardewValley)
+		if (!GameProfiles.IsFirstCopy(located.Key, GameProfiles.StardewValley))
 			_settings.GameModsPaths[located.Key] = ResolveModsFolder(located);
 
 		_settings.Save();
@@ -706,8 +697,7 @@ public partial class Form1
 		DialogResult result = SpeakBox(
 			Loc.T("games.noneDetectedBox", string.Join(", ", GameProfiles.AllDisplayNames)),
 			Loc.T("games.noneDetectedTitle"),
-			MessageBoxButtons.YesNo,
-			MessageBoxIcon.Information
+			MessageBoxButtons.YesNo
 		);
 
 		if (result == DialogResult.Yes)
@@ -913,7 +903,7 @@ public partial class Form1
 				// and no speech, and nothing to say why. BepInEx games have had this question for a while.
 				if (!string.IsNullOrEmpty(profile.LoaderExeName) && _allInstalledMods.Any(m => !m.IsGroup && m.IsEnabled) &&
 					SpeakBox(Loc.T("launch.noLoaderBox", profile.LoaderDisplayName, GameDisplayName()), Loc.T("launch.noLoaderTitle", profile.LoaderDisplayName),
-						MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+						MessageBoxButtons.YesNo) != DialogResult.Yes)
 				{
 					SetStatus(Loc.T("launch.cancelled"));
 					return;
@@ -951,7 +941,7 @@ public partial class Form1
 					var choice = SpeakBox(
 						Loc.T("launch.seMismatchBox", se.Name, se.TargetVersion, se.GameVersion),
 						Loc.T("launch.seMismatchTitle", se.Name),
-						MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+						MessageBoxButtons.YesNo);
 					if (choice == DialogResult.No) { SetStatus(Loc.T("launch.cancelled")); return; }
 				}
 				// The script extender matching is only the first link. Below it sits the Address Library, which
@@ -966,7 +956,7 @@ public partial class Form1
 						var choice = SpeakBox(
 							Loc.T("launch.addrLibBox", se.GameVersion, lib.NewestBuild, se.Name),
 							Loc.T("launch.addrLibTitle"),
-							MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+							MessageBoxButtons.YesNo);
 						if (choice == DialogResult.No) { SetStatus(Loc.T("launch.cancelled")); return; }
 					}
 				}

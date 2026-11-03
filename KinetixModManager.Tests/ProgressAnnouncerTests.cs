@@ -44,7 +44,6 @@ public class ProgressAnnouncerTests
 	private sealed class ImmediateDispatcher : IDispatcher
 	{
 		public void Post(Action action) => action();
-		public Task<T> InvokeAsync<T>(Func<T> function) => Task.FromResult(function());
 		public bool IsOnUiThread => true;
 	}
 

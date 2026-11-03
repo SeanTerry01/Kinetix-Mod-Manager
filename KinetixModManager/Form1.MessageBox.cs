@@ -4,15 +4,8 @@ using System.Windows.Forms;
 namespace KinetixModManager;
 
 /// <summary>
-/// Accessible wrappers around <see cref="MessageBox.Show(string)"/>. The manager speaks every prompt's message
-/// through the screen reader itself (via Tolk), the same way the rest of the app announces lists and statuses,
-/// rather than relying on the screen reader to auto-read the dialog — that auto-read is unreliable (and absent
-/// entirely under SAPI), which is why some prompts only announced their focused button.
-///
-/// The message is spoken non-interrupting (queued), so it never cuts off whatever the screen reader is already
-/// saying and, on the rare setup where the reader does auto-read the dialog, simply follows it. No-owner overloads
-/// deliberately omit the owner so the box still parents to the active window (e.g. a modal child dialog), exactly
-/// as the bare <see cref="MessageBox.Show(string)"/> calls they replaced did.
+/// Prompts, and the timing around them. A prompt is a panel inside the window, not a window of its own: see
+/// Form1.InlinePrompt. The manager speaks each question itself rather than relying on the reader to find it.
 /// </summary>
 public partial class Form1
 {
@@ -150,13 +143,11 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Speaks a message after a modal prompt has closed, once focus has settled back on the window underneath.
+	/// Speaks a message after a prompt has closed, once focus has settled back on what was underneath.
 	///
-	/// Closing a prompt hands focus back, and the screen reader responds by re-reading that window — its title,
-	/// then whatever control has focus. Anything spoken the instant the prompt returns is flushed by that, which
-	/// is how the result of an action ("Deleted X. 15 searches left.") went missing while the window's title was
-	/// read instead. This waits for that re-announcement to begin and then interrupts it: what just happened
-	/// matters, the title of a window the user is already in does not.
+	/// Focus going back makes the reader announce whatever it landed on, and anything said the instant the prompt returns
+	/// is flushed by that. This waits for that announcement to begin, and then interrupts it, because what just happened
+	/// matters more. The wait is the reader reacting rather than speaking, so isSpeaking cannot replace it.
 	/// </summary>
 	private void SpeakAfterPrompt(string text)
 	{
@@ -170,26 +161,7 @@ public partial class Form1
 		timer.Start();
 	}
 
-	// Every prompt goes through ShowPrompt, which lays the question over the window that raised it instead of
-	// opening one of its own. The MessageBoxIcon arguments are accepted and ignored: an icon says "warning" or
-	// "question" to someone looking at it and nothing at all to someone listening, and the wording of every
-	// prompt already carries that. See Form1.InlinePrompt.
-
-	private DialogResult SpeakBox(string text) =>
-		ShowPrompt(null, text, Loc.T("ui.appTitle"), MessageBoxButtons.OK);
-
-	private DialogResult SpeakBox(string text, string caption) =>
-		ShowPrompt(null, text, caption, MessageBoxButtons.OK);
-
-	private DialogResult SpeakBox(string text, string caption, MessageBoxButtons buttons) =>
-		ShowPrompt(null, text, caption, buttons);
-
-	private DialogResult SpeakBox(string text, string caption, MessageBoxButtons buttons, MessageBoxIcon icon) =>
-		ShowPrompt(null, text, caption, buttons);
-
-	private DialogResult SpeakBox(IWin32Window owner, string text, string caption, MessageBoxButtons buttons) =>
-		ShowPrompt(owner, text, caption, buttons);
-
-	private DialogResult SpeakBox(IWin32Window owner, string text, string caption, MessageBoxButtons buttons, MessageBoxIcon icon) =>
-		ShowPrompt(owner, text, caption, buttons);
+	// Every prompt goes through ShowPrompt, which lays the question over the window instead of opening one of its own.
+	private DialogResult SpeakBox(string text, string? caption = null, MessageBoxButtons buttons = MessageBoxButtons.OK) =>
+		ShowPrompt(text, caption ?? Loc.T("ui.appTitle"), buttons);
 }

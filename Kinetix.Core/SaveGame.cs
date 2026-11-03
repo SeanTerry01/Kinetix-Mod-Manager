@@ -15,7 +15,6 @@ namespace KinetixModManager;
 public sealed class SaveGame
 {
 	public required string FilePath { get; init; }
-	public string FileName => Path.GetFileName(FilePath);
 	public string CharacterName { get; init; } = "";
 	public int Level { get; init; }
 	public string Location { get; init; } = "";

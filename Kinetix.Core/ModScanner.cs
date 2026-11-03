@@ -338,7 +338,6 @@ public static class ModScanner
 	/// </summary>
 	public const string BepInExDisabledFolderName = ModEnableState.BepInExDisabledFolderName;
 
-	/// <summary>The disabled-mods folder that sits beside the given <c>BepInEx\plugins</c> folder.</summary>
 	/// <summary>
 	/// Every Fabric mod in <paramref name="modsPath"/> — one per <c>.jar</c> file, enabled or not.
 	///

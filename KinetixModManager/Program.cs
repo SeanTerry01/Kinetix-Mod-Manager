@@ -13,8 +13,6 @@ namespace KinetixModManager;
 
 internal static class Program
 {
-	private const string AppGuid = "KinetixModManager-Nexus-Handler";
-
 	[DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
 	private static extern bool SetDllDirectory(string lpPathName);
 

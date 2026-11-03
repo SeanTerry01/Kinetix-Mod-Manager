@@ -249,7 +249,7 @@ public partial class Form1
         {
             if (list.SelectedItem is not IniRow row) return;
             if (SpeakBox(Loc.T("ini.deleteConfirm", row.Entry.Key, row.Entry.Section), Loc.T("ini.deleteTitle"),
-                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                    MessageBoxButtons.YesNo) != DialogResult.Yes)
                 return;
 
             doc.RemoveKey(row.Entry.Section, row.Entry.Key);

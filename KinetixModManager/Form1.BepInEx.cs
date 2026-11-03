@@ -119,8 +119,7 @@ public partial class Form1
 			SpeakBox(
 				Loc.T("bepinex.versionDiffersBox", installed, BepInExPinnedVersion),
 				Loc.T("bepinex.versionDiffersTitle"),
-				MessageBoxButtons.OK,
-				MessageBoxIcon.Information);
+				MessageBoxButtons.OK);
 		}
 
 		// Only worth asking about once the loader is there to run it.
@@ -177,8 +176,7 @@ public partial class Form1
 		DialogResult choice = SpeakBox(
 			Loc.T("keybindReader.offerBox", GameProfiles.DisplayNameFor(_settings.ActiveGame)),
 			Loc.T("keybindReader.offerTitle"),
-			MessageBoxButtons.YesNo,
-			MessageBoxIcon.Question);
+			MessageBoxButtons.YesNo);
 
 		if (choice != DialogResult.Yes)
 		{
@@ -263,8 +261,7 @@ public partial class Form1
 		DialogResult choice = SpeakBox(
 			Loc.T("bepinex.missingBox", GameProfiles.DisplayNameFor(_settings.ActiveGame), BepInExPinnedVersion),
 			Loc.T("bepinex.missingTitle"),
-			MessageBoxButtons.YesNo,
-			MessageBoxIcon.Warning);
+			MessageBoxButtons.YesNo);
 
 		if (choice != DialogResult.Yes) return false;
 
@@ -322,8 +319,7 @@ public partial class Form1
 			SpeakBox(
 				Loc.T("bepinex.installFailedBox", FriendlyError(ex)),
 				Loc.T("bepinex.installFailedTitle"),
-				MessageBoxButtons.OK,
-				MessageBoxIcon.Error);
+				MessageBoxButtons.OK);
 			return false;
 		}
 		finally
@@ -345,8 +341,7 @@ public partial class Form1
 		DialogResult choice = SpeakBox(
 			Loc.T("bepinex.launchWithoutBox"),
 			Loc.T("bepinex.missingTitle"),
-			MessageBoxButtons.YesNo,
-			MessageBoxIcon.Warning);
+			MessageBoxButtons.YesNo);
 
 		return choice == DialogResult.Yes;
 	}

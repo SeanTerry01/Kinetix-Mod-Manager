@@ -38,7 +38,7 @@ public partial class Form1
 			return;
 		}
 		if (SpeakBox(Loc.T("prep.confirm", manifest.Deployed.Count), Loc.T("prep.confirmTitle"),
-				MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+				MessageBoxButtons.YesNo) != DialogResult.Yes)
 			return;
 
 		CreateSafetyBackup(Loc.T("prep.reason"));
@@ -63,7 +63,7 @@ public partial class Form1
 			return;
 		}
 		if (SpeakBox(Loc.T("prep.restoreConfirm"), Loc.T("prep.restoreTitle"),
-				MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+				MessageBoxButtons.YesNo) != DialogResult.Yes)
 			return;
 
 		SetStatus(Loc.T("prep.restoreWorking"));

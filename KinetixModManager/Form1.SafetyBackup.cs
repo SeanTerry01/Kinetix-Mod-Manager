@@ -122,7 +122,7 @@ public partial class Form1
 				{
 					e.Handled = e.SuppressKeyPress = true;
 					if (SpeakBox(Loc.T("safety.restoreConfirm", item.Summary), Loc.T("safety.restoreTitle"),
-							MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+							MessageBoxButtons.YesNo) == DialogResult.Yes)
 					{
 						toRestore = item;
 						closeView();

@@ -5,33 +5,32 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-09-15, after two more screens and a sabotage campaign (§36).
-**State:** 1,398 tests passing on Windows and Linux; all five projects build clean, zero warnings.
+**Last updated:** 2026-11-03, after the whole-manager review.
+**State:** all tests passing on Windows; the solution builds clean.
 
 ---
 
-## Done so far, for context
 
-- ~~**Phase 0** — extract `Kinetix.Core`~~ (`04ee93c`)
-- ~~**Phase 1** — the 16 tests that failed off Windows; 7 backslash path literals; the
-  `Path.GetInvalidFileNameChars()` bug~~ (`b50bd25`)
-- ~~**`en.json`** — two phrases read aloud with their own braces in them, plus a guard so it cannot
-  recur~~ (`daf4142`)
-- ~~**HTTP connection leak**, the Modrinth User-Agent regression, and speech failing silently~~ (`d727c82`)
-- ~~**Phase 2** — the domain model out of `Form1`: 36 types to `Kinetix.Core/Models/`, plus `Loc`,
-  `VirtualKeys`, `LoadOrderRule` and `PluginSlots`~~
-- ~~**Phase 3, part one** — `IAnnouncer`, `ISoundEngine`, `ISecretStore`, `IDispatcher`, their Windows
-  implementations, and `ProgressAnnouncer` moved to the core as the first customer~~
-- ~~**Proton vs native** — decided: native, Minecraft + Stardew. See ARCHITECTURE_REVIEW §16~~
-- ~~**GTK spike** — `Kinetix.Platform.Linux` (speech-dispatcher, verified speaking) and `Kinetix.Gtk`
-  (installed mods, live Modrinth search). See §17~~
-- ~~**Orca reads the in-app browser** — confirmed by ear; the last technical unknown~~
-- ~~**Phase 4, six screens** — SMAPI Log, Dependencies, Profiles, Updates, Install, ModList. See §22~~
-- ~~**The GTK head installs Minecraft mods** — `ModInstaller`, Install button and Ctrl+I~~
-- ~~**The archive pipeline** — `ModArchive` in the core: signature routing, zip/7z/rar in managed code,
-  the link-aware escape guard, nested archives, staging. `7za.exe` gone. See §23~~
-- ~~**Per-game sounds, and Minecraft's connect cue** — `SoundThemes` in the core, the `sounds/Minecraft`
-  scaffold, and connect/disconnect wired to joining and leaving a server. See §24~~
+---
+
+## Left from the November 2026 review
+
+Deliberately not done, because none is a bug and each needs a decision or a listening test first.
+
+- [ ] **Sean's listening checks, after this review:** the end of "X is now disabled" after Space; "Settings saved"; the tab
+  name twice on F6; and whether a browser talks over the manual-download box (`modparts.manualSpeak`, `suggested.manualSpeak`,
+  `suite.smapiNotFoundSpeak`). If it does, open the browser after OK and reword the box.
+- [ ] **`SpeakAfterPrompt` and plain `Speak` after a Yes or No** do the same job in about 50 places, and the code cannot say
+  which is right. Speech history on the two twin actions (`Form1.Input.cs` ignore and `Form1.Updates.cs` mark) would settle it.
+- [ ] **The 169 decompiler names** (`text5`, `button3`) and the `StardewMod` alias, in their own mechanical commits.
+- [ ] **Four near-identical settings views** (`ContentPatcher`, `Mcm`, `StardewConfig`, `IniEditor`) could share one builder.
+- [ ] **Bundled DLLs nothing loads:** `NAudio.Asio`, `NAudio.Midi`, `NAudio.WinForms`, `System.Speech`. A missing DLL fails at
+  run time rather than compile time, so removing them needs a publish and a sound test.
+- [ ] **Production code only tests use** (`PathRebase.TryTo`, `IniDocument.GetValue`, and others): delete each with its test.
+- [ ] **Settings parsed and never read,** notably `CpConfigOption.AllowMultiple`: multi-value Content Patcher settings can only
+  be given one value from the chooser.
+- [ ] **Unused parameters** the analyzer reports, and script extender ids repeated in four files.
+- [ ] **Wording:** plurals beyond the five most heard, and the keys still named in a few messages.
 
 ---
 
@@ -50,8 +49,8 @@ on effort. Writing the interface first would be guessing.
 
 | Interface | Replaces | Blocked on |
 |---|---|---|
-| `IPrompts` | `SpeakBox` (177) / `ShowDialog` (12) | The shape follows from draining those screens in Phase 4, and from the inline-prompt system that deliberately avoids modal dialogs. The GTK head's own inline confirmations (§31) are the first real second implementation to design against. |
-| `IBrowserHost` | WebView2 (18 files) | Decision 3 below — embedding WebKitGTK and opening the system browser need different contracts. |
+| `IPrompts` | `SpeakBox` (about 250) / `ShowDialog` (12) | The shape follows from draining those screens in Phase 4, and from the inline-prompt system that deliberately avoids modal dialogs. The GTK head's own inline confirmations (§31) are the first real second implementation to design against. |
+| `IBrowserHost` | WebView2 (4 files) | Decision 3 below — embedding WebKitGTK and opening the system browser need different contracts. |
 
 ### 2. Phase 4 — drain `Form1`  ◐ six screens done, and paused on purpose
 
@@ -124,10 +123,6 @@ These stand on their own merits. None is urgent.
 
 ## Accessibility
 
-- [ ] **`health.mcVanilla` is the only string of 1,979 that opens with an emoji** (`⚠️`). It is a
-      Health Dashboard row, so it is read aloud — announced as "warning sign" or dropped entirely
-      depending on the reader's symbol level. The sentence already carries the warning in words.
-      **Sean's call**, since it is wording rather than a defect.
 - [ ] **Speech timing hacks must not be ported blind.** `SpeakListPosition`'s ~300 ms swallow
       (`Form1.Helpers.cs:1232`) and the `IsSpeaking` workaround (`:1317`) exist because Tolk only
       reports `IsSpeaking` reliably for its own SAPI voice. speech-dispatcher's callbacks are more
@@ -205,10 +200,6 @@ effectively stalled.
 `webkitgtk-6.0` 2.52.5, linking `gtk-4`. `Kinetix.Gtk/WebKitView.cs` is a hand-written P/Invoke binding
 and the window has a Wiki tab. Everything is in place except the answer to the question that matters:
 
-- ~~**Does Orca read the embedded page properly?**~~ **ANSWERED: yes.** Verified by ear on 2026-09-13 —
-      Orca reads the embedded page, and F6 cycles between the tab strip and the web view. That was the
-      last technical unknown in the Linux port; every remaining item is work rather than risk.
-      `IBrowserHost` can now be designed from something that demonstrably functions.
 
 ---
 
@@ -234,44 +225,16 @@ It cannot work yet, for one reason that is not a code problem:
 
 ### Done, 2026-09-15 — see §28
 
-- ~~The installed list read every game's switched-off state with Minecraft's rule~~ — `InstalledModsView` in
-  the core owns it now, and reading and writing ask the same place.
-- ~~A game that is not installed was announced as "0 mods installed"~~ — three states, three sentences, and a
-  test that no two can be mistaken for each other.
-- ~~`.minecraft` was looked for under `~/.config` on Linux~~ — a third defect, found while making the locator
-  testable, and green in the tests the whole time because they asserted the Windows answer everywhere.
-- ~~Nothing tested either Linux project~~ — `Kinetix.Platform.Linux` is referenced by the test project and
-  `LinuxGameLocator` takes a `home` so all four Steam layouts, Flatpak and a Proton prefix can be built in a
-  temporary folder.
-- ~~`ISecretStore` had to exist before the GTK head stored any key~~ — `LibSecretStore`, verified against a
-  live keyring, and the gate moved from `AppSettings` (WinForms-only) to `Secrets.Current` in the core.
-- ~~`ISoundEngine` had no Linux implementation~~ — `GStreamerSoundEngine`, and the GTK head plays cues.
-- ~~The GTK head's strings were English literals~~ — all through `Loc.T`, and the phrase guard sweeps it.
 
 ### What is left, in the order it should happen
 
-- ~~`AppSettings` is in the WinForms project, so the GTK head has no settings~~ — done (§29). Exactly one
-  thing in its thousand lines was Windows-only, and the JSON is byte-identical, so every existing settings
-  file reads straight in.
 - [ ] **`IBrowserHost`** — one of the two seams left with no contract. WebKitGTK works and Orca reads it
       (§21); what is missing is the interface, and it needs one shape for an embedded view and another for
       handing a page to the system browser.
-- ~~Warn which games' access mods will not speak on this platform~~ — done (§29).
-      `GameProfile.AccessModSpeaksOnLinux`, defaulting to false so a new game warns until somebody says
-      otherwise, with a test per game and the sentence on the GTK Settings tab.
-- ~~Say it somewhere harder to miss than Settings~~ — done (§31). `GamesView` builds the row, and the note
-  says the mods are still managed, because without that clause it reads as "not supported".
-- ~~The Minecraft version is hard-coded to 1.21.1~~ — done (§30), along with three other places Minecraft
-  was written into the GTK head rather than being an entry in its list.
 - [ ] **Screens.** Settings, Updates, Profiles, mod actions, Dependencies, Backups and the Log are done
       (§29–§32, §36) — **eleven tabs** against the Windows head's sixty-odd feature areas. What is left needs
       Stardew installs (§34) or a design decision: Collections, MO2 import, load order, INI editing, the
       health dashboard, the accessibility suite installer.
-- ~~Nexus search and updates are unavailable in the GTK head~~ — done (§33), and it moved without a line
-  changing: 1,387 lines with zero Windows-only references. All six games can be searched and update-checked
-  from Linux now. **The lesson is worth keeping: measure the references before estimating a move.** Both large
-  moves this week were judged by how the file felt rather than by what it referenced, and both were wrong the
-  same way.
 - [ ] **⚠️ The GTK head installs Minecraft mods only — this is now the next real item.** Detailed in §34.
       `ExtractModAsync` is 225 lines and its Stardew branch is 79 of them; that branch is the only one that is
       entirely portable, and everything it leans on is already in the core except `ForceDeleteDirectory`. Split
@@ -285,8 +248,6 @@ It cannot work yet, for one reason that is not a code problem:
       port.
 - [ ] **A reader started *after* the app is not noticed.** `ScreenReaderPresence` asks once at startup. A
       D-Bus signal subscription would fix it; the fallback speaks in the meantime.
-- ~~Heroic is not searched~~ — done (§32). `HeroicLibraryLocator` reads its library, matches by executable
-  rather than folder name, and covers the Flatpak home too.
 - [ ] **Lutris is still not searched, and it shares a decision with `LootMasterlist`.** Lutris keeps its
       library in SQLite and its per-game settings in YAML; `LootMasterlist` is the one otherwise-portable file
       left in the app and it needs YamlDotNet. **Taking YamlDotNet into `Kinetix.Core` would settle both** —

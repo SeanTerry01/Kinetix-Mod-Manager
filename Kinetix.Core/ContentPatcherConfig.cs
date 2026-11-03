@@ -57,9 +57,6 @@ public sealed class CpConfigOption
 /// </summary>
 public static class ContentPatcherConfig
 {
-	/// <summary>The unique id of Content Patcher itself, which every pack of this kind declares it is for.</summary>
-	public const string ContentPatcherId = "Pathoschild.ContentPatcher";
-
 	/// <summary>
 	/// The pack's <c>content.json</c>, or <c>null</c> when this mod folder isn't a Content Patcher pack.
 	/// </summary>

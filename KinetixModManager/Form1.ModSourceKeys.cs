@@ -221,7 +221,7 @@ public partial class Form1
 		if (row is not { HasKey: true }) { Speak(Loc.T("sourcekeys.nothingToRemove")); return; }
 
 		if (SpeakBox(Loc.T("sourcekeys.confirmRemove", row.Source.DisplayName), Loc.T("sourcekeys.confirmRemoveTitle"),
-				MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+				MessageBoxButtons.YesNo) != DialogResult.Yes)
 		{
 			Speak(Loc.T("common.changesCancelled"));
 			return;

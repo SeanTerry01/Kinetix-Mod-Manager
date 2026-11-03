@@ -35,7 +35,7 @@ public partial class Form1
 		if (repo == null)
 		{
 			SpeakBox(Loc.T("github.notARepoBox", typed.Trim()), Loc.T("github.notARepoTitle"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 			return;
 		}
 
@@ -54,7 +54,7 @@ public partial class Form1
 				// that has never published a release — and neither is something the user did wrong. Say both.
 				ResetStatus();
 				SpeakBox(Loc.T("github.noReleaseBox", repo), Loc.T("github.noReleaseTitle"),
-					MessageBoxButtons.OK, MessageBoxIcon.Warning);
+					MessageBoxButtons.OK);
 				return;
 			}
 
@@ -65,7 +65,7 @@ public partial class Form1
 			ResetStatus();
 			LogFailure("GitHub", $"asking GitHub for the latest release of {repo}", ex);
 			SpeakBox(Loc.T("github.failedBox", FriendlyError(ex)), Loc.T("github.failedTitle"),
-				MessageBoxButtons.OK, MessageBoxIcon.Error);
+				MessageBoxButtons.OK);
 			return;
 		}
 
@@ -75,7 +75,7 @@ public partial class Form1
 		{
 			ResetStatus();
 			SpeakBox(Loc.T("github.nothingUsableBox", repo), Loc.T("github.nothingUsableTitle"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 			return;
 		}
 
@@ -107,7 +107,7 @@ public partial class Form1
 			ResetStatus();
 			LogFailure("GitHub", $"installing {asset.Name} from {repo}", ex);
 			SpeakBox(Loc.T("github.failedBox", FriendlyError(ex)), Loc.T("github.failedTitle"),
-				MessageBoxButtons.OK, MessageBoxIcon.Error);
+				MessageBoxButtons.OK);
 		}
 	}
 }

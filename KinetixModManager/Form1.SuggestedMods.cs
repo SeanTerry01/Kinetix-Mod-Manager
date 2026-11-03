@@ -100,7 +100,7 @@ public partial class Form1
 	{
 		// The list is per game and says so in its title, so without one open there is nothing it could show and
 		// nothing sensible for the title to name.
-		if (_settings.ActiveGame == "None")
+		if (_settings.ActiveGame == GameProfiles.NoGame)
 		{
 			Speak(Loc.T("suggested.noGame"));
 			return;

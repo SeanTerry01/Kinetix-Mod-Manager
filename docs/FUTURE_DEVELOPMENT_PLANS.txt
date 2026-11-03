@@ -186,7 +186,7 @@ fifth; it shipped 2026-08-03.)
       is published data about the game and identical for both copies.
 
 **Waiting on something outside the code:**
-*   **Cyberpunk 2077 as a sixth game** (added 2026-08-06) — wanted, and blocked only on having the game and its
+*   **Cyberpunk 2077 as a seventh game** (added 2026-08-06) — wanted, and blocked only on having the game and its
     accessibility mod installed to develop against. What is already known: Nexus domain `cyberpunk2077`,
     Nexus game id **3333** (read back from the v2 GraphQL API, not guessed); Steam app id 1091500; sold on GOG,
     so it needs the same both-stores detection The Witcher 3 got. Expect a mod layout unlike any of the five
@@ -196,8 +196,7 @@ fifth; it shipped 2026-08-03.)
     bite are the ones no wiki mentions. The Witcher 3 work generalised `GameProfile` far enough that the store
     ids, per-player folder, saves, config files and disabled-mod prefix are now data rather than code — the new
     work should mostly be a layout and a scanner.
-*   **Vortex import** — the implementation exists but has never been validated; it needs someone with a real
-    Vortex setup. Same shape as the MO2 import, which was validated the same way.
+*   **Vortex import**: not built. It needs someone with a real Vortex setup to test against, as the MO2 import had.
 *   **WitcherAccess auto-download** — the manager installs it today from a downloaded archive (unpack, run the
     author's installer, pick the mod up afterwards). What it cannot do yet is *fetch* it, because the mod is in
     testing and lives in a repository the manager has no URL for. When it reaches Nexus, it becomes an ordinary

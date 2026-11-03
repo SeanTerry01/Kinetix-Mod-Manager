@@ -34,7 +34,7 @@ public partial class Form1
 	/// </summary>
 	private void RefreshAllData(bool checkUpdates)
 	{
-		if (_settings.ActiveGame == "None") return;
+		if (_settings.ActiveGame == GameProfiles.NoGame) return;
 		// Catch a Steam/GOG game update before the user tries to launch: warns once if the exe version changed
 		// since we last loaded this game. Harmless on Stardew and cheap enough to run on every refresh.
 		CheckGameUpdateGuardian();
@@ -57,7 +57,7 @@ public partial class Form1
 	/// </summary>
 	private async Task RefreshModList(bool checkUpdates)
 	{
-		if (_settings.ActiveGame == "None") return;
+		if (_settings.ActiveGame == GameProfiles.NoGame) return;
 
 		// Only a game whose mods come from Nexus needs a Nexus key. Without this check a Minecraft player —
 		// whose mods come from Modrinth, which has no accounts — opened the manager to the disconnect cue,
@@ -745,7 +745,7 @@ public partial class Form1
 	/// <summary>Scans the backups directory and repopulates <c>listBackups</c> with <see cref="BackupItem"/> entries.</summary>
 	private void RefreshBackupsList()
 	{
-		if (_settings.ActiveGame == "None") return;
+		if (_settings.ActiveGame == GameProfiles.NoGame) return;
 		if (listBackups == null)
 		{
 			return;

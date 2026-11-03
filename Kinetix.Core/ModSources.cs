@@ -251,10 +251,6 @@ public static class ModSources
 	public static ModSourceInfo? Find(string? id) =>
 		id == null ? null : _known.FirstOrDefault(s => string.Equals(s.Id, id, StringComparison.OrdinalIgnoreCase));
 
-	/// <summary>The sites carrying a game's mods, whatever they can do for it.</summary>
-	public static IReadOnlyList<ModSourceInfo> ForGame(string? gameId) =>
-		_known.Where(s => s.CarriesGame(gameId)).ToList();
-
 	/// <summary>
 	/// The sites whose catalogue can be searched for a game — which is what a source chooser should offer,
 	/// rather than every site the manager can open a page on.

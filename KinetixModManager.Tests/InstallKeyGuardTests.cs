@@ -30,7 +30,7 @@ public class InstallKeyGuardTests
     /// switch arms and ids passed as arguments are all legitimate and are left alone.
     /// </summary>
     private static readonly Regex BareComparison = new(
-        @"(==|!=)\s*""(StardewValley|SkyrimSE|Fallout4|MoonlightPeaks|Witcher3)""",
+        @"(==|!=)\s*(?:""(StardewValley|SkyrimSE|Fallout4|MoonlightPeaks|Witcher3|Minecraft)""|GameProfiles\.(StardewValley|SkyrimSE|Fallout4|MoonlightPeaks|Witcher3|Minecraft)\b)",
         RegexOptions.Compiled);
 
     /// <summary>

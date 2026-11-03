@@ -22,7 +22,7 @@ public partial class Form1
 
 	private async Task ShowTrackedMods()
 	{
-		if (_settings.ActiveGame == "None")
+		if (_settings.ActiveGame == GameProfiles.NoGame)
 		{
 			Speak(Loc.T("tracked.noGame"));
 			return;

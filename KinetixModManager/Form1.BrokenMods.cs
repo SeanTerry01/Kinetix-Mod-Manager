@@ -23,7 +23,7 @@ public partial class Form1
 	/// </summary>
 	private async Task ShowBrokenModsReport()
 	{
-		if (_settings.ActiveGame == "None")
+		if (_settings.ActiveGame == GameProfiles.NoGame)
 		{
 			Speak(Loc.T("broken.noGame"));
 			return;

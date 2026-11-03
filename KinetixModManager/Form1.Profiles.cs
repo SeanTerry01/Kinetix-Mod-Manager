@@ -69,7 +69,7 @@ public partial class Form1
 	/// <summary>Scans the profiles directory and repopulates <c>listProfiles</c>.</summary>
 	private void RefreshProfilesList()
 	{
-		if (_settings.ActiveGame == "None") return;
+		if (_settings.ActiveGame == GameProfiles.NoGame) return;
 		if (listProfiles == null)
 		{
 			return;

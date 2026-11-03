@@ -63,9 +63,6 @@ public static class BackupStore
 	}
 
 	/// <summary>
-	/// Creates a timestamped <c>.zip</c> backup of a mod folder.
-	/// </summary>
-	/// <summary>
 	/// Zips a mod folder into the backups folder. Supply <paramref name="progress"/> (0–100) to be told how far
 	/// along it is — a large mod can take long enough that silence looks like the manager has hung.
 	/// </summary>
@@ -153,7 +150,7 @@ public static class BackupStore
 	/// </summary>
 	private static FileStream ClaimName(string backupsPath, string modName)
 	{
-		string stamp = $"{modName}_{DateTime.Now:yyyyMMdd_HHmmss}";
+		string stamp = $"{modName}_{DateTime.Now.ToString(StampFormat)}";
 
 		// CreateNew is the whole point: it fails rather than overwrites, so whichever caller wins the race
 		// keeps the name and the others move on to the next one. Bounded, because past a handful in the same

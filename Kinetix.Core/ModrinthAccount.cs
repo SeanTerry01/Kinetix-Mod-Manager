@@ -37,12 +37,6 @@ public static class ModrinthAccount
 {
 	private const string ApiBase = "https://api.modrinth.com/v2";
 
-	/// <summary>Where a user makes a token. Signing in first is part of the same page.</summary>
-	public const string TokensPageUrl = "https://modrinth.com/settings/pats";
-
-	/// <summary>Where a new user makes an account.</summary>
-	public const string SignUpUrl = "https://modrinth.com/auth/sign-up";
-
 	/// <summary>
 	/// Who the token belongs to, or <c>null</c> when Modrinth does not accept it. Throws only when Modrinth
 	/// could not be asked at all, so "not accepted" and "no connection" stay two different sentences.

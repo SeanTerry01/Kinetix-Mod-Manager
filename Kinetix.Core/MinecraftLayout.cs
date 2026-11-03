@@ -8,22 +8,6 @@ using Newtonsoft.Json.Linq;
 
 namespace KinetixModManager;
 
-/// <summary>
-/// Which launcher a copy of Minecraft was installed by. This matters only for telling the user where their
-/// copy came from and for finding the bundled Java runtime; the mods folder is in the same place either way.
-/// </summary>
-public enum MinecraftLauncherKind
-{
-	/// <summary>No launcher was found, though a <c>.minecraft</c> folder may still exist.</summary>
-	Unknown,
-
-	/// <summary>The Microsoft Store package <c>Microsoft.MinecraftJavaEdition_8wekyb3d8bbwe</c>.</summary>
-	MicrosoftStore,
-
-	/// <summary>The standalone <c>MinecraftLauncher.exe</c> installer.</summary>
-	Standalone
-}
-
 /// <summary>One mod's metadata, read out of the <c>fabric.mod.json</c> inside its jar.</summary>
 public sealed class FabricModInfo
 {
@@ -77,13 +61,6 @@ public static class MinecraftLayout
 {
 	/// <summary>The Microsoft Store package family name for Java Edition's launcher.</summary>
 	public const string StorePackageFamilyName = "Microsoft.MinecraftJavaEdition_8wekyb3d8bbwe";
-
-	/// <summary>
-	/// The application user model id used to start the Store launcher, for the days when we still hand the
-	/// user back to it. Note there is no <c>minecraft://</c> protocol and the package's execution alias is a
-	/// placeholder called <c>MCPlaceholderStub.exe</c>, so this is the only way in from outside.
-	/// </summary>
-	public const string StoreAppUserModelId = StorePackageFamilyName + "!Game";
 
 	/// <summary>The file inside a mod jar that carries its metadata.</summary>
 	public const string ManifestEntryName = "fabric.mod.json";
@@ -140,38 +117,6 @@ public static class MinecraftLayout
 		if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder)) return false;
 		return File.Exists(LauncherProfilesPathFor(folder)) ||
 			   Directory.Exists(Path.Combine(folder, "versions"));
-	}
-
-	/// <summary>
-	/// Which launcher installed this copy. Only used for what the manager tells the user and for locating the
-	/// bundled Java runtime — never for finding the mods folder, which does not vary.
-	/// </summary>
-	public static MinecraftLauncherKind DetectLauncher()
-	{
-		string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-		if (Directory.Exists(Path.Combine(local, "Packages", StorePackageFamilyName)))
-			return MinecraftLauncherKind.MicrosoftStore;
-
-		foreach (Environment.SpecialFolder pf in new[]
-				 { Environment.SpecialFolder.ProgramFilesX86, Environment.SpecialFolder.ProgramFiles })
-		{
-			string exe = Path.Combine(Environment.GetFolderPath(pf), "Minecraft Launcher", "MinecraftLauncher.exe");
-			if (File.Exists(exe)) return MinecraftLauncherKind.Standalone;
-		}
-
-		return MinecraftLauncherKind.Unknown;
-	}
-
-	/// <summary>The standalone launcher's executable, or <c>""</c> when this is not a standalone install.</summary>
-	public static string FindStandaloneLauncherExe()
-	{
-		foreach (Environment.SpecialFolder pf in new[]
-				 { Environment.SpecialFolder.ProgramFilesX86, Environment.SpecialFolder.ProgramFiles })
-		{
-			string exe = Path.Combine(Environment.GetFolderPath(pf), "Minecraft Launcher", "MinecraftLauncher.exe");
-			if (File.Exists(exe)) return exe;
-		}
-		return "";
 	}
 
 	// -------------------------------------------------------------------------

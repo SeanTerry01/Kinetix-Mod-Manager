@@ -64,7 +64,7 @@ public partial class Form1
 	/// </summary>
 	private async Task ExportCollection()
 	{
-		if (_settings.ActiveGame == "None")
+		if (_settings.ActiveGame == GameProfiles.NoGame)
 		{
 			Speak(Loc.T("collection.noGame"));
 			return;
@@ -161,7 +161,7 @@ public partial class Form1
 	{
 		using IDisposable busy = BeginModOperation();
 
-		if (_settings.ActiveGame == "None") { Speak(Loc.T("collection.noGame")); return; }
+		if (_settings.ActiveGame == GameProfiles.NoGame) { Speak(Loc.T("collection.noGame")); return; }
 		if (string.IsNullOrEmpty(_settings.ApiKey)) { Speak(Loc.T("collection.noLogin")); return; }
 
 		using OpenFileDialog dialog = new OpenFileDialog
@@ -187,7 +187,7 @@ public partial class Form1
 		// A collection is game-specific (mod ids and load order only mean anything for the game it was built for).
 		if (!string.Equals(collection.Game, _settings.ActiveGame, StringComparison.OrdinalIgnoreCase))
 		{
-			SpeakBox(Loc.T("collection.gameMismatch", collection.Name, collection.Game), Loc.T("collection.installTitle"), MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+			SpeakBox(Loc.T("collection.gameMismatch", collection.Name, collection.Game), Loc.T("collection.installTitle"), MessageBoxButtons.OK);
 			return;
 		}
 

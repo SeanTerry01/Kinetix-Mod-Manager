@@ -186,7 +186,7 @@ public partial class Form1
 			Directory.CreateDirectory(Path.Combine(text2, "logo"));
 			Speak(Loc.T("themeMgr.created"));
 			LetSpeechFinish();
-			Process.Start("explorer.exe", text2);
+			OpenFolder(text2);
 			RefreshList();
 		};
 		Button button3 = new Button

@@ -33,7 +33,7 @@ public partial class Form1
 	/// <summary>Entry point (Mods menu): shows what would be renamed, and renames it if the user agrees.</summary>
 	private async void TidyModFolderNames()
 	{
-		if (_settings.ActiveGame == "None")
+		if (_settings.ActiveGame == GameProfiles.NoGame)
 		{
 			Speak(Loc.T("tidy.noGame"));
 			return;

@@ -113,7 +113,7 @@ public partial class Form1
 			catch (Exception ex) { LogError(known.DisplayName, "Could not open " + url + ": " + ex.Message); }
 
 			SpeakBox(Loc.T("modparts.manualBox", what, file.Name, where),
-				Loc.T("modparts.manualTitle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+				Loc.T("modparts.manualTitle"), MessageBoxButtons.OK);
 			return;
 		}
 
@@ -158,7 +158,7 @@ public partial class Form1
 			ResetStatus();
 			LogFailure(known.DisplayName, $"{part.Name} failed", ex);
 			SpeakBox(Loc.T("modparts.failedBox", what, FriendlyError(ex)), Loc.T("modparts.manualTitle"),
-				MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBoxButtons.OK);
 		}
 	}
 

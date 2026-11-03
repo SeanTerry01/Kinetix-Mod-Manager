@@ -448,14 +448,6 @@ public static class MinecraftControls
 	}
 
 	/// <summary>
-	/// Where each family of United Minecraft actions belongs, longest prefix first so <c>scanner_</c> is
-	/// matched before <c>scan_</c>.
-	///
-	/// Read off the mod's own naming, which is consistent: the part before the first underscore says which
-	/// feature an action belongs to. An action matching nothing here still appears, under "Other" — a mod
-	/// update adding a new feature must not make its keys vanish from the list.
-	/// </summary>
-	/// <summary>
 	/// A rule that matches by the INPUT rather than by the action's name: anything bound to a mouse button.
 	///
 	/// Written as a reserved token in the rules list so the mouse section keeps a declared position among the

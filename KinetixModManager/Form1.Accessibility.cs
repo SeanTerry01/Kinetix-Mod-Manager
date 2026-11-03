@@ -385,10 +385,6 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Shows a standard, screen-reader-friendly "About" dialog: a brief description of the program, its version,
-	/// publisher, website, and licensing — the kind of dialog most applications expose from their Help menu.
-	/// </summary>
-	/// <summary>
 	/// The supported games as a sentence — "Fallout 4, Moonlight Peaks, Skyrim Special Edition and Stardew
 	/// Valley". Built from <see cref="GameProfiles"/> so it is right by construction whenever a game is added.
 	/// </summary>
@@ -1088,17 +1084,6 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// The active game's own controls, read from a keybind export — the player's real bindings when the export
-	/// plugin has written them, otherwise the snapshot of stock bindings bundled with the manager.
-	///
-	/// Which of the two it is gets said, as the first line of the list: someone who has remapped a key and is
-	/// being shown the stock one needs to be able to tell that these are defaults rather than conclude the
-	/// manager is wrong about their game. That line carries no key, so it reads out but isn't counted in the
-	/// list's "x of y".
-	///
-	/// <c>null</c> when the game has no export of either kind, leaving the hardcoded list to answer.
-	/// </summary>
-	/// <summary>
 	/// Minecraft's controls, read straight from the files the game itself reads, or <c>null</c> for any other
 	/// game.
 	///
@@ -1791,7 +1776,7 @@ public partial class Form1
 				}
 				catch (Exception ex)
 				{
-					SpeakBox(Loc.T("config.invalidJsonBox", ex.Message), Loc.T("config.jsonValidationTitle"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+					SpeakBox(Loc.T("config.invalidJsonBox", ex.Message), Loc.T("config.jsonValidationTitle"), MessageBoxButtons.OK);
 					return;
 				}
 			}
@@ -1807,7 +1792,7 @@ public partial class Form1
 			}
 			catch (Exception ex)
 			{
-				SpeakBox(Loc.T("config.saveFailedBox", FriendlyError(ex)), Loc.T("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+				SpeakBox(Loc.T("config.saveFailedBox", FriendlyError(ex)), Loc.T("common.error"), MessageBoxButtons.OK);
 			}
 		};
 
@@ -1819,7 +1804,7 @@ public partial class Form1
 			if (!saved && tbJson.Text != originalJson)
 			{
 				if (SpeakBox(Loc.T("config.discardConfirm"), Loc.T("config.confirmCancelTitle"),
-						MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+						MessageBoxButtons.YesNo) == DialogResult.No)
 					return;
 				Speak(Loc.T("common.changesCancelled"));
 				LetSpeechFinish();

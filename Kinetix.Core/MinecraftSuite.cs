@@ -116,7 +116,6 @@ public static class MinecraftSuite
 	/// <summary>The mod chosen when the user has not picked one. United Minecraft: newer and more actively released.</summary>
 	public static MinecraftSuiteMod Default => AccessMods[0];
 
-	/// <summary>The access mod with this id, or <see cref="Default"/> for an unset or unrecognised one.</summary>
 	/// <summary>
 	/// Whether a GitHub release says it is for <paramref name="gameVersion"/> — read from its tag and the names of
 	/// the files it publishes, which is all a GitHub release offers. United Minecraft tags its releases

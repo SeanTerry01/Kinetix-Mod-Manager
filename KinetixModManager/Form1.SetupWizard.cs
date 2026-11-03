@@ -14,7 +14,7 @@ namespace KinetixModManager;
 /// </summary>
 public partial class Form1
 {
-	private bool HasGameChosen => _settings.ActiveGame != "None";
+	private bool HasGameChosen => _settings.ActiveGame != GameProfiles.NoGame;
 	// Done, too, for a game whose mods do not come from Nexus. A Minecraft player could otherwise never finish this.
 	private bool HasApiKey => !string.IsNullOrEmpty(_settings.ApiKey) || (HasGameChosen && !_nexusService.UsesNexus);
 	private bool HasGameFolder => HasGameChosen && !string.IsNullOrEmpty(_settings.CurrentGamePath) && Directory.Exists(_settings.CurrentGamePath);
