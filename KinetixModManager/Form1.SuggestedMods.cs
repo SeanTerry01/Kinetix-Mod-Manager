@@ -264,8 +264,9 @@ public partial class Form1
 
 		try
 		{
-			Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 			Speak(Loc.T("suggested.openedPage", entry.Name));
+			LetSpeechFinish();
+			Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 		}
 		catch (Exception ex)
 		{

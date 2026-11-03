@@ -198,7 +198,7 @@ public partial class Form1
 		// docs are built from what is installed instead of from a fixed source list.
 		if (GameProfiles.Find(_settings.ActiveGame)?.IsBepInEx == true)
 		{
-			SetStatus(Loc.T("moddocs.loading"));
+			SetStatus(Loc.T("moddocs.loading"), speak: false);
 			Speak(Loc.T("moddocs.loading"));
 
 			List<DocNode> bepInExRoots = BuildBepInExSettingsDocs();
@@ -223,7 +223,7 @@ public partial class Form1
 
 		// Fetch the latest copy now (and cache it) so the viewer opens on the current docs; offline/not-logged-in
 		// sources fall back fast to the cached or bundled copy, so this stays responsive without a connection.
-		SetStatus(Loc.T("moddocs.loading"));
+		SetStatus(Loc.T("moddocs.loading"), speak: false);
 		Speak(Loc.T("moddocs.loading"));
 
 		var roots = new List<DocNode>();

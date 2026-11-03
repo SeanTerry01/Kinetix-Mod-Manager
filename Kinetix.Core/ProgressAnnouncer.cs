@@ -53,6 +53,11 @@ public sealed class ProgressAnnouncer : IProgress<double>
 {
 	private const long ToneThrottleMs = 45;
 
+	/// <summary>The least time between spoken figures, for a reader that cannot say whether it is still talking.</summary>
+	internal const long MinimumSpeechGapMs = 2000;
+
+	private long _lastSpeechTicks = long.MinValue / 2;
+
 	private readonly IProgressDisplay _display;
 	private readonly IAnnouncer _announcer;
 	private readonly ISoundEngine _sounds;
@@ -100,7 +105,10 @@ public sealed class ProgressAnnouncer : IProgress<double>
 			_ui.Post(() =>
 			{
 				if (SpeechOn)
+				{
+					_lastSpeechTicks = Environment.TickCount64;
 					_announcer.Speak(_display.OpeningPhrase(_name, _phraseKey) + ", " + Loc.T("progress.percentSpoken", 0));
+				}
 				_display.ShowProgress(_name, _phraseKey, pct);
 			});
 			return;
@@ -127,9 +135,27 @@ public sealed class ProgressAnnouncer : IProgress<double>
 
 		_ui.Post(() =>
 		{
-			if (speakNow) _announcer.Speak(Loc.T("progress.percentSpoken", decile));
+			if (speakNow) SpeakProgress(decile);
 			if (titleChanged) _display.ShowProgress(_name, _phraseKey, pct);
 		});
+	}
+
+	/// <summary>
+	/// Says a progress figure, unless the last one has not finished being said.
+	///
+	/// ⚠️ Figures used to be queued whatever was happening. A small archive reports all nine in under a second, so
+	/// "10 percent, 20 percent, 30 percent" went on being read long after the work had ended, and Update All built up a
+	/// backlog that left "all updates finished" far behind what was really happening. Skipping one loses nothing: the
+	/// next figure says where things have got to. A reader that cannot answer the question gets a minimum gap instead.
+	/// </summary>
+	private void SpeakProgress(int decile)
+	{
+		long now = Environment.TickCount64;
+		bool stillTalking = _announcer.IsSpeakingForCertain ?? now - _lastSpeechTicks < MinimumSpeechGapMs;
+		if (stillTalking) return;
+
+		_lastSpeechTicks = now;
+		_announcer.Speak(Loc.T("progress.percentSpoken", decile));
 	}
 
 	/// <summary>

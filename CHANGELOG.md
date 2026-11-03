@@ -1,5 +1,13 @@
 ﻿# Unreleased
 
+## ⚡ The manager no longer freezes while it works
+
+*   **Refreshing happens in the background.** Every press of Space or Delete rescans your mods, and on Skyrim and Fallout 4
+    checks every deployed file. Measured on a large setup, that froze the manager for 2 seconds at 1,000 mods of 20 files
+    each, and 23 seconds at 200 files each, with your screen reader quiet and keys doing nothing. It now keeps answering.
+*   **Installs do too.** The backing up and copying after "Installing... 100 percent" froze it the same way.
+*   **Moving your mods folder** no longer freezes it for minutes, and says it is still going.
+*   **Update All rescans less**, once per mod rather than several times.
 ## ✨ With NVDA 2026.3 or newer, the manager waits until a sentence has actually finished
 
 NVDA 2026.3 added a way for a program to ask whether it is still speaking, and the manager now asks. Until now, the
@@ -12,6 +20,13 @@ as before.
     and then the summary or the mod list. Press any key to skip the rest and move on straight away.
 *   **Startup and shutdown fit your speech rate.** The opening and the goodbye wait for the sentence itself, not a
     fixed time. At a fast rate that means no pause after it has finished; at a slow rate, no cut-off.
+*   **Progress no longer piles up.** A small install could queue "10 percent, 20 percent, 30 percent" and go on reading them
+    long after it had finished, and Update All built up a backlog well behind what was really happening. A figure is now
+    skipped if the last one is still being said. Other screen readers get a gap of at least two seconds between figures.
+*   **What you just did is no longer cut off by the list refreshing.** "X is now disabled" could be cut short when the list
+    reloaded and put you back on the same row.
+*   **"Update check finished" is heard** before a SMAPI or Minecraft update prompt, not cut off by it.
+*   **Sentences come before the browser opens**, so it no longer talks over them.
 *   **A sentence spoken as a screen closes is heard.** Saving a settings file, adding a load order rule, or removing
     the last item from a list now finishes saying so before focus goes back. The same goes for "Opening the download
     page" before the browser takes over.

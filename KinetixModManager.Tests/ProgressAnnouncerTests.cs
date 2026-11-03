@@ -23,6 +23,9 @@ public class ProgressAnnouncerTests
 		public void Speak(string text, bool interrupt = false) => Spoken.Add(text);
 		public void Silence() { }
 		public bool IsSpeaking => false;
+		/// <summary>What the reader says when asked. Null is a reader that cannot say, such as JAWS.</summary>
+		public bool? Certain { get; set; } = false;
+		public bool? IsSpeakingForCertain => Certain;
 		public bool IsAvailable => true;
 		public void Dispose() { }
 	}
@@ -75,6 +78,58 @@ public class ProgressAnnouncerTests
 
 		Assert.Single(a.Spoken);
 		Assert.Contains("SkyUI", a.Spoken[0]);
+	}
+
+	[Fact]
+	public void AFigureIsSkippedWhileTheLastIsStillBeingSaid()
+	{
+		// This is what stops them piling up: a small install reports all nine in under a second, and each used to be
+		// queued, so they went on being read long after the install had finished.
+		var (p, a, _, _) = Build();
+		p.Report(0);
+		a.Certain = true;
+
+		for (int i = 1; i <= 95; i++) p.Report(i);
+
+		Assert.Single(a.Spoken);
+	}
+
+	[Fact]
+	public void OnlyOneFigureIsSaidOnceTheReaderIsFreeNotTheBacklogItMissed()
+	{
+		// Counted rather than read, because whether a test sees phrases or bare keys depends on what ran before it.
+		var (p, a, _, _) = Build();
+		p.Report(0);
+		a.Certain = true;
+		for (int i = 1; i <= 45; i++) p.Report(i);
+
+		a.Certain = false;
+		for (int i = 46; i <= 55; i++) p.Report(i);
+
+		Assert.Equal(2, a.Spoken.Count);
+	}
+
+	[Fact]
+	public void AReaderThatCannotSayStillDoesNotGetABacklog()
+	{
+		// JAWS, SAPI and older NVDA. All in one burst, inside the minimum gap, so nothing past the opening is said.
+		var (p, a, _, _) = Build();
+		a.Certain = null;
+
+		for (int i = 0; i <= 95; i++) p.Report(i);
+
+		Assert.Single(a.Spoken);
+	}
+
+	[Fact]
+	public void TheOpeningIsAlwaysSaidWhateverTheReaderIsDoing()
+	{
+		var (p, a, _, _) = Build();
+		a.Certain = true;
+
+		p.Report(0);
+
+		Assert.Single(a.Spoken);
 	}
 
 	[Fact]

@@ -957,13 +957,24 @@ public partial class Form1
 		Func<string, string, bool>? confirmOverwrite = confirmReinstall ? ConfirmOverwrite : null;
 		try
 		{
-			string name = await ModFileSystem.ExtractModAsync(
-				zipPath, _settings.CurrentModsPath, _allInstalledMods,
-				backupsPath, _settings.MaxBackupsPerMod, _settings.ActiveGame, LogError, nexusId, _nexusService, gitHubRepo, _settings.CurrentGamePath,
-				ShowFomodWizardAsync, installProgress, confirmOverwrite, RunModInstallerAsync,
+			// Away from the interface thread, not only the unpacking. The backing up, deleting and copying that came after
+			// it ran on that thread with nothing said: "Installing... 100 percent", then silence, and keys that did nothing.
+			// Read here, while they are still what this install is about. The list is a copy so a refresh cannot change it.
+			string modsPath = _settings.CurrentModsPath;
+			string game = _settings.ActiveGame;
+			string gamePath = _settings.CurrentGamePath;
+			string backups = backupsPath;
+			int maxBackups = _settings.MaxBackupsPerMod;
+			List<StardewMod> installed = _allInstalledMods.ToList();
+			Func<string, string, SamePageChoice>? askSamePage = confirmReinstall ? ConfirmSamePage : null;
+			string name = await Task.Run(() => ModFileSystem.ExtractModAsync(
+				zipPath, modsPath, installed,
+				backups, maxBackups, game, LogError, nexusId, _nexusService, gitHubRepo, gamePath,
+				ShowFomodWizardAsync, installProgress, confirmOverwrite,
+				path => OnUi(() => RunModInstallerAsync(path)),
 				matchExistingByNexusId: !partOfMultiPartMod,
 				updating: updating,
-				askSamePage: confirmReinstall ? ConfirmSamePage : null);
+				askSamePage: askSamePage));
 			installProgress?.Complete();
 			_soundEngine.Play("load_complete");
 			RecordDownloadInstalled(zipPath);

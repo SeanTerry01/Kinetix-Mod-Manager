@@ -170,11 +170,68 @@ public partial class Form1
 		{
 			SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser), speak: false);
 		}
-		// Which mod the user was on, remembered before the list is emptied and handed back to the rebuild at the
-		// end. RebuildInstalledListBox restores the selection from the list's own current item, and by the time it
-		// runs there is no current item left to read — so without carrying it across here, every refresh dropped
-		// the user on whatever ended up first. Editing a mod's config or manifest made that obvious, because the
-		// save refreshes and the user is returned to a list they were in the middle of working through.
+		// ⚠️ Off the interface thread from here until the list is rebuilt. Measured on a generated Skyrim setup: 1,000 mods
+		// of 20 files each is 2.2 seconds a refresh, and 200 files each is 23 seconds, nearly all of it the deployment check.
+		// Every Space and Delete runs one, and on this thread the screen reader goes quiet and keys appear dead, which to
+		// someone who cannot see the screen reads as a crash. The old list stays up until the new one is ready.
+		_scannedGame = null;
+		string modsPath = _settings.CurrentModsPath;
+		if (!Directory.Exists(modsPath))
+		{
+			_allInstalledMods = new List<StardewMod>();
+			Invoke(delegate
+			{
+				listInstalled.Items.Clear();
+				if (doUpdateChecks) listUpdates.Items.Clear();
+			});
+			SpeakBox(Loc.T("modlist.modsPathInvalid"));
+			return;
+		}
+
+		List<StardewMod> scanned;
+		try
+		{
+			scanned = await Task.Run(() => ScanModsFolder(modsPath, refreshingGame));
+		}
+		catch (Exception ex)
+		{
+			// One unreadable folder used to end the refresh here with the lists empty and suspended, and the only
+			// record of why in a log. To the user the manager opened with no mods and said nothing.
+			LogFailure("Scan", "Could not read the mods folder", ex);
+			_allInstalledMods = new List<StardewMod>();
+			Invoke(delegate
+			{
+				listInstalled.Items.Clear();
+				if (doUpdateChecks) listUpdates.Items.Clear();
+			});
+			_soundEngine.Play("error");
+			SpeakBox(Loc.T("modlist.scanFailedBox", FriendlyError(ex)));
+			return;
+		}
+
+		// If the user switched games while that ran, these are the wrong game's mods and the newer pass is already on its
+		// way. Publishing them would put the game they just left back on screen.
+		if (Superseded()) return;
+
+		// A new list rather than clearing this one. An install hands the list to the installer and awaits the extraction,
+		// and a refresh in that gap emptied it, so the installer found nothing to back up.
+		_allInstalledMods = scanned;
+		_scannedGame = refreshingGame;
+		ModHealth.ResolveDependencies(_allInstalledMods, IsNewerVersion);
+
+		// Reconcile Skyrim/Fallout 4 asset deployment to the current enabled set and priority order, and refresh the
+		// conflict scan. Only files whose winner changed relink, but finding that out means looking at every one of them.
+		if (IsBethesdaGame)
+		{
+			await Task.Run(() =>
+			{
+				SyncBethesdaDeployment();
+				SyncBethesdaPlugins();
+			});
+			if (Superseded()) return;
+		}
+
+		// Which mod the user was on, read now rather than before the wait, because they may have moved since.
 		string? selectedBefore = null;
 		Invoke(delegate
 		{
@@ -183,90 +240,9 @@ public partial class Form1
 			if (doUpdateChecks)
 			{
 				listUpdates.BeginUpdate();
-			}
-			listInstalled.Items.Clear();
-			if (doUpdateChecks)
-			{
 				listUpdates.Items.Clear();
 			}
 		});
-		// A new list rather than Clear(). An install hands this same list to the installer and awaits the extraction,
-		// and a refresh in that gap emptied it, so the installer found nothing to back up.
-		_allInstalledMods = new List<StardewMod>();
-		_scannedGame = null;
-		if (!Directory.Exists(_settings.CurrentModsPath))
-		{
-			Invoke(delegate
-			{
-				listInstalled.EndUpdate();
-				if (doUpdateChecks)
-				{
-					listUpdates.EndUpdate();
-				}
-			});
-			SpeakBox(Loc.T("modlist.modsPathInvalid"));
-			return;
-		}
-		string idMapPath = Path.Combine(AppSettings.AppDataFolder, "mod_id_map.json");
-		string legacyIdMapPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "mod_id_map.json");
-		if (File.Exists(legacyIdMapPath) && !File.Exists(idMapPath))
-		{
-			try
-			{
-				File.Copy(legacyIdMapPath, idMapPath, overwrite: true);
-			}
-			catch (Exception ex) { DiagnosticLog.WriteException("ModIdMap", "copying the old Nexus id map into place", ex); }
-		}
-		JObject nexusIdMap = AtomicFile.ReadJsonObjectOrEmpty(idMapPath);
-		List<StardewMod> scanned;
-		try
-		{
-			scanned = ModScanner.ScanMods(_settings.CurrentModsPath, nexusIdMap, _settings, refreshingGame, LogError);
-		}
-		catch (Exception ex)
-		{
-			// One unreadable folder used to end the refresh here with the lists empty and suspended, and the only
-			// record of why in a log. To the user the manager opened with no mods and said nothing.
-			LogFailure("Scan", "Could not read the mods folder", ex);
-			Invoke(delegate
-			{
-				listInstalled.EndUpdate();
-				if (doUpdateChecks) listUpdates.EndUpdate();
-			});
-			_soundEngine.Play("error");
-			SpeakBox(Loc.T("modlist.scanFailedBox", FriendlyError(ex)));
-			return;
-		}
-
-		// The scan reads the disk and can take a while on a large mod folder. If the user switched games while it
-		// ran, these are the wrong game's mods and the newer pass is already on its way — publishing them would
-		// put the game they just left back on screen. Balance the BeginUpdate above before standing down, or the
-		// list stays suspended and the newer pass's items never paint.
-		if (Superseded())
-		{
-			Invoke(delegate
-			{
-				listInstalled.EndUpdate();
-				if (doUpdateChecks) listUpdates.EndUpdate();
-			});
-			return;
-		}
-
-		// Where each mod's page is, from whatever earlier check learned it. Applied here rather than inside the
-		// scan because it is a convenience the scan does not need: a mod list still builds without it.
-		ModPageLinks.Apply(scanned, ModPageLinks.Load(AppSettings.AppDataFolder));
-
-		_allInstalledMods = scanned;
-		_scannedGame = refreshingGame;
-		ModHealth.ResolveDependencies(_allInstalledMods, IsNewerVersion);
-		// Reconcile Skyrim/Fallout 4 asset deployment to the current enabled set and priority order, and
-		// refresh the conflict scan. Cheap when nothing changed (only files whose winner changed relink),
-		// so it is safe to run on every list rebuild and keeps the manifest and conflict counts current.
-		if (IsBethesdaGame)
-		{
-			SyncBethesdaDeployment();
-			SyncBethesdaPlugins();
-		}
 		HashSet<string> hashSet = new HashSet<string>(_allInstalledMods.Select(m => m.Category));
 		Invoke(delegate
 		{
@@ -355,12 +331,6 @@ public partial class Form1
 				else
 				{
 					listUpdates.SelectedIndex = Math.Min(Math.Max(0, oldSelectedIndex), listUpdates.Items.Count - 1);
-				}
-
-				// Position only — the screen reader reads the re-selected row itself. See RebuildInstalledListBox.
-				if (listUpdates.Focused && listUpdates.SelectedItem != null)
-				{
-					Speak(Loc.T("common.position", listUpdates.SelectedIndex + 1, listUpdates.Items.Count));
 				}
 			}
 			else if (listUpdates.Focused && oldSelectedIndex != -1)
@@ -465,6 +435,24 @@ public partial class Form1
 		}
 	}
 
+	/// <summary>Everything a refresh reads from the disk. Off the interface thread, so it touches no control.</summary>
+	private List<StardewMod> ScanModsFolder(string modsPath, string game)
+	{
+		string idMapPath = Path.Combine(AppSettings.AppDataFolder, "mod_id_map.json");
+		string legacyIdMapPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "mod_id_map.json");
+		if (File.Exists(legacyIdMapPath) && !File.Exists(idMapPath))
+		{
+			try { File.Copy(legacyIdMapPath, idMapPath, overwrite: true); }
+			catch (Exception ex) { DiagnosticLog.WriteException("ModIdMap", "copying the old Nexus id map into place", ex); }
+		}
+
+		List<StardewMod> scanned = ModScanner.ScanMods(modsPath, AtomicFile.ReadJsonObjectOrEmpty(idMapPath), _settings, game, LogError);
+
+		// Where each mod's page is, from whatever earlier check learned it. A convenience the scan itself does not need.
+		ModPageLinks.Apply(scanned, ModPageLinks.Load(AppSettings.AppDataFolder));
+		return scanned;
+	}
+
 	/// <summary>
 	/// Runs the user's Refresh Everything / Refresh Installed Mods command and says what is happening.
 	///
@@ -567,6 +555,10 @@ public partial class Form1
 		listInstalled.BeginUpdate();
 		StardewMod? stardewMod = listInstalled.SelectedItem as StardewMod;
 		string? restoreId = preferUniqueId ?? stardewMod?.UniqueId;
+		// Read before the list is emptied. Compared afterwards, it was always -1, so every rescan counted as moving the user
+		// even when they were put back on the same row, which started the swallow that destroys whatever was just said:
+		// "Foo is now dis...", then the row again.
+		int indexBefore = listInstalled.SelectedIndex;
 		listInstalled.Items.Clear();
 		foreach (IGrouping<string, StardewMod> item2 in from g in _allInstalledMods.Where((StardewMod m) => !m.IsGroup).GroupBy(InstalledGroupKey)
 			orderby g.Key
@@ -636,7 +628,7 @@ public partial class Form1
 					// itself — otherwise a refresh finishing under them reads out a position and nothing else.
 					// Not so when a keypress caused the rebuild (collapsing a group): the reader announces the row
 					// the key landed on, and naming it here as well would say it twice.
-					if (announceRestoredRow && num != listInstalled.SelectedIndex) _announceRowNameOnNextChange = true;
+					if (announceRestoredRow && num != indexBefore) _announceRowNameOnNextChange = true;
 					listInstalled.SelectedIndex = num;
 					// The list is usually not focused while a rescan runs, so the focus rectangle would otherwise
 					// stay on whatever row it was left on and be read out ahead of this one.
@@ -779,12 +771,6 @@ public partial class Form1
 				}
 			}
 			listBackups.SelectedIndex = Math.Min(Math.Max(newIndex, oldIndex), listBackups.Items.Count - 1);
-
-			// Position only — the screen reader reads the re-selected row itself. See RebuildInstalledListBox.
-			if (listBackups.Focused && listBackups.SelectedItem != null)
-			{
-				Speak(Loc.T("common.position", listBackups.SelectedIndex + 1, listBackups.Items.Count));
-			}
 		}
 		else if (listBackups.Focused && oldIndex != -1)
 		{

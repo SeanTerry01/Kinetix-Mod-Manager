@@ -193,11 +193,12 @@ public partial class Form1
 			HttpResponseMessage httpResponseMessage = await NexusService.HttpClient.PostAsync("https://smapi.io/log/", content);
 			if (httpResponseMessage.IsSuccessStatusCode)
 			{
+				Speak(Loc.T("smapi.uploadSuccess"));
+				LetSpeechFinish();
 				Process.Start(new ProcessStartInfo(httpResponseMessage.RequestMessage?.RequestUri?.ToString() ?? "https://smapi.io/log/")
 				{
 					UseShellExecute = true
 				});
-				Speak(Loc.T("smapi.uploadSuccess"));
 			}
 		}
 		catch (Exception ex)
@@ -214,8 +215,9 @@ public partial class Form1
 	{
 		try
 		{
-			Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 			Speak(Loc.T("smapi.openingModPage"));
+			LetSpeechFinish();
+			Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 		}
 		catch (Exception ex)
 		{

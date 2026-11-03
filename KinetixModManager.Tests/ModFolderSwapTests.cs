@@ -432,8 +432,8 @@ public sealed class InstallOrderGuardTests
 
 	[Theory]
 	[InlineData("private void EnsureModPriorityList()")]
-	[InlineData("private List<FileConflict> SyncBethesdaDeployment(")]
-	[InlineData("private void SyncBethesdaPlugins()")]
+	[InlineData("private List<FileConflict> SyncBethesdaDeploymentHoldingLock(")]
+	[InlineData("private void SyncBethesdaPluginsHoldingLock()")]
 	public void NothingActsOnAModListThatIsNotATruePicture(string signature)
 	{
 		// An empty list is not the same as no mods. Acting on one removed every deployed file and the saved order.

@@ -378,6 +378,8 @@ public partial class Form1
 				if (unchecked_ > 0)
 					message += " " + Loc.T(unchecked_ == 1 ? "updates.unlinkedNoteOne" : "updates.unlinkedNote", unchecked_);
 				Speak(message);
+				// A prompt straight after this interrupts it, and the count and the mods that could not be checked were lost.
+				if (pendingSmapi != null || pendingMinecraft != null) LetSpeechFinish();
 				if (pendingSmapi is { } s)
 					NotifySmapiUpdateAvailable(s.Current, s.Latest, s.Url);
 				// The same courtesy for the one update that is not a mod at all. See
@@ -693,7 +695,7 @@ public partial class Form1
         {
             try
             {
-                SetStatus(Loc.T("updates.updatingGitHub", mod.Name));
+                SetStatus(Loc.T("updates.updatingGitHub", mod.Name), speak: false);
                 if (!silent) Speak(Loc.T("updates.downloading", mod.Name));
 
                 string? downloadUrl = await GetGitHubLatestReleaseZipUrl(mod.GitHubRepo);
@@ -782,7 +784,7 @@ public partial class Form1
         }
         try
         {
-            SetStatus(Loc.T("updates.updating", mod.Name));
+            SetStatus(Loc.T("updates.updating", mod.Name), speak: false);
             if (!silent) Speak(Loc.T("updates.downloading", mod.Name));
 
             // Download progress runs in a batch too (honouring the tones/speech/both/off setting); the silent
@@ -810,7 +812,7 @@ public partial class Form1
                 }
                 listUpdates.EndUpdate();
             });
-            await RefreshModList(checkUpdates: false);
+            // No rescan here: InstallFromZip has just done one, and each costs seconds on a large setup.
             await ReapplyDisabledIfNeeded(mod, wasDisabled, silent);
             // Remember which release is now on disk, so the next check compares against what was installed
 

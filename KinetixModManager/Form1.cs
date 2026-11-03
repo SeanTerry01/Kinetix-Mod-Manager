@@ -582,6 +582,12 @@ public partial class Form1 : Form, IMessageFilter
 	/// <summary>Says when settings cannot be written, since every change made afterwards would be lost at exit.</summary>
 	private void ReportSettingsSaveFailure(Exception ex)
 	{
+		if (InvokeRequired)
+		{
+			BeginInvoke(() => ReportSettingsSaveFailure(ex));
+			return;
+		}
+
 		if (_settingsSaveFailureReported) return;
 		_settingsSaveFailureReported = true;
 		Speak(Loc.T("settings.saveFailedSpeak", FriendlyError(ex)));

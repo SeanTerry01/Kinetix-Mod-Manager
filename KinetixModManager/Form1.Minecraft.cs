@@ -1229,7 +1229,7 @@ public partial class Form1
 
 		try
 		{
-			SetStatus(Loc.T("suite.downloading", result.Name));
+			SetStatus(Loc.T("suite.downloading", result.Name), speak: false);
 			Speak(Loc.T("suite.downloading", result.Name));
 
 			ModrinthFile? file = await ModrinthService.GetLatestFileAsync(result.ModrinthId!, gameVersion);

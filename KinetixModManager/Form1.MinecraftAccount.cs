@@ -469,8 +469,9 @@ public partial class Form1
 		bool copied = TryCopy(code.UserCode);
 		try
 		{
-			Process.Start(new ProcessStartInfo(code.VerificationUri) { UseShellExecute = true });
 			Speak(Loc.T(copied ? "mcAccount.openedWithCode" : "mcAccount.opened"));
+			LetSpeechFinish();
+			Process.Start(new ProcessStartInfo(code.VerificationUri) { UseShellExecute = true });
 		}
 		catch (Exception ex)
 		{

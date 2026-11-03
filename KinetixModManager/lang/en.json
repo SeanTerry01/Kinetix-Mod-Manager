@@ -556,6 +556,7 @@
   "modsfolder.confirmIntoGame": "Move {0} mods into the game folder?\n\nThey will be stored in:\n{1}\n\nWhy you might want this: the mods travel with the game, and because they end up on the same drive, the manager can link files into the game instead of copying them, which saves disk space.\n\nWhat to know first: if you ever uninstall the game through Steam or GOG, the game folder is deleted and your mods go with it. Verifying the game's files can also remove them. They are safer where they are now.\n\nNothing is deleted during the move: the mods are copied first and only removed from the old place once they have all arrived.",
   "modsfolder.confirmOutOfGame": "Move {0} mods back to the manager's own folder?\n\nThey will be stored in:\n{1}\n\nThere they survive uninstalling or verifying the game.\n\nNothing is deleted during the move: the mods are copied first and only removed from the old place once they have all arrived.",
   "modsfolder.cancelled": "Left where they were.",
+  "modsfolder.stillMoving": "Still moving your mods.",
   "modsfolder.moving": "Moving {0} mods. Please wait.",
   "modsfolder.done": "Moved {0} mods. They are now stored in {1}.",
   "modsfolder.failedBox": "The mods could not be moved, so they have been left where they were:\n{0}\n\nReason: {1}",

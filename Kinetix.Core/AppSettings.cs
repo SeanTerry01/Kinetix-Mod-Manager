@@ -1178,6 +1178,28 @@ public class AppSettings : IModScanContext
 
 	public void Save()
 	{
+		// Two threads can get here now that a refresh does its work away from the interface, and both would write the
+		// same temporary file. Without this, the one that lost was reported to the user as a failure to save.
+		lock (SaveLock) SaveHoldingLock();
+	}
+
+	private static readonly object SaveLock = new();
+
+	/// <summary>
+	/// The settings as JSON. A list can change on another thread while this walks it, which throws, and the next try will
+	/// almost certainly get a clean read. That is no reason to tell the user their settings could not be saved.
+	/// </summary>
+	private string SerializeAllowingForChanges()
+	{
+		for (int attempt = 1; ; attempt++)
+		{
+			try { return JsonConvert.SerializeObject(this, Formatting.Indented); }
+			catch (InvalidOperationException) when (attempt < 4) { System.Threading.Thread.Sleep(20); }
+		}
+	}
+
+	private void SaveHoldingLock()
+	{
 		try
 		{
 			// Encrypt the API key before serialization so it is never written as plain text.
@@ -1192,7 +1214,7 @@ public class AppSettings : IModScanContext
 			foreach (var kv in ModSourceApiKeys)
 				if (!string.IsNullOrEmpty(kv.Value))
 					ModSourceApiKeysEncrypted[kv.Key] = EncryptApiKey(kv.Value);
-			string contents = JsonConvert.SerializeObject(this, Formatting.Indented);
+			string contents = SerializeAllowingForChanges();
 			// With the previous version kept: if this one is ever damaged, that is what Load goes back to.
 			AtomicFile.WriteAllText(SettingsPath, contents, keepPrevious: true);
 		}

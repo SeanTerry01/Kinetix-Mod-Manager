@@ -90,7 +90,8 @@ public partial class Form1
 		try
 		{
 			SetStatus(Loc.T("modsfolder.moving", modCount), speak: true);
-			MoveFolderContents(source, destination);
+			using IDisposable busy = BeginModOperation();
+			WaitWithoutFreezing(Task.Run(() => MoveFolderContents(source, destination)), Loc.T("modsfolder.stillMoving"));
 		}
 		catch (Exception ex)
 		{
@@ -114,6 +115,27 @@ public partial class Form1
 		// The mod list is read from the path that just changed.
 		if (_settings.ActiveGame == installKey) RefreshAllData(checkUpdates: false);
 		return true;
+	}
+
+	/// <summary>
+	/// Waits for slow work with the window still answering, for a caller that has to stay synchronous. Says it is still
+	/// going now and then, because a copy across drives can take minutes, and it used to take them in silence with the
+	/// window frozen, which reads as a crash, and force-closing it mid-copy is the natural reaction. Rethrows its failure.
+	/// </summary>
+	private void WaitWithoutFreezing(Task work, string stillGoing)
+	{
+		long nextWord = Environment.TickCount64 + 20000;
+		while (!work.IsCompleted)
+		{
+			Application.DoEvents();
+			System.Threading.Thread.Sleep(15);
+			if (Environment.TickCount64 >= nextWord)
+			{
+				Speak(stillGoing);
+				nextWord = Environment.TickCount64 + 20000;
+			}
+		}
+		work.GetAwaiter().GetResult();
 	}
 
 	/// <summary>How many mods are in <paramref name="folder"/> — folders, since that is what a staged mod is.</summary>

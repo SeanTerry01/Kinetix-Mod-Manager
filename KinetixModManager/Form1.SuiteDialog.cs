@@ -778,7 +778,7 @@ public partial class Form1
 		string tempDir = Path.Combine(Path.GetTempPath(), "SMAPI_" + Path.GetRandomFileName());
 		try
 		{
-			SetStatus(Loc.T("suite.smapiDownloading"));
+			SetStatus(Loc.T("suite.smapiDownloading"), speak: false);
 			Speak(Loc.T("suite.smapiDownloading"));
 
 			string? url = await GetSmapiInstallerZipUrl();

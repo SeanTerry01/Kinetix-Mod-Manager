@@ -96,6 +96,12 @@ public partial class Form1
 	/// </summary>
 	private void ReportDeploymentFailures(int failures)
 	{
+		if (InvokeRequired)
+		{
+			if (failures != _deploymentFailuresReported) BeginInvoke(() => ReportDeploymentFailures(failures));
+			return;
+		}
+
 		if (failures > 0 && failures != _deploymentFailuresReported) Speak(Loc.T("loadorder.deployFailed", failures));
 		_deploymentFailuresReported = failures;
 	}
@@ -126,6 +132,22 @@ public partial class Form1
 	/// </summary>
 	private List<FileConflict> SyncBethesdaDeployment(HashSet<string>? forceRelink = null)
 	{
+		List<FileConflict> conflicts;
+		lock (_deploymentLock) conflicts = SyncBethesdaDeploymentHoldingLock(forceRelink);
+
+		// Outside the lock: a refresh runs this away from the interface thread and has to ask that thread to speak, and if
+		// that thread were itself waiting on the lock, neither would ever move.
+		ReportDeploymentFailures(_lastDeploymentFailures);
+		return conflicts;
+	}
+
+	/// <summary>Held by whichever pass is changing the game folder, because a refresh and an install can both want to.</summary>
+	private readonly object _deploymentLock = new();
+
+	private int _lastDeploymentFailures;
+
+	private List<FileConflict> SyncBethesdaDeploymentHoldingLock(HashSet<string>? forceRelink)
+	{
 		if (!IsBethesdaGame) return new List<FileConflict>();
 		if (!ModListIsTrustworthy) return _lastConflicts;
 		string game = _settings.ActiveGame;
@@ -137,7 +159,7 @@ public partial class Form1
 		_settings.FileWinnerOverrides.TryGetValue(game, out Dictionary<string, string>? overrides);
 		_lastConflicts = ModFileSystem.SyncDeployment(gameRoot, ordered, manifest, LogError, forceRelink, overrides);
 		manifest.Save(game);
-		ReportDeploymentFailures(manifest.Failures);
+		_lastDeploymentFailures = manifest.Failures;
 		return _lastConflicts;
 	}
 
@@ -493,6 +515,11 @@ public partial class Form1
 	/// persists it, and writes plugins.txt. Base-game/DLC masters stay implicit. No-op outside Skyrim/FO4.
 	/// </summary>
 	private void SyncBethesdaPlugins()
+	{
+		lock (_deploymentLock) SyncBethesdaPluginsHoldingLock();
+	}
+
+	private void SyncBethesdaPluginsHoldingLock()
 	{
 		if (!IsBethesdaGame || !ModListIsTrustworthy) return;
 		string game = _settings.ActiveGame;
