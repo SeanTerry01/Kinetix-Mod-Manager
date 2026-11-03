@@ -1632,6 +1632,8 @@
   "loadorder.purgeTitle": "Purge Deployment",
   "loadorder.purgeConfirm": "Remove all {0} deployed mod files from the game folder, returning it to vanilla? Your installed mods are kept and nothing is deleted from the mod store — this only clears the files copied into the game folder. Enabling a mod or changing load order will re-deploy; use Rebuild Mod Deployment to re-apply everything now.",
   "loadorder.purging": "Purging mod deployment.",
+  "loadorder.deployFailed": "{0} files in the game folder could not be changed, so some mods may not match what the list says. The game may be running. Close it, then press Refresh.",
+  "loadorder.purgedSome": "Removed {0} files, but {1} could not be removed. The game may be running. Close it and purge again.",
   "loadorder.purged": "Purged deployment. Removed {0} files from the game folder. Your mods are still installed.",
   "loadorder.purgeNotApplicable": "Purge deployment only applies to Skyrim and Fallout 4.",
   "loadorder.purgeNoGamePath": "No game folder is set, so there is nothing to purge.",

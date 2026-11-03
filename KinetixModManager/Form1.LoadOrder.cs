@@ -87,6 +87,19 @@ public partial class Form1
 		if (changed) _settings.Save();
 	}
 
+	/// <summary>The failure count last reported, so a refresh does not repeat the same warning.</summary>
+	private int _deploymentFailuresReported;
+
+	/// <summary>
+	/// Says when files in the game folder could not be changed. Until now this only reached a log, so a mod reported as
+	/// switched off could go on loading, with nothing to say why. It runs on every refresh, so it speaks only on a change.
+	/// </summary>
+	private void ReportDeploymentFailures(int failures)
+	{
+		if (failures > 0 && failures != _deploymentFailuresReported) Speak(Loc.T("loadorder.deployFailed", failures));
+		_deploymentFailuresReported = failures;
+	}
+
 	/// <summary>Returns the enabled mods as (folder name, folder path) pairs ordered highest priority first.</summary>
 	private List<(string Name, string FolderPath)> GetOrderedEnabledMods()
 	{
@@ -124,6 +137,7 @@ public partial class Form1
 		_settings.FileWinnerOverrides.TryGetValue(game, out Dictionary<string, string>? overrides);
 		_lastConflicts = ModFileSystem.SyncDeployment(gameRoot, ordered, manifest, LogError, forceRelink, overrides);
 		manifest.Save(game);
+		ReportDeploymentFailures(manifest.Failures);
 		return _lastConflicts;
 	}
 
@@ -197,12 +211,13 @@ public partial class Form1
 		SetStatus(Loc.T("loadorder.purging"));
 		int removed = ModFileSystem.PurgeDeployment(gameRoot, manifest, LogError);
 		manifest.Save(game);
+		int notRemoved = manifest.Failures;
 		_lastConflicts = new List<FileConflict>();
 		RefreshModPriorityList();
 		RefreshPluginOrderList();
 
 		_soundEngine.Play("load_complete");
-		Speak(Loc.T("loadorder.purged", removed));
+		Speak(notRemoved == 0 ? Loc.T("loadorder.purged", removed) : Loc.T("loadorder.purgedSome", removed, notRemoved));
 		ResetStatus();
 	}
 

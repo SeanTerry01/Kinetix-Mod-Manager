@@ -690,6 +690,13 @@ public static class ModFileSystem
 			}
 		}
 
+		// What the record will say afterwards. It starts as what was asked for and is corrected below wherever that
+		// did not happen. Recording it regardless is what used to orphan files: a removal that failed dropped the file
+		// from the record, so nothing ever tried again, and a "disabled" mod went on loading.
+		var recorded = new Dictionary<string, string>(desiredOwner, StringComparer.OrdinalIgnoreCase);
+		var originals = new OriginalFiles(manifest.OriginalsFolder);
+		manifest.Failures = 0;
+
 		// 1. Remove files we previously deployed that are no longer wanted by any enabled mod.
 		foreach (var kv in manifest.Deployed)
 		{
@@ -698,9 +705,15 @@ public static class ModFileSystem
 			try
 			{
 				RobustDeleteFile(destAbs);
+				originals.Restore(destAbs, kv.Key);
 				CleanEmptyParents(Path.GetDirectoryName(destAbs), gameRootPath);
 			}
-			catch (Exception ex) { logError(destAbs, $"Undeploy failed: {ex.Message}"); }
+			catch (Exception ex)
+			{
+				logError(destAbs, $"Undeploy failed: {ex.Message}");
+				recorded[kv.Key] = kv.Value;
+				manifest.Failures++;
+			}
 		}
 
 		// 2. (Re)link desired files whose winning owner changed, that are missing, or that are forced.
@@ -721,14 +734,25 @@ public static class ModFileSystem
 			{
 				string? destDir = Path.GetDirectoryName(destAbs);
 				if (destDir != null && !Directory.Exists(destDir)) Directory.CreateDirectory(destDir);
+				// Not in the record means the manager did not put it there, so it is the game's own or the user's. A
+				// failure to keep it stops here, rather than overwriting something that cannot be got back.
+				if (prevOwner == null) originals.Keep(destAbs, destRel);
 				RobustDeleteFile(destAbs);
 				if (!TryCreateHardLink(destAbs, sourceFile)) RobustCopy(sourceFile, destAbs);
 			}
-			catch (Exception ex) { logError(sourceFile, $"Deploy failed: {ex.Message}"); }
+			catch (Exception ex)
+			{
+				logError(sourceFile, $"Deploy failed: {ex.Message}");
+				manifest.Failures++;
+				// As it was, so the next pass sees the mismatch and tries again. Recording the new owner meant the old
+				// file was never replaced at all.
+				if (prevOwner != null) recorded[destRel] = prevOwner;
+				else recorded.Remove(destRel);
+			}
 		}
 
 		// 3. Record the new state and surface conflicts.
-		manifest.Deployed = desiredOwner;
+		manifest.Deployed = recorded;
 		foreach (var kv in providers)
 		{
 			if (kv.Value.Count <= 1) continue;
@@ -747,12 +771,17 @@ public static class ModFileSystem
 	/// Removes every file the manager has deployed into <paramref name="gameRootPath"/> (per the manifest) and
 	/// empties the manifest, returning the game folder to its un-deployed state while leaving the installed mods
 	/// untouched in the mod store. Only manifest-tracked paths are deleted — a file the manager never deployed is
-	/// never removed. Empty directories left behind are tidied up. Returns the number of files actually removed.
+	/// never removed, and a game file a mod replaced goes back. Empty directories left behind are tidied up. Returns
+	/// the number of files actually removed.
 	/// </summary>
 	public static int PurgeDeployment(string gameRootPath, DeploymentManifest manifest, Action<string, string> logError)
 	{
 		if (string.IsNullOrEmpty(gameRootPath) || manifest.Deployed.Count == 0) return 0;
 		gameRootPath = Path.GetFullPath(gameRootPath).TrimEnd(Path.DirectorySeparatorChar);
+
+		var originals = new OriginalFiles(manifest.OriginalsFolder);
+		var stillThere = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		manifest.Failures = 0;
 
 		int removed = 0;
 		foreach (var kv in manifest.Deployed)
@@ -765,13 +794,19 @@ public static class ModFileSystem
 					RobustDeleteFile(destAbs);
 					removed++;
 				}
+				originals.Restore(destAbs, kv.Key);
 				CleanEmptyParents(Path.GetDirectoryName(destAbs), gameRootPath);
 			}
-			catch (Exception ex) { logError(destAbs, $"Purge failed: {ex.Message}"); }
+			catch (Exception ex)
+			{
+				logError(destAbs, $"Purge failed: {ex.Message}");
+				stillThere[kv.Key] = kv.Value;
+				manifest.Failures++;
+			}
 		}
-		// The game folder now holds none of our deployed files, so the manifest must be emptied — otherwise the
-		// next sync would think these paths are still deployed and skip re-linking them.
-		manifest.Deployed = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		// Only what really went comes out of the record. Emptying it regardless left any file that failed in the game
+		// folder for good, with nothing remembering it was ours.
+		manifest.Deployed = stillThere;
 		return removed;
 	}
 
@@ -1440,6 +1475,9 @@ public static class ModFileSystem
 	/// <summary>Where a disabled Witcher 3 mod's out-of-folder files are parked, inside the game folder.</summary>
 	public const string WitcherDisabledExtrasFolderName = "_KinetixDisabledMods";
 
+	/// <summary>Where game files a Witcher 3 mod replaced are kept, inside the game folder. See <see cref="OriginalFiles"/>.</summary>
+	public const string WitcherOriginalsFolderName = "_KinetixOriginals";
+
 	/// <summary>
 	/// The parts of a Witcher 3 install a mod can write into. Everything else — above all <c>content</c>, which
 	/// is the game's own packed data and tens of gigabytes of it — is left out, so taking the snapshot below
@@ -1586,6 +1624,16 @@ public static class ModFileSystem
 
 		string primaryFolderName = "";
 		var extraPaths = new List<string>();
+		// What the copies about to be replaced put in the game folder, read while they are still here. Those files are
+		// that mod's, so a reinstall overwriting them is not touching anything of the game's.
+		var alreadyTheMods = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		foreach (string source in modFolders)
+		{
+			string name = source == wrapped ? WitcherModFolderName(archiveName) : Path.GetFileName(source);
+			GameMod? had = InstallTarget.Find(installedMods, nexusId, name, matchExistingByNexusId).Mod;
+			if (had != null) alreadyTheMods.UnionWith(ReadWitcherExtraPaths(had.FolderPath));
+		}
+		var originals = new OriginalFiles(Path.Combine(currentGamePath ?? "", WitcherOriginalsFolderName));
 
 		foreach (string source in modFolders)
 		{
@@ -1628,8 +1676,11 @@ public static class ModFileSystem
 						string relative = file.Substring(source.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 						string targetFile = Path.Combine(dest, relative);
 						Directory.CreateDirectory(Path.GetDirectoryName(targetFile)!);
+						string extraPath = Path.Combine(extraName, relative);
+						// Something already there that this mod did not put there is kept, and comes back when the mod goes.
+						if (!alreadyTheMods.Contains(extraPath)) originals.Keep(targetFile, extraPath);
 						RobustCopy(file, targetFile);
-						extraPaths.Add(Path.Combine(extraName, relative));
+						extraPaths.Add(extraPath);
 					}
 				}
 			}
@@ -1725,8 +1776,14 @@ public static class ModFileSystem
 			string ownPrefix = Path.Combine("mods", modFolderName) + Path.DirectorySeparatorChar;
 			bool IsOwn(string rel) => rel.StartsWith(ownPrefix, StringComparison.OrdinalIgnoreCase);
 
-			var footprint = added.Where(rel => !IsOwn(rel)).ToList();
-			var edited = changed.Where(rel => !IsOwn(rel)).ToList();
+			// On a reinstall the mod's own files are already there, so they show up as changed rather than added. Going by
+			// that alone rewrote the record without them, and the mod's .asi then stayed in the game when it was switched
+			// off: "disabled", and still running. What the last install recorded stays recorded, if it is still there.
+			List<string> hadBefore = ReadWitcherExtraPaths(destModFolder)
+				.Where(rel => File.Exists(Path.Combine(gameFolder, rel)))
+				.ToList();
+			var footprint = added.Where(rel => !IsOwn(rel)).Union(hadBefore, StringComparer.OrdinalIgnoreCase).ToList();
+			var edited = changed.Where(rel => !IsOwn(rel)).Except(hadBefore, StringComparer.OrdinalIgnoreCase).ToList();
 
 			var manifest = new JObject
 			{
@@ -1866,6 +1923,7 @@ public static class ModFileSystem
 
 				File.SetAttributes(full, FileAttributes.Normal);
 				File.Delete(full);
+				new OriginalFiles(Path.Combine(gameFolder, WitcherOriginalsFolderName)).Restore(full, relative);
 
 				// Take the folder too once the mod's last file has left it, but never a folder of the game's own.
 				string? dir = Path.GetDirectoryName(full);
@@ -1902,6 +1960,7 @@ public static class ModFileSystem
 		if (extras.Count == 0) return 0;
 
 		string parked = Path.Combine(gameFolder, WitcherDisabledExtrasFolderName, Witcher3ModSettings.BareName(modFolderName));
+		var originals = new OriginalFiles(Path.Combine(gameFolder, WitcherOriginalsFolderName));
 		int moved = 0;
 
 		foreach (string relative in extras)
@@ -1918,10 +1977,13 @@ public static class ModFileSystem
 				string to = enable ? inGame : outOfGame;
 
 				if (!File.Exists(from)) continue;
+				// Coming back: what is there now is the game's own, put back when the mod was switched off.
+				if (enable) originals.Keep(to, relative);
 				if (File.Exists(to)) File.Delete(to);
 
 				Directory.CreateDirectory(Path.GetDirectoryName(to)!);
 				File.Move(from, to);
+				if (!enable) originals.Restore(inGame, relative);
 				moved++;
 			}
 			catch (Exception ex)

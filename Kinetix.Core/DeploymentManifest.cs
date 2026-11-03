@@ -24,8 +24,23 @@ public class DeploymentManifest
 	private static string ManifestPath(string game) =>
 		Path.Combine(AppSettings.AppDataFolder, "deployment", game + ".json");
 
+	/// <summary>Where files this game's mods replaced are kept. See <see cref="OriginalFiles"/>. Not saved.</summary>
+	[Newtonsoft.Json.JsonIgnore]
+	public string OriginalsFolder { get; set; } = "";
+
+	/// <summary>How many files the last pass could not change, usually because the game has them open. Not saved.</summary>
+	[Newtonsoft.Json.JsonIgnore]
+	public int Failures { get; set; }
+
 	/// <summary>Loads the manifest for <paramref name="game"/>, or an empty one if none exists yet.</summary>
 	public static DeploymentManifest Load(string game)
+	{
+		DeploymentManifest manifest = Read(game);
+		manifest.OriginalsFolder = Path.Combine(AppSettings.AppDataFolder, "deployment", game + "-originals");
+		return manifest;
+	}
+
+	private static DeploymentManifest Read(string game)
 	{
 		try
 		{

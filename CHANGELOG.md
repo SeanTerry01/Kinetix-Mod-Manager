@@ -38,6 +38,13 @@ as before.
     now repaired.
 *   **If the mods folder cannot be read, you are told**, rather than opening to an empty list. And an empty list can no
     longer be taken to mean you have no mods: on Skyrim and Fallout 4, that used to clear the game folder and your order.
+*   **Removing a mod puts the game's own files back.** On Skyrim, Fallout 4 and The Witcher 3, a mod replacing one of
+    the game's files overwrote it for good, and removing the mod, or purging, then left the game without the file. The
+    original is now kept and returned.
+*   **You are told when files in the game folder cannot be changed**, usually because the game is running. It used to
+    be recorded as done regardless, so a mod switched off could go on loading, and purging said it had worked.
+*   **Reinstalling a Witcher 3 mod that has its own installer no longer forgets its files.** Switched off afterwards, its
+    `.asi` stayed in the game and kept running.
 *   **Refreshing no longer deletes mods.** On Skyrim and Fallout 4, any refresh deleted all but the newest of any mods
     sharing a Nexus page or a name, so a patch could vanish along with its main file's older sibling.
 *   **A second file from one Nexus page no longer replaces the first without asking.** You are asked whether it is a
