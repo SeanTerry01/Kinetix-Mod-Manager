@@ -634,7 +634,7 @@ public partial class Form1
 			{
 				if (SpeakBox(Loc.T("modlist.restoreConfirm", backupItem.Name), Loc.T("modlist.restoreTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 				{
-					Fire(InstallFromZip(backupItem.FullPath), "InstallFromZip");
+					Fire(RestoreBackupAsync(backupItem), "RestoreBackup");
 				}
 				e.Handled = true;
 			}

@@ -718,6 +718,78 @@ public partial class Form1
 	/// the UI thread since the install pipeline may call it from a background continuation.
 	/// </summary>
 	/// <summary>
+	/// Puts a backup back in place of the mod it came from. The copy being replaced is backed up first, so a restore
+	/// can itself be undone, and a failure leaves things as they were. See <see cref="BackupRestore"/>.
+	/// </summary>
+	private async Task RestoreBackupAsync(BackupItem backup)
+	{
+		string name = BackupRestore.ModNameOf(backup.FullPath);
+		string modsPath = _settings.CurrentModsPath;
+		string tempRoot = ModArchive.TempRootFor(modsPath);
+		string extracted = Path.Combine(tempRoot, "Extract_" + Path.GetRandomFileName());
+		GameProfile? profile = GameProfiles.Find(_settings.ActiveGame);
+
+		try
+		{
+			SetStatus(Loc.T("backups.restoring", name));
+			await Task.Run(() => ModArchive.Extract(backup.FullPath, extracted, null));
+			ModArchive.GuardAgainstEscapedEntries(extracted);
+
+			GameMod? replaced;
+			if (profile?.IsMinecraft == true)
+			{
+				// A Minecraft mod is one jar, and a backup holds exactly that. InstallFile matches the mod by the id inside
+				// the jar and removes the other copy, which is what stops two copies refusing to start together.
+				string jar = Directory.GetFiles(extracted).Single();
+				string id = MinecraftLayout.ReadModInfo(jar).Id;
+				replaced = _allInstalledMods.FirstOrDefault(m => !m.IsGroup && string.Equals(m.UniqueId, id, StringComparison.OrdinalIgnoreCase));
+				if (replaced != null && File.Exists(replaced.FolderPath))
+					BackupStore.CreateBackup(replaced.FolderPath, name, backupsPath);
+				await Task.Run(() => ModInstaller.InstallFile(jar, MinecraftLayout.ModsFolderFor(MinecraftGameFolder())));
+			}
+			else
+			{
+				(string destination, replaced) = BackupRestore.Plan(extracted, backup.FullPath, _allInstalledMods, modsPath,
+					useRecordedFolderName: profile?.IsBepInEx != true);
+
+				// Not pruned here, unlike an install. The limit could remove the very backup being restored.
+				if (Directory.Exists(destination))
+					await Task.Run(() => BackupStore.CreateBackup(destination, name, backupsPath));
+
+				await Task.Run(() => ModFolderSwap.Replace(extracted, destination, new[] { destination }, tempRoot, LogError));
+
+				await RefreshModList(checkUpdates: false);
+				if (IsBethesdaGame)
+				{
+					// The deployed files are hard links to the copy that has just gone, so they are made again.
+					SyncBethesdaDeployment(new HashSet<string>(new[] { Path.GetFileName(destination) }, StringComparer.OrdinalIgnoreCase));
+					RefreshModPriorityList();
+				}
+			}
+
+			if (replaced != null) ForgetInstalledDownloadVersion(DownloadKey(replaced));
+			if (profile?.IsMinecraft == true) await RefreshModList(checkUpdates: false);
+			RefreshBackupsList();
+
+			_soundEngine.Play("load_complete");
+			ResetStatus();
+			Speak(Loc.T(profile?.IsWitcher3 == true ? "backups.restoredWitcher" : "backups.restored", name));
+		}
+		catch (Exception ex)
+		{
+			LogFailure(name, "Could not restore a backup", ex);
+			ResetStatus();
+			_soundEngine.Play("error");
+			SpeakBox(Loc.T("backups.restoreFailedBox", name, FriendlyError(ex)), Loc.T("modlist.restoreTitle"));
+		}
+		finally
+		{
+			try { ModOnDisk.DeleteDirectory(extracted); }
+			catch (Exception ex) { DiagnosticLog.WriteException("Backup", $"clearing the temporary folder {extracted}", ex); }
+		}
+	}
+
+	/// <summary>
 	/// Reports an install that did not happen. In a batch it goes to the log and the end of the run names the mod, so
 	/// someone who walked away from Update All does not come back to a run stopped at a question.
 	/// </summary>

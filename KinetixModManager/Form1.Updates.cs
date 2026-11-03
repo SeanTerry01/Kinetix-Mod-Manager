@@ -50,6 +50,16 @@ public partial class Form1
 			? version : null;
 
 	/// <summary>
+	/// Forgets which release of a download is installed, after an older copy has been put back. Left in place, the
+	/// record would say the newer release is still here, and the update would never be offered again.
+	/// </summary>
+	private void ForgetInstalledDownloadVersion(string key)
+	{
+		if (_settings.InstalledDownloadVersions.TryGetValue(_settings.ActiveGame, out var map) && map.Remove(key))
+			_settings.Save();
+	}
+
+	/// <summary>
 	/// Records which release of a download is installed, so later checks compare like with like. Called when the
 	/// manager installs a download and therefore knows exactly what went on disk.
 	/// </summary>

@@ -28,6 +28,9 @@ as before.
     failed or you had cancelled it, and the update was then never offered again.
 *   **Update All names what failed**, once it finishes, instead of saying "All updates finished" and stopping at a
     message for each one along the way.
+*   **Restore Backup now restores.** It used to install the backup as a second mod named after its timestamp, with
+    the broken one still running, and on Minecraft the file went where nothing reads it. It now goes back in place of
+    the mod it came from, and the copy it replaces is backed up first. The update is offered again, too.
 *   **Refreshing no longer deletes mods.** On Skyrim and Fallout 4, any refresh deleted all but the newest of any mods
     sharing a Nexus page or a name, so a patch could vanish along with its main file's older sibling.
 *   **A second file from one Nexus page no longer replaces the first without asking.** You are asked whether it is a
