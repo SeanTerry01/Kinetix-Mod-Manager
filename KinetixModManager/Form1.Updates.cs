@@ -890,7 +890,7 @@ public partial class Form1
 
 			JObject manifest = JObject.Parse(File.ReadAllText(manifestPath));
 			manifest["Version"] = installedVersion;
-			File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
+			AtomicFile.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
 			updated.Version = installedVersion;
 			LogError(updated.Name, $"Manifest version corrected to the installed version {installedVersion}.");
 
@@ -989,9 +989,9 @@ public partial class Form1
 		try
 		{
 			string mapPath = Path.Combine(AppSettings.AppDataFolder, "mod_id_map.json");
-			JObject map = (File.Exists(mapPath) ? JObject.Parse(File.ReadAllText(mapPath)) : new JObject()) ?? new JObject();
+			JObject map = AtomicFile.ReadJsonObjectOrEmpty(mapPath);
 			foreach (var kv in links) map[kv.Key] = kv.Value;
-			File.WriteAllText(mapPath, map.ToString(Formatting.Indented));
+			AtomicFile.WriteAllText(mapPath, map.ToString(Formatting.Indented));
 		}
 		catch (Exception ex) { LogFailure("ModIdMap", "Failed to persist Nexus ID mappings", ex); }
 	}
@@ -1145,7 +1145,7 @@ public partial class Form1
 							{
 								manifest["NexusID"] = bestMatch.NexusID;
 							}
-							File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
+							AtomicFile.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
 						}
 
 						// A mod the manager had to identify by name usually has no author and no real summary

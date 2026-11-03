@@ -242,7 +242,7 @@ public static class FabricInstaller
 
 		string path = VersionJsonPathFor(root, versionId);
 		Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-		File.WriteAllText(path, profileJson);
+		AtomicFile.WriteAllText(path, profileJson);
 
 		return versionId;
 	}
@@ -290,7 +290,7 @@ public static class FabricInstaller
 		string json = UpsertLauncherProfileJson(root, gameVersion, versionId, DateTime.UtcNow);
 
 		Directory.CreateDirectory(Path.GetDirectoryName(launcherProfilesPath)!);
-		File.WriteAllText(launcherProfilesPath, json);
+		AtomicFile.WriteAllText(launcherProfilesPath, json);
 	}
 
 	/// <summary>
@@ -392,7 +392,7 @@ public static class FabricInstaller
 			}
 		}
 
-		if (changed > 0) File.WriteAllText(path, doc.ToString(Newtonsoft.Json.Formatting.Indented));
+		if (changed > 0) AtomicFile.WriteAllText(path, doc.ToString(Newtonsoft.Json.Formatting.Indented));
 		return changed;
 	}
 

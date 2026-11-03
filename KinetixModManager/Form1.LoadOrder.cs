@@ -59,6 +59,10 @@ public partial class Form1
 			_settings.ModPriority[game] = order;
 		}
 
+		// The entry above is still made, because callers read it straight after this. But with no true picture of what
+		// is installed, nothing here may decide that a mod has gone: this is what used to empty a saved load order.
+		if (!ModListIsTrustworthy) return;
+
 		var present = _allInstalledMods
 			.Where(m => !m.IsGroup)
 			.Select(PriorityKey)
@@ -110,6 +114,7 @@ public partial class Form1
 	private List<FileConflict> SyncBethesdaDeployment(HashSet<string>? forceRelink = null)
 	{
 		if (!IsBethesdaGame) return new List<FileConflict>();
+		if (!ModListIsTrustworthy) return _lastConflicts;
 		string game = _settings.ActiveGame;
 		string gameRoot = _settings.CurrentGamePath;
 		if (string.IsNullOrEmpty(gameRoot) || !Directory.Exists(gameRoot)) return _lastConflicts;
@@ -474,7 +479,7 @@ public partial class Form1
 	/// </summary>
 	private void SyncBethesdaPlugins()
 	{
-		if (!IsBethesdaGame) return;
+		if (!IsBethesdaGame || !ModListIsTrustworthy) return;
 		string game = _settings.ActiveGame;
 		string gameRoot = _settings.CurrentGamePath;
 

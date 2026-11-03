@@ -79,7 +79,7 @@ public static class ProfileStore
 		if (path.Length == 0) return "";
 
 		Directory.CreateDirectory(folder);
-		File.WriteAllText(path, JsonConvert.SerializeObject(profile, Formatting.Indented));
+		AtomicFile.WriteAllText(path, JsonConvert.SerializeObject(profile, Formatting.Indented));
 		return path;
 	}
 

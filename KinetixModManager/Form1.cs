@@ -297,6 +297,18 @@ public partial class Form1 : Form, IMessageFilter
 
 	private List<StardewMod> _allInstalledMods = new List<StardewMod>();
 
+	/// <summary>
+	/// Which game <see cref="_allInstalledMods"/> is a true picture of. Null while it is not one: before the first scan,
+	/// during a rescan and after one that failed.
+	///
+	/// ⚠️ An empty list and "no mods" are not the same thing, and deployment cannot tell them apart. With no scan done,
+	/// a sync saw nothing enabled, removed every deployed file and emptied the saved load order. Anything that changes
+	/// the game folder or the order to match the list checks this first.
+	/// </summary>
+	private string? _scannedGame;
+
+	private bool ModListIsTrustworthy => _scannedGame != null && _scannedGame == _settings.ActiveGame;
+
 	private List<LogEntry> _fullLogEntries = new List<LogEntry>();
 
 	private HashSet<string> _expandedGroups = new HashSet<string>();
@@ -549,6 +561,32 @@ public partial class Form1 : Form, IMessageFilter
 		SpeakBox(message, Loc.T("copies.foundTitle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
 	}
 
+	/// <summary>Says so if the settings file was damaged. Silently starting over reads as losing everything for no reason.</summary>
+	private void AnnounceSettingsProblem()
+	{
+		string? message = _settings.LoadProblem switch
+		{
+			SettingsLoadProblem.RestoredFromBackup => Loc.T("settings.loadRestored"),
+			SettingsLoadProblem.ResetToDefaults => Loc.T("settings.loadReset"),
+			_ => null
+		};
+		if (message == null) return;
+
+		_soundEngine.Play("error");
+		SpeakBox(message);
+	}
+
+	/// <summary>Set once settings have failed to save and the user has been told. Once, not per save.</summary>
+	private bool _settingsSaveFailureReported;
+
+	/// <summary>Says when settings cannot be written, since every change made afterwards would be lost at exit.</summary>
+	private void ReportSettingsSaveFailure(Exception ex)
+	{
+		if (_settingsSaveFailureReported) return;
+		_settingsSaveFailureReported = true;
+		Speak(Loc.T("settings.saveFailedSpeak", FriendlyError(ex)));
+	}
+
 	/// <summary>The folder a copy's mods are staged in when they live inside the game rather than under %AppData%.</summary>
 	private const string InGameModsFolderName = "KinetixMods";
 
@@ -597,6 +635,7 @@ public partial class Form1 : Form, IMessageFilter
 		InitializeComponent();
         Application.AddMessageFilter(this);
         _settings = AppSettings.Load();
+        _settings.SaveFailed += ReportSettingsSaveFailure;
 		// Unless the user has opted into manual theme selection, the sound theme follows the
 		// loaded game. A normal launch restores the persisted active game without going through
 		// SwitchActiveGame, so apply the mapping here too.
@@ -802,6 +841,8 @@ public partial class Form1 : Form, IMessageFilter
 
 			// Before the first-run wizard and before any session loads: if they own a game twice, that changes
 			// what the Games menu says and which mods they are about to see.
+			form.AnnounceSettingsProblem();
+
 			form.AnnounceNewlyDetectedCopies();
 
 			// Every game, not the first three: listed by hand, this told someone with only The Witcher 3, Moonlight

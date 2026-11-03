@@ -143,7 +143,7 @@ public static class MinecraftVersionCleanup
 			.ToList();
 		foreach (JProperty p in gone) p.Remove();
 
-		if (gone.Count > 0) File.WriteAllText(path, doc.ToString(Newtonsoft.Json.Formatting.Indented));
+		if (gone.Count > 0) AtomicFile.WriteAllText(path, doc.ToString(Newtonsoft.Json.Formatting.Indented));
 		return gone.Count;
 	}
 

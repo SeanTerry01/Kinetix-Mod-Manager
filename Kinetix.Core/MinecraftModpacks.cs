@@ -572,7 +572,7 @@ public static class MinecraftModpacks
 
 	/// <summary>Writes a pack's record into its folder.</summary>
 	public static void Save(MinecraftPack pack) =>
-		File.WriteAllText(Path.Combine(pack.Folder, ManifestFileName),
+		AtomicFile.WriteAllText(Path.Combine(pack.Folder, ManifestFileName),
 			JsonConvert.SerializeObject(pack, Formatting.Indented));
 
 	/// <summary>

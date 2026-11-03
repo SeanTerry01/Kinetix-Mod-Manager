@@ -75,7 +75,7 @@ public sealed class IniDocument
     public void RemoveKey(string section, string key) => Apply(section, key, null);
 
     /// <summary>Writes the current lines back to <paramref name="path"/>.</summary>
-    public void Save(string path) => File.WriteAllLines(path, _lines);
+    public void Save(string path) => AtomicFile.WriteAllLines(path, _lines);
 
     // Sets (value non-null) or removes (value null) a key within a section, preserving all other lines. Mirrors the
     // behaviour long used for the archive-invalidation block, generalised here for the editor.

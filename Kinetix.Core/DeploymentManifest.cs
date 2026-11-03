@@ -53,7 +53,7 @@ public class DeploymentManifest
 			string path = ManifestPath(game);
 			string? dir = Path.GetDirectoryName(path);
 			if (dir != null && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
-			File.WriteAllText(path, JsonConvert.SerializeObject(this, Formatting.Indented));
+			AtomicFile.WriteAllText(path, JsonConvert.SerializeObject(this, Formatting.Indented));
 		}
 		catch (Exception ex) { DiagnosticLog.WriteException("Deploy", "saving the record of which files are deployed", ex); }
 	}

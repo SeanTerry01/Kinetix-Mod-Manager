@@ -64,6 +64,21 @@ public static class ModScanner
 		return cleaned.Length > 0 ? cleaned : folderName;
 	}
 
+	/// <summary>A mod's record, or null when there is none or it is damaged.</summary>
+	private static JObject? ReadManifestOrNull(string manifestPath, Action<string, string> logError)
+	{
+		if (!File.Exists(manifestPath)) return null;
+		try
+		{
+			return JObject.Parse(File.ReadAllText(manifestPath));
+		}
+		catch (Exception ex)
+		{
+			logError(manifestPath, "Parse Error: " + ex.Message);
+			return null;
+		}
+	}
+
 	/// <summary>
 	/// Scans the mods directory for installed mods depending on the active game.
 	/// </summary>
@@ -194,9 +209,10 @@ public static class ModScanner
 
 				try
 				{
-					if (File.Exists(manifestPath))
+					// A record that cannot be read counts as no record, so one is made. Leaving the mod out of the list made
+					// it vanish, and the next deployment pass then removed its files from the game.
+					if (ReadManifestOrNull(manifestPath, logError) is { } manifest)
 					{
-						JObject manifest = JObject.Parse(File.ReadAllText(manifestPath));
 						string uid = ManifestString(manifest, "UniqueID") ?? folderName;
 						string? nexusId = ManifestString(manifest, "NexusID");
 
@@ -214,7 +230,7 @@ public static class ModScanner
 								try
 								{
 									manifest["NexusID"] = nexusId;
-									File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
+									AtomicFile.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
 								}
 								catch (Exception ex) { DiagnosticLog.WriteException("ScanMods", $"recording the Nexus id in {manifestPath}", ex); }
 							}
@@ -282,7 +298,7 @@ public static class ModScanner
 							["NexusID"] = mod.NexusID,
 							["GitHubRepo"] = mod.GitHubRepo
 						};
-						File.WriteAllText(manifestPath, newManifest.ToString(Formatting.Indented));
+						AtomicFile.WriteAllText(manifestPath, newManifest.ToString(Formatting.Indented));
 					}
 
 					if (nexusIdMap.TryGetValue(mod.UniqueId, out JToken? mappedId))
@@ -547,7 +563,7 @@ public static class ModScanner
 
 			if (File.Exists(manifestPath) && File.ReadAllText(manifestPath) == updated) return;
 
-			File.WriteAllText(manifestPath, updated);
+			AtomicFile.WriteAllText(manifestPath, updated);
 		}
 		catch (Exception ex)
 		{

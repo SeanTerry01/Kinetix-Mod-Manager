@@ -66,7 +66,7 @@ public static class ModPageLinks
 					doc[link.Key] = link.Value;
 
 			Directory.CreateDirectory(appDataFolder);
-			File.WriteAllText(path, doc.ToString(Formatting.Indented));
+			AtomicFile.WriteAllText(path, doc.ToString(Formatting.Indented));
 		}
 		catch (Exception ex) { DiagnosticLog.WriteException("ModPageMap", "remembering where mods' pages are", ex); }
 	}

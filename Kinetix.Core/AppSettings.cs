@@ -692,6 +692,15 @@ public class AppSettings : IModScanContext
 
 	private static string SettingsPath => Path.Combine(AppDataFolder, "settings.json");
 
+	/// <summary>What went wrong reading the settings this run, so the user can be told. Never saved.</summary>
+	[JsonIgnore]
+	public SettingsLoadProblem LoadProblem { get; set; }
+
+	private static SettingsLoadProblem _problemThisRun;
+
+	/// <summary>Raised when settings could not be written, so the failure does not only go to a log nobody reads.</summary>
+	public event Action<Exception>? SaveFailed;
+
 	/// <summary>
 	/// Appends a timestamped line to the shared log in the app data folder. Used so settings
 	/// failures are recorded rather than silently swallowed. Never throws.
@@ -716,7 +725,78 @@ public class AppSettings : IModScanContext
 			}
 			if (File.Exists(SettingsPath))
 			{
-				AppSettings? settings = JsonConvert.DeserializeObject<AppSettings>(File.ReadAllText(SettingsPath)) ?? new AppSettings();
+				// The splash screen loads before the main window does, and the first load is the one that finds the damage,
+				// so what it found is kept for the one that gets to say so.
+				AppSettings loaded = LoadFrom(SettingsPath);
+				if (loaded.LoadProblem != SettingsLoadProblem.None) _problemThisRun = loaded.LoadProblem;
+				else loaded.LoadProblem = _problemThisRun;
+				return loaded;
+			}
+		}
+		catch (Exception ex)
+		{
+			// Reaching the folder failed, rather than reading the file. LoadFrom handles a damaged file itself.
+			Log("Failed to load settings, falling back to defaults: " + ex.Message);
+		}
+		AppSettings appSettings = new AppSettings { LoadProblem = _problemThisRun };
+		appSettings.InitializeDefaults();
+		return appSettings;
+	}
+
+	/// <summary>
+	/// Reads a settings file, going back to the last good copy if it is damaged.
+	///
+	/// ⚠️ A damaged file used to be logged and replaced with defaults, and the next save overwrote it: the API key,
+	/// every game path and the whole load order, gone with nothing said. It is now moved aside rather than overwritten,
+	/// and <see cref="LoadProblem"/> says what happened so the user can be told.
+	/// </summary>
+	public static AppSettings LoadFrom(string path)
+	{
+		if (File.Exists(path))
+		{
+			try
+			{
+				return ParseSettingsFile(path);
+			}
+			catch (Exception ex)
+			{
+				Log($"The settings file {path} is damaged: {ex.Message}");
+				AtomicFile.SetAside(path);
+
+				string previous = path + AtomicFile.BackupSuffix;
+				if (File.Exists(previous))
+				{
+					try
+					{
+						AppSettings rescued = ParseSettingsFile(previous);
+						rescued.LoadProblem = SettingsLoadProblem.RestoredFromBackup;
+						// Back in place now, or the next load in this run would find no file and start from nothing.
+						File.Copy(previous, path, overwrite: true);
+						return rescued;
+					}
+					catch (Exception backupEx) { Log($"The previous settings file is damaged as well: {backupEx.Message}"); }
+				}
+
+				var fresh = new AppSettings { LoadProblem = SettingsLoadProblem.ResetToDefaults };
+				fresh.InitializeDefaults();
+				return fresh;
+			}
+		}
+
+		var none = new AppSettings();
+		none.InitializeDefaults();
+		return none;
+	}
+
+	/// <summary>Reads and prepares one settings file. Throws if it does not hold settings.</summary>
+	private static AppSettings ParseSettingsFile(string path)
+	{
+		{
+			{
+				// Null is what an empty or whitespace file parses to, and an empty file is the usual result of a crash
+				// mid-write. "?? new AppSettings()" here treated it as a user with no settings at all.
+				AppSettings settings = JsonConvert.DeserializeObject<AppSettings>(File.ReadAllText(path))
+					?? throw new InvalidDataException("The file is empty.");
 				settings.InitializeDefaults();
 
 				// Decrypt the stored API key into the runtime property.
@@ -733,7 +813,7 @@ public class AppSettings : IModScanContext
 					string? legacyKey = null;
 					try
 					{
-						var raw = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(SettingsPath));
+						var raw = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(path));
 						legacyKey = raw["ApiKey"]?.ToString();
 					}
 					catch (Exception ex)
@@ -774,14 +854,6 @@ public class AppSettings : IModScanContext
 				return settings;
 			}
 		}
-		catch (Exception ex)
-		{
-			// A corrupt or unreadable settings file would otherwise reset all config silently.
-			Log("Failed to load settings, falling back to defaults: " + ex.Message);
-		}
-		AppSettings appSettings = new AppSettings();
-		appSettings.InitializeDefaults();
-		return appSettings;
 	}
 
 	public void InitializeDefaults()
@@ -1121,11 +1193,13 @@ public class AppSettings : IModScanContext
 				if (!string.IsNullOrEmpty(kv.Value))
 					ModSourceApiKeysEncrypted[kv.Key] = EncryptApiKey(kv.Value);
 			string contents = JsonConvert.SerializeObject(this, Formatting.Indented);
-			File.WriteAllText(SettingsPath, contents);
+			// With the previous version kept: if this one is ever damaged, that is what Load goes back to.
+			AtomicFile.WriteAllText(SettingsPath, contents, keepPrevious: true);
 		}
 		catch (Exception ex)
 		{
 			Log("Save error: " + ex.Message);
+			SaveFailed?.Invoke(ex);
 		}
 	}
 
@@ -1157,4 +1231,17 @@ public class AppSettings : IModScanContext
 	private static string EncryptApiKey(string plainText) => KinetixModManager.Secrets.Protect(plainText);
 
 	private static string DecryptApiKey(string encryptedText) => KinetixModManager.Secrets.Unprotect(encryptedText);
+}
+
+/// <summary>What happened when the settings file was read.</summary>
+public enum SettingsLoadProblem
+{
+	/// <summary>It read normally, or there was none yet.</summary>
+	None,
+
+	/// <summary>It was damaged, and the previous version was used instead.</summary>
+	RestoredFromBackup,
+
+	/// <summary>It was damaged, and there was no good copy to go back to.</summary>
+	ResetToDefaults
 }

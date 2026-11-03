@@ -104,7 +104,7 @@ public static class SuggestionCategoryStore
 	{
 		string? folder = Path.GetDirectoryName(path);
 		if (!string.IsNullOrEmpty(folder)) Directory.CreateDirectory(folder);
-		File.WriteAllText(path, JsonConvert.SerializeObject(Normalize(categories.ToList()), Formatting.Indented));
+		AtomicFile.WriteAllText(path, JsonConvert.SerializeObject(Normalize(categories.ToList()), Formatting.Indented));
 	}
 
 	/// <summary>
@@ -354,7 +354,7 @@ public static class SuggestedModStore
 	{
 		string? folder = Path.GetDirectoryName(path);
 		if (!string.IsNullOrEmpty(folder)) Directory.CreateDirectory(folder);
-		File.WriteAllText(path, JsonConvert.SerializeObject(entries, Formatting.Indented));
+		AtomicFile.WriteAllText(path, JsonConvert.SerializeObject(entries, Formatting.Indented));
 	}
 
 	/// <summary>

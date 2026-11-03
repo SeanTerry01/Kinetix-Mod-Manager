@@ -31,6 +31,13 @@ as before.
 *   **Restore Backup now restores.** It used to install the backup as a second mod named after its timestamp, with
     the broken one still running, and on Minecraft the file went where nothing reads it. It now goes back in place of
     the mod it came from, and the copy it replaces is backed up first. The update is offered again, too.
+*   **A crash can no longer wipe your settings.** A crash or power cut while saving could leave the file empty, and on
+    the next start your API key, game folders and load order were gone with nothing said. The file is now replaced in
+    one step and the last version is kept. If it is ever damaged, the manager goes back to that copy and tells you.
+*   **A damaged mod record no longer makes the mod vanish**, which also removed its files from the game. The record is
+    now repaired.
+*   **If the mods folder cannot be read, you are told**, rather than opening to an empty list. And an empty list can no
+    longer be taken to mean you have no mods: on Skyrim and Fallout 4, that used to clear the game folder and your order.
 *   **Refreshing no longer deletes mods.** On Skyrim and Fallout 4, any refresh deleted all but the newest of any mods
     sharing a Nexus page or a name, so a patch could vanish along with its main file's older sibling.
 *   **A second file from one Nexus page no longer replaces the first without asking.** You are asked whether it is a

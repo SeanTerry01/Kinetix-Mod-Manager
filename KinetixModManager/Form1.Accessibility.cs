@@ -1796,7 +1796,7 @@ public partial class Form1
 
 			try
 			{
-				File.WriteAllText(configPath, editedText);
+				AtomicFile.WriteAllText(configPath, editedText);
 				Speak(Loc.T("config.saved", fileLabel));
 				onSaveSuccess?.Invoke();
 				saved = true;

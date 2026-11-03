@@ -245,7 +245,7 @@ public partial class Form1
 
 				profile.ModStates = states;
 				profile.ModPriority = order;
-				File.WriteAllText(path, JsonConvert.SerializeObject(profile, Formatting.Indented));
+				AtomicFile.WriteAllText(path, JsonConvert.SerializeObject(profile, Formatting.Indented));
 			}
 			catch (Exception ex)
 			{

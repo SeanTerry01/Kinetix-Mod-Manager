@@ -165,6 +165,7 @@ public partial class Form1
 		// A new list rather than Clear(). An install hands this same list to the installer and awaits the extraction,
 		// and a refresh in that gap emptied it, so the installer found nothing to back up.
 		_allInstalledMods = new List<StardewMod>();
+		_scannedGame = null;
 		if (!Directory.Exists(_settings.CurrentModsPath))
 		{
 			Invoke(delegate
@@ -188,9 +189,26 @@ public partial class Form1
 			}
 			catch (Exception ex) { DiagnosticLog.WriteException("ModIdMap", "copying the old Nexus id map into place", ex); }
 		}
-		JObject nexusIdMap = (File.Exists(idMapPath) ? JObject.Parse(File.ReadAllText(idMapPath)) : new JObject()) ?? new JObject();
-		List<StardewMod> scanned = ModScanner.ScanMods(
-			_settings.CurrentModsPath, nexusIdMap, _settings, refreshingGame, LogError);
+		JObject nexusIdMap = AtomicFile.ReadJsonObjectOrEmpty(idMapPath);
+		List<StardewMod> scanned;
+		try
+		{
+			scanned = ModScanner.ScanMods(_settings.CurrentModsPath, nexusIdMap, _settings, refreshingGame, LogError);
+		}
+		catch (Exception ex)
+		{
+			// One unreadable folder used to end the refresh here with the lists empty and suspended, and the only
+			// record of why in a log. To the user the manager opened with no mods and said nothing.
+			LogFailure("Scan", "Could not read the mods folder", ex);
+			Invoke(delegate
+			{
+				listInstalled.EndUpdate();
+				if (doUpdateChecks) listUpdates.EndUpdate();
+			});
+			_soundEngine.Play("error");
+			SpeakBox(Loc.T("modlist.scanFailedBox", FriendlyError(ex)));
+			return;
+		}
 
 		// The scan reads the disk and can take a while on a large mod folder. If the user switched games while it
 		// ran, these are the wrong game's mods and the newer pass is already on its way — publishing them would
@@ -211,6 +229,7 @@ public partial class Form1
 		ModPageLinks.Apply(scanned, ModPageLinks.Load(AppSettings.AppDataFolder));
 
 		_allInstalledMods = scanned;
+		_scannedGame = refreshingGame;
 		ModHealth.ResolveDependencies(_allInstalledMods, IsNewerVersion);
 		// Reconcile Skyrim/Fallout 4 asset deployment to the current enabled set and priority order, and
 		// refresh the conflict scan. Cheap when nothing changed (only files whose winner changed relink),
@@ -822,7 +841,7 @@ public partial class Form1
 			manifest["Name"] = mod.Name;
 			manifest["Author"] = mod.Author;
 			manifest["Description"] = mod.Description;
-			File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
+			AtomicFile.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
 		}
 		catch (Exception ex)
 		{
@@ -868,7 +887,7 @@ public partial class Form1
 					if (!File.Exists(manifestPath))
 					{
 						var tempManifest = new JObject();
-						File.WriteAllText(manifestPath, tempManifest.ToString());
+						AtomicFile.WriteAllText(manifestPath, tempManifest.ToString());
 					}
 
 					JObject manifest = JObject.Parse(File.ReadAllText(manifestPath));
@@ -904,14 +923,14 @@ public partial class Form1
 						}
 					}
 
-					File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
+					AtomicFile.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
 
 					try
 					{
 						string mapPath = Path.Combine(AppSettings.AppDataFolder, "mod_id_map.json");
-						JObject mapObj = (File.Exists(mapPath) ? JObject.Parse(File.ReadAllText(mapPath)) : new JObject()) ?? new JObject();
+						JObject mapObj = AtomicFile.ReadJsonObjectOrEmpty(mapPath);
 						mapObj[stardewMod3.UniqueId] = val;
-						File.WriteAllText(mapPath, mapObj.ToString());
+						AtomicFile.WriteAllText(mapPath, mapObj.ToString());
 					}
 					catch (Exception ex) { LogFailure("ModIdMap", "Failed to persist Nexus ID mapping", ex); }
 
@@ -935,7 +954,7 @@ public partial class Form1
 								manifest = JObject.Parse(File.ReadAllText(manifestPath));
 								manifest["Name"] = stardewMod3.Name;
 								manifest["Description"] = stardewMod3.Description;
-								File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
+								AtomicFile.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
 							}
 						}
 						else

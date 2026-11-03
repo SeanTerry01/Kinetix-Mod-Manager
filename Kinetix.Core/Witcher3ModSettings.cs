@@ -145,7 +145,7 @@ public static class Witcher3ModSettings
 				if (!inTarget) kept.Add(raw);
 			}
 
-			File.WriteAllLines(modsSettingsPath, kept);
+			AtomicFile.WriteAllLines(modsSettingsPath, kept);
 		}
 		catch (Exception ex) { DiagnosticLog.WriteException("Witcher3", $"removing {modFolderName} from {modsSettingsPath}", ex); }
 	}

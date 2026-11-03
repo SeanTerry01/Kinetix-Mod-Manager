@@ -361,7 +361,7 @@ public static class ModFileSystem
 				// clear that for our own write and restore it afterwards.
 				bool wasProtected = IsReadOnly(pluginsFilePath);
 				SetReadOnly(pluginsFilePath, false);
-				File.WriteAllLines(pluginsFilePath, lines);
+				AtomicFile.WriteAllLines(pluginsFilePath, lines);
 				if (wasProtected) SetReadOnly(pluginsFilePath, true);
 			}
 		}
@@ -513,7 +513,7 @@ public static class ModFileSystem
 			List<string> lines = File.Exists(path) ? File.ReadAllLines(path).ToList() : new List<string>();
 			foreach (var (key, value) in ArchiveInvalidationKeys)
 				SetIniValue(lines, "Archive", key, enable ? value : null);
-			File.WriteAllLines(path, lines);
+			AtomicFile.WriteAllLines(path, lines);
 		}
 		catch (Exception ex)
 		{
@@ -832,7 +832,7 @@ public static class ModFileSystem
 			string? dir = Path.GetDirectoryName(path);
 			if (dir != null && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
 			SetReadOnly(path, false);
-			File.WriteAllLines(path, orderedActivePlugins.Select(p => "*" + p));
+			AtomicFile.WriteAllLines(path, orderedActivePlugins.Select(p => "*" + p));
 			if (protect) SetReadOnly(path, true);
 		}
 		catch (Exception ex) { logError(path, $"Failed to write plugins.txt: {ex.Message}"); }
@@ -1407,7 +1407,7 @@ public static class ModFileSystem
 			["NexusID"] = nexusId,
 			["GitHubRepo"] = gitHubRepo
 		};
-		File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
+		AtomicFile.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
 
 		// Everything that could fail for the new copy has now had its chance, with the old one untouched.
 		string finalFolder = Path.Combine(modsPath, targetFolderName);
@@ -1679,7 +1679,7 @@ public static class ModFileSystem
 			["GitHubRepo"] = gitHubRepo,
 			[WitcherExtraPathsKey] = new JArray(extraPaths.Distinct(StringComparer.OrdinalIgnoreCase))
 		};
-		File.WriteAllText(Path.Combine(destModFolder, ".manager_manifest.json"), manifest.ToString(Formatting.Indented));
+		AtomicFile.WriteAllText(Path.Combine(destModFolder, ".manager_manifest.json"), manifest.ToString(Formatting.Indented));
 
 		// Tell the game's own mod list the new mod is on, so its in-game menu agrees with the manager's.
 		SyncWitcherModSettings(destModFolder, true, activeGame);
@@ -1744,7 +1744,7 @@ public static class ModFileSystem
 				["EditedPaths"] = new JArray(edited)
 			};
 
-			File.WriteAllText(
+			AtomicFile.WriteAllText(
 				Path.Combine(destModFolder, ".manager_manifest.json"),
 				manifest.ToString(Formatting.Indented));
 		}
@@ -2164,7 +2164,7 @@ public static class ModFileSystem
 			["NexusID"]     = nexusId,
 			["GitHubRepo"]  = gitHubRepo
 		};
-		File.WriteAllText(Path.Combine(destModFolder, ".manager_manifest.json"), manifest.ToString(Formatting.Indented));
+		AtomicFile.WriteAllText(Path.Combine(destModFolder, ".manager_manifest.json"), manifest.ToString(Formatting.Indented));
 
 		// Whatever is already installed is replaced, whether the manager knows it as this mod (matched by Nexus id)
 		// or simply as a folder of the same name. A disabled copy counts too: it is the same mod.
@@ -2345,7 +2345,7 @@ public static class ModFileSystem
 			string path = ScriptExtenderManifestPath(activeGame);
 			Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 			var manifest = new ScriptExtenderManifest { GamePath = gamePath, Files = files };
-			File.WriteAllText(path, JsonConvert.SerializeObject(manifest, Formatting.Indented));
+			AtomicFile.WriteAllText(path, JsonConvert.SerializeObject(manifest, Formatting.Indented));
 		}
 		catch (Exception ex) { DiagnosticLog.WriteException("Script Extender", "recording which files were installed, for a later uninstall", ex); }
 	}

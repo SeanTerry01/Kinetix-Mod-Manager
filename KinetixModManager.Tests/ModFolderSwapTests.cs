@@ -430,6 +430,19 @@ public sealed class InstallOrderGuardTests
 		Assert.Contains("if (!await", updates.Substring(install - 12, 12));
 	}
 
+	[Theory]
+	[InlineData("private void EnsureModPriorityList()")]
+	[InlineData("private List<FileConflict> SyncBethesdaDeployment(")]
+	[InlineData("private void SyncBethesdaPlugins()")]
+	public void NothingActsOnAModListThatIsNotATruePicture(string signature)
+	{
+		// An empty list is not the same as no mods. Acting on one removed every deployed file and the saved order.
+		string source = App("Form1.LoadOrder.cs");
+		int at = source.IndexOf(signature, StringComparison.Ordinal);
+		Assert.True(at >= 0, signature);
+		Assert.Contains("!ModListIsTrustworthy", source.Substring(at, 700));
+	}
+
 	[Fact]
 	public void TheMultiPartAnswerReachesAnInstallForEveryLayout()
 	{
