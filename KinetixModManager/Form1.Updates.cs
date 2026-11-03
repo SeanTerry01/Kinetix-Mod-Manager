@@ -115,7 +115,7 @@ public partial class Form1
 		// against nothing would look like it had worked while changing nothing at all.
 		if (!UpdateCoverage.HasUpdateLink(mod))
 		{
-			Speak(Loc.T("updates.markNoLink", mod.Name, GetShortcutString("ManualID")));
+			Speak(ShortcutIsSet("ManualID") ? Loc.T("updates.markNoLink", mod.Name, GetShortcutString("ManualID")) : Loc.T("updates.markNoLinkNoKey", mod.Name));
 			return;
 		}
 

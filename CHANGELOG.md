@@ -48,7 +48,7 @@
 *   **Pressing F5 just after changing a mod** on Skyrim or Fallout 4 now waits for the game folder to be ready, and says so
     if that takes more than a second, rather than starting the game without the change.
 *   **With Nexus unreachable, you hear so once.** Pressing Space no longer waits ten seconds and repeats the whole failure
-    each time. Refresh Everything tries again.
+    each time. Refresh All tries again.
 *   **Mods on another drive through a junction or mounted folder** can be installed and updated.
 ## ✨ With NVDA 2026.3 or newer, the manager waits until a sentence has actually finished
 

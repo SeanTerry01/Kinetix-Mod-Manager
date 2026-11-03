@@ -552,7 +552,7 @@ public partial class Form1
 		List<SuggestedMod> entries = SuggestedModStore.Load(CuratorFilePath);
 		if (entries.Count == 0)
 		{
-			Speak(Loc.T("curator.reviewEmpty"));
+			Speak(Loc.T("curator.reviewEmpty", GetShortcutString("MarkSuggestion")));
 			return;
 		}
 

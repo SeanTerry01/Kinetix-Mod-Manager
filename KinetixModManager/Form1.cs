@@ -659,7 +659,7 @@ public partial class Form1 : Form, IMessageFilter
 		// Touching IsAvailable is what opens the bridge; the implementation handles loading it and logging a
 		// failure. The welcome / shortcut-hint announcement is spoken from the Shown handler (below) so we can
 		// wait for it to finish before the startup loading speaks over it.
-		if (!_announcer.IsAvailable) SpeakBox(Loc.T("app.tolkFailed", Loc.T("speech.unavailableTitle")));
+		if (!_announcer.IsAvailable) SpeakBox(Loc.T("app.tolkFailed"));
 		// Migrate old root backups/downloads files to StardewValley game subfolder if present
 		try
 		{
@@ -832,7 +832,7 @@ public partial class Form1 : Form, IMessageFilter
 				// Queued, not interrupting, so it follows the reader's description of the window instead of
 				// cutting it in half. Tolk keeps the order at any speech rate; the whole opening below relies on
 				// the same thing, which is what makes it safe for a user who reads much slower or faster.
-				form.Speak(Loc.T("app.started"));
+				form.Speak(Loc.T("app.started", form.GetShortcutString("Manual"), form.GetShortcutString("ContextHelp")));
 				await WaitForSpeechAsync();
 
 				// Only when there is one. Starting with no session goes to the game list, which announces itself.

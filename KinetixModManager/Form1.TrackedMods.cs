@@ -32,7 +32,10 @@ public partial class Form1
 			if (!await ValidateNexusConnection())
 			{
 				ResetStatus();
-				Speak(Loc.T("tracked.needConnect"));
+				// "Add your key" was said to someone with a good key who was only offline.
+				Speak(Loc.T(string.IsNullOrEmpty(_settings.ApiKey) ? "tracked.noKey"
+					: await _nexusService.CheckConnectionAsync() == NexusConnection.KeyRejected ? "tracked.keyRefused"
+					: "tracked.needConnect"));
 				return;
 			}
 		}

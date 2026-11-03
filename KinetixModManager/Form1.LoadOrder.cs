@@ -246,7 +246,7 @@ public partial class Form1
 		RefreshModPriorityList();
 		RefreshPluginOrderList();
 
-		_soundEngine.Play("load_complete");
+		_soundEngine.Play(notRemoved == 0 ? "load_complete" : "error");
 		Speak(notRemoved == 0 ? Loc.T("loadorder.purged", removed) : Loc.T("loadorder.purgedSome", removed, notRemoved));
 		ResetStatus();
 	}

@@ -229,7 +229,8 @@ public partial class Form1
 		// One question, holding everything that decides it — including a move to another Minecraft version, which
 		// is the one part of an update that cannot be undone for a world opened afterwards.
 		string question = Loc.T("mc.pack.update.confirm", pack.Name, pack.PackVersion, update.VersionNumber,
-			plan.Download.Count, FormatBytes(plan.Download.Sum(f => f.Size)), plan.Remove.Count);
+			plan.Download.Count, FormatBytes(plan.Download.Sum(f => f.Size)),
+			plan.Remove.Count == 0 ? "" : Loc.T("mc.pack.update.oldFilesGo", plan.Remove.Count));
 		if (index.MinecraftVersion != pack.MinecraftVersion)
 			question += "\n\n" + Loc.T("mc.pack.update.movesVersion", pack.MinecraftVersion, index.MinecraftVersion);
 
@@ -296,7 +297,8 @@ public partial class Form1
 			_activePackCache = default;
 			InvalidateGameDisplayName();
 
-			string done = Loc.T("mc.pack.update.done", pack.Name, pack.PackVersion, keepDisabled.Count, backup);
+			string done = Loc.T("mc.pack.update.done", pack.Name, pack.PackVersion,
+				keepDisabled.Count == 0 ? "" : Loc.T("mc.pack.update.stillOff", keepDisabled.Count), backup);
 			if (superseded.Count > 0)
 				done += "\n\n" + Loc.T("mc.pack.update.replacedYours", superseded.Count,
 					string.Join(", ", superseded.Select(s => Path.GetFileName(s.Path))));

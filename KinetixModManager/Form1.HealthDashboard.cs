@@ -157,7 +157,7 @@ public partial class Form1
 			};
 		}
 
-		return new ReportRow { Text = Loc.T("health.mcVanilla") };
+		return new ReportRow { Text = Loc.T("health.mcVanilla", GetShortcutString("LaunchGame")) };
 	}
 
 	private ReportRow? GatherRuntimeFinding()

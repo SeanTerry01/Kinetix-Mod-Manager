@@ -33,6 +33,10 @@ public partial class Form1
 	/// <see cref="Keys"/> happens here — at the WinForms head's own edge, which is where a Windows type
 	/// belongs. The numbers are identical either way; see <see cref="Shortcut"/>.
 	/// </summary>
+	/// <summary>Whether a command has a key at all. A cleared one would be read into a sentence as "Press Unmapped".</summary>
+	private bool ShortcutIsSet(string action) =>
+		_settings.Shortcuts.TryGetValue(action, out int value) && value != Shortcut.None;
+
 	private string GetShortcutString(string action)
 	{
 		if (!_settings.Shortcuts.TryGetValue(action, out int value) || value == Shortcut.None)
@@ -827,7 +831,7 @@ public partial class Form1
 				"SkyrimSE" => "Skyrim",
 				_ => GameProfiles.DisplayNameFor(_settings.ActiveGame)
 			};
-			text = Loc.T("help.walkthroughs", activeGameWalkthroughTitle);
+			text = Loc.T("help.walkthroughs", activeGameWalkthroughTitle, GetShortcutString("CycleFocus"));
 			break;
 		case AppTab.Profiles:
 			text = Loc.T("help.profiles");
@@ -924,7 +928,7 @@ public partial class Form1
 		// game has nothing to do with, rather than searching.
 		if (_nexusService.UsesNexus && string.IsNullOrEmpty(_settings.ApiKey))
 		{
-			Speak(Loc.T("discovery.loginFirst", GetShortcutString("Login")));
+			Speak(ShortcutIsSet("Login") ? Loc.T("discovery.loginFirst", GetShortcutString("Login")) : Loc.T("discovery.loginFirstNoKey"));
 			return;
 		}
 		if (!loadMore)

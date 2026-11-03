@@ -304,7 +304,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Delete**: Remove the selected profile.
 
 ### Backups Tab Shortcuts
-*   **Enter**: **Restore Backup** - Re-installs that specific mod version.
+*   **Enter**: **Restore Backup** - Puts that version back in place of the installed copy, which is backed up first.
 *   **Delete**: Permanently remove the backup zip file.
 *   **Ctrl + Shift + D**: **Delete Old Backups** - Deletes all but the most recent archives based on your settings.
 *   **Ctrl + Shift + C**: **Cancel Downloads** - Stops whatever is downloading, and stops Update All if it is running. Mods already updated stay updated.
@@ -696,7 +696,7 @@ The Witcher 3 needs no mod loader — no SMAPI, no script extender, no BepInEx. 
     *   **The manager records what the installer did**, by comparing the game folder before and after, so it knows which files outside the mod folder belong to that mod.
     *   **Deleting the mod offers to run its own uninstaller** if it registered one — that uninstaller holds the installer's list of every file it wrote, which is more than the manager could work out for itself. Saying no still removes the mod folder.
     *   **Disabling the mod moves those outside files out of the game** into a holding folder called `_KinetixDisabledMods`, and enabling puts them back unchanged. This matters: a plugin sitting beside the game's executable is loaded by the game whatever the mod folder is called, so renaming the folder alone would leave a "disabled" mod still running.
-*   **Editing the game's settings**: **Mods → Edit Game Settings (INI Files)** opens `user.settings` and `input.settings` in the accessible settings editor. They are INI files despite the extension.
+*   **Editing the game's settings**: **Mods → Game and Maintenance → Edit Game Settings (INI Files)** opens `user.settings` and `input.settings` in the accessible settings editor. They are INI files despite the extension.
 *   **Saves** live in `Documents\The Witcher 3\gamesaves`. The Save Manager is for Skyrim and Fallout 4, so these are left to the game.
 *   **The log tab** shows the logs that mods write beside the game's executable in `bin\x64` — the game itself keeps none.
 *   **Launching with F5 skips the game's launcher.** The Witcher 3 normally starts through `REDprelauncher.exe`, a graphical window that a screen reader cannot use, and that launcher is also what chooses between the DirectX 11 and DirectX 12 builds. The manager starts `witcher3.exe` directly instead, wherever your copy of the game is installed. It starts the **DirectX 11** build in `bin\x64`, which the accessibility mod was developed against, when your copy has one. The Remastered update removed that build, so on an updated copy it starts the DirectX 12 build in `bin\x64_dx12`.

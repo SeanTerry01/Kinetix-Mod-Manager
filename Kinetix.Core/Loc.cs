@@ -79,9 +79,25 @@ public static class Loc
 		value ??= key;
 
 		if (args == null || args.Length == 0) return value;
+		value = ChoosePluralWords(value, args);
 		try { return string.Format(ActiveCulture, value, args); }
 		catch (FormatException) { return value; }
 	}
+
+	/// <summary>
+	/// Picks the right word for a count, so one string serves one and many: <c>{0} {0|mod is|mods are}</c> reads "1 mod is"
+	/// and "3 mods are". Anything that isn't the number one takes the second form, so it reads naturally on zero too.
+	/// </summary>
+	public static string ChoosePluralWords(string text, object[] args) =>
+		text.Contains('|') ? PluralWord.Replace(text, m =>
+		{
+			int index = int.Parse(m.Groups["index"].Value, System.Globalization.CultureInfo.InvariantCulture);
+			bool one = index < args.Length && args[index] is int or long && Convert.ToInt64(args[index]) == 1;
+			return m.Groups[one ? "one" : "many"].Value;
+		}) : text;
+
+	private static readonly System.Text.RegularExpressions.Regex PluralWord =
+		new(@"\{(?<index>\d+)\|(?<one>[^|{}]*)\|(?<many>[^|{}]*)\}");
 
 	/// <summary>
 	/// Whether <paramref name="key"/> has text in the active language or English. For the few places that build a

@@ -500,7 +500,9 @@ public partial class Form1
 
 		if (choice == CrossGameDownloadAction.SaveForLater)
 		{
-			OnUi(() => SpeakBox(Loc.T("nxm.savedFor", fileName, targetName, GetShortcutString("InstallPendingDownload"))));
+			OnUi(() => SpeakBox(ShortcutIsSet("InstallPendingDownload")
+				? Loc.T("nxm.savedFor", fileName, targetName, GetShortcutString("InstallPendingDownload"))
+				: Loc.T("nxm.savedForNoKey", fileName, targetName)));
 			return false;
 		}
 
@@ -514,7 +516,9 @@ public partial class Form1
 		// install into whatever session survived that refusal.
 		if (!GameProfiles.IsGame(_settings.ActiveGame, game.Id))
 		{
-			OnUi(() => SpeakBox(Loc.T("nxm.savedFor", fileName, targetName, GetShortcutString("InstallPendingDownload"))));
+			OnUi(() => SpeakBox(ShortcutIsSet("InstallPendingDownload")
+				? Loc.T("nxm.savedFor", fileName, targetName, GetShortcutString("InstallPendingDownload"))
+				: Loc.T("nxm.savedForNoKey", fileName, targetName)));
 			return false;
 		}
 

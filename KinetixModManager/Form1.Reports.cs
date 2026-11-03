@@ -522,7 +522,7 @@ public partial class Form1
 			? Loc.T(rows.Count == 1 ? "reports.itemCountOne" : "reports.itemCount", rows.Count)
 				+ (actionHint != null ? ". " + actionHint : "")
 			: emptyMessage);
-		if (hasRows && _aiService.IsConfigured) opening += ". " + Loc.T("ai.reportHint");
+		if (hasRows && _aiService.IsConfigured) opening += ". " + Loc.T("ai.reportHint", GetShortcutString("DiagnoseAi"));
 		// A finding-level advisory (e.g. the loose-files explanation): spoken as context in the opening so the
 		// list rows themselves can stay short and scannable, rather than each carrying a paragraph.
 		if (hasRows && !string.IsNullOrEmpty(openingNote)) opening += ". " + openingNote;
