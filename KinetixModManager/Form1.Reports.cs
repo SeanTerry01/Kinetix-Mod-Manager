@@ -146,7 +146,7 @@ public partial class Form1
 
 			// 2. Script extender (SKSE/F4SE) missing, or installed for a game build the user is not running —
 			// which looks identical from inside the game, because the extender simply never loads.
-			string seId = GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.SkyrimSE) ? "30379" : "42147"; // SKSE64 / F4SE Nexus ids
+			string seId = ModPartRules.ScriptExtenderNexusId(_settings.ActiveGame);
 			string seName = ScriptExtenderInfo.DisplayName(_settings.ActiveGame);
 			// The same folder the suite installer works on, fallback included. The two screens answering "is the
 			// script extender installed?" from different paths is how one could say yes while the other said no.

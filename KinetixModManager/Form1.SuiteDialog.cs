@@ -342,8 +342,8 @@ public partial class Form1
 					// than the legacy Silverlock site. Stardew's loader (SMAPI) keeps its own site URL.
 					return GameProfiles.BaseId(game) switch
 					{
-						"SkyrimSE" => "https://www.nexusmods.com/skyrimspecialedition/mods/30379?tab=files",
-						"Fallout4" => "https://www.nexusmods.com/fallout4/mods/42147?tab=files",
+						"SkyrimSE" => $"https://www.nexusmods.com/skyrimspecialedition/mods/{ModPartRules.SkyrimScriptExtenderNexusId}?tab=files",
+						"Fallout4" => $"https://www.nexusmods.com/fallout4/mods/{ModPartRules.Fallout4ScriptExtenderNexusId}?tab=files",
 						_          => item.Source
 					};
 				default: // "GitHubStatic" (direct zip link)

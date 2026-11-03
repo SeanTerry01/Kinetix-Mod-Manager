@@ -206,12 +206,27 @@ public static class ModPartRules
 	/// </summary>
 	private const string ArchivedCategory = "ARCHIVED";
 
+	/// <summary>SKSE64's Nexus page.</summary>
+	public const string SkyrimScriptExtenderNexusId = "30379";
+
+	/// <summary>F4SE's Nexus page.</summary>
+	public const string Fallout4ScriptExtenderNexusId = "42147";
+
+	/// <summary>
+	/// The Nexus page of the script extender for <paramref name="installKey"/>: SKSE64 for either copy of Skyrim,
+	/// F4SE otherwise. Only meaningful for a Bethesda game, which is the only kind that asks.
+	/// </summary>
+	public static string ScriptExtenderNexusId(string? installKey) =>
+		GameProfiles.IsGame(installKey, GameProfiles.SkyrimSE)
+			? SkyrimScriptExtenderNexusId
+			: Fallout4ScriptExtenderNexusId;
+
 	public static readonly IReadOnlyList<KnownMod> All = new[]
 	{
 		new KnownMod
 		{
 			GameId      = GameProfiles.SkyrimSE,
-			NexusModId  = "30379",
+			NexusModId  = SkyrimScriptExtenderNexusId,
 			DisplayName = "Skyrim Script Extender (SKSE64)",
 			Parts = new[]
 			{
@@ -244,7 +259,7 @@ public static class ModPartRules
 		new KnownMod
 		{
 			GameId      = GameProfiles.Fallout4,
-			NexusModId  = "42147",
+			NexusModId  = Fallout4ScriptExtenderNexusId,
 			DisplayName = "Fallout 4 Script Extender (F4SE)",
 			Parts = new[]
 			{

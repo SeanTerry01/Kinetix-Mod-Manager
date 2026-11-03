@@ -432,6 +432,18 @@ public class ModPartRulesTests
         Assert.Null(ModPartRules.Find("SkyrimSE@Gog", "999999"));
     }
 
+    [Theory]
+    [InlineData(GameProfiles.SkyrimSE, "30379", "skse64_loader.exe")]
+    [InlineData("SkyrimSE@Gog", "30379", "skse64_loader.exe")]
+    [InlineData(GameProfiles.Fallout4, "42147", "f4se_loader.exe")]
+    public void TheScriptExtenderIdIsThePageTheTableKnowsThatLoaderBy(string installKey, string nexusId, string loader)
+    {
+        Assert.Equal(nexusId, ModPartRules.ScriptExtenderNexusId(installKey));
+
+        // The id has to lead to the table's own entry for that loader, not merely be spelled the same.
+        Assert.Equal(loader, ModPartRules.Find(installKey, ModPartRules.ScriptExtenderNexusId(installKey))!.Parts[0].DetectFile);
+    }
+
     [Fact]
     public void TheFilePageUrlPointsAtOneFileRatherThanTheWholeFilesTab()
     {

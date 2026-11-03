@@ -184,7 +184,7 @@ public partial class Form1
 		var installedIds = new HashSet<string>(
 			_allInstalledMods.Where(m => !m.IsGroup && !string.IsNullOrEmpty(m.NexusID)).Select(m => m.NexusID!),
 			StringComparer.OrdinalIgnoreCase);
-		string seId = GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.SkyrimSE) ? "30379" : "42147";
+		string seId = ModPartRules.ScriptExtenderNexusId(_settings.ActiveGame);
 
 		var toGet = new List<NexusService.ModRequirementInfo>(); // has a Nexus id, not installed, downloadable
 		var manualOnly = new List<NexusService.ModRequirementInfo>(); // off-Nexus / no id — user must fetch themselves
