@@ -370,12 +370,19 @@ public partial class Form1
 			Font = new Font("Segoe UI", 12f),
 			AccessibleName = Loc.T("ui.searchInstalled")
 		};
+		txtSearchInstalled.KeyDown += (_, e) =>
+		{
+			if (e.KeyCode != Keys.Down || listInstalled.Items.Count == 0) return;
+			e.Handled = e.SuppressKeyPress = true;
+			listInstalled.Focus();
+		};
 		txtSearchInstalled.TextChanged += delegate
 		{
 			FilterInstalledMods();
 		};
 		cmbCategoryFilter = new ComboBox
 		{
+			AccessibleName = Loc.T("ui.categoryFilterName"),
 			Width = 150,
 			Font = new Font("Segoe UI", 12f),
 			DropDownStyle = ComboBoxStyle.DropDownList
@@ -587,7 +594,15 @@ public partial class Form1
 		{
 			if (e.KeyCode == Keys.Return)
 			{
+				// Before the wait: after it, this event has already finished, and the box beeped.
+				e.SuppressKeyPress = true;
 				await RunDiscovery();
+			}
+			else if (e.KeyCode == Keys.Down && listDiscovery.Items.Count > 0)
+			{
+				// The results are otherwise half a dozen Tabs away, past every filter.
+				e.Handled = e.SuppressKeyPress = true;
+				listDiscovery.Focus();
 			}
 		};
 		flowLayoutPanel2.Controls.Add(new Label
@@ -703,6 +718,7 @@ public partial class Form1
 		};
 		cmbLogFilter = new ComboBox
 		{
+			AccessibleName = Loc.T("ui.logFilterName"),
 			Width = 180,
 			Font = new Font("Segoe UI", 12f),
 			DropDownStyle = ComboBoxStyle.DropDownList
@@ -905,6 +921,12 @@ public partial class Form1
 		};
 		txtWikiSearch.KeyDown += async delegate(object? s, KeyEventArgs e)
 		{
+			if (e.KeyCode == Keys.Down && listWikiResults.CanFocus && listWikiResults.Items.Count > 0)
+			{
+				e.Handled = e.SuppressKeyPress = true;
+				listWikiResults.Focus();
+				return;
+			}
 			if (e.KeyCode == Keys.Return)
 			{
 				e.SuppressKeyPress = true;
@@ -1133,16 +1155,20 @@ public partial class Form1
 		listModPriority.KeyDown += ListModPriority_KeyDown;
 		listModPriority.SelectedIndexChanged += ListModPriority_SelectedIndexChanged;
 		listModPriority.GotFocus += List_Enter;
+		KeepLeftAndRightOffTheSelection(listModPriority);
 		listPluginOrder.KeyDown += ListPluginOrder_KeyDown;
 		listPluginOrder.SelectedIndexChanged += ListModPriority_SelectedIndexChanged;
 		listPluginOrder.GotFocus += List_Enter;
+		KeepLeftAndRightOffTheSelection(listPluginOrder);
 		listPluginOrder.GotFocus += ListPluginOrder_WarnOnFocus;
 		listCreations.KeyDown += ListCreations_KeyDown;
 		listCreations.SelectedIndexChanged += ListModPriority_SelectedIndexChanged;
 		listCreations.GotFocus += List_Enter;
+		KeepLeftAndRightOffTheSelection(listCreations);
 		listGameLog.KeyDown += ListGameLog_KeyDown;
 		listGameLog.SelectedIndexChanged += List_SelectedIndexChanged;
 		listGameLog.GotFocus += List_Enter;
+		KeepLeftAndRightOffTheSelection(listGameLog);
 		_searchTimer.Tick += delegate
 		{
 			_searchTimer.Stop();
@@ -1150,6 +1176,7 @@ public partial class Form1
 		};
 		listWikiResults.SelectedIndexChanged += Wiki_SelectedIndexChanged;
 		listWikiResults.GotFocus += List_Enter;
+		KeepLeftAndRightOffTheSelection(listWikiResults);
 		listWikiResults.DoubleClick += async delegate(object? s, EventArgs e)
 		{
 			if (listWikiResults.SelectedItem is WikiResult res)
@@ -1169,6 +1196,7 @@ public partial class Form1
 			}
 		};
 		listWalkthroughs.GotFocus += List_Enter;
+		KeepLeftAndRightOffTheSelection(listWalkthroughs);
 		PopulateWalkthroughs();
 	}
 }

@@ -452,8 +452,7 @@ public partial class Form1
 					int idx = list.SelectedIndex;
 					list.Items.Remove(row);
 					if (list.Items.Count == 0) { Speak(Loc.T("reports.ignoredLast")); LetSpeechFinish(); closeView(); return; }
-					list.SelectedIndex = Math.Min(idx, list.Items.Count - 1);
-					Speak(Loc.T("reports.ignored", list.Items.Count));
+					SayResultAndLandOn(list, idx, Loc.T("reports.ignored", list.Items.Count));
 					return;
 				}
 

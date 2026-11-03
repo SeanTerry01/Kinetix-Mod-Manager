@@ -367,12 +367,20 @@ public partial class Form1
 			Margin = new Padding(0, 0, 0, 10)
 		}, 0, 0);
 
-		layout.Controls.Add(new Label
+		// A text box rather than a label, because a label cannot take focus, and so the question could only ever be heard
+		// the once. When something cut it off, someone was answering a delete or restore question they had not heard. Shift+Tab
+		// from the choices reaches it now, and the arrow keys read it, which matters most for a long one.
+		layout.Controls.Add(new TextBox
 		{
-			Text = text,
+			Text = text.Replace("\r\n", "\n").Replace("\n", Environment.NewLine),
 			Font = new Font("Segoe UI", 12f),
 			Dock = DockStyle.Fill,
-			AccessibleName = text
+			Multiline = true,
+			ReadOnly = true,
+			BorderStyle = BorderStyle.None,
+			BackColor = SystemColors.Control,
+			ScrollBars = ScrollBars.Vertical,
+			AccessibleName = caption
 		}, 0, 1);
 
 		var row = new FlowLayoutPanel

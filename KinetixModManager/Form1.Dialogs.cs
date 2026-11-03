@@ -47,6 +47,7 @@ public partial class Form1
 		tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
 		ComboBox cmbTheme = new ComboBox
 		{
+			AccessibleName = Loc.T("soundDemo.themeName"),
 			Dock = DockStyle.Fill,
 			DropDownStyle = ComboBoxStyle.DropDownList,
 			Font = new Font("Segoe UI", 12f)
@@ -281,6 +282,7 @@ public partial class Form1
 		ApplyScreenReaderPauses(container);
 		return lb;
 		},
+		hint: Loc.T("themeMgr.hint"),
 		onClosed: () => Speak(Loc.T(saved ? "themeMgr.saved" : "common.changesCancelled")));
 
 		void RefreshList()
@@ -317,6 +319,7 @@ public partial class Form1
 		// Announce "X of Y" position the same way the main lists do, on focus and on arrow-key navigation.
 		lb.SelectedIndexChanged += List_SelectedIndexChanged;
 		lb.GotFocus += List_Enter;
+		KeepLeftAndRightOffTheSelection(lb);
 		RefreshList();
 
 		// Remapping happens on the list itself rather than in a prompt of its own. The list already has focus,
@@ -345,6 +348,10 @@ public partial class Form1
 			if (awaitingFor != null) lb.Focus();
 		};
 
+		// Leaving the list stops the wait. It used to carry on, so a key pressed much later, on coming back, was taken as the
+		// new shortcut.
+		lb.LostFocus += delegate { awaitingFor = null; };
+
 		lb.KeyDown += delegate (object? s, KeyEventArgs e)
 		{
 			if (awaitingFor == null)
@@ -371,6 +378,27 @@ public partial class Form1
 			{
 				Speak(Loc.T("shortcutMgr.remapCancelled", ShortcutNames.For(action)));
 				return;
+			}
+
+			// Delete means no key at all, which there was otherwise no way to say.
+			if (e.KeyCode == Keys.Delete && e.Modifiers == Keys.None)
+			{
+				tempShortcuts[action] = Shortcut.None;
+				RefreshList(action);
+				Speak(Loc.T("shortcutMgr.cleared", ShortcutNames.For(action)));
+				return;
+			}
+
+			switch (ShortcutRules.Check((int)e.KeyData, action, tempShortcuts, out string? takenBy))
+			{
+				case ShortcutCheck.AlreadyTaken:
+					awaitingFor = action;
+					Speak(Loc.T("shortcutMgr.taken", ShortcutNames.For(takenBy!)));
+					return;
+				case ShortcutCheck.WouldStealTyping:
+					awaitingFor = action;
+					Speak(Loc.T("shortcutMgr.needsModifier"));
+					return;
 			}
 
 			tempShortcuts[action] = (int)e.KeyData;
@@ -442,6 +470,7 @@ public partial class Form1
 		ApplyScreenReaderPauses(container);
 		return lb;
 		},
+		hint: Loc.T("shortcutMgr.hint"),
 		onClosed: () => Speak(Loc.T(saved ? "shortcutMgr.saved" : "common.changesCancelled")));
 
 		/// <summary>

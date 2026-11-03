@@ -83,6 +83,7 @@ public partial class Form1
 			Reload();
 
 			list.GotFocus += List_Enter;
+			KeepLeftAndRightOffTheSelection(list);
 			list.SelectedIndexChanged += List_SelectedIndexChanged;
 			list.SelectedIndexChanged += delegate
 			{

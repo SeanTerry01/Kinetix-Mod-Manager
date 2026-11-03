@@ -362,6 +362,9 @@ public partial class Form1
 
 	private void CloseGameSession()
 	{
+		// A menu shortcut works whatever has focus, so Ctrl+Shift+C reached here with a view open over the session.
+		if (OverlayIsOpen) return;
+
 		SwitchActiveGame("None");
 	}
 

@@ -335,8 +335,7 @@ public partial class Form1
 		list.Items.Remove(item);
 		_soundEngine.Play("disable");
 		if (list.Items.Count == 0) { Speak(Loc.T("downloads.deletedLast")); LetSpeechFinish(); closeView(); return; }
-		list.SelectedIndex = Math.Min(idx, list.Items.Count - 1);
-		Speak(Loc.T("downloads.deleted", list.Items.Count));
+		SayResultAndLandOn(list, idx, Loc.T("downloads.deleted", list.Items.Count));
 	}
 
 	/// <summary>Formats a byte count as a short human-readable size (e.g. "12.3 MB") for spoken/displayed rows.</summary>

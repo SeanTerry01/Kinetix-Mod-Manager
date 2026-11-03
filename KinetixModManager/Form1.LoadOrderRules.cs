@@ -140,8 +140,7 @@ public partial class Form1
 				list.Items.Remove(item);
 				_soundEngine.Play("disable");
 				if (list.Items.Count == 0) { Speak(Loc.T("rules.removedLast")); LetSpeechFinish(); closeView(); return; }
-				list.SelectedIndex = Math.Min(idx, list.Items.Count - 1);
-				Speak(Loc.T("rules.removed", list.Items.Count));
+				SayResultAndLandOn(list, idx, Loc.T("rules.removed", list.Items.Count));
 			};
 
 			return list;

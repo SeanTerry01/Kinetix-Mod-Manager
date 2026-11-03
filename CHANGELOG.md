@@ -1,5 +1,26 @@
 ﻿# Unreleased
 
+## ⌨️ The keyboard, everywhere
+
+*   **A question can be read again.** If something cut a prompt off, you were left answering a question you had not heard.
+    Press Shift+Tab from the choices to reach it, and use the arrow keys to read it.
+*   **Commands act on the tab you are on.** On the Backups tab, a key for a mod could open or edit whichever mod you were last
+    on, one you could neither see nor hear.
+*   **Deleting a mod lands on the one now in its place**, not back at the top of the list, and says which it is. So does deleting
+    anything from Saved Games, Downloads, Safety Backups and the load order rules.
+*   **Holding a key no longer repeats a command.** Holding Space flipped a mod on and off for as long as you held it.
+*   **Type a letter to jump** now works in every list, and says so when nothing starts with it.
+*   **Enter on a mod** says what it is, and **on a group** opens or closes it. Both used to do nothing. Shift+F10 now does what the
+    Applications key does, for keyboards without one.
+*   **Control F** goes to the search box on the Search, Wiki and Game Log tabs as well, and **Down Arrow** goes from a search box
+    to its results.
+*   **F6 on the Wiki tab** now goes to the search box before you have searched. It used to do nothing.
+*   **Left and Right no longer move a list** that does not use them for anything, in the lists they still could.
+*   **Shortcut Customization refuses a key already in use**, says which action has it, and refuses a bare letter, which would have
+    stopped you typing that letter in text boxes. Delete now clears a shortcut.
+*   **Position is said during an update check.** It went silent for as long as a check ran, in every list.
+*   **Close Session no longer works behind an open screen**, and pressing a button that takes a while no longer throws you to
+    the next control.
 ## ⚡ The manager no longer freezes while it works
 
 *   **Refreshing happens in the background.** Every press of Space or Delete rescans your mods, and on Skyrim and Fallout 4

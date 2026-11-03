@@ -213,8 +213,7 @@ public partial class Form1
 		list.Items.Remove(row);
 		_soundEngine.Play("disable");
 		if (list.Items.Count == 0) { Speak(Loc.T("saves.deletedLast")); LetSpeechFinish(); closeView(); return; }
-		list.SelectedIndex = Math.Min(idx, list.Items.Count - 1);
-		Speak(Loc.T("saves.deleted", list.Items.Count));
+		SayResultAndLandOn(list, idx, Loc.T("saves.deleted", list.Items.Count));
 	}
 
 	/// <summary>A save file plus any co-save (SKSE/F4SE) sharing its base name, limited to files that exist.</summary>

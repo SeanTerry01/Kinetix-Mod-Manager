@@ -638,6 +638,7 @@ public partial class Form1
 		});
 		ComboBox cTheme = new ComboBox
 		{
+			AccessibleName = Loc.T("soundDemo.themeName"),
 			DropDownStyle = ComboBoxStyle.DropDownList,
 			Width = 150
 		};
@@ -1076,6 +1077,10 @@ public partial class Form1
 
 		// Fetch the provider's live model catalog with the entered key and repopulate the dropdown, keeping the
 		// current selection if it still exists.
+		// Flags rather than disabling the buttons. Disabling a focused button throws focus to whatever comes next, so a
+		// second press of Enter landed somewhere else.
+		bool aiRefreshBusy = false;
+		bool aiTestBusy = false;
 		btnAiRefresh.Click += async delegate
 		{
 			if (cmbAiProvider.SelectedItem is not AiProviderInfo prov) return;
@@ -1084,7 +1089,8 @@ public partial class Form1
 			string current = (cmbAiModel.SelectedItem as AiModelOption)?.Id ?? "";
 			if (current == AiService.CustomModelId) current = tAiCustomModel.Text.Trim();
 			string baseUrl = prov.NeedsBaseUrl ? tAiBaseUrl.Text.Trim() : "";
-			btnAiRefresh.Enabled = false;
+			if (aiRefreshBusy) return;
+			aiRefreshBusy = true;
 			Speak(Loc.T("settings.aiRefreshWorking"));
 			try
 			{
@@ -1116,7 +1122,7 @@ public partial class Form1
 				_soundEngine.Play("error");
 				SpeakBox(Loc.T("settings.aiRefreshFail", ex.Message), Loc.T("ai.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
 			}
-			finally { btnAiRefresh.Enabled = true; }
+			finally { aiRefreshBusy = false; }
 		};
 
 		btnAiTest.Click += async delegate
@@ -1131,7 +1137,8 @@ public partial class Form1
 				return;
 			}
 			string testBaseUrl = prov.NeedsBaseUrl ? tAiBaseUrl.Text.Trim() : "";
-			btnAiTest.Enabled = false;
+			if (aiTestBusy) return;
+			aiTestBusy = true;
 			Speak(Loc.T("settings.aiTestWorking"));
 			try
 			{
@@ -1146,7 +1153,7 @@ public partial class Form1
 				_soundEngine.Play("error");
 				SpeakBox(Loc.T("settings.aiTestFail", ex.Message), Loc.T("ai.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
 			}
-			finally { btnAiTest.Enabled = true; }
+			finally { aiTestBusy = false; }
 		};
 
 		FlowLayoutPanel flowLayoutPanel5 = new FlowLayoutPanel

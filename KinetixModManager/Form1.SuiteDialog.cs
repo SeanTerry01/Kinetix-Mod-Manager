@@ -135,6 +135,7 @@ public partial class Form1
 		// Announce the position on focus and on each arrow-key move, the same way the main form's lists do
 		// (GotFocus also fires when focus returns to the list after another dialog closes).
 		lstStatus.GotFocus += List_Enter;
+		KeepLeftAndRightOffTheSelection(lstStatus);
 		lstStatus.SelectedIndexChanged += List_SelectedIndexChanged;
 
 		bool loaderInstalled = false;
@@ -395,7 +396,6 @@ public partial class Form1
 			if (isInstalling) return;
 			using IDisposable busy = BeginModOperation();
 			isInstalling = true;
-			btnInstall.Enabled = false;
 			btnInstall.Text = Loc.T("suite.installing");
 			UseWaitCursor = true;
 

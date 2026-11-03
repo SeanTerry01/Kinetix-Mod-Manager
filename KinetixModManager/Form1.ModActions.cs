@@ -31,7 +31,11 @@ public partial class Form1
 	/// <summary>Prompts the user to assign a custom category string to the selected mod.</summary>
 	private void SetManualCategory()
 	{
-		if (listInstalled.SelectedItem is not StardewMod stardewMod) return;
+		if (ModOnThisTab() is not StardewMod stardewMod)
+		{
+			Speak(Loc.T("common.noModSelected"));
+			return;
+		}
 		if (stardewMod.IsGroup)
 		{
 			Speak(Loc.T("common.modGroupFirst"));
@@ -77,7 +81,7 @@ public partial class Form1
 	/// </summary>
 	private void SetModNote()
 	{
-		if (listInstalled.SelectedItem is not StardewMod mod)
+		if (ModOnThisTab() is not StardewMod mod)
 		{
 			Speak(Loc.T("common.noModSelected"));
 			return;
@@ -130,7 +134,7 @@ public partial class Form1
 	/// </summary>
 	private void OpenSelectedModManifest()
 	{
-		if (!(listInstalled.SelectedItem is StardewMod mod))
+		if (!(ModOnThisTab() is StardewMod mod))
 		{
 			Speak(Loc.T("common.noModSelected"));
 			return;
@@ -201,7 +205,7 @@ public partial class Form1
 	/// </summary>
 	private void OpenSelectedModConfigFile()
 	{
-		if (!(listInstalled.SelectedItem is StardewMod mod))
+		if (!(ModOnThisTab() is StardewMod mod))
 		{
 			Speak(Loc.T("common.noModSelected"));
 			return;
@@ -242,7 +246,7 @@ public partial class Form1
 
 	private void OpenSelectedModConfig()
 	{
-		if (!(listInstalled.SelectedItem is StardewMod mod))
+		if (!(ModOnThisTab() is StardewMod mod))
 		{
 			Speak(Loc.T("common.noModSelected"));
 			return;

@@ -637,9 +637,12 @@ public partial class Form1
 				}
 			}
 		}
+		// The row it was on has gone, deleted or filtered out. The one now in its place, as every other list does: going back
+		// to the top left someone at mod 120 of 147 arrowing all the way back, and only told so by a position.
 		if (listInstalled.SelectedIndex == -1 && listInstalled.Items.Count > 0)
 		{
-			listInstalled.SelectedIndex = 0;
+			if (announceRestoredRow && indexBefore >= 0) _announceRowNameOnNextChange = true;
+			listInstalled.SelectedIndex = Math.Min(Math.Max(indexBefore, 0), listInstalled.Items.Count - 1);
 		}
 		// The position is NOT announced here.
 		//
@@ -770,7 +773,8 @@ public partial class Form1
 					}
 				}
 			}
-			listBackups.SelectedIndex = Math.Min(Math.Max(newIndex, oldIndex), listBackups.Items.Count - 1);
+			// The row found, wherever it is now. Taking the larger of the two landed on a different row whenever rows above had gone.
+			listBackups.SelectedIndex = newIndex >= 0 ? newIndex : Math.Min(Math.Max(oldIndex, 0), listBackups.Items.Count - 1);
 		}
 		else if (listBackups.Focused && oldIndex != -1)
 		{
@@ -870,7 +874,7 @@ public partial class Form1
 
 	private async Task LinkModUpdateSource(StardewMod? target = null)
 	{
-		if ((target ?? listInstalled.SelectedItem as StardewMod) is StardewMod stardewMod3)
+		if ((target ?? ModOnThisTab()) is StardewMod stardewMod3)
 		{
 			if (stardewMod3.IsGroup)
 			{

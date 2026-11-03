@@ -459,7 +459,7 @@ public partial class Form1
 	private async void ListModPriority_SelectedIndexChanged(object? sender, EventArgs e)
 	{
 		if (_suppressPrioritySpeak) return;
-		if (sender is not ListBox { SelectedItem: not null } list || _isLoading || !list.Focused) return;
+		if (sender is not ListBox { SelectedItem: not null } list || !list.Focused) return;
 		await Task.Delay(100);
 		if (!list.Focused) return;
 		Speak(Loc.T("common.position", list.SelectedIndex + 1, list.Items.Count));

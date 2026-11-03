@@ -221,6 +221,44 @@ public class BatchAGuardTests
 	}
 
 	[Fact]
+	public void APromptsQuestionCanBeReachedAndReadAgain()
+	{
+		// A label cannot take focus, so a question cut off by anything could never be heard again.
+		string body = WithoutComments(MethodBody("Form1.InlinePrompt.cs", "private Panel BuildPromptPanel("));
+		Assert.Matches(new Regex(@"new TextBox\s*\{\s*Text = text"), body);
+		Assert.Contains("ReadOnly = true", body);
+	}
+
+	[Fact]
+	public void AHeldKeyIsNotSeveralPressesOnAList()
+	{
+		string body = WithoutComments(MethodBody("Form1.Input.cs", "private void List_KeyDown("));
+		Assert.Contains("_lastKeyWasAutoRepeat", body);
+	}
+
+	[Theory]
+	[InlineData("private void SetManualCategory()")]
+	[InlineData("private void SetModNote()")]
+	[InlineData("private void OpenSelectedModManifest()")]
+	[InlineData("private void OpenSelectedModConfigFile()")]
+	[InlineData("private void OpenSelectedModConfig()")]
+	public void APerModCommandActsOnTheTabInFront(string signature)
+	{
+		string body = WithoutComments(MethodBody("Form1.ModActions.cs", signature));
+		Assert.Contains("ModOnThisTab()", body);
+		Assert.DoesNotContain("listInstalled.SelectedItem", body);
+	}
+
+	[Fact]
+	public void AFocusedButtonDoesNotDisableItself()
+	{
+		// That throws focus to whatever comes next, so a second Enter lands somewhere else.
+		Assert.DoesNotContain("btnAiRefresh.Enabled = false", App("Form1.Settings.cs"));
+		Assert.DoesNotContain("btnAiTest.Enabled = false", App("Form1.Settings.cs"));
+		Assert.DoesNotContain("send.Enabled = input.Enabled = false", App("Form1.AiDiagnosis.cs"));
+	}
+
+	[Fact]
 	public void AManagerUpdateSaysItIsTheManager()
 	{
 		// A prompt's title is not spoken, so the words have to carry it. At startup a bare "Version 1.7.0 is available"

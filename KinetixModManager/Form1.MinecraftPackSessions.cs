@@ -207,6 +207,7 @@ public partial class Form1
 			AccessibleDescription = Loc.T("mc.pack.listDescription")
 		};
 		listMinecraftPacks.GotFocus += List_Enter;
+		KeepLeftAndRightOffTheSelection(listMinecraftPacks);
 		listMinecraftPacks.SelectedIndexChanged += ListModPriority_SelectedIndexChanged;
 		listMinecraftPacks.KeyDown += ListMinecraftPacks_KeyDown;
 		listMinecraftPacks.DoubleClick += delegate { Fire(ShowMinecraftSetupActionsAsync(), "ShowMinecraftSetupActionsAsync"); };

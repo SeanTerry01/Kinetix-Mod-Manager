@@ -99,7 +99,8 @@ public partial class Form1
 					}
 				}
 			}
-			listProfiles.SelectedIndex = Math.Min(Math.Max(newIndex, oldIndex), listProfiles.Items.Count - 1);
+			// The row found, wherever it is now. Taking the larger of the two landed on a different row whenever rows above had gone.
+			listProfiles.SelectedIndex = newIndex >= 0 ? newIndex : Math.Min(Math.Max(oldIndex, 0), listProfiles.Items.Count - 1);
 
 			if (listProfiles.Focused && listProfiles.SelectedItem != null)
 			{

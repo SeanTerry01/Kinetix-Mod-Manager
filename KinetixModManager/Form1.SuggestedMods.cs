@@ -194,6 +194,7 @@ public partial class Form1
 
 			Fill(0);
 			list.GotFocus += List_Enter;
+			KeepLeftAndRightOffTheSelection(list);
 			list.SelectedIndexChanged += List_SelectedIndexChanged;
 
 			list.KeyDown += async (s, e) =>

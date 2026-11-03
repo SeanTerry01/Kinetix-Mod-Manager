@@ -200,11 +200,15 @@ public partial class Form1
 		layout.Controls.Add(buttons, 0, 2);
 		container.Controls.Add(layout);
 
+		bool sending = false;
 		async void SendFollowUp()
 		{
 			string q = input.Text.Trim();
 			if (string.IsNullOrEmpty(q)) return;
-			send.Enabled = input.Enabled = false;
+			// A flag rather than disabling these. That threw focus to Close, where Enter would shut the view, and moving it back
+			// afterwards cut off the answer being read out.
+			if (sending) return;
+			sending = true;
 			turns.Add(new AiTurn(true, q));
 			transcript.AppendText(Environment.NewLine + Environment.NewLine + Loc.T("ai.chatYou") + Environment.NewLine + NormalizeNewlines(q));
 			input.Clear();
@@ -225,8 +229,7 @@ public partial class Form1
 			}
 			finally
 			{
-				send.Enabled = input.Enabled = true;
-				input.Focus();
+				sending = false;
 			}
 		}
 		send.Click += delegate { SendFollowUp(); };

@@ -201,6 +201,12 @@ public partial class Form1
 	{
 		list.GotFocus += List_Enter;
 		list.SelectedIndexChanged += List_SelectedIndexChanged;
+		KeepLeftAndRightOffTheSelection(list);
+	}
+
+	/// <summary>A list box moves its selection on Left and Right as well as Up and Down, which here reads as losing your place.</summary>
+	private static void KeepLeftAndRightOffTheSelection(ListBox list)
+	{
 		list.KeyDown += (_, e) =>
 		{
 			if (e.KeyCode == Keys.Left || e.KeyCode == Keys.Right) { e.Handled = e.SuppressKeyPress = true; }
@@ -522,6 +528,21 @@ public partial class Form1
 	/// <summary>Which announcement is the current one. See <see cref="SpeakListPosition"/>.</summary>
 	private int _speakListGeneration;
 
+	/// <summary>
+	/// Moves a list to a row after removing one, and says what happened and where that leaves you, in one sentence.
+	///
+	/// A reader says nothing when the program moves the selection. So "Save deleted. 14 remaining." never said which save
+	/// you were now on, and with a separate position announcement, one could cut off or drop the other.
+	/// </summary>
+	private void SayResultAndLandOn(ListBox list, int index, string result)
+	{
+		_movingListSilently = true;
+		try { list.SelectedIndex = Math.Min(index, list.Items.Count - 1); }
+		finally { _movingListSilently = false; }
+		AlignListCaretToSelection(list);
+		Speak(result + " " + RowThenPosition(list.SelectedItem, PositionTextFor(list)));
+	}
+
 	/// <summary>Stops whatever the screen reader is currently saying, if one is listening.</summary>
 	private void SilenceSpeech() => _announcer.Silence();
 
@@ -710,7 +731,9 @@ public partial class Form1
 		// the first await, because it is only held across the assignment that raised this event.
 		if (_movingListSilently) return;
 
-		if (!(sender is ListBox { SelectedItem: not null } list) || _isLoading || !list.Focused)
+		// Not silenced during an update check. That can take minutes on a large setup, and for all of it, arrowing any list
+		// gave no position, with no reason ever given.
+		if (!(sender is ListBox { SelectedItem: not null } list) || !list.Focused)
 		{
 			return;
 		}

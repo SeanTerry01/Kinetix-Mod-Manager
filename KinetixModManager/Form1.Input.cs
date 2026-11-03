@@ -33,6 +33,7 @@ public partial class Form1
 		// Recorded before anything else can return, so the held key is known even for presses this handler
 		// otherwise ignores — an overlay opening mid-press would otherwise leave a stale key held here.
 		bool isAutoRepeat = !_keyRepeat.IsFirstPress((int)e.KeyData);
+		_lastKeyWasAutoRepeat = isAutoRepeat;
 
 		// While a prompt or an in-window view is covering the window, the window's own shortcuts must stay out
 		// of the way — F5 must not launch the game from behind a confirmation, and Escape belongs to whatever
@@ -299,6 +300,18 @@ public partial class Form1
 			{
 				txtSearchLog.Focus();
 			}
+			else if (CurrentTab() == AppTab.Discovery)
+			{
+				txtSearch.Focus();
+			}
+			else if (CurrentTab() == AppTab.Wiki)
+			{
+				txtWikiSearch.Focus();
+			}
+			else if (CurrentTab() == AppTab.GameLog)
+			{
+				txtSearchGameLog.Focus();
+			}
 		}
 		if (IsShortcut(e, "UpdateAll"))
 		{
@@ -441,7 +454,8 @@ public partial class Form1
 				case AppTab.Updates:      listUpdates.Focus();     break;
 				case AppTab.Backups:      listBackups.Focus();     break;
 				case AppTab.Discovery:    listDiscovery.Focus();   break;
-				case AppTab.Wiki:         listWikiResults.Focus(); break;
+				// The results are hidden until a search has run, so focusing them did nothing, in silence.
+				case AppTab.Wiki:         if (listWikiResults.CanFocus) listWikiResults.Focus(); else txtWikiSearch.Focus(); break;
 				case AppTab.Walkthroughs: listWalkthroughs.Focus(); break;
 				case AppTab.Profiles:     listProfiles.Focus();    break;
 				case AppTab.ModPriority:  listModPriority.Focus(); break;
@@ -488,10 +502,37 @@ public partial class Form1
 		}
 	}
 
+	/// <summary>
+	/// The installed mod a command means on the tab in front, or null where there is none.
+	///
+	/// These commands are global shortcuts, and the Installed list keeps its selection when you leave it. So on the Backups
+	/// tab, a key could open or edit whichever mod you were last on, one you could neither see nor hear.
+	/// </summary>
+	private StardewMod? ModOnThisTab() => CurrentTab() switch
+	{
+		AppTab.Installed => listInstalled.SelectedItem as StardewMod,
+		AppTab.Updates => listUpdates.SelectedItem as StardewMod,
+		_ => null
+	};
+
+	/// <summary>The key for "tell me about this": the Applications key, or Shift+F10 on a keyboard without one.</summary>
+	private static bool IsContextKey(KeyEventArgs e) => e.KeyCode == Keys.Apps || (e.KeyCode == Keys.F10 && e.Shift);
+
+	/// <summary>Whether the key being handled is a repeat from being held, which the window hears about first.</summary>
+	private bool _lastKeyWasAutoRepeat;
+
 	private void List_KeyDown(object? sender, KeyEventArgs e)
 	{
 		if (!(sender is ListBox list))
 		{
+			return;
+		}
+		// The window turns a held key away from its own shortcuts and hands it on for typing, which left it reaching these.
+		// Holding Space flipped a mod on and off with a rescan for every repeat, ending wherever it happened to stop.
+		if (_lastKeyWasAutoRepeat && e.KeyCode is Keys.Space or Keys.Return or Keys.Delete or Keys.Apps)
+		{
+			e.Handled = true;
+			e.SuppressKeyPress = true;
 			return;
 		}
 		if (e.KeyCode >= Keys.A && e.KeyCode <= Keys.Z && !e.Control && !e.Alt)
@@ -505,35 +546,40 @@ public partial class Form1
 			{
 				num++;
 			}
+			// A mod by its name and anything else by what the row says. Only mods used to be looked at, and this still claimed
+			// the key, so on Backups, Profiles and the logs letters did nothing at all, the list box's own search included.
+			static string RowText(object? row) => row is StardewMod mod
+				? (mod.IsGroup ? mod.GroupName : mod.Name) ?? ""
+				: row?.ToString() ?? "";
+
 			for (int i = 0; i < list.Items.Count; i++)
 			{
 				int num2 = (num + i) % list.Items.Count;
-				if (list.Items[num2] is StardewMod stardewMod)
+				if (RowText(list.Items[num2]).StartsWith(_searchBuffer, StringComparison.OrdinalIgnoreCase))
 				{
-					string text = (stardewMod.IsGroup ? stardewMod.GroupName : stardewMod.Name).ToLower();
-					if (!string.IsNullOrEmpty(text) && text.StartsWith(_searchBuffer))
-					{
-						list.SelectedIndex = num2;
-						e.Handled = true;
-						e.SuppressKeyPress = true;
-						return;
-					}
+					list.SelectedIndex = num2;
+					e.Handled = true;
+					e.SuppressKeyPress = true;
+					return;
 				}
 			}
+			bool found = false;
 			if (_searchBuffer.Length > 1)
 			{
 				string text2 = c.ToString();
 				for (int j = 0; j < list.Items.Count; j++)
 				{
 					int num3 = (list.SelectedIndex + 1 + j) % list.Items.Count;
-					if (list.Items[num3] is StardewMod stardewMod2 && (stardewMod2.IsGroup ? stardewMod2.GroupName : stardewMod2.Name).ToLower().StartsWith(text2))
+					if (RowText(list.Items[num3]).StartsWith(text2, StringComparison.OrdinalIgnoreCase))
 					{
 						list.SelectedIndex = num3;
+						found = true;
 						break;
 					}
 				}
 				_searchBuffer = text2;
 			}
+			if (!found) Speak(Loc.T("common.noRowStartsWith", _searchBuffer));
 			e.Handled = true;
 			e.SuppressKeyPress = true;
 			return;
@@ -545,8 +591,10 @@ public partial class Form1
 		}
 		if (list.Name == "listInstalled" && list.SelectedItem is StardewMod stardewMod3)
 		{
-			bool flag = e.KeyCode == Keys.Right || e.KeyValue == 187 || e.KeyCode == Keys.Add;
-			bool flag2 = e.KeyCode == Keys.Left || e.KeyValue == 189 || e.KeyCode == Keys.Subtract;
+			// Enter on a group opens or closes it, whichever it is not. It used to do nothing, in silence.
+			bool enterOnGroup = stardewMod3.IsGroup && e.KeyCode == Keys.Return;
+			bool flag = e.KeyCode == Keys.Right || e.KeyValue == 187 || e.KeyCode == Keys.Add || (enterOnGroup && !stardewMod3.IsExpanded);
+			bool flag2 = e.KeyCode == Keys.Left || e.KeyValue == 189 || e.KeyCode == Keys.Subtract || (enterOnGroup && stardewMod3.IsExpanded);
 			if (stardewMod3.IsGroup)
 			{
 				string groupName = stardewMod3.GroupName;
@@ -595,11 +643,19 @@ public partial class Form1
 				e.Handled = true;
 				e.SuppressKeyPress = true;
 			}
-			if (e.KeyCode == Keys.Apps)
+			// Enter on a mod says what it is, as the context key does. Not every keyboard has that key, so Shift+F10 does the
+			// same, as it does throughout Windows.
+			if (!stardewMod3.IsGroup && (e.KeyCode == Keys.Return || IsContextKey(e)))
 			{
-				if (stardewMod3.IsGroup) Speak(Loc.T("common.modGroupFirst"));
-				else SpeakBox(Loc.T("modlist.detailsBox", stardewMod3.Name, stardewMod3.Author, stardewMod3.Description), Loc.T("modlist.detailsTitle"));
+				SpeakBox(Loc.T("modlist.detailsBox", stardewMod3.Name, stardewMod3.Author, stardewMod3.Description), Loc.T("modlist.detailsTitle"));
 				e.Handled = true;
+				e.SuppressKeyPress = true;
+			}
+			else if (stardewMod3.IsGroup && IsContextKey(e))
+			{
+				Speak(Loc.T("common.modGroupFirst"));
+				e.Handled = true;
+				e.SuppressKeyPress = true;
 			}
 			if (e.KeyCode == Keys.L && e.Control)
 			{
