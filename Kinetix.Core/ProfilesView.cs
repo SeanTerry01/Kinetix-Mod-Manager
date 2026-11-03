@@ -56,11 +56,20 @@ public sealed class ProfilesView
 				p.Name,
 				p.ModStates.Count,
 				p.ModStates.Count(state => state.Value),
-				ProfileStore.Changes(p, installed).Count == 0))
+				IsCurrent(p, installed)))
 			.ToList();
 
 		return new ProfilesView(rows, ordered);
 	}
+
+	/// <summary>
+	/// Nothing to change, and at least one of the profile's mods actually here. A mod the profile names that is not
+	/// installed is no change to make, so with an empty or unread folder every profile came out as nothing to change, and
+	/// all of them were announced as the current setup.
+	/// </summary>
+	private static bool IsCurrent(ModProfile profile, IReadOnlyList<GameMod> installed) =>
+		ProfileStore.Changes(profile, installed).Count == 0 &&
+		installed.Any(m => !string.IsNullOrEmpty(m.UniqueId) && profile.ModStates.ContainsKey(m.UniqueId));
 
 	/// <summary>The sentence to say when the list appears.</summary>
 	public string Announcement =>

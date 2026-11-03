@@ -11,6 +11,9 @@ public enum InstalledModsStatus
 
 	/// <summary>The game is here, but nothing has created its mods folder yet.</summary>
 	NoModsFolder,
+
+	/// <summary>The mods folder could not be read, so what is in it is not known.</summary>
+	ScanFailed,
 }
 
 /// <summary>
@@ -57,13 +60,16 @@ public sealed record InstalledModRow(string Path, string Name, string Version, b
 public sealed class InstalledModsView
 {
 	private InstalledModsView(
-		InstalledModsStatus status, GameProfile? game, string modsFolder, IReadOnlyList<InstalledModRow> rows)
+		InstalledModsStatus status, GameProfile? game, string modsFolder, IReadOnlyList<InstalledModRow> rows, string reason = "")
 	{
 		Status = status;
 		Game = game;
 		ModsFolder = modsFolder;
 		Rows = rows;
+		_reason = reason;
 	}
+
+	private readonly string _reason;
 
 	public InstalledModsStatus Status { get; }
 
@@ -84,6 +90,13 @@ public sealed class InstalledModsView
 	/// <summary>The game is here but its mods folder has never been created.</summary>
 	public static InstalledModsView NoModsFolder(GameProfile? game, string expectedFolder) =>
 		new(InstalledModsStatus.NoModsFolder, game, expectedFolder, Array.Empty<InstalledModRow>());
+
+	/// <summary>
+	/// The folder could not be read. Not an empty list: "you have no mods" is a false thing to hear about a drive that has
+	/// gone away. <paramref name="sentence"/> is what to say, from the head, because it names that head's own commands.
+	/// </summary>
+	public static InstalledModsView ScanFailed(GameProfile? game, string modsFolder, string sentence) =>
+		new(InstalledModsStatus.ScanFailed, game, modsFolder, Array.Empty<InstalledModRow>(), sentence);
 
 	/// <summary>
 	/// What a scan found, with each mod's switched-on state read by <em>this game's</em> rule — a leading dot
@@ -120,6 +133,7 @@ public sealed class InstalledModsView
 			{
 				InstalledModsStatus.NotInstalled => Loc.T("installed.notInstalled", name),
 				InstalledModsStatus.NoModsFolder => Loc.T("installed.noModsFolder", name),
+				InstalledModsStatus.ScanFailed => _reason,
 				_ when Rows.Count == 0 => Loc.T("installed.noneYet", name),
 				_ when DisabledCount == 0 => Loc.T("installed.allOn", name, Rows.Count),
 				_ => Loc.T("installed.someOff", name, Rows.Count, DisabledCount),
@@ -137,6 +151,7 @@ public sealed class InstalledModsView
 	public string StatusLine => Status switch
 	{
 		InstalledModsStatus.NotInstalled => Announcement,
+		InstalledModsStatus.ScanFailed => Announcement,
 		InstalledModsStatus.NoModsFolder => Loc.T("installed.folderWouldBe", ModsFolder),
 		_ => Loc.T("installed.readFrom", Rows.Count, ModsFolder),
 	};

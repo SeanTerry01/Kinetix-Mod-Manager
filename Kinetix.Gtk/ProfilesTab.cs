@@ -12,7 +12,8 @@ namespace KinetixModManager.GtkHead;
 /// <para>
 /// The one thing it insists on is saying what a switch would <em>do</em> before doing it. Applying a profile
 /// moves mods in and out of a game the user is about to play, and a list that only says "Mage" and "Thief"
-/// asks them to remember which is which. The count comes first, then the confirmation.
+/// asks them to remember which is which. The count comes first, then the confirmation: the first press says what
+/// would change, and only a second press changes it, the same inline arm-and-confirm delete and restore use.
 /// </para>
 /// </summary>
 public sealed partial class MainWindow
@@ -23,6 +24,17 @@ public sealed partial class MainWindow
 	/// <summary>Profiles are per game, and kept beside the manager's own data rather than in the game folder.</summary>
 	private string ProfilesFolder =>
 		Path.Combine(AppSettings.AppDataFolder, "profiles", _game.Id);
+
+	/// <summary>The profile a second press would switch to, or null when nothing is armed.</summary>
+	private string? _armedForProfile;
+
+	private void CancelArmedProfile()
+	{
+		if (_armedForProfile == null) return;
+
+		_armedForProfile = null;
+		Say(Loc.T("gtk.profilesApplyCancelled"), interrupt: true);
+	}
 
 	private Gtk.Widget BuildProfilesTab()
 	{
@@ -53,30 +65,33 @@ public sealed partial class MainWindow
 		box.Append(_profileName);
 
 		_profiles.SetVexpand(true);
+		// Moving off a row calls off an armed switch: the profile being confirmed is no longer the one under the cursor.
+		_profiles.OnRowSelected += (_, _) => CancelArmedProfile();
 
 		var scroller = Gtk.ScrolledWindow.New();
 		scroller.SetChild(_profiles);
 		scroller.SetVexpand(true);
 		box.Append(scroller);
 
-		LoadProfiles();
+		// Not filled here. It needs the scan, and this runs before there has been one, which marked every profile as the
+		// current setup. LoadInstalled fills it.
 		return box;
 	}
 
 	private readonly Gtk.Entry _profileName = Gtk.Entry.New();
 
-	private void LoadProfiles()
+	private void LoadProfiles(bool setStatus = true)
 	{
 		List<ModProfile> saved = ProfileStore.LoadAll(
 			ProfilesFolder,
 			(where, ex) => DiagnosticLog.WriteException("Profiles", where, ex));
 
-		_profilesView = ProfilesView.Of(saved, InstalledAsMods());
+		_profilesView = ProfilesView.Of(saved, _scanned);
 
-		while (_profiles.GetFirstChild() is { } child) _profiles.Remove(child);
+		ClearRows(_profiles);
 		foreach (ProfileRow row in _profilesView.Rows) _profiles.Append(RowLabel(row.Spoken));
 
-		SetStatus(_profilesView.Announcement);
+		if (setStatus) SetStatus(_profilesView.Announcement);
 	}
 
 	/// <summary>
@@ -102,28 +117,56 @@ public sealed partial class MainWindow
 		int i = _profiles.GetSelectedRow()?.GetIndex() ?? -1;
 		if (i < 0 || i >= _profilesView.Profiles.Count) { Say(Loc.T("gtk.profilesNoneSelected"), interrupt: true); return; }
 
+		if (RefusedWhileChanging()) return;
+
 		ModProfile profile = _profilesView.Profiles[i];
-		List<GameMod> installed = InstalledAsMods();
+
+		List<GameMod> installed;
+		try { installed = InstalledAsMods(); }
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Profiles", "reading the mods folder", ex);
+			_armedForProfile = null;
+			_sound.Play("error");
+			Say(Loc.T("gtk.scanFailed", ex.Message), interrupt: true);
+			return;
+		}
 
 		IReadOnlyList<ProfileStore.StateChange> changes = ProfileStore.Changes(profile, installed);
 
+		if (changes.Count == 0)
+		{
+			_armedForProfile = null;
+			Say(ProfilesView.DescribeApplying(profile, installed), interrupt: true);
+			return;
+		}
+
 		// Said before anything moves, and said as a count rather than as a list — the user is choosing
-		// whether to go ahead, not auditing it.
-		Say(ProfilesView.DescribeApplying(profile, installed), interrupt: true);
-		if (changes.Count == 0) return;
+		// whether to go ahead, not auditing it. It has to stop here for that to be a choice: going straight on, the result
+		// below interrupted this in the same tick and it was never heard.
+		if (!string.Equals(_armedForProfile, profile.Name, StringComparison.Ordinal))
+		{
+			_armedForProfile = profile.Name;
+			Say(ProfilesView.DescribeApplying(profile, installed) + " " + Loc.T("gtk.profilesApplyArm"), interrupt: true);
+			return;
+		}
+
+		_armedForProfile = null;
 
 		int done = 0;
 		foreach (ProfileStore.StateChange change in changes)
 		{
 			try
 			{
-				// Each game's own rule, from the core — a leading dot for Stardew, a suffix for Minecraft.
-				string target = ModEnableState.TargetPath(change.Mod.FolderPath, change.Enable, _game.Id);
-				if (!string.Equals(target, change.Mod.FolderPath, StringComparison.Ordinal))
+				// Renaming this one would rename the mods folder, and every mod would go with it.
+				if (ModOnDisk.IsTheModsFolderItself(change.Mod.FolderPath, _modsFolder))
 				{
-					if (Directory.Exists(change.Mod.FolderPath)) Directory.Move(change.Mod.FolderPath, target);
-					else File.Move(change.Mod.FolderPath, target);
+					DiagnosticLog.Write("Profiles", $"not switching {change.Mod.Name}: its folder is the mods folder itself");
+					continue;
 				}
+
+				// Each game's own rule, from the core — a leading dot for Stardew, a suffix for Minecraft.
+				ModOnDisk.SetEnabled(change.Mod.FolderPath, change.Enable, _game.Id, (where, what) => DiagnosticLog.Write(where, what));
 				done++;
 			}
 			catch (Exception ex)
@@ -140,6 +183,7 @@ public sealed partial class MainWindow
 		Say(done == changes.Count
 			? Loc.T("gtk.profilesApplied", profile.Name, done)
 			: Loc.T("gtk.profilesAppliedPartly", profile.Name, done, changes.Count - done), interrupt: true);
+		SayIfListFailed();
 	}
 
 	private void SaveCurrentAsProfile()

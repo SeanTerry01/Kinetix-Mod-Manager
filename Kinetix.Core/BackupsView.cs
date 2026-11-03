@@ -78,7 +78,8 @@ public sealed class BackupsView
 				DiagnosticLog.WriteException("Backup", $"measuring {item.FullPath}", ex);
 			}
 
-			rows.Add(new BackupRow(item.FullPath, BackupStore.ModNameFromFileName(item.FullPath), taken, bytes));
+			// The mod's own name, without the marker a backup taken before a delete carries. It is a name people hear.
+			rows.Add(new BackupRow(item.FullPath, BackupRestore.ModNameOf(item.FullPath), taken, bytes));
 		}
 
 		return new BackupsView(rows.OrderByDescending(r => r.TakenAt).ToList());

@@ -60,6 +60,78 @@ public static class BackupRestore
 		return (Path.Combine(modsPath, safe.Length > 0 ? safe : "Restored Mod"), null);
 	}
 
+	/// <summary>
+	/// Puts a backup back in place of the mod it came from, as the only thing that touches the mods folder. Throws if it
+	/// cannot be done, with what was there left as it was.
+	///
+	/// <para>
+	/// ⚠️ Never unpacked straight into the mods folder. A backup of a folder has no top folder of its own, so its files
+	/// landed loose among all the other mods with the broken one still in place, and on Stardew a <c>manifest.json</c>
+	/// sitting there is listed as a mod whose folder is the whole of Mods. On Minecraft the jar landed beside the other
+	/// version of itself, which Fabric refuses to start with. It reported success in both cases.
+	/// </para>
+	///
+	/// <para>
+	/// The copy being replaced is backed up first, so a restore can itself be undone. Backups are not pruned here, because
+	/// the limit could remove the very one being restored.
+	/// </para>
+	/// </summary>
+	/// <param name="backupFile">The backup's file.</param>
+	/// <param name="modsFolder">The game's mods folder.</param>
+	/// <param name="backupsFolder">Where the replaced copy is kept.</param>
+	/// <param name="installed">The mods on disk now.</param>
+	/// <param name="game">The game it is for.</param>
+	/// <param name="logError">Told about leftovers that could not be cleared up. The restore still worked.</param>
+	/// <returns>Whether a copy was replaced, so the caller says only what happened.</returns>
+	public static bool Restore(string backupFile, string modsFolder, string backupsFolder,
+		IEnumerable<GameMod> installed, GameProfile? game, Action<string, string> logError)
+	{
+		string name = ModNameOf(backupFile);
+		string tempRoot = ModArchive.TempRootFor(modsFolder);
+		string extracted = Path.Combine(tempRoot, "Extract_" + Path.GetRandomFileName());
+
+		try
+		{
+			ModArchive.Extract(backupFile, extracted);
+			// Only what was unpacked. Walking the whole mods folder failed a good restore over any link already in there.
+			ModArchive.GuardAgainstEscapedEntries(extracted);
+
+			if (!Directory.EnumerateFileSystemEntries(extracted).Any())
+				throw new InvalidDataException(Loc.T("gtk.backupEmpty", name));
+
+			if (game?.IsMinecraft == true)
+			{
+				string[] jars = Directory.GetFiles(extracted);
+				if (jars.Length != 1) throw new InvalidDataException(Loc.T("gtk.backupNotOneJar", name));
+
+				int replaced = ModInstaller.BackUpCopiesBeingReplaced(jars[0], modsFolder, backupsFolder, maxBackupsPerMod: 0);
+
+				ModInstaller.InstallResult result = ModInstaller.InstallFile(jars[0], modsFolder);
+				if (result.CouldNotRemove.Count > 0)
+					throw new IOException(Loc.T("mc.install.oldCopyStuck", string.Join(", ", result.CouldNotRemove)));
+
+				return replaced > 0;
+			}
+
+			// A mod listed with the mods folder as its own folder is not somewhere to put anything: replacing it replaces
+			// every mod. See ModOnDisk.IsTheModsFolderItself.
+			(string destination, _) = Plan(extracted, backupFile,
+				installed.Where(m => !ModOnDisk.IsTheModsFolderItself(m.FolderPath, modsFolder)), modsFolder,
+				useRecordedFolderName: game?.IsBepInEx != true);
+
+			bool keptTheOldCopy = Directory.Exists(destination);
+			if (keptTheOldCopy) BackupStore.CreateBackup(destination, name, backupsFolder);
+
+			ModFolderSwap.Replace(extracted, destination, new[] { destination }, tempRoot, logError);
+			return keptTheOldCopy;
+		}
+		finally
+		{
+			try { ModOnDisk.DeleteDirectory(extracted); }
+			catch (Exception ex) { DiagnosticLog.WriteException("Backup", $"clearing the temporary folder {extracted}", ex); }
+		}
+	}
+
 	private static bool Same(string? a, string? b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
 	private static string ReadId(string manifestPath)

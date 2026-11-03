@@ -55,7 +55,7 @@ public sealed partial class MainWindow
 	{
 		_backupsView = BackupsView.Of(BackupStore.List(BackupsFolder));
 
-		while (_backups.GetFirstChild() is { } child) _backups.Remove(child);
+		ClearRows(_backups);
 		foreach (BackupRow row in _backupsView.Rows) _backups.Append(RowLabel(row.Spoken));
 
 		SetStatus(_backupsView.Announcement);
@@ -77,6 +77,8 @@ public sealed partial class MainWindow
 	{
 		int i = _backups.GetSelectedRow()?.GetIndex() ?? -1;
 		if (i < 0 || i >= _backupsView.Rows.Count) { Say(Loc.T("gtk.backupsNoneSelected"), interrupt: true); return; }
+
+		if (RefusedWhileChanging()) return;
 
 		BackupRow row = _backupsView.Rows[i];
 
@@ -104,25 +106,34 @@ public sealed partial class MainWindow
 		string mods = ModsFolderFor(_game);
 		if (string.IsNullOrEmpty(mods)) { Say(Loc.T("gtk.noModsFolder"), interrupt: true); return; }
 
+		using IDisposable busy = _modOperations.Begin();
+
 		SetStatus(Loc.T("gtk.backupsRestoring", row.ModName));
 		Say(Loc.T("gtk.backupsRestoring", row.ModName));
 
+		GameProfile game = _game;
+		string backups = BackupsFolder;
+
 		try
 		{
-			// The same unpacker every install uses, so a backup made on Windows restores here and the
-			// escape guard applies to it too — a zip is a zip, whoever wrote it.
-			await Task.Run(() =>
-			{
-				ModArchive.Extract(row.Path, mods);
-				ModArchive.GuardAgainstEscapedEntries(mods);
-			});
+			// The whole job is the core's: unpacking somewhere safe, backing up what is there, and swapping it over, so
+			// that a failure at any point leaves the mods folder as it was.
+			List<GameMod> installed = InstalledAsMods();
+			bool replacedACopy = await Task.Run(() => BackupRestore.Restore(
+				row.Path, mods, backups, installed, game, (where, what) => DiagnosticLog.Write(where, what)));
 
 			_ui.Post(() =>
 			{
+				LoadBackups(announce: false);
 				LoadInstalled();
 				_sound.Play("load_complete");
 				SetStatus(Loc.T("gtk.backupsRestored", row.ModName));
-				Say(Loc.T("gtk.backupsRestored", row.ModName), interrupt: true);
+
+				// Restoring a mod that was deleted is the usual case, and then nothing was replaced to point anybody at.
+				string said = Loc.T(replacedACopy ? "backups.restored" : "backups.restoredNew", row.ModName);
+				if (game.IsWitcher3) said += " " + Loc.T("backups.restoredWitcherNote");
+				Say(said, interrupt: true);
+				SayIfListFailed();
 			});
 		}
 		catch (Exception ex)
@@ -142,6 +153,9 @@ public sealed partial class MainWindow
 	{
 		int i = _backups.GetSelectedRow()?.GetIndex() ?? -1;
 		if (i < 0 || i >= _backupsView.Rows.Count) { Say(Loc.T("gtk.backupsNoneSelected"), interrupt: true); return; }
+
+		// The backup a running restore is reading, or one being written, would go out from under it.
+		if (RefusedWhileChanging()) return;
 
 		BackupRow row = _backupsView.Rows[i];
 

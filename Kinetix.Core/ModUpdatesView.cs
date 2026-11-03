@@ -37,14 +37,21 @@ public sealed record ModUpdateRow(string Path, string Name, string Installed, st
 /// </summary>
 public sealed class ModUpdatesView
 {
+	private readonly bool _toldToSlowDown;
+	private readonly int _notLinked;
+
 	private ModUpdatesView(
-		ModUpdatesStatus status, GameProfile? game, IReadOnlyList<ModUpdateRow> rows, int checkedCount, string reason)
+		ModUpdatesStatus status, GameProfile? game, IReadOnlyList<ModUpdateRow> rows, int checkedCount, string reason,
+		int unanswered = 0, bool toldToSlowDown = false, int notLinked = 0)
 	{
 		Status = status;
 		Game = game;
 		Rows = rows;
 		CheckedCount = checkedCount;
 		Reason = reason;
+		Unanswered = unanswered;
+		_toldToSlowDown = toldToSlowDown;
+		_notLinked = notLinked;
 	}
 
 	public ModUpdatesStatus Status { get; }
@@ -53,8 +60,14 @@ public sealed class ModUpdatesView
 
 	public IReadOnlyList<ModUpdateRow> Rows { get; }
 
-	/// <summary>How many mods were actually asked about, which is not always how many are installed.</summary>
+	/// <summary>How many mods got an answer, which is not always how many are installed.</summary>
 	public int CheckedCount { get; }
+
+	/// <summary>How many mods were asked about and got no answer, or could not be asked about.</summary>
+	public int Unanswered { get; }
+
+	/// <summary>Every mod asked about got an answer, so this is a finished check. The only result worth the completed cue.</summary>
+	public bool IsComplete => Status == ModUpdatesStatus.Checked && Unanswered == 0;
 
 	/// <summary>Why nothing could be checked, when that is the answer. Empty otherwise.</summary>
 	public string Reason { get; }
@@ -68,9 +81,20 @@ public sealed class ModUpdatesView
 	///
 	/// A mod the catalogue said nothing about is not an update and not a failure — it is simply a mod that
 	/// catalogue does not carry, which is ordinary for a hand-built mod or one from another site.
+	///
+	/// ⚠️ A catalogue that did not answer is different, and is counted in <paramref name="unanswered"/>. Otherwise an outage
+	/// or a used-up allowance comes out as an empty list, which was announced as everything being up to date with the
+	/// completed cue, by a check that had learned nothing.
 	/// </summary>
+	/// <param name="game">The game the check was for.</param>
+	/// <param name="installed">The mods asked about. Leave out any that could not be asked about at all, and pass those in <paramref name="notLinked"/>.</param>
+	/// <param name="latestByPath">The answers, by each mod's path.</param>
+	/// <param name="unanswered">How many of <paramref name="installed"/> got no answer.</param>
+	/// <param name="toldToSlowDown">Whether the site asked the manager to slow down, which changes what the user should do about it.</param>
+	/// <param name="notLinked">How many other mods have no link to any catalogue, so were not asked about.</param>
 	public static ModUpdatesView Of(
-		GameProfile? game, IEnumerable<GameMod> installed, IReadOnlyDictionary<string, string> latestByPath)
+		GameProfile? game, IEnumerable<GameMod> installed, IReadOnlyDictionary<string, string> latestByPath,
+		int unanswered = 0, bool toldToSlowDown = false, int notLinked = 0)
 	{
 		var rows = new List<ModUpdateRow>();
 		int asked = 0;
@@ -88,7 +112,12 @@ public sealed class ModUpdatesView
 			rows.Add(new ModUpdateRow(mod.FolderPath, mod.Name, mod.Version, latest));
 		}
 
-		return new ModUpdatesView(ModUpdatesStatus.Checked, game, rows, asked, "");
+		// Not one answer is not a check at all.
+		if (asked > 0 && unanswered >= asked)
+			return new ModUpdatesView(ModUpdatesStatus.CannotCheck, game, Array.Empty<ModUpdateRow>(), 0,
+				Loc.T(toldToSlowDown ? "gtk.updatesToldToSlowDown" : "gtk.updatesNoAnswer"), unanswered);
+
+		return new ModUpdatesView(ModUpdatesStatus.Checked, game, rows, asked - unanswered, "", unanswered, toldToSlowDown, notLinked);
 	}
 
 	/// <summary>
@@ -101,13 +130,20 @@ public sealed class ModUpdatesView
 	{
 		get
 		{
-			string name = Game?.DisplayName ?? "";
-
 			if (Status == ModUpdatesStatus.CannotCheck) return Reason;
 
-			return Rows.Count == 0
-				? Loc.T("updatesview.upToDate", name, CheckedCount)
-				: Loc.T("updatesview.available", name, Rows.Count);
+			string name = Game?.DisplayName ?? "";
+
+			string said =
+				Rows.Count > 0 ? Loc.T("updatesview.available", name, Rows.Count) :
+				Unanswered > 0 ? Loc.T("updates.checkFoundNoneSoFar") :
+				_notLinked > 0 ? Loc.T("gtk.updatesLinkedUpToDate", name, CheckedCount) :
+				Loc.T("updatesview.upToDate", name, CheckedCount);
+
+			if (Unanswered > 0) said += " " + Loc.T(_toldToSlowDown ? "updates.toldToSlowDown" : "updates.someUnanswered");
+			if (_notLinked > 0) said += " " + Loc.T("gtk.updatesNotLinked", _notLinked);
+
+			return said;
 		}
 	}
 }

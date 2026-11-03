@@ -75,6 +75,10 @@ public sealed partial class MainWindow
 		SetStatus(Loc.T("gtk.updatesChecking"));
 		Say(Loc.T("gtk.updatesChecking"));
 
+		// A check is not an operation that holds the game in place, so the user may switch while it runs. Its answer is
+		// about this game, and is dropped if that is no longer the one on screen.
+		GameProfile game = _game;
+
 		try
 		{
 			List<GameMod> installed = _view.Rows
@@ -83,6 +87,7 @@ public sealed partial class MainWindow
 
 			// Hashing is disk work and there may be a hundred of them, so it happens off the interface's
 			// thread along with the request.
+			int unreadable = 0;
 			var byHash = await Task.Run(() =>
 			{
 				var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -91,41 +96,57 @@ public sealed partial class MainWindow
 					try { hashes[ModrinthService.Sha1Of(mod.FolderPath)] = mod.FolderPath; }
 					catch (Exception ex)
 					{
-						// A file that cannot be read is not an update and not a reason to abandon the check.
+						// A file that cannot be read is not an update and not a reason to abandon the check. It has
+						// not been checked either, and is counted so that nothing claims it was.
 						DiagnosticLog.WriteException("Updates", $"hashing {mod.FolderPath}", ex);
+						unreadable++;
 					}
 				}
 				return hashes;
 			});
 
-			Dictionary<string, ModrinthFile> latest =
-				await ModrinthService.GetLatestForHashesAsync(byHash.Keys.ToList(), version);
+			// Null is Modrinth not answering. Empty is Modrinth not hosting any of these, which is a real answer. The call
+			// that hides the difference reported a Modrinth outage as everything being up to date.
+			Dictionary<string, ModrinthFile>? latest =
+				await ModrinthService.GetLatestForHashesOrNullAsync(byHash.Keys.ToList(), version);
+
+			if (_game.Id != game.Id) return;
+
+			if (latest == null)
+			{
+				_updatesView = ModUpdatesView.Of(game, installed, new Dictionary<string, string>(), unanswered: installed.Count);
+				_ui.Post(ShowUpdates);
+				return;
+			}
 
 			var latestByPath = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 			foreach (var (hash, file) in latest)
 				if (byHash.TryGetValue(hash, out string? path)) latestByPath[path] = file.VersionNumber;
 
-			_updatesView = ModUpdatesView.Of(_game, installed, latestByPath);
+			_updatesView = ModUpdatesView.Of(game, installed, latestByPath, unanswered: unreadable);
 			_ui.Post(ShowUpdates);
 		}
 		catch (Exception ex)
 		{
 			DiagnosticLog.WriteException("Updates", "checking for updates", ex);
-			_updatesView = ModUpdatesView.CannotCheck(_game, Loc.T("gtk.updatesFailed", ex.Message));
+			if (_game.Id != game.Id) return;
+
+			_updatesView = ModUpdatesView.CannotCheck(game, Loc.T("gtk.updatesFailed", ex.Message));
 			_ui.Post(() => { _sound.Play("error"); ShowUpdates(); });
 		}
 	}
 
 	private void ShowUpdates()
 	{
-		while (_updates.GetFirstChild() is { } child) _updates.Remove(child);
+		ClearRows(_updates);
 		foreach (ModUpdateRow row in _updatesView.Rows) _updates.Append(RowLabel(row.Spoken));
 
 		SetStatus(_updatesView.Announcement);
 
 		// The cue only for good news. An empty list because nothing could be checked is not a completed
-		// operation, and sounding as though it were would be the wrong fact.
-		if (_updatesView.Status == ModUpdatesStatus.Checked) _sound.Play("load_complete");
+		// operation, and sounding as though it were would be the wrong fact. Nor is a check some of which went unanswered.
+		if (_updatesView.IsComplete) _sound.Play("load_complete");
+		else if (_updatesView.Unanswered > 0) _sound.Play("error");
 
 		Say(_updatesView.Announcement, interrupt: true);
 	}
@@ -142,12 +163,28 @@ public sealed partial class MainWindow
 		int i = _updates.GetSelectedRow()?.GetIndex() ?? -1;
 		if (i < 0 || i >= _updatesView.Rows.Count) { Say(Loc.T("gtk.noModSelected"), interrupt: true); return; }
 
+		if (RefusedWhileChanging()) return;
+
 		ModUpdateRow row = _updatesView.Rows[i];
+
+		// Only a jar from Modrinth can be fetched here. A Nexus row is a folder, which cannot be hashed, and the failure
+		// that gave was heard as the update check having failed, with the path read out.
+		if (!_game.IsMinecraft)
+		{
+			Say(Loc.T("gtk.updatesNotFromHere", row.Name), interrupt: true);
+			return;
+		}
+
 		string mods = ModsFolderFor(_game);
 		if (string.IsNullOrEmpty(mods)) { Say(Loc.T("gtk.noModsFolder"), interrupt: true); return; }
 
+		using IDisposable busy = _modOperations.Begin();
+
 		SetStatus(Loc.T("gtk.updatesInstalling", row.Name));
 		Say(Loc.T("gtk.updatesInstalling", row.Name));
+
+		string backups = BackupsFolder;
+		int keep = _settings.MaxBackupsPerMod;
 
 		try
 		{
@@ -155,8 +192,20 @@ public sealed partial class MainWindow
 			// in between — and installing the build that matched a hash the mod no longer has is how a
 			// "successful" update leaves the old version in place.
 			string hash = await Task.Run(() => ModrinthService.Sha1Of(row.Path));
-			Dictionary<string, ModrinthFile> latest =
-				await ModrinthService.GetLatestForHashesAsync(new[] { hash }, GameVersionInUse());
+			Dictionary<string, ModrinthFile>? latest =
+				await ModrinthService.GetLatestForHashesOrNullAsync(new[] { hash }, GameVersionInUse());
+
+			if (latest == null)
+			{
+				// Not "no longer has an update waiting", which is a claim about the mod that nothing has learned.
+				_ui.Post(() =>
+				{
+					_sound.Play("error");
+					SetStatus(Loc.T("gtk.updatesNoAnswerForOne", row.Name));
+					Say(Loc.T("gtk.updatesNoAnswerForOne", row.Name), interrupt: true);
+				});
+				return;
+			}
 
 			if (!latest.TryGetValue(hash, out ModrinthFile? file))
 			{
@@ -164,17 +213,38 @@ public sealed partial class MainWindow
 				return;
 			}
 
-			string downloads = Path.Combine(AppSettings.AppDataFolder, "downloads");
+			string downloads = UpdateDownloadsFolder;
 			Directory.CreateDirectory(downloads);
 			string downloaded = await ModrinthService.DownloadAsync(file, downloads);
-			ModInstaller.InstallResult result = ModInstaller.InstallFile(downloaded, mods);
+
+			// The copy being replaced is kept first, and a failed backup throws and stops the update. Otherwise a bad
+			// update could not be undone from this head.
+			ModInstaller.InstallResult result = await Task.Run(() =>
+			{
+				ModInstaller.BackUpCopiesBeingReplaced(downloaded, mods, backups, keep);
+				return ModInstaller.InstallFile(downloaded, mods);
+			});
 
 			_ui.Post(() =>
 			{
 				LoadInstalled();
+				LoadBackups(announce: false);
+
+				// Not "updated": the new copy was taken back out, because Fabric will not start with two.
+				if (result.CouldNotRemove.Count > 0)
+				{
+					string stuck = Loc.T("mc.install.oldCopyStuck", string.Join(", ", result.CouldNotRemove));
+					_sound.Play("error");
+					SetStatus(stuck);
+					Say(stuck, interrupt: true);
+					SayIfListFailed();
+					return;
+				}
+
 				_sound.Play("load_complete");
 				SetStatus(Loc.T("gtk.updatesInstalled", row.Name, file.VersionNumber));
 				Say(Loc.T("gtk.updatesInstalled", row.Name, file.VersionNumber), interrupt: true);
+				SayIfListFailed();
 
 				// The row is gone now, so the list is rebuilt rather than left showing an update that has
 				// just been taken.
@@ -187,8 +257,8 @@ public sealed partial class MainWindow
 			_ui.Post(() =>
 			{
 				_sound.Play("error");
-				SetStatus(Loc.T("gtk.updatesFailed", ex.Message));
-				Say(Loc.T("gtk.updatesFailed", ex.Message), interrupt: true);
+				SetStatus(Loc.T("gtk.updateInstallFailed", row.Name, ex.Message));
+				Say(Loc.T("gtk.updateInstallFailed", row.Name, ex.Message), interrupt: true);
 			});
 		}
 	}
@@ -212,29 +282,56 @@ public sealed partial class MainWindow
 		SetStatus(Loc.T("gtk.updatesChecking"));
 		Say(Loc.T("gtk.updatesChecking"));
 
+		// Read now, while this is the game the check is for. Asked later, the rest of the list would go to the new
+		// game's page after a switch, with this game's mod ids.
+		GameProfile game = _game;
+		string domain = _nexus.CurrentGameDomain;
+
 		try
 		{
 			List<GameMod> installed = InstalledAsMods();
-			var latestByPath = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-			foreach (GameMod mod in installed)
+			// Only a mod with an id can be asked about. Counting the rest as checked said "40 mods were checked" of a
+			// folder where three had been.
+			List<GameMod> linked = installed.Where(m => !string.IsNullOrEmpty(m.NexusID)).ToList();
+
+			if (installed.Count > 0 && linked.Count == 0)
 			{
-				if (string.IsNullOrEmpty(mod.NexusID)) continue;
+				_updatesView = ModUpdatesView.CannotCheck(game, Loc.T("gtk.updatesNoneLinked"));
+				_ui.Post(ShowUpdates);
+				return;
+			}
 
+			var latestByPath = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+			int unanswered = 0;
+
+			foreach (GameMod mod in linked)
+			{
 				// One at a time, and that is what NexusService's own rate limiting expects — it holds a
 				// semaphore across these calls precisely so a folder of two hundred mods does not spend the
 				// user's hourly quota in one go.
-				string? latest = await _nexus.GetLatestVersionAsync(mod.NexusID!);
-				if (!string.IsNullOrWhiteSpace(latest)) latestByPath[mod.FolderPath] = latest!;
+				string? latest = await _nexus.GetLatestVersionAsync(mod.NexusID!, domain);
+
+				// The user has moved to another game. The rest of this list is no use to them, and costs requests.
+				if (_game.Id != game.Id) return;
+
+				// Null is an outage, a rate limit or a refused key, not a mod with nothing newer. Anything else
+				// reports a check that learned nothing as everything being up to date.
+				if (string.IsNullOrWhiteSpace(latest)) unanswered++;
+				else latestByPath[mod.FolderPath] = latest!;
 			}
 
-			_updatesView = ModUpdatesView.Of(_game, installed, latestByPath);
+			_updatesView = ModUpdatesView.Of(game, linked, latestByPath, unanswered,
+				toldToSlowDown: _nexus.Pause.IsActive(DateTime.UtcNow),
+				notLinked: installed.Count - linked.Count);
 			_ui.Post(ShowUpdates);
 		}
 		catch (Exception ex)
 		{
 			DiagnosticLog.WriteException("Updates", "asking Nexus for updates", ex);
-			_updatesView = ModUpdatesView.CannotCheck(_game, Loc.T("gtk.updatesFailed", ex.Message));
+			if (_game.Id != game.Id) return;
+
+			_updatesView = ModUpdatesView.CannotCheck(game, Loc.T("gtk.updatesFailed", ex.Message));
 			_ui.Post(() => { _sound.Play("error"); ShowUpdates(); });
 		}
 	}

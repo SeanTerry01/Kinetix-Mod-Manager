@@ -71,6 +71,58 @@ public static class ModOnDisk
 		}
 	}
 
+	/// <summary>
+	/// Switches a mod on or off on disk, whichever shape it has, and returns where it now is.
+	///
+	/// ⚠️ A mod is a folder on most games and one jar on Minecraft, and <see cref="File.Move(string, string)"/> throws on a
+	/// folder, so moving by one shape only fails on every mod of the other. The destination's folder may not exist yet:
+	/// BepInEx's <c>plugins-disabled</c> does not until the first mod is switched off.
+	/// </summary>
+	public static string SetEnabled(string modPath, bool enable, string gameId, Action<string, string> logError)
+	{
+		string target = ModEnableState.TargetPath(modPath, enable, gameId);
+		bool moving = !string.Equals(target, modPath, StringComparison.Ordinal);
+
+		// Before the folder moves, while the record of these files is still at this path.
+		Witcher3ModFiles.SetExtrasEnabled(modPath, enable, gameId, logError);
+
+		if (moving)
+		{
+			try
+			{
+				string? parent = Path.GetDirectoryName(target);
+				if (!string.IsNullOrEmpty(parent)) Directory.CreateDirectory(parent);
+
+				if (Directory.Exists(modPath)) MoveDirectory(modPath, target);
+				else File.Move(modPath, target);
+			}
+			catch
+			{
+				// The folder is staying as it was, so its outside files have to as well, or it reads as on with its parts away.
+				Witcher3ModFiles.SetExtrasEnabled(modPath, !enable, gameId, logError);
+				throw;
+			}
+		}
+
+		Witcher3ModFiles.SyncSettings(modPath, enable, gameId, logError);
+		return target;
+	}
+
+	/// <summary>
+	/// Whether a mod's path is the mods folder itself. Then its files are loose among all the others, as a restore that
+	/// unpacked straight into the mods folder once left them: Stardew's scan lists <c>Mods/manifest.json</c> as a mod whose
+	/// folder is the whole of Mods. Deleting, renaming or replacing that "mod" takes every other one with it.
+	/// </summary>
+	public static bool IsTheModsFolderItself(string modPath, string modsFolder)
+	{
+		if (string.IsNullOrEmpty(modPath) || string.IsNullOrEmpty(modsFolder)) return false;
+
+		return string.Equals(
+			Path.GetFullPath(modPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+			Path.GetFullPath(modsFolder).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+			StringComparison.OrdinalIgnoreCase);
+	}
+
 	/// <summary>Clears the read-only flag on a folder and everything under it. A failure is logged: the delete that follows reports it.</summary>
 	private static void ClearReadOnly(string path)
 	{

@@ -118,20 +118,67 @@ public static class ModInstaller
 	}
 
 	/// <summary>
-	/// Downloads the newest build of a Modrinth project for a Minecraft version and installs it.
+	/// Backs up every copy <paramref name="newJar"/> would replace, and says how many there were. Throws if one cannot be
+	/// backed up, which is meant to stop the install: a jar that goes with no copy kept cannot be got back from inside the
+	/// manager, and a bad update then has no way out.
+	/// </summary>
+	/// <param name="newJar">The jar about to be installed.</param>
+	/// <param name="modsFolder">Where it is going.</param>
+	/// <param name="backupsFolder">Where the copies go.</param>
+	/// <param name="maxBackupsPerMod">How many to keep per mod. Zero or less keeps them all, for a restore: the limit could remove the very backup being put back.</param>
+	public static int BackUpCopiesBeingReplaced(string newJar, string modsFolder, string backupsFolder, int maxBackupsPerMod)
+	{
+		string destination = Path.Combine(modsFolder, Path.GetFileName(newJar));
+		string modId = ReadIdOrEmpty(newJar);
+
+		var copies = new List<string>(ExistingCopies(modsFolder, destination, modId));
+
+		// Not among those, because ExistingCopies looks past the new file's own place. But the same file name means it is
+		// about to be written over.
+		if (File.Exists(destination) && !string.Equals(destination, newJar, StringComparison.OrdinalIgnoreCase))
+			copies.Add(destination);
+
+		foreach (string copy in copies)
+		{
+			FabricModInfo info = MinecraftLayout.ReadModInfo(copy);
+			string name = !string.IsNullOrEmpty(info.Name) ? info.Name : Path.GetFileNameWithoutExtension(copy);
+
+			BackupStore.CreateBackup(copy, name, backupsFolder);
+			if (maxBackupsPerMod > 0) BackupStore.PruneBackups(name, backupsFolder, maxBackupsPerMod);
+		}
+
+		return copies.Count;
+	}
+
+	private static string ReadIdOrEmpty(string jar)
+	{
+		try { return MinecraftLayout.ReadModInfo(jar).Id ?? ""; }
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Install", $"reading the id of {jar}", ex);
+			return "";
+		}
+	}
+
+	/// <summary>
+	/// Downloads the newest build of a Modrinth project for a Minecraft version and installs it, backing up what it
+	/// replaces when given somewhere to keep it.
 	///
 	/// Returns null when the project has no file for that version at all — which is a normal answer rather
 	/// than a failure, and one the user has to be told plainly: a mod built for another version installs
 	/// perfectly and then loads nothing.
 	/// </summary>
 	public static async Task<InstallResult?> InstallFromModrinthAsync(
-		string projectIdOrSlug, string gameVersion, string modsFolder, string downloadFolder)
+		string projectIdOrSlug, string gameVersion, string modsFolder, string downloadFolder,
+		string? backupsFolder = null, int maxBackupsPerMod = 0)
 	{
 		ModrinthFile? file = await ModrinthService.GetLatestFileAsync(projectIdOrSlug, gameVersion);
 		if (file == null) return null;
 
 		Directory.CreateDirectory(downloadFolder);
 		string downloaded = await ModrinthService.DownloadAsync(file, downloadFolder);
+
+		if (backupsFolder != null) BackUpCopiesBeingReplaced(downloaded, modsFolder, backupsFolder, maxBackupsPerMod);
 
 		return InstallFile(downloaded, modsFolder);
 	}

@@ -25,6 +25,15 @@ namespace KinetixModManager.GtkHead;
 /// </summary>
 public sealed partial class MainWindow
 {
+	// Held rather than local to the building of the tab, because this tab outlives a game switch and its fields are
+	// about one game. Filled once at startup and never again, Save wrote the text still in the box as the NEW game's mods
+	// folder, so saving a sound setting pointed one game at another's mods.
+	private readonly Gtk.Entry _settingsModsEntry = Gtk.Entry.New();
+	private readonly Gtk.Label _settingsDetected = Gtk.Label.New("");
+	private readonly Gtk.Box _settingsForThisGame = Gtk.Box.New(Gtk.Orientation.Vertical, 8);
+	private Gtk.DropDown? _settingsSource;
+	private IReadOnlyList<ModSourceInfo> _settingsSearchable = Array.Empty<ModSourceInfo>();
+
 	private Gtk.Widget BuildSettingsTab()
 	{
 		var box = Gtk.Box.New(Gtk.Orientation.Vertical, 8);
@@ -38,18 +47,15 @@ public sealed partial class MainWindow
 		modsLabel.SetXalign(0);
 		box.Append(modsLabel);
 
-		var modsEntry = Gtk.Entry.New();
-		modsEntry.SetText(_settings.GameModsPaths.TryGetValue(_game.Id, out string? saved) ? saved : "");
 		// Said on the control itself rather than only in the label, because the placeholder is the thing that
 		// answers "what happens if I leave this empty" and a label above cannot.
-		modsEntry.SetPlaceholderText(Loc.T("gtk.settingsModsFolderHint"));
-		modsLabel.SetMnemonicWidget(modsEntry);
-		box.Append(modsEntry);
+		_settingsModsEntry.SetPlaceholderText(Loc.T("gtk.settingsModsFolderHint"));
+		modsLabel.SetMnemonicWidget(_settingsModsEntry);
+		box.Append(_settingsModsEntry);
 
-		var detected = Gtk.Label.New(DescribeDetectedFolder());
-		detected.SetXalign(0);
-		detected.SetWrap(true);
-		box.Append(detected);
+		_settingsDetected.SetXalign(0);
+		_settingsDetected.SetWrap(true);
+		box.Append(_settingsDetected);
 
 		// --- sound ----------------------------------------------------------
 		var sounds = Gtk.CheckButton.NewWithMnemonic(Loc.T("gtk.settingsSounds"));
@@ -67,55 +73,46 @@ public sealed partial class MainWindow
 		volumeLabel.SetMnemonicWidget(volume);
 		box.Append(volume);
 
-		// --- where mods are searched for ------------------------------------
-		IReadOnlyList<ModSourceInfo> searchable = ModSources.SearchableFor(_game.Id);
+		// --- where mods are searched for, and the warning that matters most --
+		box.Append(_settingsForThisGame);
 
-		var sourceLabel = Gtk.Label.NewWithMnemonic(Loc.T("gtk.settingsSource"));
-		sourceLabel.SetXalign(0);
-		Gtk.DropDown? source = null;
-
-		if (searchable.Count > 1)
-		{
-			box.Append(sourceLabel);
-			source = Gtk.DropDown.NewFromStrings(searchable.Select(s => s.DisplayName).ToArray());
-
-			string preferred = _settings.PreferredModSourceFor(_game.Id);
-			int index = searchable.ToList().FindIndex(s => s.Id == preferred);
-			source.SetSelected((uint)Math.Max(0, index));
-			sourceLabel.SetMnemonicWidget(source);
-			box.Append(source);
-		}
-		else
-		{
-			// One catalogue is not a choice, and a dropdown holding one item suggests the user is missing
-			// something. The Windows head says the same thing in the same case.
-			box.Append(Wrapped(Loc.T("gtk.settingsOneSourceOnly", searchable.Count > 0 ? searchable[0].DisplayName : "", _game.DisplayName)));
-		}
-
-		// --- the warning that matters most ----------------------------------
-		if (!_game.AccessModSpeaksOnLinux)
-			box.Append(Wrapped(Loc.T("gtk.settingsWillNotSpeak", _game.DisplayName)));
+		FillSettingsForGame();
 
 		// --- save -----------------------------------------------------------
 		var save = Gtk.Button.NewWithLabel(Loc.T("gtk.settingsSave"));
 		save.OnClicked += (_, _) =>
 		{
-			string typed = modsEntry.GetText().Trim();
+			// Moving the mods folder under something working in it is how a mod ends up half in each.
+			if (RefusedWhileChanging()) return;
+
+			string typed = _settingsModsEntry.GetText().Trim();
 			if (typed.Length == 0) _settings.GameModsPaths.Remove(_game.Id);
 			else _settings.GameModsPaths[_game.Id] = typed;
 
 			_settings.EnableUiSounds = sounds.GetActive();
 			_settings.SoundVolume = (int)volume.GetValue();
 
-			if (source != null && searchable.Count > 1)
-				_settings.PreferredModSource[_game.Id] = searchable[(int)source.GetSelected()].Id;
+			if (_settingsSource != null && _settingsSearchable.Count > 1)
+				_settings.PreferredModSource[_game.Id] = _settingsSearchable[(int)_settingsSource.GetSelected()].Id;
 
+			// Save reports a failure through an event rather than by throwing, and the event has run by the time this returns.
+			_lastSaveFailure = null;
+			_savingFromSettingsTab = true;
 			_settings.Save();
+			_savingFromSettingsTab = false;
 
 			// Reloading is not tidiness: the mods folder may have just changed, and a Settings screen that
 			// saved a path without the list behind it agreeing would be telling the user two things.
 			LoadInstalled();
-			detected.SetText(DescribeDetectedFolder());
+			_settingsDetected.SetText(DescribeDetectedFolder());
+
+			if (_lastSaveFailure != null)
+			{
+				// They apply until the manager closes, but "saved" would be untrue, and is what they would rely on.
+				_sound.Play("error");
+				Say(Loc.T("settings.saveFailedSpeak", _lastSaveFailure.Message) + " " + _view.Announcement, interrupt: true);
+				return;
+			}
 
 			_sound.Play("load_complete");
 			Say(Loc.T("gtk.settingsSaved") + " " + _view.Announcement, interrupt: true);
@@ -126,6 +123,43 @@ public sealed partial class MainWindow
 		scroller.SetChild(box);
 		scroller.SetVexpand(true);
 		return scroller;
+	}
+
+	/// <summary>Puts the game in hand's values in everything on this tab that is about one game.</summary>
+	private void FillSettingsForGame()
+	{
+		_settingsModsEntry.SetText(_settings.GameModsPaths.TryGetValue(_game.Id, out string? saved) ? saved : "");
+		_settingsDetected.SetText(DescribeDetectedFolder());
+
+		while (_settingsForThisGame.GetFirstChild() is { } child) _settingsForThisGame.Remove(child);
+
+		_settingsSearchable = ModSources.SearchableFor(_game.Id);
+		_settingsSource = null;
+
+		if (_settingsSearchable.Count > 1)
+		{
+			var sourceLabel = Gtk.Label.NewWithMnemonic(Loc.T("gtk.settingsSource"));
+			sourceLabel.SetXalign(0);
+			_settingsForThisGame.Append(sourceLabel);
+
+			_settingsSource = Gtk.DropDown.NewFromStrings(_settingsSearchable.Select(s => s.DisplayName).ToArray());
+
+			string preferred = _settings.PreferredModSourceFor(_game.Id);
+			int index = _settingsSearchable.ToList().FindIndex(s => s.Id == preferred);
+			_settingsSource.SetSelected((uint)Math.Max(0, index));
+			sourceLabel.SetMnemonicWidget(_settingsSource);
+			_settingsForThisGame.Append(_settingsSource);
+		}
+		else
+		{
+			// One catalogue is not a choice, and a dropdown holding one item suggests the user is missing
+			// something. The Windows head says the same thing in the same case.
+			_settingsForThisGame.Append(Wrapped(Loc.T("gtk.settingsOneSourceOnly",
+				_settingsSearchable.Count > 0 ? _settingsSearchable[0].DisplayName : "", _game.DisplayName)));
+		}
+
+		if (!_game.AccessModSpeaksOnLinux)
+			_settingsForThisGame.Append(Wrapped(Loc.T("gtk.settingsWillNotSpeak", _game.DisplayName)));
 	}
 
 	/// <summary>What the locator found on its own, so the user can see whether they need to type anything.</summary>

@@ -23,10 +23,19 @@ public sealed class NexusModSource : IModSource
 	private readonly NexusService _nexus;
 	private readonly AppSettings _settings;
 
-	public NexusModSource(NexusService nexus, AppSettings settings)
+	private readonly bool _noteWhenNoAnswer;
+
+	/// <param name="nexus">The session's Nexus service.</param>
+	/// <param name="settings">The live settings.</param>
+	/// <param name="noteWhenNoAnswer">
+	/// Add a note saying so when Nexus did not answer, so an outage is not heard as no mods found. For a head that does not
+	/// read <see cref="NexusService.LastSearchFailed"/> itself. The Windows head does, and a note as well would say it twice.
+	/// </param>
+	public NexusModSource(NexusService nexus, AppSettings settings, bool noteWhenNoAnswer = false)
 	{
 		_nexus = nexus;
 		_settings = settings;
+		_noteWhenNoAnswer = noteWhenNoAnswer;
 	}
 
 	public ModSourceInfo Info { get; } = ModSources.Find(ModSources.Nexus)!;
@@ -47,6 +56,8 @@ public sealed class NexusModSource : IModSource
 		var (results, total) = await _nexus.SearchModsAsync(
 			query.SearchType, query.Term, query.Page, query.PageSize, query.Language, query.Category);
 
-		return new ModSearchResults(results, total);
+		return _noteWhenNoAnswer && _nexus.LastSearchFailed
+			? new ModSearchResults(results, total) { Notes = new[] { Loc.T("discovery.noAnswer") } }
+			: new ModSearchResults(results, total);
 	}
 }

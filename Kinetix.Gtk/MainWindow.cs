@@ -71,6 +71,8 @@ public sealed partial class MainWindow
 	/// underneath it shifted and F6 quietly started addressing the wrong controls.</summary>
 	private const int WikiTabIndex = 3;
 
+	private const int InstalledTabIndex = 1;
+
 	/// <summary>
 	/// The Minecraft version to search and install for: the one the user pinned, or the one Fabric is
 	/// actually installed for.
@@ -98,6 +100,30 @@ public sealed partial class MainWindow
 	private readonly AppSettings _settings;
 
 	/// <summary>
+	/// What is changing mods on disk right now. While one runs, switching game is refused and closing the window asks
+	/// first: these operations read the game's folder and Nexus page a step at a time, and nothing else may move those
+	/// underneath them. Each action below takes this for as long as it runs.
+	/// </summary>
+	private readonly OperationGate _modOperations = new();
+
+	/// <summary>Says so and returns true when mods are being changed, for an action that must not start in the middle of that.</summary>
+	private bool RefusedWhileChanging()
+	{
+		if (!_modOperations.IsBusy) return false;
+
+		Say(Loc.T("session.busy"), interrupt: true);
+		return true;
+	}
+
+	/// <summary>A close that asked first, so the next one goes ahead. Any other key calls it off.</summary>
+	private bool _closeArmed;
+
+	/// <summary>The most recent settings save that failed, read straight after a save by whoever wants to know.</summary>
+	private Exception? _lastSaveFailure;
+	private bool _saveFailureReported;
+	private bool _savingFromSettingsTab;
+
+	/// <summary>
 	/// Nexus, for the five games whose mods come from there. Built here rather than reached through a static
 	/// because it carries the user's key and their rate-limit counters — state that belongs to one session.
 	/// </summary>
@@ -117,7 +143,9 @@ public sealed partial class MainWindow
 		_nexus = new NexusService(_settings);
 		_modSources = new IModSource[]
 		{
-			new NexusModSource(_nexus, _settings),
+			// This head reads no failure flag of its own, so the source says when Nexus did not answer. Without that an
+			// outage was announced as "0 results", a statement about the catalogue that nothing had learned.
+			new NexusModSource(_nexus, _settings, noteWhenNoAnswer: true),
 			new ModrinthModSource(),
 			new CurseForgeModSource(() => _settings.ModSourceApiKey(ModSources.CurseForge)),
 		};
@@ -130,6 +158,12 @@ public sealed partial class MainWindow
 		_game = GameProfiles.Find(_settings.ActiveGame)
 			?? GameProfiles.All.FirstOrDefault(g => !string.IsNullOrEmpty(_locator.InstallFolder(g)))
 			?? GameProfiles.All[0];
+
+		// Written to settings too, not only held here. NexusService asks settings which game it is on, and with "None"
+		// there it falls back to Stardew: Search asked Stardew's catalogue, and update checks put Skyrim's mod ids on
+		// Stardew's pages and offered unrelated versions as updates. Not saved, because nobody has chosen this yet.
+		_settings.ActiveGame = _game.Id;
+		_settings.SaveFailed += OnSettingsSaveFailed;
 
 		_window = Gtk.ApplicationWindow.New(app);
 		// Announcements go to the user's screen reader, with speech-dispatcher only as the fallback for
@@ -150,17 +184,23 @@ public sealed partial class MainWindow
 		root.SetMarginStart(8); root.SetMarginEnd(8);
 
 		_tabs.SetVexpand(true);
-		_tabs.AppendPage(BuildGamesTab(), Gtk.Label.New(Loc.T("gtk.tabGames")));
-		_tabs.AppendPage(BuildInstalledTab(), Gtk.Label.New(Loc.T("gtk.tabInstalled")));
-		_tabs.AppendPage(BuildDiscoverTab(), Gtk.Label.New(Loc.T("gtk.tabFind")));
-		_tabs.AppendPage(BuildWikiTab(), Gtk.Label.New(Loc.T("gtk.tabWiki")));
-		_tabs.AppendPage(BuildUpdatesTab(), Gtk.Label.New(Loc.T("gtk.tabUpdates")));
-		_tabs.AppendPage(BuildProfilesTab(), Gtk.Label.New(Loc.T("gtk.tabProfiles")));
-		_tabs.AppendPage(BuildDependenciesTab(), Gtk.Label.New(Loc.T("gtk.tabDependencies")));
-		_tabs.AppendPage(BuildBackupsTab(), Gtk.Label.New(Loc.T("gtk.tabBackups")));
-		_tabs.AppendPage(BuildLogTab(), Gtk.Label.New(Loc.T("gtk.tabLog")));
-		_tabs.AppendPage(BuildCheckTab(), Gtk.Label.New(Loc.T("gtk.tabCheck")));
-		_tabs.AppendPage(BuildSettingsTab(), Gtk.Label.New(Loc.T("gtk.tabSettings")));
+		AddTab(BuildGamesTab(), Loc.T("gtk.tabGames"), _games);
+		AddTab(BuildInstalledTab(), Loc.T("gtk.tabInstalled"), _installed);
+		AddTab(BuildDiscoverTab(), Loc.T("gtk.tabFind"), _search, _results);
+
+		// Built first, because the web view that is this tab's stop only exists once it has been.
+		Gtk.Widget wikiTab = BuildWikiTab();
+		AddTab(wikiTab, Loc.T("gtk.tabWiki"), _web is null ? Array.Empty<Gtk.Widget>() : new Gtk.Widget[] { _web.Widget });
+
+		AddTab(BuildUpdatesTab(), Loc.T("gtk.tabUpdates"), _updates);
+		AddTab(BuildProfilesTab(), Loc.T("gtk.tabProfiles"), _profileName, _profiles);
+		AddTab(BuildDependenciesTab(), Loc.T("gtk.tabDependencies"), _dependencies);
+		AddTab(BuildBackupsTab(), Loc.T("gtk.tabBackups"), _backups);
+		AddTab(BuildLogTab(), Loc.T("gtk.tabLog"), _log);
+		AddTab(BuildCheckTab(), Loc.T("gtk.tabCheck"), _checkResult);
+		AddTab(BuildSettingsTab(), Loc.T("gtk.tabSettings"), _settingsModsEntry);
+		// A tab left behind takes its question with it: the armed row is no longer in front of the user.
+		_tabs.OnSwitchPage += (_, _) => CancelArmed();
 		root.Append(_tabs);
 
 		// A status line that is also spoken. On its own a label change is silent to a screen reader — Orca
@@ -171,12 +211,93 @@ public sealed partial class MainWindow
 		_window.SetChild(root);
 		AddKeyboardShortcuts();
 
+		// Closing used to end the process with no word, even half way through writing a backup that would then be listed
+		// as a good one. Asked inline, like every other second thought here. Returning true keeps the window.
+		_window.OnCloseRequest += (_, _) =>
+		{
+			if (!_modOperations.IsBusy || _closeArmed) return false;
+
+			_closeArmed = true;
+			Say(Loc.T("session.closeBusy") + " " + Loc.T("gtk.closeBusyArm"), interrupt: true);
+			return true;
+		};
+
 		LoadInstalled();
+		SweepLeftoversInBackground();
+	}
+
+	/// <summary>A tab, and the things F6 stops at on it after the tab strip. See <see cref="FocusStops"/>.</summary>
+	private void AddTab(Gtk.Widget page, string title, params Gtk.Widget[] stops)
+	{
+		_tabs.AppendPage(page, Gtk.Label.New(title));
+		_tabStops.Add(stops);
+	}
+
+	private readonly List<Gtk.Widget[]> _tabStops = new();
+
+	/// <summary>
+	/// Clears what a crash or a forced close left behind: part-finished downloads and unpacked folders nothing will ever
+	/// clean up. Only ones at least a day old, so nothing another run might still be using is touched.
+	/// </summary>
+	private void SweepLeftoversInBackground()
+	{
+		string[] tempRoots = GameProfiles.All
+			.Select(ModsFolderFor)
+			.Where(folder => !string.IsNullOrEmpty(folder) && Directory.Exists(folder))
+			.Select(ModArchive.TempRootFor)
+			.Distinct(StringComparer.Ordinal)
+			.ToArray();
+
+		_ = Task.Run(() =>
+		{
+			try
+			{
+				foreach (string root in tempRoots) ModArchive.SweepOldWorkFolders(root, TimeSpan.FromDays(1));
+				foreach (string downloads in new[] { UpdateDownloadsFolder, InstallDownloadsFolder })
+					ModArchive.SweepOldPartialDownloads(downloads, TimeSpan.FromDays(1));
+			}
+			catch (Exception ex) { DiagnosticLog.WriteException("Install", "clearing old leftovers", ex); }
+		});
+	}
+
+	private static string UpdateDownloadsFolder => Path.Combine(AppSettings.AppDataFolder, "downloads");
+
+	private static string InstallDownloadsFolder => Path.Combine(Path.GetTempPath(), "kinetix-downloads");
+
+	/// <summary>
+	/// Tells the user their settings cannot be written, since every change made afterwards would be lost at exit. Once a
+	/// run rather than per save, and not while the Settings tab is saving, because that says so itself.
+	/// </summary>
+	private void OnSettingsSaveFailed(Exception ex)
+	{
+		_lastSaveFailure = ex;
+		if (_saveFailureReported || _savingFromSettingsTab) return;
+
+		_saveFailureReported = true;
+		_ui.Post(() =>
+		{
+			_sound.Play("error");
+			Say(Loc.T("settings.saveFailedSpeak", ex.Message));
+		});
 	}
 
 	public void Present()
 	{
 		_window.Present();
+
+		// A damaged settings file costs keys and folders. Starting over in silence reads as losing everything for no reason.
+		string? settingsProblem = _settings.LoadProblem switch
+		{
+			SettingsLoadProblem.RestoredFromBackup => Loc.T("settings.loadRestored"),
+			SettingsLoadProblem.ResetToDefaults => Loc.T("settings.loadReset"),
+			_ => null
+		};
+		if (settingsProblem != null)
+		{
+			_sound.Play("error");
+			Say(settingsProblem);
+		}
+
 		// Said rather than shown. The window title is announced by Orca on focus, but the count of what was
 		// found is the thing the user actually opened the program to learn.
 		// The view's own sentence, which names the game and says what is actually true — the spike said
@@ -233,17 +354,56 @@ public sealed partial class MainWindow
 	/// <summary>Makes <paramref name="game"/> the active one and loads its mods.</summary>
 	private void SelectGame(GameProfile game)
 	{
+		if (RefusedWhileChanging()) return;
+
+		_armedForDelete = null;
+		_armedForRestore = null;
+		_armedForProfile = null;
+		_closeArmed = false;
+
 		_game = game;
-
-		// Remembered straight away rather than on exit: a manager that is closed by the window button, or by
-		// the session ending, should still open on the game you were using.
 		_settings.ActiveGame = game.Id;
-		_settings.Save();
 
+		// Every tab holds the old game's rows until told otherwise, and each acts on the current game's folders. So the
+		// old game's backup was unpacked into the new game, its update installed there, and Save on the Settings tab
+		// pointed the new game at the old game's mods folder. Status last, so what stays on the line is about the mods.
+		_installed.UnselectAll();
+		ForgetTheOtherGamesRows();
+		LoadBackups(announce: false);
+		FillSettingsForGame();
 		LoadInstalled();
-		_tabs.SetCurrentPage(1);
+
+		_tabs.SetCurrentPage(InstalledTabIndex);
 		_installed.GrabFocus();
 		Say(_view.Announcement, interrupt: true);
+
+		// Remembered straight away rather than on exit: a manager that is closed by the window button, or by
+		// the session ending, should still open on the game you were using. After the sentence above, which interrupts:
+		// a failure said before it would be cut off.
+		_settings.Save();
+	}
+
+	/// <summary>Empties the lists that only fill when asked, so nothing of the last game's can be acted on in this one.</summary>
+	private void ForgetTheOtherGamesRows()
+	{
+		_found.Clear();
+		ClearRows(_results);
+
+		_updatesView = ModUpdatesView.CannotCheck(null, "");
+		ClearRows(_updates);
+
+		_dependenciesView = DependenciesView.Of(Array.Empty<GameMod>());
+		ClearRows(_dependencies);
+
+		_logView = GameLogView.NoLog();
+		ClearRows(_log);
+
+		_checkResult.SetText(Loc.T("gtk.checkPrompt"));
+	}
+
+	private static void ClearRows(Gtk.ListBox list)
+	{
+		while (list.GetFirstChild() is { } child) list.Remove(child);
 	}
 
 	private Gtk.Widget BuildInstalledTab()
@@ -275,10 +435,45 @@ public sealed partial class MainWindow
 		return box;
 	}
 
+	/// <summary>
+	/// The mods the last scan found, for what wants them without reading the folder again. Empty when the scan failed or
+	/// there was nothing to scan.
+	/// </summary>
+	private List<GameMod> _scanned = new();
+
 	private void LoadInstalled()
 	{
-		while (_installed.GetFirstChild() is { } child) _installed.Remove(child);
+		// Rebuilding the list takes away the row that had focus. Handed back, or the next key would land nowhere and the
+		// list's own keys would stop working until someone moved back into it.
+		int place = _installed.GetSelectedRow()?.GetIndex() ?? -1;
+		bool hadFocus = FocusIsIn(_installed);
 
+		ClearRows(_installed);
+
+		ReadInstalledFolder();
+
+		foreach (InstalledModRow row in _view.Rows) _installed.Append(RowLabel(row.Spoken));
+		SetStatus(_view.StatusLine);
+
+		if (place >= 0 && _view.Rows.Count > 0)
+		{
+			Gtk.ListBoxRow? again = _installed.GetRowAtIndex(Math.Min(place, _view.Rows.Count - 1));
+			_installed.SelectRow(again);
+			if (hadFocus) again?.GrabFocus();
+		}
+		else if (hadFocus)
+		{
+			_installed.GrabFocus();
+		}
+
+		// What a profile would change, and which is the current one, both depend on what is on disk.
+		LoadProfiles(setStatus: false);
+	}
+
+	/// <summary>Reads the folder into <see cref="_view"/>. Touches no widgets.</summary>
+	private void ReadInstalledFolder()
+	{
+		_scanned = new List<GameMod>();
 		_modsFolder = ModsFolderFor(_game);
 
 		// Three different answers, and they must not sound alike. A game that is not here at all is a
@@ -288,54 +483,75 @@ public sealed partial class MainWindow
 		if (string.IsNullOrEmpty(_modsFolder))
 		{
 			_view = InstalledModsView.NotInstalled(_game);
-			SetStatus(_view.StatusLine);
 			return;
 		}
 
 		if (!Directory.Exists(_modsFolder))
 		{
 			_view = InstalledModsView.NoModsFolder(_game, _modsFolder);
-			SetStatus(_view.StatusLine);
 			return;
 		}
 
 		// The same scan the WinForms build runs, not a second one written for this window. It was private to
 		// the app until ModScanner moved to the core; until then this had to enumerate jars by hand and would
 		// have drifted from the real thing the first time a rule changed.
-		List<GameMod> scanned = ModScanner.ScanMods(
-			_modsFolder,
-			new Newtonsoft.Json.Linq.JObject(),
-			ScanContext.For(_modsFolder),
-			_game.Id,
-			(where, what) => DiagnosticLog.Write(where, what));
+		try
+		{
+			_scanned = ModScanner.ScanMods(
+				_modsFolder,
+				new Newtonsoft.Json.Linq.JObject(),
+				ScanContext.For(_modsFolder),
+				_game.Id,
+				(where, what) => DiagnosticLog.Write(where, what));
 
-		_view = InstalledModsView.Of(_game, _modsFolder, scanned);
-
-		foreach (InstalledModRow row in _view.Rows) _installed.Append(RowLabel(row.Spoken));
-		SetStatus(_view.StatusLine);
+			_view = InstalledModsView.Of(_game, _modsFolder, _scanned);
+		}
+		catch (Exception ex)
+		{
+			// A folder that cannot be read is not an empty one. Left uncaught, this also ended the program at startup
+			// with nothing said.
+			DiagnosticLog.WriteException("Mods", $"reading {_modsFolder}", ex);
+			_sound.Play("error");
+			_view = InstalledModsView.ScanFailed(_game, _modsFolder, Loc.T("gtk.scanFailed", ex.Message));
+		}
 	}
+
+	/// <summary>
+	/// Says the list could not be read, after an action whose own sentence is about something else. The actions that
+	/// announce the list itself do not need this.
+	/// </summary>
+	private void SayIfListFailed()
+	{
+		if (_view.Status == InstalledModsStatus.ScanFailed) Say(_view.Announcement);
+	}
+
+	/// <summary>The sentence for a refresh: the count only when there was a folder to count.</summary>
+	private string RefreshedSentence() =>
+		_view.Status == InstalledModsStatus.Ready ? Loc.T("gtk.refreshed", _view.Rows.Count) : _view.Announcement;
 
 	private void ToggleSelected()
 	{
 		int i = _installed.GetSelectedRow()?.GetIndex() ?? -1;
 		if (i < 0 || i >= _view.Rows.Count) { Say(Loc.T("gtk.noModSelected"), interrupt: true); return; }
 
+		if (RefusedWhileChanging()) return;
+
 		InstalledModRow row = _view.Rows[i];
-		// Every layout switches a mod off differently - a leading dot for Stardew, a tilde for The Witcher, a
-		// move out of plugins for BepInEx, a suffix for Minecraft - and ModEnableState in the core is the one
-		// place that knows which. Reimplementing any of it here is how the two front ends would start to
-		// disagree about what "disabled" means.
-		string target = ModEnableState.TargetPath(row.Path, !row.Enabled, _game.Id);
+		if (RefusedAsTheWholeModsFolder(row)) return;
 
 		try
 		{
-			File.Move(row.Path, target);
+			// Every layout switches a mod off differently - a leading dot for Stardew, a tilde for The Witcher, a
+			// move out of plugins for BepInEx, a suffix for Minecraft - and the core is the one place that knows
+			// which. Reimplementing any of it here is how the two front ends would start to disagree about what
+			// "disabled" means.
+			ModOnDisk.SetEnabled(row.Path, !row.Enabled, _game.Id, (where, what) => DiagnosticLog.Write(where, what));
 			// The cue lands while the reader is still saying the mod's name, which is the whole point of
 			// having one: the fact arrives without waiting for the sentence.
 			_sound.Play(row.Enabled ? "disable" : "enable");
 			LoadInstalled();
-			_installed.SelectRow(_installed.GetRowAtIndex(Math.Min(i, Math.Max(0, _view.Rows.Count - 1))));
 			Say(Loc.T(row.Enabled ? "gtk.modDisabled" : "gtk.modEnabled", row.Name), interrupt: true);
+			SayIfListFailed();
 		}
 		catch (Exception ex)
 		{
@@ -493,7 +709,8 @@ public sealed partial class MainWindow
 	private string DescribeSetup()
 	{
 		string mods = ModsFolderFor(_game);
-		if (string.IsNullOrEmpty(mods) || !Directory.Exists(mods))
+		// The scan failing is included, or the sentences below would count the empty list it left and report no mods.
+		if (string.IsNullOrEmpty(mods) || !Directory.Exists(mods) || _view.Status == InstalledModsStatus.ScanFailed)
 			return _view.Announcement;
 
 		if (!_game.IsMinecraft)
@@ -536,6 +753,8 @@ public sealed partial class MainWindow
 		int i = _results.GetSelectedRow()?.GetIndex() ?? -1;
 		if (i < 0 || i >= _found.Count) { Say(Loc.T("gtk.noModSelected"), interrupt: true); return; }
 
+		if (RefusedWhileChanging()) return;
+
 		GameMod mod = _found[i];
 
 		if (string.IsNullOrEmpty(mod.ModrinthId))
@@ -557,15 +776,20 @@ public sealed partial class MainWindow
 			return;
 		}
 
+		using IDisposable busy = _modOperations.Begin();
+
 		SetStatus(Loc.T("gtk.installingStatus", mod.Name));
 		Say(Loc.T("gtk.installing", mod.Name));
 
 		try
 		{
-			string downloads = Path.Combine(Path.GetTempPath(), "kinetix-downloads");
+			string backups = BackupsFolder;
+			int keep = _settings.MaxBackupsPerMod;
 
-			ModInstaller.InstallResult? result = await ModInstaller.InstallFromModrinthAsync(
-				mod.ModrinthId ?? "", version, mods, downloads);
+			// Off the interface's thread, for the zipping and copying that come after the download. What it replaces is
+			// backed up first and a failed backup stops the install, or a bad version could not be undone from this head.
+			ModInstaller.InstallResult? result = await Task.Run(() => ModInstaller.InstallFromModrinthAsync(
+				mod.ModrinthId ?? "", version, mods, InstallDownloadsFolder, backups, keep));
 
 			_ui.Post(() =>
 			{
@@ -578,12 +802,25 @@ public sealed partial class MainWindow
 					return;
 				}
 
+				LoadBackups(announce: false);
 				LoadInstalled();
+
+				// Not "installed": the new copy was taken back out, because Fabric will not start with two.
+				if (result.Value.CouldNotRemove.Count > 0)
+				{
+					_sound.Play("error");
+					SetStatus(Loc.T("gtk.installFailedStatus"));
+					Say(Loc.T("mc.install.oldCopyStuck", string.Join(", ", result.Value.CouldNotRemove)), interrupt: true);
+					SayIfListFailed();
+					return;
+				}
+
 				string replaced = result.Value.WasUpgrade
 					? " " + Loc.T("gtk.replacedOlder", result.Value.Replaced.Count) : "";
 				SetStatus(Loc.T("gtk.installedStatus", mod.Name));
 				_sound.Play("load_complete");
 				Say(Loc.T("gtk.installed", mod.Name, replaced, _view.Rows.Count), interrupt: true);
+				SayIfListFailed();
 			});
 		}
 		catch (Exception ex)
@@ -684,19 +921,33 @@ public sealed partial class MainWindow
 		SetStatus(Loc.T("gtk.searchingStatus", term));
 		Say(Loc.T("gtk.searching", term));
 
+		string gameId = _game.Id;
+
 		try
 		{
-			var query = new ModSearchQuery(_game.Id, term, 1, 25) { GameVersion = GameVersionInUse() };
+			var query = new ModSearchQuery(gameId, term, 1, 25) { GameVersion = GameVersionInUse() };
 			ModSearchResults found = await ModSearchPlan.SearchAsync(asking, query);
 
 			_ui.Post(() =>
 			{
+				// The user has gone to another game while this ran. These are not that game's results, and Install would
+				// put one into the wrong folder.
+				if (_game.Id != gameId) return;
+
 				_found.Clear(); _found.AddRange(found.Results);
-				while (_results.GetFirstChild() is { } child) _results.Remove(child);
+				ClearRows(_results);
 				foreach (GameMod m in _found) _results.Append(RowLabel(Trim(m.ToString())));
 
 				// A catalogue that could not answer says so out loud rather than leaving a quiet gap.
 				foreach (string note in found.Notes) Say(note);
+
+				// "0 results" straight after "Nexus did not answer" would take back what the note just said.
+				if (_found.Count == 0 && found.Notes.Count > 0)
+				{
+					_sound.Play("error");
+					SetStatus(found.Notes[0]);
+					return;
+				}
 
 				SetStatus(Loc.T("gtk.resultsStatus", _found.Count, found.Total, term));
 				Say(Loc.T("gtk.results", _found.Count));
@@ -707,6 +958,8 @@ public sealed partial class MainWindow
 			DiagnosticLog.WriteException("Search", $"searching for {term}", ex);
 			_ui.Post(() =>
 			{
+				if (_game.Id != gameId) return;
+
 				_sound.Play("error");
 				SetStatus(Loc.T("gtk.searchFailedStatus"));
 				Say(Loc.T("gtk.searchFailed", ex.Message), interrupt: true);
@@ -783,6 +1036,14 @@ public sealed partial class MainWindow
 		{
 			bool ctrl = (args.State & Gdk.ModifierType.ControlMask) != 0;
 
+			// A modifier on its own is the start of a key, not another key. Counting it, the Alt of a second Alt+F4 called
+			// off the close it was about to confirm.
+			if (args.Keyval is >= 0xFFE1 and <= 0xFFEE) return false;
+
+			// Here rather than on each case below: the point is that ONLY a second press goes ahead, so every other key
+			// has to be a way out. A second press never reaches this. It is taken by the button, or by the list's own keys.
+			CancelArmed();
+
 			switch (args.Keyval)
 			{
 				case 0xFFC3:                     // F6
@@ -790,7 +1051,7 @@ public sealed partial class MainWindow
 					return true;
 				case 0xFFC2:                     // F5
 					LoadInstalled();
-					Say(Loc.T("gtk.refreshed", _view.Rows.Count), interrupt: true);
+					Say(RefreshedSentence(), interrupt: true);
 					return true;
 				// Ctrl+I, the Windows manager's install shortcut. Started and not awaited: a key handler has
 				// to answer now, and the install reports itself through the status line and the announcer.
@@ -802,27 +1063,70 @@ public sealed partial class MainWindow
 					_search.GrabFocus();
 					Say(Loc.T("gtk.searchFocused"), interrupt: true);
 					return true;
-				case 0x020 when _installed.HasFocus:   // Space
-					ToggleSelected();
-					return true;
-				case 0xFFFF when _installed.HasFocus:   // Delete — arms, then confirms. See ModActions.
+			}
+
+			return false;
+		};
+		_window.AddController(keys);
+
+		// The list's own keys, on the list and in the capture phase, which runs whenever the focus is on the list or
+		// anything in it, and before a row can act on the key.
+		//
+		// These were on the window, guarded by the list's has-focus. That belongs to the one focus widget, and arrowing
+		// a list puts that on the row (gtk_list_box_update_cursor grabs it), so on a row the guard was false and these keys
+		// did nothing.
+		var listKeys = Gtk.EventControllerKey.New();
+		listKeys.SetPropagationPhase(Gtk.PropagationPhase.Capture);
+		listKeys.OnKeyPressed += (controller, args) =>
+		{
+			bool ctrl = (args.State & Gdk.ModifierType.ControlMask) != 0;
+
+			switch (args.Keyval)
+			{
+				case 0xFFFF:                     // Delete — arms, then confirms. See ModActions.
+					_armedForRestore = null;
+					_armedForProfile = null;
+					_closeArmed = false;
 					DeletePressed();
 					return true;
-				case 0x062 when ctrl && _installed.HasFocus:   // Ctrl+B, back up the selected mod
+				case 0x020 when !ctrl:           // Space
+					CancelArmed();
+					ToggleSelected();
+					return true;
+				case 0x062 when ctrl:            // Ctrl+B, back up the selected mod
+					CancelArmed();
 					_ = BackupSelectedAsync();
 					return true;
-				case 0x06E when ctrl && _installed.HasFocus:   // Ctrl+N, read this mod's note
+				case 0x06E when ctrl:            // Ctrl+N, read this mod's note
+					CancelArmed();
 					SpeakNoteForSelected();
 					return true;
 			}
 
-			// Anything else calls off an armed delete. Deliberately here rather than on each case above: the
-			// point is that ONLY a second Delete goes ahead, so every other key has to be a way out.
-			CancelArmedDelete();
 			return false;
 		};
-		_window.AddController(keys);
+		_installed.AddController(listKeys);
 	}
+
+	/// <summary>Calls off whatever is waiting for a second press, saying so.</summary>
+	private void CancelArmed()
+	{
+		CancelArmedDelete();
+		CancelArmedRestore();
+		CancelArmedProfile();
+
+		if (_closeArmed)
+		{
+			_closeArmed = false;
+			Say(Loc.T("gtk.closeCancelled"), interrupt: true);
+		}
+	}
+
+	/// <summary>
+	/// Whether the keyboard focus is on this widget or anywhere inside it. Not the same as HasFocus, which is true of one
+	/// widget only: a list's focus is on a row, and an entry's on the text widget inside it.
+	/// </summary>
+	private static bool FocusIsIn(Gtk.Widget widget) => (widget.GetStateFlags() & Gtk.StateFlags.FocusWithin) != 0;
 
 	/// <summary>
 	/// The things F6 moves between, for the tab that is showing: the tab strip first, then that tab's own
@@ -832,19 +1136,18 @@ public sealed partial class MainWindow
 	/// "page 0 or everything else" from when there were two tabs, and adding the Games tab silently shifted
 	/// every page number underneath it — so F6 on the Wiki tab was toggling the search box and results list
 	/// belonging to a different tab, and the web view could not be reached at all. A list cannot drift like
-	/// that: a tab either appears here or it does not.
+	/// that: a tab either appears here or it does not. So they are declared where the tab is added, by
+	/// <see cref="AddTab"/>, and no page number is written down here for the next inserted tab to shift.
 	/// </summary>
-	private List<Gtk.Widget> FocusStops() => _tabs.GetCurrentPage() switch
+	private List<Gtk.Widget> FocusStops()
 	{
-		0 => new List<Gtk.Widget> { _tabs, _games },
-		1 => new List<Gtk.Widget> { _tabs, _installed },
-		2 => new List<Gtk.Widget> { _tabs, _search, _results },
-		3 => _web is null
-			 ? new List<Gtk.Widget> { _tabs }
-			 : new List<Gtk.Widget> { _tabs, _web.Widget },
-		4 => new List<Gtk.Widget> { _tabs, _checkResult },
-		_ => new List<Gtk.Widget> { _tabs }
-	};
+		var stops = new List<Gtk.Widget> { _tabs };
+
+		int page = _tabs.GetCurrentPage();
+		if (page >= 0 && page < _tabStops.Count) stops.AddRange(_tabStops[page]);
+
+		return stops;
+	}
 
 	/// <summary>
 	/// Moves focus to the next stop, and says nothing about it.
@@ -857,14 +1160,14 @@ public sealed partial class MainWindow
 		List<Gtk.Widget> stops = FocusStops();
 		if (stops.Count == 0) return;
 
-		int current = stops.FindIndex(w => w.HasFocus);
+		// The last that holds the focus, because the notebook holds everything on its pages. It comes first, so it only
+		// answers for focus somewhere this tab does not list, such as a button in the toolbar, and then the next stop is
+		// the tab's main control, which is more useful than the strip the user has just come from.
+		int current = stops.FindLastIndex(FocusIsIn);
+		Gtk.Widget next = stops[(current + 1) % stops.Count];
 
-		// Focus somewhere this tab does not list — a button in the toolbar, or nothing yet. Going to the
-		// tab's main control is more useful than going to the strip the user has just come from.
-		Gtk.Widget next = current < 0
-			? stops[Math.Min(1, stops.Count - 1)]
-			: stops[(current + 1) % stops.Count];
-
-		next.GrabFocus();
+		// Back to the row left behind, rather than the list as a whole with no row to read.
+		if (next is Gtk.ListBox list && list.GetSelectedRow() is { } row) row.GrabFocus();
+		else next.GrabFocus();
 	}
 }

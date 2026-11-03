@@ -91,7 +91,7 @@ public sealed partial class MainWindow
 			}
 		}
 
-		while (_log.GetFirstChild() is { } child) _log.Remove(child);
+		ClearRows(_log);
 		foreach (GameLogRow row in _logView.Rows) _log.Append(RowLabel(row.Spoken));
 
 		SetStatus(_logView.Announcement);

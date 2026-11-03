@@ -25,6 +25,19 @@ public sealed partial class MainWindow
 	private string BackupsFolder => Path.Combine(AppSettings.AppDataFolder, "backups", _game.Id);
 
 	/// <summary>
+	/// Says so and returns true for a row whose path is the mods folder itself, which Delete or Space would do to every
+	/// mod at once. See <see cref="ModOnDisk.IsTheModsFolderItself"/>.
+	/// </summary>
+	private bool RefusedAsTheWholeModsFolder(InstalledModRow row)
+	{
+		if (!ModOnDisk.IsTheModsFolderItself(row.Path, _modsFolder)) return false;
+
+		_sound.Play("error");
+		Say(Loc.T("gtk.rowIsModsFolder", row.Name), interrupt: true);
+		return true;
+	}
+
+	/// <summary>
 	/// Delete pressed on the installed list. The first press arms, the second does it.
 	/// </summary>
 	private void DeletePressed()
@@ -32,7 +45,11 @@ public sealed partial class MainWindow
 		int i = _installed.GetSelectedRow()?.GetIndex() ?? -1;
 		if (i < 0 || i >= _view.Rows.Count) { Say(Loc.T("gtk.noModSelected"), interrupt: true); return; }
 
+		// Pressed again during the backup, this would ask again and delete twice.
+		if (RefusedWhileChanging()) return;
+
 		InstalledModRow row = _view.Rows[i];
+		if (RefusedAsTheWholeModsFolder(row)) return;
 
 		if (!string.Equals(_armedForDelete, row.Path, StringComparison.Ordinal))
 		{
@@ -58,27 +75,41 @@ public sealed partial class MainWindow
 
 	private async Task DeleteAsync(InstalledModRow row)
 	{
+		using IDisposable busy = _modOperations.Begin();
+
 		SetStatus(Loc.T("gtk.deleting", row.Name));
 		Say(Loc.T("gtk.deleting", row.Name));
+
+		string backups = BackupsFolder;
+		string gameId = _game.Id;
+		Action<string, string> log = (where, what) => DiagnosticLog.Write(where, what);
 
 		try
 		{
 			// Backed up before anything is removed, and awaited rather than started — a backup that is still
 			// being written when the original is deleted is not a backup. Zipping a large mod takes long
 			// enough to be worth doing off the interface's thread.
-			await Task.Run(() => BackupStore.CreateBackup(row.Path, row.Name, BackupsFolder));
+			await Task.Run(() => BackupStore.CreateBackup(row.Path, row.Name, backups));
 			await Task.Run(() =>
 			{
-				if (Directory.Exists(row.Path)) Directory.Delete(row.Path, recursive: true);
-				else File.Delete(row.Path);
+				// A Witcher 3 mod's dlc and bin parts live in the game folder, and the record of them is inside the folder
+				// about to go, so they go first. Without this it said "deleted" with those parts still loading.
+				Witcher3ModFiles.RemoveExtras(row.Path, gameId, log);
+
+				// Clears read-only flags and retries a passing lock, which a plain delete fails on.
+				ModOnDisk.Delete(row.Path);
+
+				Witcher3ModFiles.Forget(row.Path, gameId, log);
 			});
 
 			_ui.Post(() =>
 			{
+				LoadBackups(announce: false);
 				LoadInstalled();
 				_sound.Play("disable");
 				Say(Loc.T("gtk.deleted", row.Name), interrupt: true);
 				SetStatus(_view.StatusLine);
+				SayIfListFailed();
 			});
 		}
 		catch (Exception ex)
@@ -102,22 +133,30 @@ public sealed partial class MainWindow
 		int i = _installed.GetSelectedRow()?.GetIndex() ?? -1;
 		if (i < 0 || i >= _view.Rows.Count) { Say(Loc.T("gtk.noModSelected"), interrupt: true); return; }
 
+		if (RefusedWhileChanging()) return;
+
+		using IDisposable busy = _modOperations.Begin();
+
 		InstalledModRow row = _view.Rows[i];
 		SetStatus(Loc.T("gtk.backingUp", row.Name));
 		Say(Loc.T("gtk.backingUp", row.Name));
+
+		string backups = BackupsFolder;
+		int keep = _settings.MaxBackupsPerMod;
 
 		try
 		{
 			await Task.Run(() =>
 			{
-				BackupStore.CreateBackup(row.Path, row.Name, BackupsFolder);
+				BackupStore.CreateBackup(row.Path, row.Name, backups);
 				// Kept to the same limit the Windows head keeps, so a mod backed up before every change does
 				// not quietly fill the disk.
-				BackupStore.PruneBackups(row.Name, BackupsFolder, _settings.MaxBackupsPerMod);
+				BackupStore.PruneBackups(row.Name, backups, keep);
 			});
 
 			_ui.Post(() =>
 			{
+				LoadBackups(announce: false);
 				_sound.Play("load_complete");
 				SetStatus(Loc.T("gtk.backedUp", row.Name));
 				Say(Loc.T("gtk.backedUp", row.Name), interrupt: true);
@@ -147,7 +186,7 @@ public sealed partial class MainWindow
 		if (i < 0 || i >= _view.Rows.Count) { Say(Loc.T("gtk.noModSelected"), interrupt: true); return; }
 
 		InstalledModRow row = _view.Rows[i];
-		GameMod? mod = InstalledAsMods().FirstOrDefault(m =>
+		GameMod? mod = _scanned.FirstOrDefault(m =>
 			string.Equals(m.FolderPath, row.Path, StringComparison.Ordinal));
 
 		string id = mod?.UniqueId ?? "";

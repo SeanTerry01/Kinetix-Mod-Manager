@@ -42,14 +42,24 @@ public sealed partial class MainWindow
 	{
 		SetStatus(Loc.T("gtk.depsChecking"));
 
-		List<GameMod> installed = InstalledAsMods();
+		List<GameMod> installed;
+		try { installed = InstalledAsMods(); }
+		catch (Exception ex)
+		{
+			// Not "nothing is wrong", which is what an empty list would have come out as.
+			DiagnosticLog.WriteException("Mods", "reading the mods folder for the dependency check", ex);
+			_sound.Play("error");
+			SetStatus(Loc.T("gtk.scanFailed", ex.Message));
+			Say(Loc.T("gtk.scanFailed", ex.Message), interrupt: true);
+			return;
+		}
 
 		// The same resolution the Windows head runs, and the same version comparison, so the two builds never
 		// disagree about whether a dependency is new enough.
 		ModHealth.ResolveDependencies(installed, ModVersions.IsNewer);
 		_dependenciesView = DependenciesView.Of(installed);
 
-		while (_dependencies.GetFirstChild() is { } child) _dependencies.Remove(child);
+		ClearRows(_dependencies);
 		foreach (DependencyRow row in _dependenciesView.Rows) _dependencies.Append(RowLabel(row.Spoken));
 
 		// The completed cue only when there is nothing wrong. Sounding "done" over a list of broken mods
