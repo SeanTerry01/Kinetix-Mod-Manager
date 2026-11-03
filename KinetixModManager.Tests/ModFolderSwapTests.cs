@@ -1,0 +1,441 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using KinetixModManager;
+using Xunit;
+
+namespace KinetixModManager.Tests;
+
+/// <summary>
+/// The one promise here is that an update that fails leaves the old mod working. So the tests that matter are the ones
+/// where it fails, and they check the old copy's actual contents afterwards.
+/// </summary>
+public sealed class ModFolderSwapTests : IDisposable
+{
+	private readonly string _dir = Path.Combine(Path.GetTempPath(), "kmm-swap-" + Guid.NewGuid().ToString("N"));
+	private readonly string _mods;
+	private readonly string _temp;
+	private readonly List<string> _logged = new();
+
+	public ModFolderSwapTests()
+	{
+		_mods = Path.Combine(_dir, "Mods");
+		_temp = Path.Combine(_dir, "tmp");
+		Directory.CreateDirectory(_mods);
+		Directory.CreateDirectory(_temp);
+	}
+
+	public void Dispose()
+	{
+		try { ModOnDisk.DeleteDirectory(_dir); } catch (IOException) { }
+	}
+
+	private void Log(string where, string what) => _logged.Add(where + ": " + what);
+
+	private string MakeMod(string parent, string name, string marker)
+	{
+		string folder = Path.Combine(parent, name);
+		Directory.CreateDirectory(Path.Combine(folder, "assets"));
+		File.WriteAllText(Path.Combine(folder, "marker.txt"), marker);
+		File.WriteAllText(Path.Combine(folder, "assets", "a.png"), marker);
+		return folder;
+	}
+
+	private static string MarkerIn(string folder) => File.ReadAllText(Path.Combine(folder, "marker.txt"));
+
+	[Fact]
+	public void TheNewCopyTakesThePlaceOfTheOld()
+	{
+		string old = MakeMod(_mods, "Foo", "old");
+		string incoming = MakeMod(_temp, "built", "new");
+
+		ModFolderSwap.Replace(incoming, old, new[] { old }, _temp, Log);
+
+		Assert.Equal("new", MarkerIn(old));
+		Assert.False(Directory.Exists(incoming));
+		Assert.Empty(_logged);
+	}
+
+	[Fact]
+	public void AnOldCopyUnderADifferentNameGoesToo()
+	{
+		// A switched-off copy, or one whose folder was named after an older download.
+		string old = MakeMod(_mods, ".Foo", "old");
+		string incoming = MakeMod(_temp, "built", "new");
+		string destination = Path.Combine(_mods, "Foo");
+
+		ModFolderSwap.Replace(incoming, destination, new[] { old }, _temp, Log);
+
+		Assert.Equal("new", MarkerIn(destination));
+		Assert.False(Directory.Exists(old));
+	}
+
+	[Fact]
+	public void SomethingAtTheDestinationIsReplacedEvenIfNotNamed()
+	{
+		string atDestination = MakeMod(_mods, "Foo", "old");
+		string incoming = MakeMod(_temp, "built", "new");
+
+		ModFolderSwap.Replace(incoming, atDestination, Array.Empty<string>(), _temp, Log);
+
+		Assert.Equal("new", MarkerIn(atDestination));
+	}
+
+	[Fact]
+	public void NoLeftoversAreLeftBehind()
+	{
+		string old = MakeMod(_mods, "Foo", "old");
+		string incoming = MakeMod(_temp, "built", "new");
+
+		ModFolderSwap.Replace(incoming, old, new[] { old }, _temp, Log);
+
+		Assert.Empty(Directory.GetFileSystemEntries(_temp));
+		Assert.Equal(new[] { "Foo" }, Directory.GetDirectories(_mods).Select(Path.GetFileName));
+	}
+
+	[Fact]
+	public void WhenTheNewCopyCannotBePutInPlaceTheOldOneIsPutBack()
+	{
+		// The new folder does not exist, so the very last step fails, after the old copy has been moved away. This is
+		// the worst moment, and it is what the old code had no answer to.
+		string old = MakeMod(_mods, "Foo", "old");
+		string missing = Path.Combine(_temp, "never-built");
+
+		Assert.ThrowsAny<IOException>(() => ModFolderSwap.Replace(missing, old, new[] { old }, _temp, Log));
+
+		Assert.Equal("old", MarkerIn(old));
+		Assert.Equal("old", File.ReadAllText(Path.Combine(old, "assets", "a.png")));
+	}
+
+	[Fact]
+	public void EveryOldCopyIsPutBackNotJustTheLast()
+	{
+		string enabled = MakeMod(_mods, "Foo", "enabled");
+		string disabled = MakeMod(_mods, ".Foo", "disabled");
+		string missing = Path.Combine(_temp, "never-built");
+
+		Assert.ThrowsAny<IOException>(() => ModFolderSwap.Replace(missing, enabled, new[] { enabled, disabled }, _temp, Log));
+
+		Assert.Equal("enabled", MarkerIn(enabled));
+		Assert.Equal("disabled", MarkerIn(disabled));
+	}
+
+	[Fact]
+	public void AFileHeldOpenStopsTheSwapWithEverythingIntact()
+	{
+		// The game running, or an antivirus scan. Windows refuses to move a folder with a file open in it.
+		if (!OperatingSystem.IsWindows()) return;
+
+		string old = MakeMod(_mods, "Foo", "old");
+		string incoming = MakeMod(_temp, "built", "new");
+
+		using (new FileStream(Path.Combine(old, "marker.txt"), FileMode.Open, FileAccess.Read, FileShare.None))
+		{
+			Assert.ThrowsAny<Exception>(() => ModFolderSwap.Replace(incoming, old, new[] { old }, _temp, Log));
+		}
+
+		Assert.Equal("old", MarkerIn(old));
+		Assert.Equal("new", MarkerIn(incoming));
+	}
+
+	[Fact]
+	public void TheOldCopyCanStillBeReadJustBeforeItGoes()
+	{
+		// How a Bethesda mod's plugin entries get removed: the list of them is in the folder being replaced.
+		string old = MakeMod(_mods, "Foo", "old");
+		string incoming = MakeMod(_temp, "built", "new");
+		string? seen = null;
+
+		ModFolderSwap.Replace(incoming, old, new[] { old }, _temp, Log, parkedCopy => seen = MarkerIn(parkedCopy));
+
+		Assert.Equal("old", seen);
+	}
+
+	[Fact]
+	public void AFailureWhileReadingTheOldCopyDoesNotUndoAFinishedInstall()
+	{
+		string old = MakeMod(_mods, "Foo", "old");
+		string incoming = MakeMod(_temp, "built", "new");
+
+		ModFolderSwap.Replace(incoming, old, new[] { old }, _temp, Log, _ => throw new InvalidOperationException("nope"));
+
+		Assert.Equal("new", MarkerIn(old));
+		Assert.Contains(_logged, l => l.Contains("nope"));
+	}
+
+	[Fact]
+	public void ReplacingWithACopyLeavesTheSourceInPlace()
+	{
+		string old = MakeMod(_mods, "Foo", "old");
+		string source = MakeMod(_temp, "extracted", "new");
+
+		ModFolderSwap.ReplaceWithCopyOf(source, old, new[] { old }, _temp, Log);
+
+		Assert.Equal("new", MarkerIn(old));
+		Assert.Equal("new", MarkerIn(source));
+		Assert.Equal(new[] { "extracted" }, Directory.GetFileSystemEntries(_temp).Select(Path.GetFileName));
+	}
+
+	[Fact]
+	public void CopyingATreeKeepsEmptyFolders()
+	{
+		string source = MakeMod(_temp, "extracted", "new");
+		Directory.CreateDirectory(Path.Combine(source, "empty"));
+		string destination = Path.Combine(_temp, "copy");
+
+		ModFolderSwap.CopyTree(source, destination);
+
+		Assert.True(Directory.Exists(Path.Combine(destination, "empty")));
+		Assert.Equal("new", File.ReadAllText(Path.Combine(destination, "assets", "a.png")));
+	}
+
+	[Fact]
+	public void ASettingsFileIsCarriedAcrossAnUpdate()
+	{
+		string old = MakeMod(_mods, "Foo", "old");
+		File.WriteAllText(Path.Combine(old, "config.json"), "my keybinds");
+		string incoming = MakeMod(_temp, "built", "new");
+
+		ModFolderSwap.KeepUserFile(old, incoming, "config.json");
+		ModFolderSwap.Replace(incoming, old, new[] { old }, _temp, Log);
+
+		Assert.Equal("my keybinds", File.ReadAllText(Path.Combine(old, "config.json")));
+		Assert.Equal("new", MarkerIn(old));
+	}
+
+	[Fact]
+	public void ASettingsFileBeatsTheDefaultOneInTheDownload()
+	{
+		string old = MakeMod(_mods, "Foo", "old");
+		File.WriteAllText(Path.Combine(old, "config.json"), "my keybinds");
+		string incoming = MakeMod(_temp, "built", "new");
+		File.WriteAllText(Path.Combine(incoming, "config.json"), "defaults");
+
+		ModFolderSwap.KeepUserFile(old, incoming, "config.json");
+
+		Assert.Equal("my keybinds", File.ReadAllText(Path.Combine(incoming, "config.json")));
+	}
+
+	[Fact]
+	public void AModWithNoSettingsFileIsNotGivenOne()
+	{
+		string old = MakeMod(_mods, "Foo", "old");
+		string incoming = MakeMod(_temp, "built", "new");
+
+		ModFolderSwap.KeepUserFile(old, incoming, "config.json");
+
+		Assert.False(File.Exists(Path.Combine(incoming, "config.json")));
+	}
+
+	[Fact]
+	public void BuildingBesideTheExtractionFolderMeansACopyCannotIncludeItself()
+	{
+		string extraction = Path.Combine(_temp, "Extract_abc");
+
+		string build = ModFolderSwap.BuildFolderFor(extraction);
+
+		Assert.False(build.StartsWith(extraction + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase));
+		Assert.Equal(Path.GetDirectoryName(extraction), Path.GetDirectoryName(build));
+	}
+}
+
+/// <summary>Which installed mod a download replaces. Getting this wrong deletes the wrong mod.</summary>
+public sealed class InstallTargetTests
+{
+	private static GameMod Mod(string name, string? nexusId = null, string? folder = null) => new()
+	{
+		Name = name,
+		UniqueId = folder ?? name,
+		NexusID = nexusId,
+		FolderPath = Path.Combine(Path.GetTempPath(), folder ?? name)
+	};
+
+	[Fact]
+	public void ThePatchDoesNotReplaceTheMainModFromThePage()
+	{
+		// The case that lost mods: same page, different files, and only the page id compared.
+		GameMod main = Mod("SkyUI", "12604");
+		GameMod patch = Mod("SkyUI Patch", "12604");
+
+		(GameMod? found, InstallMatch match) = InstallTarget.Find(new[] { main, patch }, "12604", "SkyUI Patch");
+
+		Assert.Same(patch, found);
+		Assert.Equal(InstallMatch.SameName, match);
+	}
+
+	[Fact]
+	public void TheSameNameMatchesEvenWhenListedSecond()
+	{
+		GameMod other = Mod("Other", "12604");
+		GameMod wanted = Mod("Wanted", "999");
+
+		Assert.Same(wanted, InstallTarget.Find(new[] { other, wanted }, "12604", "Wanted").Mod);
+	}
+
+	[Fact]
+	public void TheFolderNameCountsAsTheName()
+	{
+		// On Bethesda games the shown name comes from the Nexus page and the folder from the download.
+		GameMod mod = Mod("A Friendly Page Title", "1", folder: "SkyUI");
+
+		Assert.Same(mod, InstallTarget.Find(new[] { mod }, null, "SkyUI").Mod);
+	}
+
+	[Fact]
+	public void TheOnlyModFromThePageIsReportedAsOnlyAPageMatch()
+	{
+		// May be a new version, may be a patch. Only the player knows, so the caller asks.
+		GameMod main = Mod("SkyUI", "12604");
+
+		(GameMod? found, InstallMatch match) = InstallTarget.Find(new[] { main }, "12604", "SkyUI Patch");
+
+		Assert.Same(main, found);
+		Assert.Equal(InstallMatch.SamePage, match);
+	}
+
+	[Fact]
+	public void SeveralModsFromThePageAndNoNameMatchPicksNone()
+	{
+		GameMod one = Mod("One", "12604");
+		GameMod two = Mod("Two", "12604");
+
+		(GameMod? found, InstallMatch match) = InstallTarget.Find(new[] { one, two }, "12604", "Three");
+
+		Assert.Null(found);
+		Assert.Equal(InstallMatch.None, match);
+	}
+
+	[Fact]
+	public void APartOfAMultiPartModIgnoresThePage()
+	{
+		// SSE Engine Fixes: its plugin and its preloader are both mod 17230, and both are needed.
+		GameMod preloader = Mod("Preloader", "17230");
+
+		Assert.Null(InstallTarget.Find(new[] { preloader }, "17230", "Plugin", matchByPage: false).Mod);
+	}
+
+	[Fact]
+	public void APartOfAMultiPartModStillMatchesItsOwnName()
+	{
+		GameMod plugin = Mod("Plugin", "17230");
+
+		Assert.Same(plugin, InstallTarget.Find(new[] { plugin }, "17230", "Plugin", matchByPage: false).Mod);
+	}
+
+	[Fact]
+	public void AGroupRowIsNeverTheModBeingReplaced()
+	{
+		var group = new GameMod { Name = "Foo", UniqueId = "GROUP:Foo", IsGroup = true, FolderPath = "x" };
+
+		Assert.Null(InstallTarget.Find(new[] { group }, null, "Foo").Mod);
+	}
+
+	[Fact]
+	public void ModsWithNoNexusIdDoNotAllMatchEachOther()
+	{
+		GameMod local = Mod("Local Mod");
+
+		Assert.Null(InstallTarget.Find(new[] { local }, null, "Something Else").Mod);
+	}
+}
+
+/// <summary>A refresh reads the disk. It used to delete mods as well, without saying so.</summary>
+public sealed class ScanOnlyReadsTests : IDisposable
+{
+	private readonly string _mods = Path.Combine(Path.GetTempPath(), "kmm-scan-" + Guid.NewGuid().ToString("N"));
+
+	public ScanOnlyReadsTests() => Directory.CreateDirectory(_mods);
+
+	public void Dispose()
+	{
+		try { ModOnDisk.DeleteDirectory(_mods); } catch (IOException) { }
+	}
+
+	private sealed class Context : IModScanContext
+	{
+		public string CurrentGamePath => "";
+		public IReadOnlyDictionary<string, string> ModCategories { get; } = new Dictionary<string, string>();
+		public IReadOnlyDictionary<string, string> ModNotes { get; } = new Dictionary<string, string>();
+	}
+
+	private void Mod(string folder, string name, string version, string nexusId)
+	{
+		string path = Path.Combine(_mods, folder);
+		Directory.CreateDirectory(path);
+		File.WriteAllText(Path.Combine(path, ".manager_manifest.json"),
+			new Newtonsoft.Json.Linq.JObject
+			{
+				["Name"] = name, ["Version"] = version, ["UniqueID"] = folder, ["NexusID"] = nexusId
+			}.ToString());
+	}
+
+	private List<GameMod> Scan(string game) =>
+		ModScanner.ScanMods(_mods, new Newtonsoft.Json.Linq.JObject(), new Context(), game, (_, _) => { });
+
+	[Theory]
+	[InlineData(GameProfiles.SkyrimSE)]
+	[InlineData(GameProfiles.Fallout4)]
+	public void AMainFileAndItsPatchBothSurviveARefresh(string game)
+	{
+		Mod("Main", "Main", "2.0", "12604");
+		Mod("Patch", "Patch", "1.0", "12604");
+
+		Assert.Equal(2, Scan(game).Count);
+		Assert.Equal(2, Directory.GetDirectories(_mods).Length);
+	}
+
+	[Fact]
+	public void TwoModsOfTheSameNameBothSurviveARefresh()
+	{
+		Mod("A", "Same Name", "1.0", "");
+		Mod("B", "Same Name", "2.0", "");
+
+		Assert.Equal(2, Scan(GameProfiles.SkyrimSE).Count);
+		Assert.Equal(2, Directory.GetDirectories(_mods).Length);
+	}
+}
+
+/// <summary>What the install code must keep doing. It lives in the Windows app, so these read its source.</summary>
+public sealed class InstallOrderGuardTests
+{
+	private static string App(string file)
+	{
+		DirectoryInfo? dir = new DirectoryInfo(AppContext.BaseDirectory);
+		while (dir != null && !File.Exists(Path.Combine(dir.FullName, "KinetixModManager.slnx"))) dir = dir.Parent;
+		return File.ReadAllText(Path.Combine(dir!.FullName, "KinetixModManager", file));
+	}
+
+	[Fact]
+	public void NoInstallDeletesTheOldCopyBeforeTheNewOneIsInPlace()
+	{
+		string source = App("ModFileSystem.cs");
+		Assert.DoesNotContain("ForceDeleteDirectory(existing.FolderPath)", source);
+		Assert.DoesNotContain("ForceDeleteDirectory(destModFolder)", source);
+		Assert.DoesNotContain("Directory.Delete(destModFolderStardew", source);
+	}
+
+	[Fact]
+	public void AFailedBackupIsNeverSwallowedDuringAStardewInstall()
+	{
+		Assert.DoesNotContain("Pre-install backup error", App("ModFileSystem.cs"));
+	}
+
+	[Fact]
+	public void AnUpdateChecksTheInstallWorkedBeforeRecordingIt()
+	{
+		string updates = App("Form1.Updates.cs");
+		int install = updates.IndexOf("InstallFromZip(tempPath, mod.NexusID", StringComparison.Ordinal);
+		Assert.True(install > 0);
+		Assert.Contains("if (!await", updates.Substring(install - 12, 12));
+	}
+
+	[Fact]
+	public void TheMultiPartAnswerReachesAnInstallForEveryLayout()
+	{
+		// A flag the Witcher 3 and BepInEx installs were never told about, so a second file replaced the first.
+		string source = App("ModFileSystem.cs");
+		Assert.Contains("nexusService, gitHubRepo, matchExistingByNexusId, updating);", source);
+		Assert.Contains("gitHubRepo, currentGamePath, matchExistingByNexusId);", source);
+	}
+}

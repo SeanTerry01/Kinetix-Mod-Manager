@@ -72,8 +72,7 @@ public static class ModScanner
 		JObject nexusIdMap,
 		IModScanContext settings,
 		string activeGame,
-		Action<string, string> logError,
-		Action<GameMod>? removeSuperseded = null)
+		Action<string, string> logError)
 	{
 		var mods = new List<GameMod>();
 		if (!Directory.Exists(modsPath)) return mods;
@@ -302,53 +301,10 @@ public static class ModScanner
 			}
 		}
 
-		// Duplicate collapsing exists for the Bethesda games, where the same mod is routinely re-downloaded into a
-		// second "-1234-" folder and both copies then deploy their files. It deletes a mod folder, so it stays
-		// strictly limited to those games: BepInEx mods install in place and are never duplicated this way.
-		if (GameProfiles.Find(activeGame)?.IsBethesda == true && mods.Count > 1)
-		{
-			var duplicateGroups = mods
-				.GroupBy(m => !string.IsNullOrEmpty(m.NexusID) ? ("id_" + m.NexusID) : ("name_" + m.Name.ToLowerInvariant()))
-				.Where(g => g.Count() > 1)
-				.ToList();
-
-			foreach (var group in duplicateGroups)
-			{
-				GameMod bestMod = group.First();
-				foreach (var m in group.Skip(1))
-				{
-					if (CompareVersionsNewer(bestMod.Version, m.Version))
-					{
-						bestMod = m;
-					}
-				}
-
-				foreach (var m in group)
-				{
-					if (m != bestMod)
-					{
-						mods.Remove(m);
-						if (Directory.Exists(m.FolderPath))
-						{
-							try
-							{
-								// Handing the superseded copy to the caller rather than deleting it here. A scan
-								// that removes folders is not a scan, and this one did: refreshing the list could
-								// undeploy, back up and delete a mod, with nothing in the name to suggest it.
-								// Leaving the behaviour exactly where it was, but in the caller's hands and
-								// visible in this method's signature — and a caller that passes nothing (the GTK
-								// head, for now) gets a scan that only ever reads.
-								removeSuperseded?.Invoke(m);
-							}
-							catch (Exception ex)
-							{
-								logError(m.Name, "Failed to remove duplicate: " + ex.Message);
-							}
-						}
-					}
-				}
-			}
-		}
+		// ⚠️ A scan only reads. It used to collapse "duplicates" on the Bethesda games, deleting all but the newest of
+		// any mods sharing a Nexus id or a name, on every refresh and without a word. A main file and its patch from
+		// one page counted, so a patch could vanish after a refresh. An install now asks when a download might replace
+		// something, so nothing should arrive here that needs removing.
 
 		return mods;
 	}

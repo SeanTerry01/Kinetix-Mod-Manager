@@ -16,6 +16,22 @@ as before.
     the last item from a list now finishes saying so before focus goes back. The same goes for "Opening the download
     page" before the browser takes over.
 
+## 🐛 A failed update can no longer cost you the mod
+
+*   **An update or reinstall now replaces the old copy last.** The new copy is built in full, the old one is backed
+    up, and only then are they swapped. If anything goes wrong, such as a full disk or the game holding a file open,
+    the old one is still there and still working. Before, it was deleted first, and on Stardew Valley a failed backup
+    did not stop that.
+*   **Updating a Stardew Valley mod keeps its settings.** Its `config.json` used to go back to the defaults on every
+    update, including your keybinds.
+*   **A failed update now says so.** It used to say "updated" and record the new version even when the install had
+    failed or you had cancelled it, and the update was then never offered again.
+*   **Update All names what failed**, once it finishes, instead of saying "All updates finished" and stopping at a
+    message for each one along the way.
+*   **Refreshing no longer deletes mods.** On Skyrim and Fallout 4, any refresh deleted all but the newest of any mods
+    sharing a Nexus page or a name, so a patch could vanish along with its main file's older sibling.
+*   **A second file from one Nexus page no longer replaces the first without asking.** You are asked whether it is a
+    new version, or something to install alongside.
 ## 🐛 Bugs that could lose your mods or leave you stuck
 
 *   **Space on a mod group renamed your whole mods folder**, on Stardew Valley and The Witcher 3, and every mod

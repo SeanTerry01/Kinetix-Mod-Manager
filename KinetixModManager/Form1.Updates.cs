@@ -545,6 +545,8 @@ public partial class Form1
 	/// </summary>
     private async Task DownloadAndInstallUpdate(StardewMod mod, bool silent = false)
     {
+        void NoteFailure() { if (silent) _updatesThatFailed.Add(mod.Name); }
+
         // Updates install the mod enabled; remember if it was disabled so we can turn it back off afterward.
         bool wasDisabled = !mod.IsEnabled;
 
@@ -559,6 +561,7 @@ public partial class Form1
             if (mod.UniqueId == FabricLoaderRowId)
             {
                 if (await UpdateFabricLoaderAsync()) { RemoveUpdateRowsFor(mod); if (!silent) AnnounceUpdatesListEmptyIfFocused(); }
+                else NoteFailure();
                 return;
             }
             // The loaded modpack's own newer version. See CheckModpackUpdateAsync.
@@ -594,6 +597,7 @@ public partial class Form1
                 if (!await UpdateMinecraftModAsync(mod, silent))
                 {
                     _soundEngine.Play("error");
+                    NoteFailure();
                     if (!silent) SpeakBox(Loc.T("updates.failBox", mod.Name, Loc.T("updates.noMinecraftBuild", mod.Name)));
                     ResetStatus();
                     return;
@@ -616,6 +620,7 @@ public partial class Form1
             {
                 _soundEngine.Play("error");
                 LogFailure(mod.Name, "Download/Install Failure", ex);
+                NoteFailure();
                 ResetStatus();
                 if (!silent) Invoke(delegate { SpeakBox(Loc.T("updates.failBox", mod.Name, FriendlyError(ex))); });
             }
@@ -648,7 +653,7 @@ public partial class Form1
                 string name = await ModFileSystem.ExtractModAsync(
                     destinationPath, _settings.CurrentModsPath, _allInstalledMods,
                     backupsPath, _settings.MaxBackupsPerMod, _settings.ActiveGame, LogError,
-                    mod.NexusID, _nexusService, mod.GitHubRepo, _settings.CurrentGamePath, null, instProgress);
+                    mod.NexusID, _nexusService, mod.GitHubRepo, _settings.CurrentGamePath, null, instProgress, updating: mod);
                 instProgress?.Complete();
                 RecordDownloadInstalled(destinationPath);
 
@@ -701,7 +706,9 @@ public partial class Form1
             {
                 _soundEngine.Play("error");
                 LogFailure(mod.Name, "GitHub Download/Install Failure", ex);
-                SpeakBox(Loc.T("updates.githubFailBox", mod.Name, FriendlyError(ex)));
+                NoteFailure();
+                ResetStatus();
+                if (!silent) SpeakBox(Loc.T("updates.githubFailBox", mod.Name, FriendlyError(ex)));
                 return;
             }
         }
@@ -721,7 +728,14 @@ public partial class Form1
             ProgressAnnouncer? progress = NewProgress(mod.Name, installing: false);
             string tempPath = await _nexusService.DownloadModUpdateAsync(mod, downloadsPath, progress);
             progress?.Complete();
-            await InstallFromZip(tempPath, mod.NexusID, silent: silent);
+            // Nothing below may run unless it really installed: it takes the row away, records the new version as the
+            // one on disk and says "updated". After a failure that left the old version in place, believed to be new,
+            // and the update was never offered again.
+            if (!await InstallFromZip(tempPath, mod.NexusID, silent: silent, updating: mod))
+            {
+                NoteFailure();
+                return;
+            }
             Invoke(delegate
             {
                 listUpdates.BeginUpdate();
@@ -759,7 +773,8 @@ public partial class Form1
         {
             _soundEngine.Play("error");
             LogFailure(mod.Name, "Download/Install Failure", ex);
-            Invoke(delegate { SpeakBox(Loc.T("updates.failBox", mod.Name, FriendlyError(ex))); });
+            NoteFailure();
+            if (!silent) Invoke(delegate { SpeakBox(Loc.T("updates.failBox", mod.Name, FriendlyError(ex))); });
         }
     }
 

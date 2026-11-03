@@ -309,9 +309,6 @@ public sealed partial class MainWindow
 		// The same scan the WinForms build runs, not a second one written for this window. It was private to
 		// the app until ModScanner moved to the core; until then this had to enumerate jars by hand and would
 		// have drifted from the real thing the first time a rule changed.
-		//
-		// No removeSuperseded callback is passed, so this scan only reads. On Windows the same call deletes
-		// the older of two duplicate installs; here it simply leaves both listed.
 		List<GameMod> scanned = ModScanner.ScanMods(
 			_modsFolder,
 			new Newtonsoft.Json.Linq.JObject(),

@@ -1006,7 +1006,9 @@ public static class ModFileSystem
 		IProgress<double>? installProgress = null,
 		Func<string, string, bool>? confirmOverwrite = null,
 		Func<string, Task<bool>>? runInstaller = null,
-		bool matchExistingByNexusId = true)
+		bool matchExistingByNexusId = true,
+		GameMod? updating = null,
+		Func<string, string, SamePageChoice>? askSamePage = null)
 	{
 		// Two names, deliberately. The archive's own name is the one that identifies the download — the mod id and
 		// version inside it are what match a reinstall to what is already there — while the folder the mod ends up
@@ -1026,11 +1028,25 @@ public static class ModFileSystem
 		// For Skyrim/Fallout 4 the mod's identity is known up front (its Nexus id or folder name), so a
 		// reinstall can be confirmed before we even extract. Stardew's identity lives in manifest.json inside
 		// the archive, so that prompt happens after extraction (below). A declined prompt cancels the install.
-		if (confirmOverwrite != null && !GameProfiles.IsGame(activeGame, GameProfiles.StardewValley))
+		if (updating == null && !GameProfiles.IsGame(activeGame, GameProfiles.StardewValley))
 		{
-			GameMod? existing = FindExistingInstall(installedMods, nexusId, archiveName, matchExistingByNexusId);
-			if (existing != null && Directory.Exists(existing.FolderPath) && !confirmOverwrite(existing.Name, existing.Version))
-				throw new OperationCanceledException("User declined to overwrite an existing mod.");
+			(GameMod? existing, InstallMatch match) = InstallTarget.Find(installedMods, nexusId, installFolderName, matchExistingByNexusId);
+			if (existing != null && Directory.Exists(existing.FolderPath))
+			{
+				// Sharing a page does not make it the same mod: this may be a patch or an optional file. Only the player
+				// knows, and saying no used to mean it could not be installed at all.
+				if (match == InstallMatch.SamePage && askSamePage != null)
+				{
+					SamePageChoice choice = askSamePage(installFolderName, existing.Name);
+					if (choice == SamePageChoice.Cancel)
+						throw new OperationCanceledException("User chose not to install a second file from a mod page.");
+					if (choice == SamePageChoice.InstallAlongside) matchExistingByNexusId = false;
+				}
+				else if (confirmOverwrite != null && !confirmOverwrite(existing.Name, existing.Version))
+				{
+					throw new OperationCanceledException("User declined to overwrite an existing mod.");
+				}
+			}
 		}
 
 		// Stage on the destination's own filesystem so a full system drive never blocks an install whose mods
@@ -1046,7 +1062,7 @@ public static class ModFileSystem
 			{
 				return await FinalizeBepInExModAsync(
 					tempDir, installFolderName, zipPath, modsPath, installedMods,
-					backupsPath, maxBackups, logError, nexusId, nexusService, gitHubRepo);
+					backupsPath, maxBackups, logError, nexusId, nexusService, gitHubRepo, matchExistingByNexusId, updating);
 			}
 
 			if (GameProfiles.Find(activeGame)?.IsWitcher3 == true)
@@ -1071,7 +1087,7 @@ public static class ModFileSystem
 
 				return await FinalizeWitcher3ModAsync(
 					tempDir, installFolderName, zipPath, modsPath, installedMods,
-					backupsPath, maxBackups, activeGame, logError, nexusId, nexusService, gitHubRepo, currentGamePath);
+					backupsPath, maxBackups, activeGame, logError, nexusId, nexusService, gitHubRepo, currentGamePath, matchExistingByNexusId);
 			}
 
 			if (!GameProfiles.IsGame(activeGame, GameProfiles.StardewValley))
@@ -1121,13 +1137,15 @@ public static class ModFileSystem
 					return await FinalizeBethesdaModAsync(
 						stagingDir, installFolderName, zipPath, modsPath, installedMods,
 						backupsPath, maxBackups, activeGame, logError, nexusId, nexusService, gitHubRepo, currentGamePath, fomodInfo,
-						docsSourceRoot: tempDir, matchExistingByNexusId: matchExistingByNexusId);
+						docsSourceRoot: tempDir, matchExistingByNexusId: matchExistingByNexusId, updating: updating,
+						buildFolder: ModFolderSwap.BuildFolderFor(tempDir));
 				}
 
 				return await FinalizeBethesdaModAsync(
 					ResolveBethesdaModSource(tempDir), installFolderName, zipPath, modsPath, installedMods,
 					backupsPath, maxBackups, activeGame, logError, nexusId, nexusService, gitHubRepo, currentGamePath, null,
-					docsSourceRoot: tempDir, matchExistingByNexusId: matchExistingByNexusId);
+					docsSourceRoot: tempDir, matchExistingByNexusId: matchExistingByNexusId, updating: updating,
+					buildFolder: ModFolderSwap.BuildFolderFor(tempDir));
 			}
 
 			// Stardew Valley Manifest logic
@@ -1144,30 +1162,45 @@ public static class ModFileSystem
 				throw new ModArchiveContentException(ModArchive.DescribeMissingManifest(zipPath, tempDir));
 
 			bool overwriteConfirmed = confirmOverwrite == null; // no callback => proceed without prompting
+			var replacing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 			foreach (string mPath in manifests)
 			{
+				string uid, mName;
 				try
 				{
 					JObject manifest = JObject.Parse(File.ReadAllText(mPath));
-					string uid   = ((string?)manifest["UniqueID"]) ?? "";
-					string mName = ((string?)manifest["Name"])     ?? "Unknown";
-					var existing = installedMods.FirstOrDefault(m => m.UniqueId == uid);
-					if (existing != null && Directory.Exists(existing.FolderPath))
-					{
-						// Confirm once before touching anything the user already has on disk.
-						if (!overwriteConfirmed)
-						{
-							if (!confirmOverwrite!(existing.Name, existing.Version))
-								throw new OperationCanceledException("User declined to overwrite an existing mod.");
-							overwriteConfirmed = true;
-						}
-						BackupStore.CreateBackup(existing.FolderPath, mName, backupsPath);
-						BackupStore.PruneBackups(mName, backupsPath, maxBackups);
-						ForceDeleteDirectory(existing.FolderPath);
-					}
+					uid = ((string?)manifest["UniqueID"]) ?? "";
+					mName = ((string?)manifest["Name"]) ?? "Unknown";
 				}
-				catch (OperationCanceledException) { throw; } // a declined overwrite must cancel, not be swallowed
-				catch (Exception ex) { logError(mPath, "Pre-install backup error: " + ex.Message); }
+				catch (Exception ex)
+				{
+					// A manifest that cannot be read names no installed mod, so there is nothing of the user's at stake.
+					logError(mPath, "Could not read a manifest in the download: " + ex.Message);
+					continue;
+				}
+
+				var existing = installedMods.FirstOrDefault(m => m.UniqueId == uid);
+				if (existing == null || !Directory.Exists(existing.FolderPath)) continue;
+
+				// Confirm once before touching anything the user already has on disk.
+				if (!overwriteConfirmed)
+				{
+					if (!confirmOverwrite!(existing.Name, existing.Version))
+						throw new OperationCanceledException("User declined to overwrite an existing mod.");
+					overwriteConfirmed = true;
+				}
+
+				// ⚠️ A backup that fails stops the install, with the old copy untouched. It used to be logged and
+				// ignored, and the folder was then deleted with no copy anywhere.
+				if (replacing.Add(existing.FolderPath))
+				{
+					BackupStore.CreateBackup(existing.FolderPath, mName, backupsPath);
+					BackupStore.PruneBackups(mName, backupsPath, maxBackups);
+				}
+
+				// A Stardew mod keeps its settings and keybinds in here. Replacing the folder put them back to the
+				// defaults on every update, with the only copy inside a backup nobody was told about.
+				ModFolderSwap.KeepUserFile(existing.FolderPath, Path.GetDirectoryName(mPath)!, "config.json");
 			}
 
 			bool isGroup = manifests.Length > 1;
@@ -1202,14 +1235,15 @@ public static class ModFileSystem
 			}
 
 			string destModFolderStardew = Path.Combine(modsPath, targetFolderNameStardew);
-			if (Directory.Exists(destModFolderStardew))
-				Directory.Delete(destModFolderStardew, recursive: true);
+			// Something else already in that folder is replaced as well, so it gets the same backup.
+			if (Directory.Exists(destModFolderStardew) && replacing.Add(destModFolderStardew))
+			{
+				BackupStore.CreateBackup(destModFolderStardew, targetFolderNameStardew, backupsPath);
+				BackupStore.PruneBackups(targetFolderNameStardew, backupsPath, maxBackups);
+			}
 
-			Directory.CreateDirectory(destModFolderStardew);
-			foreach (string dir in Directory.GetDirectories(sourceFolderStardew, "*", SearchOption.AllDirectories))
-				Directory.CreateDirectory(PathRebase.To(sourceFolderStardew, dir, destModFolderStardew));
-			foreach (string file in Directory.GetFiles(sourceFolderStardew, "*.*", SearchOption.AllDirectories))
-				File.Copy(file, PathRebase.To(sourceFolderStardew, file, destModFolderStardew), overwrite: true);
+			ModFolderSwap.ReplaceWithCopyOf(sourceFolderStardew, destModFolderStardew, replacing,
+				ModArchive.TempRootFor(modsPath), logError);
 
 			return (isGroup ? "Mod Group " : "") + targetFolderNameStardew;
 		}
@@ -1217,6 +1251,10 @@ public static class ModFileSystem
 		{
 			try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, recursive: true); }
 			catch (Exception ex) { DiagnosticLog.WriteException("Install", $"clearing the temporary folder {tempDir}", ex); }
+
+			string buildFolder = ModFolderSwap.BuildFolderFor(tempDir);
+			try { if (Directory.Exists(buildFolder)) ModOnDisk.DeleteDirectory(buildFolder); }
+			catch (Exception ex) { DiagnosticLog.WriteException("Install", $"clearing the temporary folder {buildFolder}", ex); }
 		}
 	}
 
@@ -1272,61 +1310,14 @@ public static class ModFileSystem
 		catch (Exception ex) { DiagnosticLog.WriteException("ModDocs", $"capturing the documentation shipped with {destModFolder}", ex); }
 	}
 
-	/// <summary>
-	/// Finds the already-installed mod that a new archive would replace, matched first by Nexus id (extracted
-	/// from the file name when not supplied, e.g. "SkyUI-12604-5-2"), then by folder/UniqueID name. Used both to
-	/// prompt before overwriting and to back up/remove the old copy. Returns null when nothing matches.
-	/// </summary>
-	/// <param name="matchByNexusId">
-	/// Whether an installed mod carrying the same Nexus id counts as the one being replaced. True for an ordinary
-	/// mod, where the id is its identity and the folder name changes with every version.
-	///
-	/// It must be FALSE for a mod that ships as several separate downloads from one page, because then the id
-	/// identifies the page rather than the install. SSE Engine Fixes is the case that proved it: its plugin and
-	/// its preloader are both mod 17230, so installing the plugin found the preloader as "the existing copy",
-	/// backed it up and deleted it — leaving a game that refuses to start, since the plugin it had just
-	/// installed cannot load without the preloader it had just removed.
-	/// </param>
-	private static GameMod? FindExistingInstall(
-		List<GameMod> installedMods, string? nexusId, string targetFolderName, bool matchByNexusId = true)
-	{
-		if (string.IsNullOrEmpty(nexusId))
-			nexusId = ModDisplayName.ModIdFromArchiveName(targetFolderName);
-
-		GameMod? existing = null;
-		if (matchByNexusId && !string.IsNullOrEmpty(nexusId))
-			existing = installedMods.FirstOrDefault(x => x.NexusID == nexusId);
-		existing ??= installedMods.FirstOrDefault(x =>
-			x.Name.Equals(targetFolderName, StringComparison.OrdinalIgnoreCase) ||
-			x.UniqueId.Equals(targetFolderName, StringComparison.OrdinalIgnoreCase));
-		return existing;
-	}
-
 	private static async Task<string> FinalizeBethesdaModAsync(
 		string sourceFolder, string targetFolderName, string zipPath, string modsPath, List<GameMod> installedMods,
 		string backupsPath, int maxBackups, string activeGame, Action<string, string> logError,
 		string? nexusId, NexusService? nexusService, string? gitHubRepo, string? currentGamePath, FomodInfo? fomodInfo,
-		string? docsSourceRoot = null, bool matchExistingByNexusId = true)
+		string buildFolder, string? docsSourceRoot = null, bool matchExistingByNexusId = true, GameMod? updating = null)
 	{
-		string destModFolder = Path.Combine(modsPath, targetFolderName);
-
-		// Backup and remove old version (the reinstall prompt, if any, already happened in ExtractModAsync).
-		GameMod? existing = FindExistingInstall(installedMods, nexusId, targetFolderName, matchExistingByNexusId);
-
-		if (existing != null && Directory.Exists(existing.FolderPath))
-		{
-			// Remove the old version's plugin entries; its deployed asset files are reconciled by the
-			// caller's SyncDeployment pass after extraction, so no per-file asset undeploy is needed here.
-			if (!string.IsNullOrEmpty(currentGamePath))
-				SyncPluginsFile(existing.FolderPath, activeGame, currentGamePath, false, logError);
-
-			BackupStore.CreateBackup(existing.FolderPath, targetFolderName, backupsPath);
-			BackupStore.PruneBackups(targetFolderName, backupsPath, maxBackups);
-			ForceDeleteDirectory(existing.FolderPath);
-		}
-
-		if (Directory.Exists(destModFolder))
-			ForceDeleteDirectory(destModFolder);
+		// The new copy is built here and only moved into place once it is whole. See ModFolderSwap.
+		string destModFolder = buildFolder;
 
 		Directory.CreateDirectory(destModFolder);
 		bool treatAsRoot = false;
@@ -1417,6 +1408,28 @@ public static class ModFileSystem
 			["GitHubRepo"] = gitHubRepo
 		};
 		File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
+
+		// Everything that could fail for the new copy has now had its chance, with the old one untouched.
+		string finalFolder = Path.Combine(modsPath, targetFolderName);
+		GameMod? existing = updating ?? InstallTarget.Find(installedMods, nexusId, targetFolderName, matchExistingByNexusId).Mod;
+		var replacing = new List<string>();
+		if (existing != null && Directory.Exists(existing.FolderPath)) replacing.Add(existing.FolderPath);
+		if (Directory.Exists(finalFolder) && !replacing.Contains(finalFolder, StringComparer.OrdinalIgnoreCase)) replacing.Add(finalFolder);
+
+		foreach (string old in replacing)
+		{
+			BackupStore.CreateBackup(old, targetFolderName, backupsPath);
+			BackupStore.PruneBackups(targetFolderName, backupsPath, maxBackups);
+		}
+
+		// The old copy's plugin entries come out once it has gone. Its deployed files are reconciled by the caller's
+		// SyncDeployment pass afterwards, so there is no per-file undeploy here.
+		ModFolderSwap.Replace(buildFolder, finalFolder, replacing, ModArchive.TempRootFor(modsPath), logError,
+			parked =>
+			{
+				if (!string.IsNullOrEmpty(currentGamePath))
+					SyncPluginsFile(parked, activeGame, currentGamePath, false, logError);
+			});
 
 		return targetFolderName;
 	}
@@ -1552,7 +1565,7 @@ public static class ModFileSystem
 	private static async Task<string> FinalizeWitcher3ModAsync(
 		string tempDir, string archiveName, string zipPath, string modsPath, List<GameMod> installedMods,
 		string backupsPath, int maxBackups, string activeGame, Action<string, string> logError,
-		string? nexusId, NexusService? nexusService, string? gitHubRepo, string? currentGamePath)
+		string? nexusId, NexusService? nexusService, string? gitHubRepo, string? currentGamePath, bool matchExistingByNexusId = true)
 	{
 		List<string> modFolders = FindWitcher3ModFolders(tempDir);
 
@@ -1582,22 +1595,22 @@ public static class ModFileSystem
 
 			string dest = Path.Combine(modsPath, folderName);
 
-			// Replacing an existing copy: keep a backup first, exactly as the other games' installs do.
-			GameMod? existing = FindExistingInstall(installedMods, nexusId, folderName);
-			if (existing != null && Directory.Exists(existing.FolderPath))
-			{
-				BackupStore.CreateBackup(existing.FolderPath, folderName, backupsPath);
-				BackupStore.PruneBackups(folderName, backupsPath, maxBackups);
-				ForceDeleteDirectory(existing.FolderPath);
-			}
-
 			// A disabled copy sits under the tilde name and would otherwise survive the reinstall, leaving the
 			// mod installed twice under two names.
-			string disabledTwin = Path.Combine(modsPath, "~" + folderName);
-			if (Directory.Exists(disabledTwin)) ForceDeleteDirectory(disabledTwin);
-			if (Directory.Exists(dest)) ForceDeleteDirectory(dest);
+			GameMod? existing = InstallTarget.Find(installedMods, nexusId, folderName, matchExistingByNexusId).Mod;
+			var replacing = new List<string>();
+			if (existing != null && Directory.Exists(existing.FolderPath)) replacing.Add(existing.FolderPath);
+			foreach (string other in new[] { Path.Combine(modsPath, "~" + folderName), dest })
+				if (Directory.Exists(other) && !replacing.Contains(other, StringComparer.OrdinalIgnoreCase)) replacing.Add(other);
 
-			CopyDirectoryRecursively(source, dest);
+			// Backed up first, as the other games' installs do, and a failure stops here with nothing changed.
+			foreach (string old in replacing)
+			{
+				BackupStore.CreateBackup(old, folderName, backupsPath);
+				BackupStore.PruneBackups(folderName, backupsPath, maxBackups);
+			}
+
+			ModFolderSwap.ReplaceWithCopyOf(source, dest, replacing, ModArchive.TempRootFor(modsPath), logError);
 
 			if (primaryFolderName.Length == 0) primaryFolderName = folderName;
 		}
@@ -2076,7 +2089,7 @@ public static class ModFileSystem
 	private static async Task<string> FinalizeBepInExModAsync(
 		string tempDir, string archiveName, string zipPath, string modsPath, List<GameMod> installedMods,
 		string backupsPath, int maxBackups, Action<string, string> logError,
-		string? nexusId, NexusService? nexusService, string? gitHubRepo)
+		string? nexusId, NexusService? nexusService, string? gitHubRepo, bool matchExistingByNexusId = true, GameMod? updating = null)
 	{
 		string bepInExRoot = Path.GetDirectoryName(modsPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)) ?? "";
 
@@ -2103,33 +2116,21 @@ public static class ModFileSystem
 
 		// Name the folder after the plugin itself where we can read it, falling back to the archive name.
 		BepInExPluginInfo identity = BepInExPlugin.Identify(modSource);
-		string targetFolderName = ModScanner.SanitiseFolderName(identity.Name.Length > 0 ? identity.Name : archiveName);
+		// With no readable plugin name, Identify falls back on the folder the files are in. For a DLL at the top of an
+		// archive that is the random temporary folder, and the mod was installed as "Extract_x1y2z3", matching nothing.
+		string pluginName = identity.Name == Path.GetFileName(tempDir.TrimEnd(Path.DirectorySeparatorChar)) ? "" : identity.Name;
+		string targetFolderName = ModScanner.SanitiseFolderName(pluginName.Length > 0 ? pluginName : archiveName);
 		if (targetFolderName.Length == 0) targetFolderName = ModScanner.SanitiseFolderName(archiveName);
 
-		string destModFolder = Path.Combine(modsPath, targetFolderName);
-
-		// Back up and clear whatever is already installed, whether the manager knows it as this mod (matched by
-		// Nexus id) or simply as a folder of the same name. A disabled copy counts too — it is the same mod.
-		GameMod? existing = FindExistingInstall(installedMods, nexusId, targetFolderName);
-		if (existing != null && Directory.Exists(existing.FolderPath))
-		{
-			BackupStore.CreateBackup(existing.FolderPath, targetFolderName, backupsPath);
-			BackupStore.PruneBackups(targetFolderName, backupsPath, maxBackups);
-			ForceDeleteDirectory(existing.FolderPath);
-		}
-		if (Directory.Exists(destModFolder))
-			ForceDeleteDirectory(destModFolder);
-
-		Directory.CreateDirectory(destModFolder);
-		foreach (string dir in Directory.GetDirectories(modSource, "*", SearchOption.AllDirectories))
-			Directory.CreateDirectory(dir.Replace(modSource, destModFolder));
-		foreach (string file in Directory.GetFiles(modSource, "*.*", SearchOption.AllDirectories))
-			RobustCopy(file, file.Replace(modSource, destModFolder));
+		// The new copy is built beside the extraction and only moved into place once it is whole. See ModFolderSwap.
+		string finalFolder = Path.Combine(modsPath, targetFolderName);
+		string destModFolder = ModFolderSwap.BuildFolderFor(tempDir);
+		ModFolderSwap.CopyTree(modSource, destModFolder);
 
 		// Keep whatever documentation the author shipped, so the controls viewer can read the mod's keybindings.
 		CaptureModDocs(tempDir, destModFolder);
 
-		string mName = identity.Name.Length > 0 ? identity.Name : targetFolderName;
+		string mName = pluginName.Length > 0 ? pluginName : targetFolderName;
 		string mVersion = identity.Version.Length > 0
 			? identity.Version
 			: (ModScanner.ExtractVersionFromFileName(zipPath, nexusId) ?? "1.0.0");
@@ -2147,7 +2148,7 @@ public static class ModFileSystem
 					// version of the download, which routinely differs from what the plugin reports.
 					mAuthor = details["author"]?.ToString() ?? mAuthor;
 					mDesc = details["summary"]?.ToString() ?? mDesc;
-					if (identity.Name.Length == 0) mName = details["name"]?.ToString() ?? mName;
+					if (pluginName.Length == 0) mName = details["name"]?.ToString() ?? mName;
 				}
 			}
 			catch (Exception ex) { DiagnosticLog.WriteException("Nexus", $"looking up the details of mod {nexusId}", ex); }
@@ -2164,6 +2165,21 @@ public static class ModFileSystem
 			["GitHubRepo"]  = gitHubRepo
 		};
 		File.WriteAllText(Path.Combine(destModFolder, ".manager_manifest.json"), manifest.ToString(Formatting.Indented));
+
+		// Whatever is already installed is replaced, whether the manager knows it as this mod (matched by Nexus id)
+		// or simply as a folder of the same name. A disabled copy counts too: it is the same mod.
+		GameMod? existing = updating ?? InstallTarget.Find(installedMods, nexusId, targetFolderName, matchExistingByNexusId).Mod;
+		var replacing = new List<string>();
+		if (existing != null && Directory.Exists(existing.FolderPath)) replacing.Add(existing.FolderPath);
+		if (Directory.Exists(finalFolder) && !replacing.Contains(finalFolder, StringComparer.OrdinalIgnoreCase)) replacing.Add(finalFolder);
+
+		foreach (string old in replacing)
+		{
+			BackupStore.CreateBackup(old, targetFolderName, backupsPath);
+			BackupStore.PruneBackups(targetFolderName, backupsPath, maxBackups);
+		}
+
+		ModFolderSwap.Replace(destModFolder, finalFolder, replacing, ModArchive.TempRootFor(modsPath), logError);
 
 		return targetFolderName;
 	}

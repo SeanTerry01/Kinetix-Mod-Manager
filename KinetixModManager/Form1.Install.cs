@@ -103,6 +103,7 @@ public partial class Form1
 			}
 			isUpdatingAll = true;
 			_updatesLeftDisabled.Clear();
+			_updatesThatFailed.Clear();
 			try
 			{
 				for (int i = 0; i < mods.Count; i++)
@@ -116,9 +117,21 @@ public partial class Form1
 				}
 				// A mod that was switched off stays switched off, and the run says which ones rather than asking
 				// about each in the middle of a batch the user started to avoid answering things.
-				Speak(_updatesLeftDisabled.Count == 0
-					? Loc.T("updateAll.finished")
-					: Loc.T("updateAll.finishedSomeDisabled", _updatesLeftDisabled.Count, string.Join(", ", _updatesLeftDisabled)));
+				if (_updatesThatFailed.Count > 0)
+				{
+					// Named at the end of the run, because "All updates finished" after a failure is simply untrue.
+					_soundEngine.Play("error");
+					string failed = Loc.T("updateAll.finishedFailed", _updatesThatFailed.Count, string.Join(", ", _updatesThatFailed));
+					Speak(_updatesLeftDisabled.Count == 0
+						? failed
+						: failed + " " + Loc.T("updateAll.leftDisabled", _updatesLeftDisabled.Count, string.Join(", ", _updatesLeftDisabled)));
+				}
+				else
+				{
+					Speak(_updatesLeftDisabled.Count == 0
+						? Loc.T("updateAll.finished")
+						: Loc.T("updateAll.finishedSomeDisabled", _updatesLeftDisabled.Count, string.Join(", ", _updatesLeftDisabled)));
+				}
 			}
 			catch (Exception ex)
 			{
@@ -704,6 +717,32 @@ public partial class Form1
 	/// installed. Returns true to overwrite. On decline it announces that the existing copy was kept. Marshals to
 	/// the UI thread since the install pipeline may call it from a background continuation.
 	/// </summary>
+	/// <summary>
+	/// Reports an install that did not happen. In a batch it goes to the log and the end of the run names the mod, so
+	/// someone who walked away from Update All does not come back to a run stopped at a question.
+	/// </summary>
+	private void ReportInstallFailure(string message, string modName, bool silent)
+	{
+		if (silent) LogError(modName, message);
+		else AiInstallFailure(message, modName);
+	}
+
+	/// <summary>A download from the page an installed mod came from: a new version of it, or a separate file?</summary>
+	private SamePageChoice ConfirmSamePage(string downloadName, string installedName)
+	{
+		SamePageChoice Ask()
+		{
+			DialogResult answer = SpeakBox(this,
+				Loc.T("install.samePageBox", downloadName, installedName),
+				Loc.T("install.reinstallTitle"), MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+			if (answer == DialogResult.Yes) return SamePageChoice.Replace;
+			if (answer == DialogResult.No) return SamePageChoice.InstallAlongside;
+			Speak(Loc.T("install.reinstallKept", installedName));
+			return SamePageChoice.Cancel;
+		}
+		return InvokeRequired ? (SamePageChoice)Invoke(Ask) : Ask();
+	}
+
 	private bool ConfirmOverwrite(string modName, string version)
 	{
 		bool Ask()
@@ -788,11 +827,15 @@ public partial class Form1
 	/// Extracts a .zip archive to a temp directory, validates all paths against the mods folder
 	/// to prevent path traversal, then moves the contents into the Mods directory.
 	/// Temp files are cleaned up in a <c>finally</c> block regardless of success or failure.
+	///
+	/// ⚠️ False if nothing was installed, whether it failed or the user cancelled. It has already said why. A caller
+	/// that goes on to report success has to look: an update used to say "updated" and record the new version after a
+	/// failure, and was then never offered again.
 	/// </summary>
 	/// <param name="partOfMultiPartMod">
 	/// True when this archive is one of several separate downloads from the same Nexus page. Its siblings carry
 	/// the same Nexus id, so that id must not be used to decide which installed mod is being replaced — it would
-	/// name a sibling and delete it. See <c>FindExistingInstall</c>.
+	/// name a sibling and delete it. See <see cref="InstallTarget"/>.
 	/// </param>
 	/// <param name="displayName">
 	/// What to call the mod out loud, where the caller already knows — a download whose file name turned out to be
@@ -804,9 +847,9 @@ public partial class Form1
 	/// with the install so the mod can be checked for updates afterwards — without it a mod installed from a
 	/// repository the user named is one the manager can never tell them about again.
 	/// </param>
-	private async Task InstallFromZip(string zipPath, string? nexusId = null, bool silent = false,
+	private async Task<bool> InstallFromZip(string zipPath, string? nexusId = null, bool silent = false,
 		bool confirmReinstall = false, bool partOfMultiPartMod = false, string? displayName = null,
-		string? gitHubRepo = null)
+		string? gitHubRepo = null, GameMod? updating = null)
 	{
 		// Never the raw file name: a Nexus download is called "Skyrim Access-181131-1-2-3-1723456789.7z", and the
 		// mod id, version and timestamp on the end of that are not part of what the mod is called. See ModDisplayName.
@@ -827,7 +870,9 @@ public partial class Form1
 				zipPath, _settings.CurrentModsPath, _allInstalledMods,
 				backupsPath, _settings.MaxBackupsPerMod, _settings.ActiveGame, LogError, nexusId, _nexusService, gitHubRepo, _settings.CurrentGamePath,
 				ShowFomodWizardAsync, installProgress, confirmOverwrite, RunModInstallerAsync,
-				matchExistingByNexusId: !partOfMultiPartMod);
+				matchExistingByNexusId: !partOfMultiPartMod,
+				updating: updating,
+				askSamePage: confirmReinstall ? ConfirmSamePage : null);
 			installProgress?.Complete();
 			_soundEngine.Play("load_complete");
 			RecordDownloadInstalled(zipPath);
@@ -866,27 +911,32 @@ public partial class Form1
 			// The folder a mod landed in is not necessarily what it is called: Stardew names its folder from the
 			// mod's own manifest (already the real name), while the Bethesda games name it from the download.
 			if (!silent) SpeakBox(Loc.T("install.installed", ModDisplayName.ForSpeech(name, nexusId, spokenName)));
+			return true;
 		}
 		catch (OperationCanceledException)
 		{
 			// User cancelled the FOMOD option wizard; it already announced the cancellation.
+			return false;
 		}
 		catch (UnauthorizedAccessException ex)
 		{
 			// A denied path is almost always an external lock: the game still running, antivirus/Controlled Folder
 			// Access guarding the mods folder, or a file held open elsewhere. Say so rather than a bare path error.
-			AiInstallFailure(Loc.T("install.failedAccess", ex.Message), spokenName);
+			ReportInstallFailure(Loc.T("install.failedAccess", ex.Message), spokenName, silent);
+			return false;
 		}
 		catch (ModArchiveContentException ex)
 		{
 			// The archive was fine but holds no mod for this game — say what to do about it, and keep the raw
 			// detail (what the archive did contain) in the error log rather than in the spoken message.
 			LogError(spokenName, ex.Message);
-			AiInstallFailure(Loc.T("install.failed", FriendlyError(ex)), spokenName);
+			ReportInstallFailure(Loc.T("install.failed", FriendlyError(ex)), spokenName, silent);
+			return false;
 		}
 		catch (Exception ex)
 		{
-			AiInstallFailure(Loc.T("install.failed", ex.Message), spokenName);
+			ReportInstallFailure(Loc.T("install.failed", ex.Message), spokenName, silent);
+			return false;
 		}
 		finally
 		{

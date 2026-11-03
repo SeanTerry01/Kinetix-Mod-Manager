@@ -186,6 +186,9 @@ public partial class Form1 : Form, IMessageFilter
 
 	private bool isUpdatingAll;
 
+	/// <summary>The mods Update All could not update, named when the run ends.</summary>
+	private readonly List<string> _updatesThatFailed = new();
+
 	private CancellationTokenSource _pipeCts = new CancellationTokenSource();
 
 	private int _activeChecks;
