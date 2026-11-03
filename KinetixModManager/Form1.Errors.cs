@@ -29,6 +29,10 @@ public partial class Form1
 
 		switch (ex)
 		{
+			case DownloadCancelledException:
+				return Loc.T("err.downloadCancelled");
+			case DownloadMismatchException:
+				return Loc.T("err.downloadMismatch");
 			case ModArchiveContentException:
 				return Loc.T("err.noModInArchive");
 			case UnauthorizedAccessException:

@@ -712,13 +712,14 @@ public partial class Form1
 			SetStatus(Loc.T("suite.smapiDownloading"), speak: false);
 			Speak(Loc.T("suite.smapiDownloading"));
 
-			string? url = await GetSmapiInstallerZipUrl();
-			if (string.IsNullOrEmpty(url)) throw new Exception("Could not resolve the SMAPI download URL.");
+			GitHubAsset installer = await GetSmapiInstallerAsset()
+				?? throw new Exception("Could not resolve the SMAPI download URL.");
 
 			Directory.CreateDirectory(tempDir);
 			string zipPath = Path.Combine(tempDir, "SMAPI-installer.zip");
 			ProgressAnnouncer progress = NewProgress(Loc.T("suite.smapiName"), installing: false);
-			await _nexusService.DownloadFileWithProgressAsync(url, zipPath, progress);
+			// Its installer gets run, so the file has to be the one SMAPI published.
+			await _nexusService.DownloadFileWithProgressAsync(installer.Url, zipPath, progress, installer.Digest);
 			progress.Complete();
 
 			string extractDir = Path.Combine(tempDir, "extracted");
@@ -770,6 +771,12 @@ public partial class Form1
 				OpenLink("https://smapi.io");
 			}
 			return installed;
+		}
+		catch (DownloadCancelledException)
+		{
+			// Asked for. Falling through would open a browser at the page for doing it by hand.
+			ResetStatus();
+			return false;
 		}
 		catch (Exception ex)
 		{

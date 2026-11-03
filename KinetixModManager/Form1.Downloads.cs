@@ -38,7 +38,7 @@ public partial class Form1
 	/// otherwise unpack to another zip) as well as any "for developers" variant. Returns null if the
 	/// release or a suitable asset can't be found, in which case the caller falls back to the browser.
 	/// </summary>
-	private async Task<string?> GetSmapiInstallerZipUrl()
+	private async Task<GitHubAsset?> GetSmapiInstallerAsset()
 	{
 		try
 		{
@@ -52,20 +52,38 @@ public partial class Form1
 
 			// SMAPI's own rules rather than the general ones: which of ITS assets is the installer is a fact
 			// about SMAPI's release, not about GitHub releases in general, so it stays here.
-			string? fallback = null;
+			GitHubAsset? fallback = null;
 			foreach (GitHubAsset asset in release.Assets)
 			{
 				if (!asset.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) continue;
 				if (asset.Name.Contains("double-zipped", StringComparison.OrdinalIgnoreCase)) continue;
 				if (asset.Name.Contains("developer", StringComparison.OrdinalIgnoreCase)) continue;
-				if (asset.Name.Contains("installer", StringComparison.OrdinalIgnoreCase)) return asset.Url;
-				fallback ??= asset.Url;
+				if (asset.Name.Contains("installer", StringComparison.OrdinalIgnoreCase)) return asset;
+				fallback ??= asset;
 			}
 			return fallback;
 		}
 		catch (Exception ex) { DiagnosticLog.WriteException("Downloads", "asking GitHub for the latest SMAPI release", ex); }
 		return null;
 	}
+
+	/// <summary>
+	/// The key that stops downloads. A large file could only be stopped by closing the manager before. An Update All running
+	/// at the time stops too, or the next mod would begin the moment this one ended.
+	/// </summary>
+	private void CancelRunningDownloads()
+	{
+		if (!_nexusService.AnyDownloadRunning)
+		{
+			Speak(Loc.T("downloads.noneRunning"));
+			return;
+		}
+		_stopUpdateAll = isUpdatingAll;
+		_nexusService.CancelDownloads();
+		Speak(Loc.T("downloads.cancelled"));
+	}
+
+	private bool _stopUpdateAll;
 
 	// SKSE and F4SE used to be resolved here, and no longer are — see ModPartRules and InstallKnownModPartsAsync.
 	//

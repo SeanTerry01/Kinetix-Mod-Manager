@@ -156,7 +156,7 @@ public partial class Form1
 		return versions.Aggregate((best, v) => IsNewerVersion(best, v) ? v : best);
 	}
 
-	private async Task CheckForUpdates(List<StardewMod> group)
+	private async Task CheckForUpdates(List<StardewMod> group, Task<HashSet<int>?>? updatedThisMonth, Task<Dictionary<string, string>?>? modrinthAnswers)
 	{
 		// Read now, while this is the game the check is for. A queued request reading it later asked the other game's
 		// page about this mod's id, and a row for an unrelated mod landed on the new game's list.
@@ -166,12 +166,13 @@ public partial class Form1
 		try
 		{
 			string? latestVersion = null;
+			bool remembered = false;
 			if (GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true)
 			{
 				// Modrinth first, by the hash of the jar, which is exact. Then GitHub for a mod Modrinth does
 				// not host — United Minecraft is published on GitHub releases only, and it names its own
 				// repository in its manifest, so there is no reason for it to be the one mod nothing can check.
-				string? remote = await LatestModrinthVersionAsync(group[0])
+				string? remote = await LatestModrinthVersionAsync(group[0], modrinthAnswers)
 					?? (!string.IsNullOrEmpty(group[0].GitHubRepo)
 						? await GetGitHubLatestReleaseVersionAsync(group[0].GitHubRepo!)
 						: null);
@@ -183,7 +184,9 @@ public partial class Form1
 			}
 			else if (!string.IsNullOrEmpty(group[0].NexusID))
 			{
-				latestVersion = await _nexusService.GetLatestVersionAsync(group[0].NexusID ?? "", domain);
+				latestVersion = await RememberedNexusVersion(game, group[0].NexusID!, updatedThisMonth);
+				remembered = latestVersion != null;
+				latestVersion ??= await _nexusService.GetLatestVersionAsync(group[0].NexusID ?? "", domain);
 				if (latestVersion == null) Interlocked.Increment(ref _updateChecksUnanswered);
 			}
 			else if (!string.IsNullOrEmpty(group[0].GitHubRepo))
@@ -205,11 +208,18 @@ public partial class Form1
 			// can sit on an old number while its own Files tab already offers a newer release. Believing the page
 			// alone is how SSE Engine Fixes 7.0.21 went unreported for a week — the release that Skyrim 1.7.104
 			// will not start without. So when the page claims there is nothing new, the files are asked as well.
-			if (!IsNewerVersion(installedVersion, latestVersion) && !string.IsNullOrEmpty(group[0].NexusID))
+			if (!remembered && !string.IsNullOrEmpty(group[0].NexusID))
 			{
-				string? fromFiles = await NewestMainFileVersion(group[0].NexusID!);
-				if (IsNewerVersion(installedVersion, fromFiles)) latestVersion = fromFiles!;
-				if (_settings.ActiveGame != game) return;
+				// A page whose files were not asked about, for want of quota, has not been fully checked, so it isn't remembered.
+				bool thorough = true;
+				if (!IsNewerVersion(installedVersion, latestVersion))
+				{
+					thorough = _nexusService.HasQuotaToSpare;
+					string? fromFiles = await NewestMainFileVersion(group[0].NexusID!);
+					if (IsNewerVersion(installedVersion, fromFiles)) latestVersion = fromFiles!;
+					if (_settings.ActiveGame != game) return;
+				}
+				if (thorough) RememberNexusCheck(game, group[0].NexusID!, latestVersion);
 			}
 
 			if (_settings.IgnoredVersions.TryGetValue(group[0].UniqueId, out string? ignored) && ignored == latestVersion)
@@ -330,6 +340,9 @@ public partial class Form1
 			var pendingMinecraft = _pendingMinecraftUpdate;
 			_pendingMinecraftUpdate = null;
 			int unchecked_ = UncheckedModCount();
+			// Written once at the end, so a check of 1,000 mods doesn't rewrite the settings 1,000 times.
+			_settings.Save();
+			bool toldToSlowDown = _nexusService.Pause.IsActive(DateTime.UtcNow) || _gitHubPause.IsActive(DateTime.UtcNow);
 			Invoke(delegate
 			{
 				DropUpToDateUpdateRows();
@@ -339,7 +352,7 @@ public partial class Form1
 				string message = listUpdates.Items.Count > 0
 					? Loc.T(listUpdates.Items.Count == 1 ? "updates.checkCompleteOne" : "updates.checkComplete", listUpdates.Items.Count)
 					: Loc.T(someUnanswered ? "updates.checkFoundNoneSoFar" : "updates.checkCompleteNone");
-				if (someUnanswered) message += " " + Loc.T("updates.someUnanswered");
+				if (someUnanswered) message += " " + Loc.T(toldToSlowDown ? "updates.toldToSlowDown" : "updates.someUnanswered");
 				// Tell the user when some mods couldn't be checked at all (no Nexus/GitHub link), so an
 				// "all up to date" result isn't taken to cover a manually-added mod that was really just skipped.
 				if (unchecked_ > 0)
@@ -800,6 +813,11 @@ public partial class Form1
                 AnnounceUpdatesListEmptyIfFocused();
             }
         }
+        catch (DownloadCancelledException)
+        {
+            // Asked for, and already said, so it is neither a failure nor worth a box. The row stays, to be tried again.
+            ResetStatus();
+        }
         catch (Exception ex)
         {
             _soundEngine.Play("error");
@@ -978,11 +996,25 @@ public partial class Form1
 
 	private async Task<string?> GetGitHubLatestReleaseVersionAsync(string repo)
 	{
+		await _gitHubLimit.WaitAsync();
 		try
 		{
+			if (_gitHubPause.IsActive(DateTime.UtcNow)) return null;
+
 			using var req = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{repo}/releases/latest");
 			req.Headers.UserAgent.ParseAdd($"KinetixModManager/{NexusService.AppVersion}");
 			using var resp = await NexusService.HttpClient.SendAsync(req);
+
+			// GitHub says it is over the limit with a 403 as well as a 429, and its remaining-count header tells them apart
+			// from a repository that refuses access.
+			bool outOfRequests = RequestPause.IsTooMany(resp)
+				|| (resp.StatusCode == System.Net.HttpStatusCode.Forbidden
+					&& resp.Headers.TryGetValues("x-ratelimit-remaining", out var left) && left.FirstOrDefault() == "0");
+			if (outOfRequests)
+			{
+				DateTime now = DateTime.UtcNow;
+				_gitHubPause.For(RequestPause.LengthFrom(resp, "x-ratelimit-reset", now), now);
+			}
 			if (!resp.IsSuccessStatusCode) return null;
 
 			JObject json = JObject.Parse(await resp.Content.ReadAsStringAsync());
@@ -991,6 +1023,30 @@ public partial class Form1
 			return tag.StartsWith("v") ? tag.Substring(1) : tag;
 		}
 		catch { return null; }
+		finally { _gitHubLimit.Release(); }
+	}
+
+	/// <summary>GitHub allows 60 requests an hour without an account, so its checks go a few at a time and stop when told.</summary>
+	private readonly SemaphoreSlim _gitHubLimit = new(3);
+	private readonly RequestPause _gitHubPause = new();
+
+	/// <summary>
+	/// The version a Nexus page is known to be at without asking, when its list of this month's changes doesn't name the mod.
+	/// </summary>
+	private async Task<string?> RememberedNexusVersion(string game, string nexusId, Task<HashSet<int>?>? updatedThisMonth)
+	{
+		if (updatedThisMonth == null) return null;
+		HashSet<int>? updated = await updatedThisMonth;
+		NexusCheckRecord? record = _settings.NexusChecks.TryGetValue(game, out var forGame)
+			&& forGame.TryGetValue(nexusId, out NexusCheckRecord? found) ? found : null;
+		return NexusCheckMemory.RememberedLatest(record, nexusId, updated, DateTime.UtcNow);
+	}
+
+	private void RememberNexusCheck(string game, string nexusId, string latest)
+	{
+		if (!_settings.NexusChecks.TryGetValue(game, out var forGame))
+			_settings.NexusChecks[game] = forGame = new Dictionary<string, NexusCheckRecord>();
+		forGame[nexusId] = new NexusCheckRecord { Latest = latest, CheckedUtc = DateTime.UtcNow };
 	}
 
 	/// <summary>
@@ -1268,7 +1324,7 @@ public partial class Form1
 			string destinationPath = Path.Combine(downloadsPath, release.FileName);
 
 			ProgressAnnouncer progress = NewProgress(Loc.T("updates.appUpdateName"), installing: false);
-			await _nexusService.DownloadFileWithProgressAsync(release.DownloadUrl, destinationPath, progress);
+			await _nexusService.DownloadFileWithProgressAsync(release.DownloadUrl, destinationPath, progress, release.Digest);
 			progress.Complete();
 
 			_isLoading = false;

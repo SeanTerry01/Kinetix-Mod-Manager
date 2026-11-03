@@ -82,6 +82,7 @@ public partial class Form1
 			}
 			using IDisposable busy = BeginModOperation();
 			isUpdatingAll = true;
+			_stopUpdateAll = false;
 			_updatesLeftDisabled.Clear();
 			_updatesThatFailed.Clear();
 			try
@@ -94,10 +95,17 @@ public partial class Form1
 						? Loc.T("updateAll.updatingBundle", i + 1, mods.Count, mods[i].Name, members)
 						: Loc.T("updateAll.updatingStatus", i + 1, mods.Count, mods[i].Name));
 					await DownloadAndInstallUpdate(mods[i], silent: true);
+					if (_stopUpdateAll) break;
 				}
 				// A mod that was switched off stays switched off, and the run says which ones rather than asking
 				// about each in the middle of a batch the user started to avoid answering things.
-				if (_updatesThatFailed.Count > 0)
+				if (_stopUpdateAll)
+				{
+					// The key has already said it was cancelled. This is only for what had failed before it was pressed.
+					if (_updatesThatFailed.Count > 0)
+						Speak(Loc.T("updateAll.finishedFailed", _updatesThatFailed.Count, string.Join(", ", _updatesThatFailed)));
+				}
+				else if (_updatesThatFailed.Count > 0)
 				{
 					// Named at the end of the run, because "All updates finished" after a failure is simply untrue.
 					_soundEngine.Play("error");
@@ -374,6 +382,10 @@ public partial class Form1
 				return;
 
 			await OfferToInstallDownload(link, path, modName);
+		}
+		catch (DownloadCancelledException)
+		{
+			ResetStatus();
 		}
 		catch (TimeoutException)
 		{

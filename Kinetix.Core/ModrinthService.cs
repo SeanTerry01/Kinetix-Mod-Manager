@@ -166,6 +166,15 @@ public static class ModrinthService
 	/// </para>
 	/// </summary>
 	public static async Task<Dictionary<string, ModrinthFile>> GetLatestForHashesAsync(
+		IReadOnlyCollection<string> sha1Hashes, string gameVersion, string loader = "fabric") =>
+		await GetLatestForHashesOrNullAsync(sha1Hashes, gameVersion, loader)
+			?? new Dictionary<string, ModrinthFile>(StringComparer.OrdinalIgnoreCase);
+
+	/// <summary>
+	/// The same question, for a caller that must tell "Modrinth does not host these" from "Modrinth did not answer".
+	/// Null is the second. The first is an empty or partial answer.
+	/// </summary>
+	public static async Task<Dictionary<string, ModrinthFile>?> GetLatestForHashesOrNullAsync(
 		IReadOnlyCollection<string> sha1Hashes, string gameVersion, string loader = "fabric")
 	{
 		var latest = new Dictionary<string, ModrinthFile>(StringComparer.OrdinalIgnoreCase);
@@ -181,7 +190,7 @@ public static class ModrinthService
 
 		using var content = new StringContent(body.ToString(), Encoding.UTF8, "application/json");
 		HttpResponseMessage response = await KinetixHttp.Api.PostAsync($"{ApiBase}/version_files/update", content);
-		if (!response.IsSuccessStatusCode) return latest;
+		if (!response.IsSuccessStatusCode) return null;
 
 		return ParseHashUpdates(JObject.Parse(await response.Content.ReadAsStringAsync()));
 	}

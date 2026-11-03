@@ -427,9 +427,15 @@ public partial class Form1
 		{
 			Fire(CheckMinecraftPlatformUpdatesAsync(), "CheckMinecraftPlatformUpdatesAsync");
 		}
+		// One request each that can answer for every mod, shared by the checks below. With only one page to ask, the
+		// list of changes would cost as much as it saves.
+		Task<HashSet<int>?>? updatedThisMonth = list.Count(g => g.Key.StartsWith("Nexus:", StringComparison.Ordinal)) > 1
+			? _nexusService.GetRecentlyUpdatedModIdsAsync("1m", _nexusService.CurrentGameDomain)
+			: null;
+		Task<Dictionary<string, string>?>? modrinthAnswers = minecraft ? LatestModrinthVersionsAsync(list.Select(g => g.First()).ToList()) : null;
 		foreach (IGrouping<string, StardewMod> item3 in list)
 		{
-			Fire(CheckForUpdates(item3.ToList()), "CheckForUpdates");
+			Fire(CheckForUpdates(item3.ToList(), updatedThisMonth, modrinthAnswers), "CheckForUpdates");
 		}
 		}
 		finally

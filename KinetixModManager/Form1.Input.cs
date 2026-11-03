@@ -335,6 +335,11 @@ public partial class Form1
 			e.SuppressKeyPress = true;
 			OpenErrorLog();
 		}
+		if (IsShortcut(e, "CancelDownloads"))
+		{
+			e.SuppressKeyPress = true;
+			CancelRunningDownloads();
+		}
 
 		// Reading the suggested list is not curating, so it is never gated. Unmapped by default; this is here so
 		// a key assigned in the shortcut manager works. See Form1.SuggestedMods.

@@ -80,7 +80,7 @@ public partial class Form1
 			string destination = Path.Combine(downloadsPath, asset.Name);
 
 			ProgressAnnouncer progress = NewProgress(asset.Name, installing: false);
-			await _nexusService.DownloadFileWithProgressAsync(asset.Url, destination, progress);
+			await _nexusService.DownloadFileWithProgressAsync(asset.Url, destination, progress, asset.Digest);
 			progress.Complete();
 
 			Speak(Loc.T("github.downloaded", asset.Name, release!.TagName));

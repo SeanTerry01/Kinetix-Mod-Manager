@@ -79,6 +79,12 @@ public class NexusService
 	/// <summary>The per-day request limit reported by Nexus, or -1 if not yet known.</summary>
 	public int DailyLimit { get; private set; } = -1;
 
+	/// <summary>
+	/// Nexus has said to slow down, or the allowance is gone. Version checks stop while this lasts. What someone asked for
+	/// directly, such as a download, still goes, so they hear the reason rather than nothing happening.
+	/// </summary>
+	public RequestPause Pause { get; } = new();
+
 	/// <summary>True once at least one v1 response has reported the account's remaining quota.</summary>
 	public bool HasRateLimitInfo => HourlyRemaining >= 0 || DailyRemaining >= 0;
 
@@ -182,6 +188,8 @@ public class NexusService
 		await _apiSemaphore.WaitAsync();
 		try
 		{
+			// Asked after the wait: a pause usually begins while a long queue of these is waiting.
+			if (Pause.IsActive(DateTime.UtcNow)) return null;
 			await Task.Delay(Random.Shared.Next(100, 1000));
 			using var req = BuildRequest(HttpMethod.Get,
 				$"https://api.nexusmods.com/v1/games/{domain ?? CurrentGameDomain}/mods/{nexusId}.json");
@@ -210,6 +218,7 @@ public class NexusService
 		await _apiSemaphore.WaitAsync();
 		try
 		{
+			if (!HasQuotaToSpare) return new List<string>();
 			await Task.Delay(Random.Shared.Next(100, 1000));
 			return ModPartRules.MainFileVersions(await GetModFilesAsync(nexusId));
 		}
@@ -221,8 +230,9 @@ public class NexusService
 	/// Whether there is enough of the Nexus quota left to spend a request on a thoroughness check rather than on
 	/// something the user asked for. Unknown counts as yes: the headers are only absent before the first call.
 	/// </summary>
-	private bool HasQuotaToSpare =>
-		(DailyRemaining < 0 || DailyRemaining > 100) && (HourlyRemaining < 0 || HourlyRemaining > 20);
+	public bool HasQuotaToSpare =>
+		(DailyRemaining < 0 || DailyRemaining > 100) && (HourlyRemaining < 0 || HourlyRemaining > 20)
+		&& !Pause.IsActive(DateTime.UtcNow);
 
 	/// <summary>
 	/// What the SMAPI web API knows about one installed mod: the suggested update (when one is offered) and
@@ -792,57 +802,89 @@ public class NexusService
 	/// Downloads the file at <paramref name="uri"/> directly to <paramref name="destinationPath"/>
 	/// while reporting progress to <paramref name="progress"/>.
 	/// </summary>
-	public async Task DownloadFileWithProgressAsync(string uri, string destinationPath, IProgress<double>? progress = null)
+	/// <param name="expectedDigest">
+	/// The checksum the site publishes for this file, for one that will be run or installed. A file that doesn't match is
+	/// thrown away, and the call throws <see cref="DownloadMismatchException"/>.
+	/// </param>
+	public async Task DownloadFileWithProgressAsync(string uri, string destinationPath, IProgress<double>? progress = null, string? expectedDigest = null)
 	{
+		string partial = destinationPath + ModArchive.PartialDownloadSuffix;
+		CancellationToken cancel = Volatile.Read(ref _downloadsCancel).Token;
+		Interlocked.Increment(ref _downloadsRunning);
 		try
 		{
-			using var response = await KinetixHttp.Downloads.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead);
+			using HttpResponseMessage response = await KinetixHttp.Downloads.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cancel).ConfigureAwait(false);
 			response.EnsureSuccessStatusCode();
 
-			long? totalBytes = response.Content.Headers.ContentLength;
-			using var contentStream = await response.Content.ReadAsStreamAsync();
 			// Under another name until it has all arrived. A forced close part way through left a shorter file under the
 			// real name, listed in the downloads history like any other and failing when someone tried to install it.
-			using var fileStream = new FileStream(destinationPath + ModArchive.PartialDownloadSuffix, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+			await SaveResponseAsync(response, partial, progress, cancel).ConfigureAwait(false);
 
-			var buffer = new byte[8192];
-			long totalRead = 0;
-			// HttpClient.Timeout only covers receiving the response headers (we use ResponseHeadersRead); it does
-			// NOT cover reading the content stream. So a CDN that stalls mid-transfer would hang ReadAsync forever
-			// (the classic "stuck at 94%"). Enforce our own per-read watchdog: if no bytes arrive within this
-			// window, abort with a timeout the caller can report instead of hanging indefinitely.
-			TimeSpan stallTimeout = TimeSpan.FromSeconds(90);
-			while (true)
-			{
-				int read;
-				using (var cts = new CancellationTokenSource(stallTimeout))
-				{
-					try { read = await contentStream.ReadAsync(buffer.AsMemory(0, buffer.Length), cts.Token); }
-					catch (OperationCanceledException)
-					{
-						throw new TimeoutException($"The download stalled — no data was received for {stallTimeout.TotalSeconds:0} seconds. Check your connection and try the download again.");
-					}
-				}
-				if (read <= 0) break;
+			if (await Task.Run(() => DownloadDigest.Check(partial, expectedDigest), cancel).ConfigureAwait(false) == DigestResult.Differs)
+				throw new DownloadMismatchException(Path.GetFileName(destinationPath));
 
-				await fileStream.WriteAsync(buffer.AsMemory(0, read));
-				totalRead += read;
-				if (totalBytes.HasValue && progress != null)
-				{
-					double pct = (double)totalRead / totalBytes.Value * 100.0;
-					progress.Report(pct);
-				}
-			}
-
-			await fileStream.DisposeAsync();
-			File.Move(destinationPath + ModArchive.PartialDownloadSuffix, destinationPath, overwrite: true);
+			File.Move(partial, destinationPath, overwrite: true);
 		}
-		catch
+		catch (Exception ex)
 		{
 			// Don't leave a half-written file behind for a later install to pick up as if it were complete.
-			try { File.Delete(destinationPath + ModArchive.PartialDownloadSuffix); }
-			catch (Exception ex) { DiagnosticLog.WriteException("Nexus", $"removing the partial download {destinationPath}", ex); }
+			try { File.Delete(partial); }
+			catch (Exception cleanup) { DiagnosticLog.WriteException("Nexus", $"removing the partial download {destinationPath}", cleanup); }
+
+			// Tested on the token rather than the exception's type: a read cancelled part way can surface as an IOException.
+			if (cancel.IsCancellationRequested && ex is not DownloadMismatchException) throw new DownloadCancelledException();
 			throw;
+		}
+		finally
+		{
+			Interlocked.Decrement(ref _downloadsRunning);
+		}
+	}
+
+	/// <summary>Whether a file is being downloaded right now.</summary>
+	public bool AnyDownloadRunning => Volatile.Read(ref _downloadsRunning) > 0;
+
+	/// <summary>Stops every download running now. Later ones aren't affected.</summary>
+	public void CancelDownloads() => Interlocked.Exchange(ref _downloadsCancel, new CancellationTokenSource()).Cancel();
+
+	private CancellationTokenSource _downloadsCancel = new();
+	private int _downloadsRunning;
+
+	/// <summary>How long a transfer may go without a single byte arriving before it counts as stuck.</summary>
+	private static readonly TimeSpan DownloadStallTimeout = TimeSpan.FromSeconds(90);
+
+	/// <summary>
+	/// Writes a response's body to a file. Runs off the interface thread: resuming on it for each block of a fast download
+	/// is what made keys feel slow during one. The progress reporters do their own moving back, and only when something changes.
+	/// </summary>
+	private static async Task SaveResponseAsync(HttpResponseMessage response, string path, IProgress<double>? progress, CancellationToken cancel)
+	{
+		const int BlockSize = 81920;
+		long? totalBytes = response.Content.Headers.ContentLength;
+		using Stream content = await response.Content.ReadAsStreamAsync(cancel).ConfigureAwait(false);
+		using var file = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, BlockSize, true);
+
+		// HttpClient.Timeout only covers receiving the response headers (we use ResponseHeadersRead); it does NOT cover
+		// reading the content stream. So a CDN that stalls mid-transfer would hang ReadAsync forever (the classic "stuck
+		// at 94%"). Each read restarts this watchdog, so a stall ends in a timeout the caller can report.
+		using var stall = CancellationTokenSource.CreateLinkedTokenSource(cancel);
+		var buffer = new byte[BlockSize];
+		long totalRead = 0;
+		while (true)
+		{
+			stall.CancelAfter(DownloadStallTimeout);
+			int read;
+			try { read = await content.ReadAsync(buffer.AsMemory(0, buffer.Length), stall.Token).ConfigureAwait(false); }
+			catch (OperationCanceledException) when (!cancel.IsCancellationRequested)
+			{
+				throw new TimeoutException($"The download stalled — no data was received for {DownloadStallTimeout.TotalSeconds:0} seconds. Check your connection and try the download again.");
+			}
+			if (read <= 0) break;
+
+			await file.WriteAsync(buffer.AsMemory(0, read), cancel).ConfigureAwait(false);
+			totalRead += read;
+			if (totalBytes.HasValue && progress != null)
+				progress.Report((double)totalRead / totalBytes.Value * 100.0);
 		}
 	}
 
@@ -888,47 +930,9 @@ public class NexusService
 
 		string finalUri = JArray.Parse(await linkResp.Content.ReadAsStringAsync())[0]["URI"]?.ToString() ?? "";
 
-		// 3. Download and save using streams
+		// 3. Download. The CDN address Nexus hands back is pre-signed: it carries no key, and it is the large transfer.
 		string tempPath = Path.Combine(downloadsPath, fileName);
-		string partialPath = tempPath + ModArchive.PartialDownloadSuffix;
-		// The CDN address Nexus hands back is pre-signed; it carries no key, and it is the large transfer.
-		using (var response = await KinetixHttp.Downloads.GetAsync(finalUri, HttpCompletionOption.ResponseHeadersRead))
-		{
-			response.EnsureSuccessStatusCode();
-			long? totalBytes = response.Content.Headers.ContentLength;
-			using var contentStream = await response.Content.ReadAsStreamAsync();
-			using var fileStream = new FileStream(partialPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
-
-			var buffer = new byte[8192];
-			long totalRead = 0;
-			// As in DownloadFileWithProgressAsync: HttpClient.Timeout doesn't cover content-stream reads, so guard
-			// each read with a stall watchdog to avoid hanging forever on a stalled CDN connection.
-			TimeSpan stallTimeout = TimeSpan.FromSeconds(90);
-			while (true)
-			{
-				int read;
-				using (var cts = new CancellationTokenSource(stallTimeout))
-				{
-					try { read = await contentStream.ReadAsync(buffer.AsMemory(0, buffer.Length), cts.Token); }
-					catch (OperationCanceledException)
-					{
-						throw new TimeoutException($"The download stalled — no data was received for {stallTimeout.TotalSeconds:0} seconds. Check your connection and try the update again.");
-					}
-				}
-				if (read <= 0) break;
-
-				await fileStream.WriteAsync(buffer.AsMemory(0, read));
-				totalRead += read;
-				if (totalBytes.HasValue && progress != null)
-				{
-					double pct = (double)totalRead / totalBytes.Value * 100.0;
-					progress.Report(pct);
-				}
-			}
-		}
-
-		// The stream has closed, so it can take its real name now that it has all arrived.
-		File.Move(partialPath, tempPath, overwrite: true);
+		await DownloadFileWithProgressAsync(finalUri, tempPath, progress);
 		return tempPath;
 	}
 
@@ -1049,7 +1053,8 @@ public class NexusService
 	/// "1w", or "1m"). One API call that lets the tracked-mods check find recently-updated mods without a per-mod
 	/// request. Null on any failure.
 	/// </summary>
-	public async Task<HashSet<int>?> GetRecentlyUpdatedModIdsAsync(string period)
+	/// <param name="domain">The game's page to ask. Read before a queued wait, or a game switch changes the answer.</param>
+	public async Task<HashSet<int>?> GetRecentlyUpdatedModIdsAsync(string period, string? domain = null)
 	{
 		// Minecraft's mods come from Modrinth; a Nexus call for it would name no game at all.
 		if (!UsesNexus) return new HashSet<int>();
@@ -1057,7 +1062,7 @@ public class NexusService
 		try
 		{
 			using var req = BuildRequest(HttpMethod.Get,
-				$"https://api.nexusmods.com/v1/games/{CurrentGameDomain}/mods/updated.json?period={period}");
+				$"https://api.nexusmods.com/v1/games/{domain ?? CurrentGameDomain}/mods/updated.json?period={period}");
 			var resp = await HttpClient.SendAsync(req);
 			CaptureRateLimit(resp);
 			var set = new HashSet<int>();
@@ -1189,6 +1194,7 @@ public class NexusService
 						{
 							info.DownloadUrl = assetObj["browser_download_url"]?.ToString() ?? "";
 							info.FileName = name;
+							info.Digest = assetObj["digest"]?.ToString();
 							break;
 						}
 					}
@@ -1205,6 +1211,9 @@ public class NexusService
 		public string TagName { get; set; } = "";
 		public string DownloadUrl { get; set; } = "";
 		public string FileName { get; set; } = "";
+
+		/// <summary>The checksum GitHub publishes for the file, when it does. See <see cref="DownloadDigest"/>.</summary>
+		public string? Digest { get; set; }
 	}
 
 	// -------------------------------------------------------------------------
@@ -1302,6 +1311,13 @@ public class NexusService
 		HourlyLimit     = ReadIntHeader(resp, "x-rl-hourly-limit",     HourlyLimit);
 		DailyRemaining  = ReadIntHeader(resp, "x-rl-daily-remaining",  DailyRemaining);
 		DailyLimit      = ReadIntHeader(resp, "x-rl-daily-limit",      DailyLimit);
+
+		// Nexus gives a daily allowance and then an hourly one, so both at nothing means every further call is refused.
+		if (RequestPause.IsTooMany(resp) || (HourlyRemaining == 0 && DailyRemaining == 0))
+		{
+			DateTime now = DateTime.UtcNow;
+			Pause.For(RequestPause.LengthFrom(resp, "x-rl-hourly-reset", now), now);
+		}
 	}
 
 	/// <summary>Reads a single integer response header, returning <paramref name="fallback"/> if absent/unparseable.</summary>

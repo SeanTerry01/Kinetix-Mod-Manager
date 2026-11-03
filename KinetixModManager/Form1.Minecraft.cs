@@ -376,25 +376,59 @@ public partial class Form1
 	/// the one mod the player most needs kept current.
 	/// </para>
 	/// </summary>
-	private async Task<string?> LatestModrinthVersionAsync(GameMod mod)
+	private async Task<string?> LatestModrinthVersionAsync(GameMod mod, Task<Dictionary<string, string>?>? answers)
 	{
-		string jar = mod.FolderPath;
-		if (string.IsNullOrEmpty(jar) || !File.Exists(jar)) return null;
+		Dictionary<string, string>? latest = answers == null ? null : await answers;
+		if (latest == null)
+		{
+			Interlocked.Increment(ref _updateChecksUnanswered);
+			return null;
+		}
+		return latest.TryGetValue(mod.FolderPath, out string? version) ? version : null;
+	}
 
-		string gameVersion = MinecraftGameVersionInUse(MinecraftRootFolder());
-		if (gameVersion.Length == 0) return null;
-
+	/// <summary>
+	/// The newest version Modrinth has for each of these jars, by path, or null when Modrinth did not answer. A jar missing
+	/// from the answer isn't hosted there. Hashing a modded setup's jars takes long enough to be heard as a freeze, so it is
+	/// done off the interface thread, and the endpoint takes a whole list, so it is one request rather than one per mod.
+	/// </summary>
+	private async Task<Dictionary<string, string>?> LatestModrinthVersionsAsync(List<GameMod> mods)
+	{
 		try
 		{
-			string hash = ModrinthService.Sha1Of(jar);
-			Dictionary<string, ModrinthFile> latest =
-				await ModrinthService.GetLatestForHashesAsync(new[] { hash }, gameVersion);
+			string gameVersion = MinecraftGameVersionInUse(MinecraftRootFolder());
+			if (gameVersion.Length == 0) return new Dictionary<string, string>();
 
-			return latest.TryGetValue(hash, out ModrinthFile? file) ? file.VersionNumber : null;
+			List<string> jars = mods.Select(m => m.FolderPath).ToList();
+			Dictionary<string, string> pathByHash = await Task.Run(() =>
+			{
+				var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+				foreach (string jar in jars)
+				{
+					try
+					{
+						if (!string.IsNullOrEmpty(jar) && File.Exists(jar)) hashes[ModrinthService.Sha1Of(jar)] = jar;
+					}
+					catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+					{
+						// A jar that cannot be read is not a reason to abandon the check.
+						DiagnosticLog.WriteException("Modrinth", $"hashing {jar}", ex);
+					}
+				}
+				return hashes;
+			});
+
+			Dictionary<string, ModrinthFile>? latest = await ModrinthService.GetLatestForHashesOrNullAsync(pathByHash.Keys.ToList(), gameVersion);
+			if (latest == null) return null;
+
+			var byPath = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+			foreach (var (hash, file) in latest)
+				if (pathByHash.TryGetValue(hash, out string? path)) byPath[path] = file.VersionNumber;
+			return byPath;
 		}
 		catch (Exception ex)
 		{
-			DiagnosticLog.WriteException("Modrinth", $"checking for updates to {mod.Name}", ex);
+			DiagnosticLog.WriteException("Modrinth", "checking for updates", ex);
 			return null;
 		}
 	}

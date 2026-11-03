@@ -407,6 +407,12 @@ public class AppSettings : IModScanContext
 	public Dictionary<string, Dictionary<string, string>> InstalledDownloadVersions { get; set; } = new();
 
 	/// <summary>
+	/// What the last full check of each Nexus page found, per game: <c>game -> mod id -> record</c>.
+	/// See <see cref="NexusCheckMemory"/>. Only ever saves requests, so losing it just means one slower check.
+	/// </summary>
+	public Dictionary<string, Dictionary<string, NexusCheckRecord>> NexusChecks { get; set; } = new();
+
+	/// <summary>
 	/// The downloads the manager has installed, per game: <c>game -> file names in its downloads folder</c>.
 	///
 	/// Every archive stays in the downloads folder whether it was installed or not, so this is the only thing that
@@ -891,6 +897,7 @@ public class AppSettings : IModScanContext
 		}
 
 		if (InstalledDownloadVersions == null) InstalledDownloadVersions = new Dictionary<string, Dictionary<string, string>>();
+		NexusChecks ??= new Dictionary<string, Dictionary<string, NexusCheckRecord>>();
 		InstalledArchives ??= new Dictionary<string, List<string>>();
 		// Set once, the first time a version that keeps the record starts, and never moved after.
 		InstalledArchivesSince ??= DateTime.Now;
@@ -1039,6 +1046,10 @@ public class AppSettings : IModScanContext
 			{
 				"DeleteOldBackups",
 				Shortcut.Letter('D') | Shortcut.Shift | Shortcut.Control
+			},
+			{
+				"CancelDownloads",
+				Shortcut.Letter('C') | Shortcut.Shift | Shortcut.Control
 			},
 			{
 				"OpenErrorLog",

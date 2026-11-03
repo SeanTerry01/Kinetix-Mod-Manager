@@ -4,7 +4,8 @@ using Newtonsoft.Json.Linq;
 namespace KinetixModManager;
 
 /// <summary>One file attached to a GitHub release.</summary>
-public sealed record GitHubAsset(string Name, string Url, long Size);
+/// <param name="Digest">The checksum GitHub publishes for the file, when it does. See <see cref="DownloadDigest"/>.</param>
+public sealed record GitHubAsset(string Name, string Url, long Size, string? Digest = null);
 
 /// <summary>A GitHub release, and the files published with it.</summary>
 public sealed record GitHubRelease(string TagName, IReadOnlyList<GitHubAsset> Assets);
@@ -79,7 +80,7 @@ public static class GitHubReleases
 					string name = (string?)asset["name"] ?? "";
 					string url = (string?)asset["browser_download_url"] ?? "";
 					if (name.Length > 0 && url.Length > 0)
-						assets.Add(new GitHubAsset(name, url, (long?)asset["size"] ?? 0));
+						assets.Add(new GitHubAsset(name, url, (long?)asset["size"] ?? 0, (string?)asset["digest"]));
 				}
 			}
 

@@ -307,6 +307,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Enter**: **Restore Backup** - Re-installs that specific mod version.
 *   **Delete**: Permanently remove the backup zip file.
 *   **Ctrl + Shift + D**: **Delete Old Backups** - Deletes all but the most recent archives based on your settings.
+*   **Ctrl + Shift + C**: **Cancel Downloads** - Stops whatever is downloading, and stops Update All if it is running. Mods already updated stay updated.
 
 ### SMAPI Log Tab Shortcuts (Stardew Valley only)
 *The SMAPI Log tab appears only when Stardew Valley is the active game, since SMAPI is its mod loader.*
