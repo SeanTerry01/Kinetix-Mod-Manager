@@ -25,9 +25,10 @@ public partial class Form1
 	{
 		McmSettings values = McmSettings.Load(menu);
 
-		// The same snapshot the INI editor takes: these are game-folder settings files, and a bad change should
-		// be one restore away.
-		CreateSafetyBackup(Loc.T("safety.reasonIni", modName));
+		// The same snapshot the INI editor takes, a bad change being one restore away. On the first real change, because
+		// each opening pushed an older one out, so eight looks at a menu could lose the snapshot from before a purge. It
+		// holds the mod's own settings file: without it, restoring undid nothing here and still said "restored".
+		bool snapshotTaken = false;
 
 		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
 		ShowInlineView(Loc.T("mcm.title", modName), (container, closeView) =>
@@ -96,6 +97,12 @@ public partial class Form1
 
 				string? chosen = EditMcmControl(control, row.Value);
 				if (chosen == null || chosen == row.Value) return;
+
+				if (!snapshotTaken)
+				{
+					CreateSafetyBackup(Loc.T("safety.reasonIni", modName), menu.UserIniPath);
+					snapshotTaken = true;
+				}
 
 				if (!McmSettings.Save(menu, control, chosen))
 				{

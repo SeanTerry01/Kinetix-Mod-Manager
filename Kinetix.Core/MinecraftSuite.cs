@@ -136,6 +136,45 @@ public static class MinecraftSuite
 		return release.Assets.Any(a => pattern.IsMatch(a.Name));
 	}
 
+	/// <summary>
+	/// The release to use on this Minecraft version, from a repository's releases, newest first.
+	///
+	/// ⚠️ Not simply the newest. United Minecraft's newest may be for a later Minecraft, and installing that makes Fabric
+	/// refuse to start the game.
+	/// </summary>
+	/// <param name="mustNameIt">
+	/// A move to a new version needs proof. An ordinary update does not: a release that names no Minecraft version at all
+	/// can't be judged by its name, so the newest stands, and the jar's own declaration is checked once it has arrived.
+	/// </param>
+	public static GitHubRelease? ReleaseForGameVersion(IReadOnlyList<GitHubRelease> newestFirst, string? gameVersion, bool mustNameIt)
+	{
+		GitHubRelease? named = newestFirst.FirstOrDefault(r => ReleaseIsForGameVersion(r, gameVersion));
+		if (named != null || mustNameIt || newestFirst.Count == 0) return named;
+
+		GitHubRelease newest = newestFirst[0];
+		return NamesAMinecraftVersion(newest) ? null : newest;
+	}
+
+	private static readonly Regex MinecraftVersionInName =
+		new(@"(?<![a-z])mc[-_ ]?(?<version>\d+(?:\.\d+)+(?:-[a-z]+-?\d+)?)", RegexOptions.IgnoreCase);
+
+	private static bool NamesAMinecraftVersion(GitHubRelease release) =>
+		MinecraftVersionInName.IsMatch(release.TagName) || release.Assets.Any(a => MinecraftVersionInName.IsMatch(a.Name));
+
+	/// <summary>
+	/// The newest Minecraft version these releases are built for that Fabric also supports, or <c>""</c>.
+	/// A GitHub mod has no list of versions it supports, but its release names say.
+	/// </summary>
+	public static string NewestSupportedVersion(IReadOnlyList<GitHubRelease> newestFirst, IReadOnlyCollection<string> fabricSupports)
+	{
+		foreach (GitHubRelease release in newestFirst)
+		{
+			Match match = MinecraftVersionInName.Match(release.TagName);
+			if (match.Success && fabricSupports.Contains(match.Groups["version"].Value)) return match.Groups["version"].Value;
+		}
+		return "";
+	}
+
 	public static MinecraftSuiteMod AccessModFor(string? id) =>
 		AccessMods.FirstOrDefault(m => string.Equals(m.Id, id, StringComparison.OrdinalIgnoreCase)) ?? Default;
 

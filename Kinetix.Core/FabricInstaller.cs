@@ -109,10 +109,13 @@ public static class FabricInstaller
 	/// Without it, a perfectly good install is reported as missing purely because the manager was not the one
 	/// that put it there — which is a poor answer, and one that invites the user to install it twice.
 	/// </summary>
-	public static string DetectInstalledGameVersion(string root)
+	/// <param name="notThese">Version ids to leave out: a modpack's Fabric sits in the same folder, and is not the player's.</param>
+	public static string DetectInstalledGameVersion(string root, IEnumerable<string>? notThese = null)
 	{
+		var excluded = new HashSet<string>(notThese ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
 		foreach (string id in InstalledVersionIds(root))
 		{
+			if (excluded.Contains(id)) continue;
 			string game = GameVersionOf(id);
 			if (game.Length > 0) return game;
 		}
@@ -130,8 +133,42 @@ public static class FabricInstaller
 			.Select(Path.GetFileName)
 			.Where(n => n is not null && n.StartsWith("fabric-loader-", StringComparison.OrdinalIgnoreCase))
 			.Select(n => n!)
-			.OrderByDescending(n => n, StringComparer.OrdinalIgnoreCase)
+			.OrderByDescending(n => n, Comparer<string>.Create(CompareNumbersAsNumbers))
 			.ToList();
+	}
+
+	/// <summary>
+	/// The Fabric install to start for this Minecraft version: its newest loader, or <c>""</c> when it has none.
+	///
+	/// ⚠️ Never just the first installed id. A modpack puts its own Fabric in the same folder, and a move can leave the
+	/// old one there, so the first id could be for another Minecraft version. The player's mods then refuse to start on it.
+	/// </summary>
+	public static string ChooseForGameVersion(IEnumerable<string> newestFirst, string gameVersion) =>
+		newestFirst.FirstOrDefault(id => string.Equals(GameVersionOf(id), gameVersion, StringComparison.OrdinalIgnoreCase)) ?? "";
+
+	/// <summary>Compares runs of digits by value, so 0.16.10 is newer than 0.16.9, which text order gets backwards.</summary>
+	private static int CompareNumbersAsNumbers(string a, string b)
+	{
+		int i = 0, j = 0;
+		while (i < a.Length && j < b.Length)
+		{
+			if (char.IsAsciiDigit(a[i]) && char.IsAsciiDigit(b[j]))
+			{
+				int startA = i, startB = j;
+				while (i < a.Length && char.IsAsciiDigit(a[i])) i++;
+				while (j < b.Length && char.IsAsciiDigit(b[j])) j++;
+				string runA = a[startA..i].TrimStart('0'), runB = b[startB..j].TrimStart('0');
+				int byValue = runA.Length != runB.Length ? runA.Length.CompareTo(runB.Length) : string.CompareOrdinal(runA, runB);
+				if (byValue != 0) return byValue;
+				continue;
+			}
+
+			int byLetter = char.ToUpperInvariant(a[i]).CompareTo(char.ToUpperInvariant(b[j]));
+			if (byLetter != 0) return byLetter;
+			i++;
+			j++;
+		}
+		return (a.Length - i).CompareTo(b.Length - j);
 	}
 
 	// -------------------------------------------------------------------------
@@ -150,6 +187,16 @@ public static class FabricInstaller
 	{
 		JArray games = JArray.Parse(await GetStringAsync(MetaBaseUrl + "/game"));
 		return FirstStableVersion(games);
+	}
+
+	/// <summary>Every stable Minecraft version Fabric supports, newest first.</summary>
+	public static async Task<IReadOnlyList<string>> GetStableGameVersionsAsync()
+	{
+		JArray games = JArray.Parse(await GetStringAsync(MetaBaseUrl + "/game"));
+		return games.Where(g => (bool?)g["stable"] == true)
+			.Select(g => (string?)g["version"] ?? "")
+			.Where(v => v.Length > 0)
+			.ToList();
 	}
 
 	/// <summary>The newest stable loader build for <paramref name="gameVersion"/>.</summary>

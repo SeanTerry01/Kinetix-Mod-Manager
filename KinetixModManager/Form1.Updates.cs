@@ -174,7 +174,7 @@ public partial class Form1
 				// repository in its manifest, so there is no reason for it to be the one mod nothing can check.
 				string? remote = await LatestModrinthVersionAsync(group[0], modrinthAnswers)
 					?? (!string.IsNullOrEmpty(group[0].GitHubRepo)
-						? await GetGitHubLatestReleaseVersionAsync(group[0].GitHubRepo!)
+						? await LatestGitHubBuildForMinecraftAsync(group[0].GitHubRepo!)
 						: null);
 
 				// ⚠️ Settled here rather than left to the general comparison, which splits on dots and so reads
@@ -1005,16 +1005,7 @@ public partial class Form1
 			req.Headers.UserAgent.ParseAdd($"KinetixModManager/{NexusService.AppVersion}");
 			using var resp = await NexusService.HttpClient.SendAsync(req);
 
-			// GitHub says it is over the limit with a 403 as well as a 429, and its remaining-count header tells them apart
-			// from a repository that refuses access.
-			bool outOfRequests = RequestPause.IsTooMany(resp)
-				|| (resp.StatusCode == System.Net.HttpStatusCode.Forbidden
-					&& resp.Headers.TryGetValues("x-ratelimit-remaining", out var left) && left.FirstOrDefault() == "0");
-			if (outOfRequests)
-			{
-				DateTime now = DateTime.UtcNow;
-				_gitHubPause.For(RequestPause.LengthFrom(resp, "x-ratelimit-reset", now), now);
-			}
+			NoteGitHubLimit(resp);
 			if (!resp.IsSuccessStatusCode) return null;
 
 			JObject json = JObject.Parse(await resp.Content.ReadAsStringAsync());
@@ -1024,6 +1015,46 @@ public partial class Form1
 		}
 		catch { return null; }
 		finally { _gitHubLimit.Release(); }
+	}
+
+	/// <summary>The newest build for the Minecraft version in use, not simply the newest. Null when there is none or GitHub didn't answer, which is counted.</summary>
+	private async Task<string?> LatestGitHubBuildForMinecraftAsync(string repo)
+	{
+		await _gitHubLimit.WaitAsync();
+		try
+		{
+			if (_gitHubPause.IsActive(DateTime.UtcNow))
+			{
+				Interlocked.Increment(ref _updateChecksUnanswered);
+				return null;
+			}
+
+			GitHubRelease? release = await GitHubReleaseForAsync(repo, MinecraftGameVersionInUse(MinecraftRootFolder()), mustNameIt: false);
+			if (release == null) return null;
+			return release.TagName.StartsWith('v') ? release.TagName[1..] : release.TagName;
+		}
+		catch (Exception ex)
+		{
+			Interlocked.Increment(ref _updateChecksUnanswered);
+			DiagnosticLog.WriteException("GitHub", $"checking {repo} for updates", ex);
+			return null;
+		}
+		finally { _gitHubLimit.Release(); }
+	}
+
+	/// <summary>
+	/// GitHub says it is over the limit with a 403 as well as a 429, and its remaining-count header tells them apart from a
+	/// repository that refuses access.
+	/// </summary>
+	private void NoteGitHubLimit(HttpResponseMessage resp)
+	{
+		bool outOfRequests = RequestPause.IsTooMany(resp)
+			|| (resp.StatusCode == System.Net.HttpStatusCode.Forbidden
+				&& resp.Headers.TryGetValues("x-ratelimit-remaining", out var left) && left.FirstOrDefault() == "0");
+		if (!outOfRequests) return;
+
+		DateTime now = DateTime.UtcNow;
+		_gitHubPause.For(RequestPause.LengthFrom(resp, "x-ratelimit-reset", now), now);
 	}
 
 	/// <summary>GitHub allows 60 requests an hour without an account, so its checks go a few at a time and stop when told.</summary>

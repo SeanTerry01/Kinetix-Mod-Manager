@@ -670,7 +670,7 @@ public partial class Form1
 			}
 			if (e.KeyCode == Keys.Return)
 			{
-				if (SpeakBox(Loc.T("modlist.restoreConfirm", backupItem.Name), Loc.T("modlist.restoreTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
+				if (SpeakBox(Loc.T("modlist.restoreConfirm", BackupRestore.ModNameOf(backupItem.FullPath)), Loc.T("modlist.restoreTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 				{
 					Fire(RestoreBackupAsync(backupItem), "RestoreBackup");
 				}

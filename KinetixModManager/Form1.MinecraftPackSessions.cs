@@ -79,7 +79,7 @@ public partial class Form1
 	private string OwnMinecraftVersion() =>
 		_settings.MinecraftGameVersion.Length > 0
 			? _settings.MinecraftGameVersion
-			: FabricInstaller.DetectInstalledGameVersion(MinecraftRootFolder());
+			: DetectOwnMinecraftVersion(MinecraftRootFolder());
 
 	// -------------------------------------------------------------------------
 	// Opening a session

@@ -13,6 +13,9 @@ public sealed class SafetyBackupMeta
 	public DateTime CreatedUtc { get; set; }
 	public List<string> ModPriority { get; set; } = new List<string>();
 	public List<string> PluginOrder { get; set; } = new List<string>();
+
+	/// <summary>Where a further file in this snapshot came from, such as a mod's own settings. Null when it holds none.</summary>
+	public string? ExtraFile { get; set; }
 }
 
 /// <summary>One restorable snapshot in the restore list.</summary>

@@ -34,6 +34,9 @@ public class SuiteItem
 	/// (the script extender reports its version), or "" for the rest.</summary>
 	public string Detail { get; }
 
+	/// <summary>Present, but switched off, so it does nothing.</summary>
+	public bool SwitchedOff { get; init; }
+
 	public SuiteItem(string name, bool isInstalled, string type, string source, string detail = "")
 	{
 		Name = name;

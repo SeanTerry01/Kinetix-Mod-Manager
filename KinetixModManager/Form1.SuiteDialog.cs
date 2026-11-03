@@ -35,6 +35,13 @@ public partial class Form1
 	/// </param>
 	private void ShowAccessibilitySuiteDialog(bool accessModJustChosen = false)
 	{
+		// Right after a game switch the list is still being read, and every mod looked missing.
+		if (Volatile.Read(ref _refreshInFlight) > 0)
+		{
+			Fire(ShowSuiteOnceSettledAsync(accessModJustChosen), "ShowSuiteOnceSettledAsync");
+			return;
+		}
+
 		string game = _settings.ActiveGame;
 		string gameName = GameProfiles.DisplayNameFor(game);
 
@@ -63,6 +70,16 @@ public partial class Form1
 		//
 		// Asking first makes the list a consequence of the answer, which is what Sean asked for and what
 		// removes the bug in the same stroke.
+		//
+		// Whichever is already installed is adopted first, or the chooser opens on the default, and Enter puts a rival mod
+		// beside the working one. Everything is then spoken twice.
+		if (GameProfiles.IsGame(game, GameProfiles.Minecraft) && string.IsNullOrEmpty(_settings.MinecraftAccessModId) &&
+			MinecraftSuite.AccessMods.Any(m => HasModUniqueId(m.FabricModId)))
+		{
+			_settings.MinecraftAccessModId = ActiveAccessMod().Id;
+			_settings.Save();
+		}
+
 		if (GameProfiles.IsGame(game, GameProfiles.Minecraft) && EnsureAccessModChosen(alwaysAsk: !accessModJustChosen) is null)
 		{
 			Speak(Loc.T("common.changesCancelled"));
@@ -79,6 +96,7 @@ public partial class Form1
 		// RunOverlay tears the view down later, once the click handler has returned, and restores focus to
 		// whatever held it when the view opened. So any focus moved inside the handler is overwritten a moment
 		// afterwards. onClosed runs after that teardown, which is the first point where focus stays put.
+		Func<bool> installStillRunning = () => false;
 		bool landInModListWhenClosed = false;
 
 		ShowInlineView(Loc.T("suite.installerTitle", gameName), (container, closeView) =>
@@ -227,22 +245,6 @@ public partial class Form1
 				Loc.T("mc.suite.fabric"), loaderInstalled, "Loader", "https://fabricmc.net",
 				loaderInstalled ? FabricStatusLine(root) : ""));
 
-			// Adopt whichever accessibility mod is already installed, the same way the Fabric version above is
-			// adopted. Without this the suite quietly assumes the default, so somebody already running
-			// Minecraft Access would be shown United Minecraft and Fabric API as missing and offered the pair
-			// — installing a second, rival accessibility mod over a working setup.
-			if (string.IsNullOrEmpty(_settings.MinecraftAccessModId))
-			{
-				MinecraftSuiteMod? present = MinecraftSuite.AccessMods
-					.FirstOrDefault(m => HasModUniqueId(m.FabricModId));
-
-				if (present != null)
-				{
-					_settings.MinecraftAccessModId = present.Id;
-					_settings.Save();
-				}
-			}
-
 			// Only the CHOSEN accessibility mod is listed, along with whatever it needs. The user is never asked
 			// about Fabric API: whether it is required is a consequence of which mod they picked, and both
 			// answers are read from the mods themselves rather than assumed.
@@ -250,11 +252,15 @@ public partial class Form1
 
 			foreach (MinecraftSuiteMod part in MinecraftSuite.InstallPlanFor(chosen))
 			{
+				// A switched-off access mod is the silent game this screen exists to fix, so it can't read as Installed
+				// with the button greyed out. Installing fetches a build for this version and replaces the disabled copy.
+				bool present = HasModUniqueId(part.FabricModId);
 				suiteItems.Add(new SuiteItem(
 					part.DisplayName,
-					HasModUniqueId(part.FabricModId),
+					present && HasEnabledModUniqueId(part.FabricModId),
 					part.Origin == MinecraftModOrigin.GitHubRelease ? "GitHubJar" : "ModrinthJar",
-					part.Source));
+					part.Source)
+				{ SwitchedOff = present && !HasEnabledModUniqueId(part.FabricModId) });
 			}
 		}
 		else
@@ -272,7 +278,9 @@ public partial class Form1
 
 		foreach (var item in suiteItems)
 		{
-			string statusText = item.IsInstalled ? Loc.T("suite.installed") + item.Detail : Loc.T("suite.notInstalled");
+			string statusText = item.IsInstalled ? Loc.T("suite.installed") + item.Detail
+				: item.SwitchedOff ? Loc.T("suite.switchedOff")
+				: Loc.T("suite.notInstalled");
 			lstStatus.Items.Add(Loc.T("suite.statusLine", item.Name, statusText));
 			// SMAPI (the Stardew "Loader") now installs automatically too, so a missing loader
 			// should also enable the Install button rather than being treated as already handled.
@@ -368,9 +376,12 @@ public partial class Form1
 		layout.Controls.Add(btnInstall, 0, 2);
 
 		bool isInstalling = false;
+		installStillRunning = () => isInstalling;
 		btnInstall.Click += async delegate
 		{
 			if (isInstalling) return;
+			// A second run alongside one left going behind a closed view, or alongside anything else changing mods.
+			if (ModOperationRunning) { Speak(Loc.T("session.busy")); return; }
 			using IDisposable busy = BeginModOperation();
 			isInstalling = true;
 			btnInstall.Text = Loc.T("suite.installing");
@@ -416,6 +427,11 @@ public partial class Form1
 						loaderInstalled = await InstallFabricAsync(MinecraftRootFolder(), forLoader);
 				}
 
+				// Mods without their loader never run, so "setup complete" after this was simply untrue.
+				if (!loaderInstalled && GameProfiles.IsAnyGame(game, GameProfiles.StardewValley, GameProfiles.MoonlightPeaks, GameProfiles.Minecraft) &&
+					suiteItems.FirstOrDefault(i => i.Type == "Loader") is { } loader)
+					failedNames.Add(loader.Name);
+
 				foreach (var item in suiteItems)
 				{
 					if (item.IsInstalled) continue;
@@ -430,6 +446,13 @@ public partial class Form1
 					// folder of loose classes that Fabric walks straight past.
 					if (item.Type is "GitHubJar" or "ModrinthJar")
 					{
+						// With no Minecraft version chosen, because Fabric failed, there is nothing to fetch a build for.
+						if (_settings.MinecraftGameVersion.Length == 0)
+						{
+							failedNames.Add(item.Name);
+							continue;
+						}
+
 						MinecraftSuiteMod? part = MinecraftSuite.AccessMods
 							.Append(MinecraftSuite.FabricApi)
 							.FirstOrDefault(m => m.DisplayName == item.Name);
@@ -492,7 +515,7 @@ public partial class Form1
 								ProgressAnnouncer dl = NewProgress(item.Name, installing: false);
 								string tempPath = await _nexusService.DownloadModUpdateAsync(tempMod, downloadsPath, dl);
 								dl.Complete();
-								await InstallFromZip(tempPath, item.Source);
+								if (!await InstallFromZip(tempPath, item.Source)) failedNames.Add(item.Name);
 								continue;
 							}
 							catch (Exception ex)
@@ -521,7 +544,7 @@ public partial class Form1
 							string tempPath = Path.Combine(downloadsPath, zipName);
 							File.WriteAllBytes(tempPath, bytes);
 
-							await InstallFromZip(tempPath);
+							if (!await InstallFromZip(tempPath)) failedNames.Add(item.Name);
 						}
 						catch (Exception ex)
 						{
@@ -532,6 +555,11 @@ public partial class Form1
 							failedNames.Add(item.Name);
 						}
 					}
+					else
+					{
+						// Offline, rate limited, or a release with nothing to download. It said "Downloading" and then nothing.
+						failedNames.Add(item.Name);
+					}
 				}
 
 				// Said at the end rather than while the list is being built: the two Minecraft accessibility
@@ -540,7 +568,9 @@ public partial class Form1
 				if (GameProfiles.IsGame(game, GameProfiles.Minecraft))
 					WarnAboutRivalAccessMod(MinecraftSuite.AccessModFor(_settings.MinecraftAccessModId));
 
-				Speak(Loc.T("suite.setupComplete"));
+				// The box below says what happened when something went wrong, so this can't claim it all went right first.
+				if (noBuildFor.Count + couldNotFetch.Count + failedNames.Count + needManualDownload.Count == 0)
+					Speak(Loc.T("suite.setupComplete"));
 
 				// The sentence above has always ended "Refreshing mod list" and nothing ever refreshed it. Every
 				// game was affected: after installing the whole suite the list was exactly as empty as before,
@@ -571,6 +601,8 @@ public partial class Form1
 					problems.Add(Loc.T("suite.summaryNoSource", string.Join(", ", couldNotFetch)));
 				if (failedNames.Count > 0)
 					problems.Add(Loc.T("suite.summaryFailed", string.Join(", ", failedNames)));
+				if (needManualDownload.Count > 0)
+					problems.Add(Loc.T("suite.summaryManual", string.Join(", ", needManualDownload)));
 
 				if (problems.Count > 0)
 				{
@@ -636,7 +668,9 @@ public partial class Form1
 			// here, so no GotFocus fired. Say it directly. If GotFocus did fire it consumed the flag and this
 			// does nothing.
 			if (_announceListNameOnNextChange) List_Enter(listInstalled, EventArgs.Empty);
-		});
+		},
+		// Closing while it ran left the run going behind the view, speaking over whatever came next.
+		whyEscapeWaits: () => installStillRunning() ? Loc.T("suite.stillInstalling") : null);
 	}
 
 	/// <summary>
@@ -799,6 +833,18 @@ public partial class Form1
 	/// game is on a non-default Steam library drive, where registry/Steam-default detection can miss it.
 	/// Falls back to registry/default detection only when the mods-path parent isn't a real game folder.
 	/// </summary>
+	private async Task ShowSuiteOnceSettledAsync(bool accessModJustChosen)
+	{
+		string game = _settings.ActiveGame;
+		while (Volatile.Read(ref _refreshInFlight) > 0) await Task.Delay(25);
+		if (_settings.ActiveGame == game && !_shuttingDown && !OverlayIsOpen) ShowAccessibilitySuiteDialog(accessModJustChosen);
+	}
+
+	/// <summary>Whether a mod with this id is installed and switched on. See <see cref="HasModUniqueId"/> for how ids are matched.</summary>
+	private bool HasEnabledModUniqueId(string uniqueId) => _allInstalledMods.Any(m => m.IsEnabled &&
+		(m.UniqueId.Equals(uniqueId, StringComparison.OrdinalIgnoreCase) ||
+		 m.UniqueId.EndsWith("." + uniqueId, StringComparison.OrdinalIgnoreCase)));
+
 	private string ResolveStardewFolder()
 	{
 		string parent = Path.GetDirectoryName(_settings.CurrentModsPath) ?? "";

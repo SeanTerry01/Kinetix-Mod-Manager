@@ -101,11 +101,17 @@ public static class ModInstaller
 			try { File.Delete(old); replaced.Add(Path.GetFileName(old)); }
 			catch (Exception ex)
 			{
-				// Worth reporting rather than swallowing: the mod is installed, but the game will now refuse
-				// to start on a duplicate id, and nothing about that failure would point back here.
 				DiagnosticLog.WriteException("Install", $"removing the older copy at {old}", ex);
 				couldNotRemove.Add(Path.GetFileName(old));
 			}
+		}
+
+		// Two copies stop the game starting, usually because the running game holds the old one. Taking the new one back
+		// out leaves a game that still starts on the old mod, and the caller says so.
+		if (couldNotRemove.Count > 0)
+		{
+			try { File.Delete(destination); }
+			catch (Exception ex) { DiagnosticLog.WriteException("Install", $"taking back the new copy at {destination}", ex); }
 		}
 
 		return new InstallResult(destination, modId, replaced, couldNotRemove);

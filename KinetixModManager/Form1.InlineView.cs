@@ -32,8 +32,9 @@ public partial class Form1
 	/// in — the drill-downs say how to move between levels. It must not be spoken by the view itself: anything
 	/// said while <paramref name="build"/> runs lands before the title.
 	/// </summary>
+	/// <param name="whyEscapeWaits">What to say instead of closing, while there is a reason to stay open. Null to close.</param>
 	private void ShowInlineView(string title, Func<Panel, Action, Control> build, Action? onClosed = null,
-		string? hint = null)
+		string? hint = null, Func<string?>? whyEscapeWaits = null)
 	{
 		// Before the view is built, for the same reason a prompt waits before its buttons appear: once focus has
 		// landed inside the view the reader is already describing what it landed on.
@@ -97,7 +98,12 @@ public partial class Form1
 		// screen opened. It is said deliberately, once, rather than left for the reader to borrow from a
 		// heading on every focus change, which is what made the title such noise before. Queued rather than
 		// interrupting, so it follows whatever was being said as the view opened instead of cutting it off.
-		RunOverlay(host, view, focusFirst, finished: () => closed, onEscape: Close,
+		RunOverlay(host, view, focusFirst, finished: () => closed,
+			onEscape: () =>
+			{
+				if (whyEscapeWaits?.Invoke() is { } reason) Speak(reason);
+				else Close();
+			},
 			afterShown: () =>
 			{
 				Speak(title);

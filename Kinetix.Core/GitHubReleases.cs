@@ -93,6 +93,26 @@ public static class GitHubReleases
 		}
 	}
 
+	/// <summary>The published releases in a response from the releases list, newest first, or null when the body isn't one.</summary>
+	public static IReadOnlyList<GitHubRelease>? ParseList(string json)
+	{
+		try
+		{
+			var releases = new List<GitHubRelease>();
+			foreach (JToken item in JArray.Parse(json))
+			{
+				if ((bool?)item["draft"] == true || (bool?)item["prerelease"] == true) continue;
+				if (Parse(item.ToString()) is { } release) releases.Add(release);
+			}
+			return releases;
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("GitHub", "reading a list of releases", ex);
+			return null;
+		}
+	}
+
 	/// <summary>Files that are published beside a mod and are never the mod.</summary>
 	private static readonly string[] NotAMod =
 	{

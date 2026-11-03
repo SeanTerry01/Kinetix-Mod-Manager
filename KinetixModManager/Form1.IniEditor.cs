@@ -161,8 +161,9 @@ public partial class Form1
         try { doc = IniDocument.Load(path); }
         catch (Exception ex) { SpeakError(Loc.T("ini.loadFailed", fileLabel), ex); return; }
 
-        // Snapshot the game INIs + load order once before any edits, so a bad change is one restore away.
-        CreateSafetyBackup(Loc.T("safety.reasonIni", fileLabel));
+        // Snapshot the game INIs + load order before the first change, so a bad one is one restore away. Not on opening:
+        // each opening pushed an older one out, so eight looks at a file could lose the snapshot from before a purge.
+        bool snapshotTaken = false;
 
         // Shown inside the main window rather than as one of its own — see Form1.InlineView. Opened from the
         // file chooser, this stacks on top of it, so Escape here returns to the file list.
@@ -207,6 +208,11 @@ public partial class Form1
 
         bool SaveDoc()
         {
+            if (!snapshotTaken)
+            {
+                CreateSafetyBackup(Loc.T("safety.reasonIni", fileLabel), path);
+                snapshotTaken = true;
+            }
             try { doc.Save(path); return true; }
             catch (Exception ex) { SpeakError(Loc.T("ini.saveFailed"), ex); return false; }
         }

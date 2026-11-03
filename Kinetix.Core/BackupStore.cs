@@ -144,9 +144,15 @@ public static class BackupStore
 	/// delete that depends on one then refuses to go ahead. Rare, but entirely reachable from a batch that
 	/// touches a mod twice, and the failure is indistinguishable from a real one.
 	/// </summary>
+	/// <summary>
+	/// A mod's name, usable in a file name. A Minecraft mod's name is whatever its author wrote: "Create: Fabric" would write
+	/// to a hidden stream of a file called "Create", and a question mark would stop the update the backup was for.
+	/// </summary>
+	private static string SafeName(string modName) => WindowsFileName.StripInvalid(modName).Trim();
+
 	private static FileStream ClaimName(string backupsPath, string modName)
 	{
-		string stamp = $"{modName}_{DateTime.Now.ToString(StampFormat)}";
+		string stamp = $"{SafeName(modName)}_{DateTime.Now.ToString(StampFormat)}";
 
 		// CreateNew is the whole point: it fails rather than overwrites, so whichever caller wins the race
 		// keeps the name and the others move on to the next one. Bounded, because past a handful in the same
@@ -168,7 +174,7 @@ public static class BackupStore
 	public static void PruneBackups(string modName, string backupsPath, int maxCount)
 	{
 		if (!Directory.Exists(backupsPath)) return;
-		var files = Directory.GetFiles(backupsPath, modName + "_*.zip")
+		var files = Directory.GetFiles(backupsPath, SafeName(modName) + "_*.zip")
 			.Select(p => new FileInfo(p))
 			.OrderByDescending(f => f.CreationTime)
 			.ToList();

@@ -208,6 +208,11 @@ public static class ModrinthService
 	/// </para>
 	/// </summary>
 	public static async Task<Dictionary<string, ModrinthFile>> GetInstalledVersionsForHashesAsync(
+		IReadOnlyCollection<string> sha1Hashes) =>
+		await GetInstalledVersionsForHashesOrNullAsync(sha1Hashes) ?? new Dictionary<string, ModrinthFile>(StringComparer.OrdinalIgnoreCase);
+
+	/// <summary>The same question, where "Modrinth did not answer" (null) must not read as "Modrinth knows none of them".</summary>
+	public static async Task<Dictionary<string, ModrinthFile>?> GetInstalledVersionsForHashesOrNullAsync(
 		IReadOnlyCollection<string> sha1Hashes)
 	{
 		var found = new Dictionary<string, ModrinthFile>(StringComparer.OrdinalIgnoreCase);
@@ -221,7 +226,7 @@ public static class ModrinthService
 
 		using var content = new StringContent(body.ToString(), Encoding.UTF8, "application/json");
 		HttpResponseMessage response = await KinetixHttp.Api.PostAsync($"{ApiBase}/version_files", content);
-		if (!response.IsSuccessStatusCode) return found;
+		if (!response.IsSuccessStatusCode) return null;
 
 		return ParseHashUpdates(JObject.Parse(await response.Content.ReadAsStringAsync()));
 	}

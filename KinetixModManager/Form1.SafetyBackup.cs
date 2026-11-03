@@ -29,7 +29,8 @@ public partial class Form1
 	/// Copies each existing source file plus a metadata record of the current load order, then prunes to the newest
 	/// <see cref="MaxSafetyBackups"/>. Never throws and never blocks the caller's operation.
 	/// </summary>
-	private void CreateSafetyBackup(string reason)
+	/// <param name="extraFile">One more file a change is about to touch, such as a mod's own settings file.</param>
+	private void CreateSafetyBackup(string reason, string? extraFile = null)
 	{
 		if (!IsBethesdaGame) return;
 		try
@@ -48,8 +49,11 @@ public partial class Form1
 				CreatedUtc = DateTime.UtcNow,
 				ModPriority = new List<string>(_settings.ModPriority.TryGetValue(_settings.ActiveGame, out var mp) ? mp : new List<string>()),
 				PluginOrder = new List<string>(_settings.PluginOrder.TryGetValue(_settings.ActiveGame, out var po) ? po : new List<string>()),
+				ExtraFile = extraFile,
 			};
-			File.WriteAllText(Path.Combine(dir, "safety.json"), JsonConvert.SerializeObject(meta, Formatting.Indented));
+			if (extraFile != null && File.Exists(extraFile))
+				File.Copy(extraFile, Path.Combine(dir, SafetyExtraFileName), overwrite: true);
+			AtomicFile.WriteAllText(Path.Combine(dir, "safety.json"), JsonConvert.SerializeObject(meta, Formatting.Indented));
 
 			PruneSafetyBackups();
 		}
@@ -57,6 +61,8 @@ public partial class Form1
 	}
 
 	/// <summary>Keeps only the newest <see cref="MaxSafetyBackups"/> snapshots for the active game.</summary>
+	private const string SafetyExtraFileName = "extra-file";
+
 	private void PruneSafetyBackups()
 	{
 		try
@@ -149,7 +155,7 @@ public partial class Form1
 		// Through the hint so it follows the title instead of arriving ahead of it, and without the old heading
 		// clause ("Safety backups for <game>."), which said the title's own words a second time.
 		hint: Loc.T(items.Count == 1 ? "safety.countOne" : "safety.count", items.Count) + " " + Loc.T("safety.actionHint"),
-		onClosed: () => { if (toRestore != null) RestoreSafetyBackup(toRestore); });
+		onClosed: () => { if (toRestore != null) Fire(RestoreSafetyBackupAsync(toRestore), "RestoreSafetyBackupAsync"); });
 	}
 
 	private List<SafetyBackupItem> LoadSafetyBackups()
@@ -160,16 +166,24 @@ public partial class Form1
 			if (!Directory.Exists(SafetyRoot)) return items;
 			foreach (DirectoryInfo d in new DirectoryInfo(SafetyRoot).GetDirectories())
 			{
-				string metaPath = Path.Combine(d.FullName, "safety.json");
-				if (!File.Exists(metaPath)) continue;
-				SafetyBackupMeta? meta = JsonConvert.DeserializeObject<SafetyBackupMeta>(File.ReadAllText(metaPath));
-				if (meta == null) continue;
-				items.Add(new SafetyBackupItem
+				// One at a time. A single damaged record, read first, used to end the loop and say there were no backups.
+				try
 				{
-					Dir = d.FullName,
-					Meta = meta,
-					Summary = Loc.T("safety.row", meta.CreatedUtc.ToLocalTime().ToString("g"), meta.Reason)
-				});
+					string metaPath = Path.Combine(d.FullName, "safety.json");
+					if (!File.Exists(metaPath)) continue;
+					SafetyBackupMeta? meta = JsonConvert.DeserializeObject<SafetyBackupMeta>(File.ReadAllText(metaPath));
+					if (meta == null) continue;
+					items.Add(new SafetyBackupItem
+					{
+						Dir = d.FullName,
+						Meta = meta,
+						Summary = Loc.T("safety.row", meta.CreatedUtc.ToLocalTime().ToString("g"), meta.Reason)
+					});
+				}
+				catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+				{
+					DiagnosticLog.WriteException("Safety", $"reading the snapshot in {d.FullName}", ex);
+				}
 			}
 		}
 		catch (Exception ex) { LogFailure("Safety", $"Reading safety snapshots failed", ex); }
@@ -178,8 +192,18 @@ public partial class Form1
 	}
 
 	/// <summary>Restores a snapshot: copies its files back, reinstates the saved load order, and re-deploys.</summary>
-	private void RestoreSafetyBackup(SafetyBackupItem item)
+	private async Task RestoreSafetyBackupAsync(SafetyBackupItem item)
 	{
+		string game = _settings.ActiveGame;
+		if (ModOperationRunning) { Speak(Loc.T("session.busy")); return; }
+		using IDisposable busy = BeginModOperation();
+		Speak(Loc.T("safety.restoring"));
+		SetStatus(Loc.T("safety.restoring"), speak: false);
+
+		// A refresh rewrites plugins.txt, and this is about to put an old one back.
+		while (Volatile.Read(ref _refreshInFlight) > 0) await Task.Delay(25);
+		if (_settings.ActiveGame != game) { ResetStatus(); return; }
+
 		try
 		{
 			// Copy each captured file back to its original location.
@@ -192,23 +216,39 @@ public partial class Form1
 				File.Copy(src, dest, overwrite: true);
 			}
 
+			if (item.Meta.ExtraFile is { Length: > 0 } extra)
+			{
+				string saved = Path.Combine(item.Dir, SafetyExtraFileName);
+				if (File.Exists(saved)) File.Copy(saved, extra, overwrite: true);
+				// It did not exist before the change, so it goes.
+				else if (File.Exists(extra)) File.Delete(extra);
+			}
+
 			// Reinstate the saved load order in settings so the manager's state matches the restored files.
 			if (item.Meta.ModPriority.Count > 0) _settings.ModPriority[_settings.ActiveGame] = new List<string>(item.Meta.ModPriority);
 			if (item.Meta.PluginOrder.Count > 0) _settings.PluginOrder[_settings.ActiveGame] = new List<string>(item.Meta.PluginOrder);
 			_settings.Save();
 
 			// Re-deploy so the game folder matches the restored priority, and rewrite plugins.txt from the restored order.
-			SyncBethesdaDeployment();
-			SyncBethesdaPlugins();
+			// Off this thread: on a large setup a deployment takes seconds, and the window would seem dead.
+			bool trustworthy = ModListIsTrustworthy;
+			if (trustworthy)
+			{
+				await Task.Run(() => SyncBethesdaDeployment());
+				SyncBethesdaPlugins();
+			}
 			RefreshModPriorityList();
 			RefreshPluginOrderList();
 
+			ResetStatus();
 			_soundEngine.Play("load_complete");
-			Speak(Loc.T("safety.restored", item.Summary));
+			// Both of those do nothing without a list to go by, and it still said "restored".
+			Speak(Loc.T(trustworthy ? "safety.restored" : "safety.restoredNotDeployed", item.Summary));
 		}
 		catch (Exception ex)
 		{
 			LogFailure("Safety", $"Restoring safety snapshot failed", ex);
+			ResetStatus();
 			_soundEngine.Play("error");
 			Speak(Loc.T("safety.restoreFailed", FriendlyError(ex)));
 		}

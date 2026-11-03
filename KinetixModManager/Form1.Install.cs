@@ -731,6 +731,7 @@ public partial class Form1
 			ModArchive.GuardAgainstEscapedEntries(extracted);
 
 			GameMod? replaced;
+			bool keptTheOldCopy = false;
 			if (profile?.IsMinecraft == true)
 			{
 				// A Minecraft mod is one jar, and a backup holds exactly that. InstallFile matches the mod by the id inside
@@ -740,7 +741,8 @@ public partial class Form1
 				replaced = _allInstalledMods.FirstOrDefault(m => !m.IsGroup && string.Equals(m.UniqueId, id, StringComparison.OrdinalIgnoreCase));
 				if (replaced != null && File.Exists(replaced.FolderPath))
 					BackupStore.CreateBackup(replaced.FolderPath, name, backupsPath);
-				await Task.Run(() => ModInstaller.InstallFile(jar, MinecraftLayout.ModsFolderFor(MinecraftGameFolder())));
+				keptTheOldCopy = replaced != null && File.Exists(replaced.FolderPath);
+				await InstallJarAsync(jar, MinecraftLayout.ModsFolderFor(MinecraftGameFolder()));
 			}
 			else
 			{
@@ -748,7 +750,8 @@ public partial class Form1
 					useRecordedFolderName: profile?.IsBepInEx != true);
 
 				// Not pruned here, unlike an install. The limit could remove the very backup being restored.
-				if (Directory.Exists(destination))
+				keptTheOldCopy = Directory.Exists(destination);
+				if (keptTheOldCopy)
 					await Task.Run(() => BackupStore.CreateBackup(destination, name, backupsPath));
 
 				await Task.Run(() => ModFolderSwap.Replace(extracted, destination, new[] { destination }, tempRoot, LogError));
@@ -768,7 +771,10 @@ public partial class Form1
 
 			_soundEngine.Play("load_complete");
 			ResetStatus();
-			Speak(Loc.T(profile?.IsWitcher3 == true ? "backups.restoredWitcher" : "backups.restored", name));
+			// Restoring a mod that was deleted is the usual case, and then nothing was replaced.
+			string said = Loc.T(keptTheOldCopy ? "backups.restored" : "backups.restoredNew", name);
+			if (profile?.IsWitcher3 == true) said += " " + Loc.T("backups.restoredWitcherNote");
+			Speak(said);
 		}
 		catch (Exception ex)
 		{
