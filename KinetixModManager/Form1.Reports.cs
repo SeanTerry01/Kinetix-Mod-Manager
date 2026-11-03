@@ -499,9 +499,9 @@ public partial class Form1
 			onClosed: () =>
 			{
 				viewGone = true;
-				if (sayAfterClosing != null) Speak(sayAfterClosing);
 				if (afterClose != null) Fire(afterClose(), "report row action");
 			},
+			sayOnClosing: () => sayAfterClosing,
 			// Through the hint, so it follows the title rather than arriving ahead of it. A report's header
 			// describes its findings rather than repeating its title, so unlike the other views it is kept whole.
 			hint: ReportOpening(header, emptyMessage, rows, actionHint, openingNote));

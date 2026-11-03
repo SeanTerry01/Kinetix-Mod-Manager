@@ -284,13 +284,13 @@ public partial class Form1
 		tableLayoutPanel.Controls.Add(btnDeleteTheme, 0, 4);
 		tableLayoutPanel.Controls.Add(saveCancelBar, 0, 5);
 		container.Controls.Add(tableLayoutPanel);
-		// Escape is handled by the view itself; "changes cancelled" is announced from onClosed below so it is
+		// Escape is handled by the view itself; "changes cancelled" is announced from sayOnClosing below so it is
 		// said whichever way the view was left — Escape or the Cancel button.
 		ApplyScreenReaderPauses(container);
 		return lb;
 		},
 		hint: Loc.T("themeMgr.hint"),
-		onClosed: () => Speak(Loc.T(saved ? "themeMgr.saved" : "common.changesCancelled")));
+		sayOnClosing: () => Loc.T(saved ? "themeMgr.saved" : "common.changesCancelled"));
 
 		void RefreshList()
 		{
@@ -472,13 +472,13 @@ public partial class Form1
 		tableLayoutPanel.Controls.Add(btnResetDefaults, 0, 2);
 		tableLayoutPanel.Controls.Add(saveCancelBar, 0, 3);
 		container.Controls.Add(tableLayoutPanel);
-		// Escape is handled by the view itself; "changes cancelled" is announced from onClosed below so it is
+		// Escape is handled by the view itself; "changes cancelled" is announced from sayOnClosing below so it is
 		// said whichever way the view was left — Escape or the Cancel button.
 		ApplyScreenReaderPauses(container);
 		return lb;
 		},
 		hint: Loc.T("shortcutMgr.hint"),
-		onClosed: () => Speak(Loc.T(saved ? "shortcutMgr.saved" : "common.changesCancelled")));
+		sayOnClosing: () => Loc.T(saved ? "shortcutMgr.saved" : "common.changesCancelled"));
 
 		/// <summary>
 		/// Rebuilds the action list, landing back on the action named by <paramref name="selectAction"/> — or on

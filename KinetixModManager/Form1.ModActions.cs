@@ -39,15 +39,13 @@ public partial class Form1
 				return;
 			}
 			_settings.Save();
-			Fire(RefreshModList(checkUpdates: false), "RefreshModList");
-			Speak(Loc.T("modactions.categoryCleared", selectedMod.Name));
+			Fire(SayAndRefreshModList(Loc.T("modactions.categoryCleared", selectedMod.Name), selectedMod), "RefreshModList");
 			return;
 		}
 
 		_settings.ModCategories[selectedMod.UniqueId] = text;
 		_settings.Save();
-		Fire(RefreshModList(checkUpdates: false), "RefreshModList");
-		Speak(Loc.T("modactions.categorySet", selectedMod.Name, text));
+		Fire(SayAndRefreshModList(Loc.T("modactions.categorySet", selectedMod.Name, text), selectedMod), "RefreshModList");
 	}
 
 	/// <summary>
@@ -86,8 +84,7 @@ public partial class Form1
 			{
 				_settings.ModNotes.Remove(mod.UniqueId);
 				_settings.Save();
-				Fire(RefreshModList(checkUpdates: false), "RefreshModList");
-				Speak(Loc.T("modactions.noteCleared", mod.Name));
+				Fire(SayAndRefreshModList(Loc.T("modactions.noteCleared", mod.Name), mod), "RefreshModList");
 			}
 			else
 			{
@@ -98,8 +95,7 @@ public partial class Form1
 
 		_settings.ModNotes[mod.UniqueId] = text;
 		_settings.Save();
-		Fire(RefreshModList(checkUpdates: false), "RefreshModList");
-		Speak(Loc.T("modactions.noteSet", mod.Name));
+		Fire(SayAndRefreshModList(Loc.T("modactions.noteSet", mod.Name), mod), "RefreshModList");
 	}
 
 	/// <summary>
@@ -409,10 +405,8 @@ public partial class Form1
 			{
 				_soundEngine.Play("disable");
 			}
-			Speak(Loc.T("modactions.batchComplete", list.Count, flag ? Loc.T("modactions.batchEnabled") : Loc.T("modactions.batchDisabled")));
-
 			// "Enabling 12 mods…" describes work that is now finished, so the title must not keep saying it.
-			await RefreshModList(checkUpdates: false);
+			await SayAndRefreshModList(Loc.T("modactions.batchComplete", list.Count, flag ? Loc.T("modactions.batchEnabled") : Loc.T("modactions.batchDisabled")));
 			ResetStatus();
 		}
 		catch (Exception ex)
@@ -497,15 +491,15 @@ public partial class Form1
 			{
 				_soundEngine.Play("disable");
 			}
-			// Spoken straight away — waiting for the list to rebuild would delay the one confirmation that
-			// says the key press worked. It is only spoken, not set as the status: "X is now disabled" is
-			// news about a moment, and leaving it in the title bar leaves it reading as the current state of
-			// the program long after it stopped being true.
-			Speak(Loc.T("modactions.toggleStatus", selectedMod.Name, selectedMod.IsEnabled ? Loc.T("modactions.enabled") : Loc.T("modactions.disabled")) + HeldOffNote());
-
+			// The sound above says the key press worked. This is only spoken, not set as the status: "X is now disabled"
+			// is news about a moment, and leaving it in the title bar leaves it reading as the current state of the
+			// program long after it stopped being true.
+			//
 			// Asset deployment and plugins.txt are reconciled inside RefreshModList, which re-scans the
 			// toggled enabled set and rewrites both for Skyrim/Fallout 4.
-			await RefreshModList(checkUpdates: false);
+			await SayAndRefreshModList(
+				Loc.T("modactions.toggleStatus", selectedMod.Name, selectedMod.IsEnabled ? Loc.T("modactions.enabled") : Loc.T("modactions.disabled")) + HeldOffNote(),
+				selectedMod);
 			ResetStatus();
 		}
 		catch (Exception ex)
@@ -576,8 +570,7 @@ public partial class Form1
 			// RefreshModList below re-scans without the deleted mod and reconciles deployment and
 			// plugins.txt, pruning its files/plugins and restoring any provider it had overridden.
 			_soundEngine.Play("disable");
-			Speak(Loc.T("modactions.deletedStatus", selectedMod.Name));
-			await RefreshModList(checkUpdates: false);
+			await SayAndRefreshModList(Loc.T("modactions.deletedStatus", selectedMod.Name));
 			ResetStatus();
 		}
 		catch (Exception ex)

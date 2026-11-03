@@ -996,9 +996,12 @@ public partial class Form1
 			updated.FolderPath = ModFileSystem.SetModEnabled(updated.FolderPath, false, _settings.ActiveGame);
 			updated.IsEnabled = false;
 			_soundEngine.Play("disable");
-			if (silent) _updatesLeftDisabled.Add(updated.Name);
-			else Speak(Loc.T("updates.leftDisabled", updated.Name));
-			await RefreshModList(checkUpdates: false);
+			if (silent)
+			{
+				_updatesLeftDisabled.Add(updated.Name);
+				await RefreshModList(checkUpdates: false);
+			}
+			else await SayAndRefreshModList(Loc.T("updates.leftDisabled", updated.Name), updated);
 		}
 		catch (Exception ex)
 		{

@@ -661,7 +661,7 @@ public partial class Form1
 			container.Controls.Add(list);
 			return list;
 		},
-		onClosed: () => { if (sayAfterClosing != null) Speak(sayAfterClosing); },
+		sayOnClosing: () => sayAfterClosing,
 		hint: Loc.T("curator.reviewHint", entries.Count));
 	}
 }

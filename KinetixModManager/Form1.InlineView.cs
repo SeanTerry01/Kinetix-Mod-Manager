@@ -33,8 +33,14 @@ public partial class Form1
 	/// said while <paramref name="build"/> runs lands before the title.
 	/// </summary>
 	/// <param name="whyEscapeWaits">What to say instead of closing, while there is a reason to stay open. Null to close.</param>
+	/// <param name="sayOnClosing">
+	/// The result of the view, asked for once it has been closed: "Settings saved". It comes first, ahead of the reader
+	/// describing the window the view goes back to, and is heard out before that starts, because the focus going back
+	/// throws away whatever is still being said. A reader that can't say when it has finished hears it after instead, as
+	/// waiting would be a guess, and saying it first would lose it.
+	/// </param>
 	private void ShowInlineView(string title, Func<Panel, Action, Control> build, Action? onClosed = null,
-		string? hint = null, Func<string?>? whyEscapeWaits = null)
+		string? hint = null, Func<string?>? whyEscapeWaits = null, Func<string?>? sayOnClosing = null)
 	{
 		// Before the view is built, for the same reason a prompt waits before its buttons appear: once focus has
 		// landed inside the view the reader is already describing what it landed on.
@@ -43,6 +49,7 @@ public partial class Form1
 		Form host = this;
 		bool closed = false;
 		void Close() => closed = true;
+		bool saidOnClosing = false;
 
 		// The heading is PAINTED, not built as a control. See the comment on the Paint handler below for why.
 		var headingFont = new Font("Segoe UI", 14f * TextScaleFactor(), FontStyle.Bold);
@@ -115,9 +122,17 @@ public partial class Form1
 				// single very long utterance. Chunked and queued it reads whole, and a short hint is one chunk,
 				// so nothing changes for the ordinary case.
 				if (!string.IsNullOrEmpty(hint)) SpeakLong(hint, interrupt: false);
+			},
+			beforeRestoring: () =>
+			{
+				if (_announcer.IsSpeakingForCertain is null || sayOnClosing?.Invoke() is not { } first) return;
+				saidOnClosing = true;
+				Speak(first);
+				LetSpeechFinish();
 			});
 
 		onClosed?.Invoke();
+		if (!saidOnClosing && sayOnClosing?.Invoke() is { } after) Speak(after);
 	}
 
 	/// <summary>

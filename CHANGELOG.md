@@ -1,5 +1,16 @@
 ﻿# Unreleased
 
+## 🐛 What the manager says comes in the right order, and all of it
+
+*   **Enabling, disabling or deleting a mod no longer cuts its own message off.** The list moving to the mod's new place used to
+    talk over "X is now disabled". You now hear one sentence: "X is now disabled. 12 of 149". Bulk changes, categories, notes and
+    linking a mod work the same way.
+*   **"Settings saved" comes first**, ahead of the window and tab being read out. So does "Changes cancelled", and the same for
+    the sound theme and shortcut screens and for lists that close themselves when empty. This needs NVDA 2026.3 or newer. On
+    other screen readers the message still comes after, because they can't say when they have finished speaking.
+*   **Lists no longer say "list" twice.** "Installed Mods List list" is now "Installed Mods list", and the same for every list.
+*   **Starting with no game loaded** no longer opens on a stray "1 of 6", ahead of the welcome.
+
 ## 🐛 Minecraft can no longer be left unable to start, or silent, by an update or a move
 
 *   **F5 starts the right Minecraft.** It started whichever Fabric install sorted first by name, so a modpack's newer Fabric could

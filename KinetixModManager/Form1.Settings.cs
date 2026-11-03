@@ -1293,13 +1293,6 @@ public partial class Form1
 				UpdateGamesMenu();
 				saved = true;
 				closeView();
-				Task.Delay(100).ContinueWith(delegate
-				{
-					Invoke(delegate
-					{
-						Fire(RefreshModList(checkUpdates: false), "RefreshModList");
-					});
-				});
 				savedMessage = langChanged
 					? Loc.T("settings.saved") + " " + Loc.T("settings.languageRestart")
 					: Loc.T("settings.saved");
@@ -1324,7 +1317,7 @@ public partial class Form1
 		// the active tab is what gets announced.
 		tabs.TabIndex = 0;
 		flowSaveCancel.TabIndex = 1;
-		// Escape is handled by the view itself; "changes cancelled" is announced from onClosed below, so it is
+		// Escape is handled by the view itself; "changes cancelled" is announced from sayOnClosing below, so it is
 		// said whichever way Settings was left — Escape or the Cancel button — and not at all after a Save.
 
 		// Focus lands on the tab strip so the user can arrow between tabs before tabbing into the first setting,
@@ -1382,9 +1375,19 @@ public partial class Form1
 			_isSettingsOpen = false;
 			// Don't leave a logo preview playing after Settings has gone.
 			_soundEngine.StopLogoSound();
-			// Here rather than in the Save button's handler: closing a view only sets a flag, so a sentence said there came
-			// before focus went back, and focus going back silenced it. "Settings saved" and the language note went unheard.
-			Speak(saved ? savedMessage : Loc.T("common.changesCancelled"));
-		});
+			// Once the view has gone, not as Save is pressed: closing now waits for "Settings saved" to be heard, and a
+			// refresh finishing behind the view could not ask anything it needed to.
+			if (saved)
+			{
+				Task.Delay(100).ContinueWith(delegate
+				{
+					Invoke(delegate
+					{
+						Fire(RefreshModList(checkUpdates: false), "RefreshModList");
+					});
+				});
+			}
+		},
+		sayOnClosing: () => saved ? savedMessage : Loc.T("common.changesCancelled"));
 	}
 }

@@ -286,7 +286,7 @@ public partial class Form1
 			text = RowThenPosition(listBox.SelectedItem, text);
 
 		// Focus arriving at a list is announced by a screen reader as its name, then the row it landed on, then
-		// where that row sits — "Installed Mods List. Stardew Access… 129 of 149". When the reader's version of that
+		// where that row sits — "Installed Mods list. Stardew Access… 129 of 149". When the reader's version of that
 		// has to be swallowed (see SpeakListPosition), the name goes with it, and a list that no longer says what it
 		// is leaves the user to work it out from the row. So the name is put back at the front, in the same order
 		// the reader would have used. Only on the way in: moving within a list must not repeat it.
@@ -383,6 +383,9 @@ public partial class Form1
 	/// The name comes from <see cref="Control.AccessibleName"/>, the same string the reader would have read, so the
 	/// two can never drift apart. A container deliberately silenced with <see cref="SilentAccessibleName"/> stays
 	/// silent, and a list with no name of its own adds nothing rather than an empty pause.
+	///
+	/// ⚠️ A list's name leaves out the word "list", because the reader adds it: "Installed Mods List" was heard as
+	/// "Installed Mods List list". The wording here says it, to match.
 	/// </summary>
 	private static string ListNameThenRest(ListBox list, string rest)
 	{
@@ -403,7 +406,11 @@ public partial class Form1
 	/// explicitly focuses its list on top of the focus it gets naturally on open). Arrowing changes the index, so
 	/// normal navigation is never suppressed.
 	/// </summary>
-	private async void SpeakListPosition(ListBox list, string text, bool replaceReader = false)
+	/// <param name="carrying">
+	/// A result that <paramref name="text"/> opens with. It is not to be lost with the row, so if this call gives way to
+	/// something newer, or finds it has nothing to add, the result is said anyway. See <see cref="SayAndRefreshModList"/>.
+	/// </param>
+	private async void SpeakListPosition(ListBox list, string text, bool replaceReader = false, string? carrying = null)
 	{
 		if (_shuttingDown) return;
 		// A heading gets no position and, when the user arrowed onto it themselves, the reader has already read
@@ -411,7 +418,7 @@ public partial class Form1
 		if (text.Length == 0) return;
 
 		long now = Environment.TickCount64;
-		if (ReferenceEquals(_lastPosList, list) && _lastPosIndex == list.SelectedIndex && now - _lastPosTicks < 700)
+		if (carrying == null && ReferenceEquals(_lastPosList, list) && _lastPosIndex == list.SelectedIndex && now - _lastPosTicks < 700)
 			return;
 		_lastPosList = list;
 		_lastPosIndex = list.SelectedIndex;
@@ -442,13 +449,26 @@ public partial class Form1
 		// started meant hearing the first syllable of it ("insta…") before the cut. Silencing repeatedly across a
 		// short window catches it whenever it begins, and each pass lands too soon after the last for a recognisable
 		// sound to escape. Then the truth is said once, and it is the only thing heard.
+		void GiveWay()
+		{
+			if (carrying != null && !_shuttingDown) Speak(carrying);
+		}
+
 		for (int i = 0; i < 12; i++)
 		{
-			if (_shuttingDown || list.IsDisposed || generation != _speakListGeneration) return;
+			if (_shuttingDown || list.IsDisposed || generation != _speakListGeneration)
+			{
+				GiveWay();
+				return;
+			}
 			SilenceSpeech();
 			await Task.Delay(25);
 		}
-		if (_shuttingDown || list.IsDisposed || !list.Focused || generation != _speakListGeneration) return;
+		if (_shuttingDown || list.IsDisposed || !list.Focused || generation != _speakListGeneration)
+		{
+			GiveWay();
+			return;
+		}
 		Speak(text, interrupt: true);
 	}
 
@@ -820,8 +840,23 @@ public partial class Form1
 		// moves the selection, it says nothing at all, and the position was being read out with no idea which mod
 		// it belonged to. So a programmatic move says the row itself first, and only a programmatic one, or an
 		// ordinary arrow-key press would hear the name twice.
+		//
+		// The swallow below can't tell the reader's voice from ours, so a result said just before this was cut off. It is
+		// said here instead, as the opening of this sentence. See SayAndRefreshModList.
+		string? carrying = null;
 		if (announceRowName)
-			text = RowThenPosition(list.SelectedItem, text);
+		{
+			if (ReferenceEquals(list, listInstalled) && _resultForRestoredRow != null)
+			{
+				carrying = _resultForRestoredRow;
+				// The row is only named if it is not the mod the result has just named.
+				bool sameMod = list.SelectedItem is GameMod landedOn && landedOn.UniqueId == _resultAboutModId;
+				text = RowThenPosition(carrying, sameMod ? text : RowThenPosition(list.SelectedItem, text));
+				_resultForRestoredRow = null;
+			}
+			else
+				text = RowThenPosition(list.SelectedItem, text);
+		}
 		if (list.Name == "listLog")
 		{
 			string lineText = list.SelectedItem.ToString() ?? "";
@@ -846,7 +881,7 @@ public partial class Form1
 		// when it finds nothing selected yet and lets selecting row 0 do the announcing.
 		if (announceListName)
 			text = ListNameThenRest(list, text);
-		SpeakListPosition(list, text, replaceReader: announceRowName);
+		SpeakListPosition(list, text, replaceReader: announceRowName, carrying: carrying);
 	}
 
 	/// <summary>

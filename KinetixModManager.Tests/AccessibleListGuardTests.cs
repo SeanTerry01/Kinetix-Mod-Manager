@@ -9,7 +9,7 @@ namespace KinetixModManager.Tests;
 ///
 /// <para>
 /// A screen reader tells you three things when you land on a list: what the list is called, which row you are on,
-/// and where that row sits in the whole — "Installed Mods List, Stardew Access, 129 of 149". It reads the row on
+/// and where that row sits in the whole — "Installed Mods list, Stardew Access, 129 of 149". It reads the row on
 /// its own, but the position is the manager's to add, and it has to be added twice over: once when focus arrives
 /// (<c>GotFocus</c>) and once for every arrow key (<c>SelectedIndexChanged</c>). Wire only the first and the list
 /// says "1 of 40" on the way in and then goes silent while the user arrows through it, with no way to tell a long

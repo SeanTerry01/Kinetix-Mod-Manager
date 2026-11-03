@@ -690,6 +690,56 @@ public partial class Form1
 		listInstalled.EndUpdate();
 	}
 
+	/// <summary>What <see cref="SayAndRefreshModList"/> has yet to say.</summary>
+	private string? _resultForRestoredRow;
+	/// <summary>The mod that result names, so the row it lands on is not named a second time.</summary>
+	private string? _resultAboutModId;
+
+	/// <summary>
+	/// Says the result of something that changes the list, and rescans it, without the rescan cutting the result off.
+	///
+	/// When the rescan moves the row under the user, the reader's own reading of that move has to be swallowed (see
+	/// <see cref="SpeakListPosition"/>), and the swallow can't tell the reader's voice from ours. The focus event behind
+	/// the move throws speech away as well. So "X is now disabled" said up front lost out to "X. 12 of 149". Saying it
+	/// after the move is the only order that can't lose: "X is now disabled. 12 of 149", in one sentence.
+	///
+	/// With the list not holding focus nothing gets swallowed, so it is simply said now. A slow rescan doesn't get to hold
+	/// the result back for long, either: a large Bethesda setup can take many seconds.
+	/// </summary>
+	/// <param name="result">What happened.</param>
+	/// <param name="about">The mod <paramref name="result"/> names, when it names the one the user is on.</param>
+	private async Task SayAndRefreshModList(string result, GameMod? about = null)
+	{
+		SayWaitingResult();
+		if (!listInstalled.Focused)
+		{
+			Speak(result);
+			await RefreshModList(checkUpdates: false);
+			return;
+		}
+
+		_resultForRestoredRow = result;
+		_resultAboutModId = about?.UniqueId;
+		try
+		{
+			Task refresh = RefreshModList(checkUpdates: false);
+			if (await Task.WhenAny(refresh, Task.Delay(1000)) != refresh) SayWaitingResult();
+			await refresh;
+		}
+		finally
+		{
+			// The row didn't move, or there is no row left, so nothing carried it.
+			SayWaitingResult();
+		}
+	}
+
+	private void SayWaitingResult()
+	{
+		if (_resultForRestoredRow is not { } waiting) return;
+		_resultForRestoredRow = null;
+		Speak(waiting);
+	}
+
 	/// <summary>
 	/// Puts the selection back on the mod with <paramref name="uniqueId"/> after something moved it — a screen
 	/// that rebuilt the list on its way out, most often.
@@ -1020,8 +1070,7 @@ public partial class Form1
 						}
 					}
 
-					Speak(Loc.T("link.success"));
-					Fire(RefreshModList(checkUpdates: false), "RefreshModList");
+					Fire(SayAndRefreshModList(Loc.T("link.success"), linkedMod), "RefreshModList");
 				}
 				catch (Exception ex)
 				{

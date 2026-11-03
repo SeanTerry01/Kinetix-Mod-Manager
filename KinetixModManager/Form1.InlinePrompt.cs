@@ -137,7 +137,7 @@ public partial class Form1
 	/// are built on it.
 	/// </summary>
 	private void RunOverlay(Form host, Panel overlay, Control focusFirst,
-		Func<bool> finished, Action onEscape, Action? afterShown = null)
+		Func<bool> finished, Action onEscape, Action? afterShown = null, Action? beforeRestoring = null)
 	{
 		// Remember what to put back: the overlay borrows the window's focus, its Enter/Escape handling, its
 		// name and the enabled state of everything already in it.
@@ -203,6 +203,8 @@ public partial class Form1
 				Application.DoEvents();
 				if (!finished() && !host.IsDisposed) WaitMessage();
 			}
+
+			if (!host.IsDisposed) beforeRestoring?.Invoke();
 		}
 		finally
 		{
@@ -259,7 +261,7 @@ public partial class Form1
 							AlignListCaretToSelection(returningTo);
 							_announceRowNameOnNextChange = true;
 							// Focus is arriving, not just moving inside a list already under it, so the announcement
-							// opens with the list's name — "Installed Mods List" — as it would have done had the user
+							// opens with the list's name — "Installed Mods list" — as it would have done had the user
 							// tabbed in. The reader's own attempt at that gets swallowed along with the wrong row it
 							// insists on reading first, so ours has to carry the name or the list stops saying what
 							// it is on the way back from a view.

@@ -248,8 +248,8 @@ public partial class Form1
 		onClosed: () =>
 		{
 			viewGone = true;
-			if (sayAfterClosing != null) Speak(sayAfterClosing);
 		},
+		sayOnClosing: () => sayAfterClosing,
 		hint: Loc.T(pending.Count == 1 ? "pending.countOne" : "pending.count", pending.Count)
 			+ " " + Loc.T("pending.actionHint"));
 	}
