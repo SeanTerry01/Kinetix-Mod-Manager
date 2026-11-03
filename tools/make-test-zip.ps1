@@ -6,11 +6,13 @@
     A tester should not have to install a test build over the release they actually use. This produces a folder
     they unzip and run, leaving their installed copy's program files untouched.
 
-    The layout matches what setup.iss installs, so the zip behaves like an installed copy:
-      * the native speech DLLs (Tolk, NVDA controller) sit in lib\ where Program.cs's SetDllDirectory looks, and
-        also at the root, exactly as the installer places them;
-      * lang, docs, data and sounds come across whole;
-      * the empty profiles, downloads and backups folders the installer creates are created here too.
+    The layout follows what setup.iss installs, with two differences:
+      * the native speech DLLs (Tolk, NVDA controller) sit at the root, as the installer places them, and also in
+        lib\, which the publish folder has and an installed copy does not. Program.cs's SetDllDirectory only looks
+        at lib\ when it exists, so this zip finds them there and an installed copy finds them at the root;
+      * empty profiles, downloads and backups folders are created here, though the manager never uses them: its
+        own are in %AppData%, and the installer does not create these.
+    Otherwise lang, docs, data and sounds come across whole.
 
     What it CANNOT isolate, and the README inside the zip says so plainly:
       * settings, staged mods, downloads and backups live in %AppData%\AudiVentureGames\KinetixModManager and are
@@ -67,8 +69,9 @@ Write-Host "Packing $short from $Configuration..."
 
 Copy-Item -Path (Join-Path $publishDir "*") -Destination $stageDir -Recurse -Force
 
-# The installer puts the native DLLs at the app root as well as in lib\; mirror that so the zip cannot behave
-# differently from an installed copy. Missing these means no speech at all, which is not a subtle failure here.
+# The installer puts the native DLLs at the app root and has no lib\; the publish folder only has them in lib\.
+# Copy them to the root as well, so they are where an installed copy has them. Missing these means no speech at
+# all, which is not a subtle failure here.
 foreach ($native in @("Tolk.dll", "nvdaControllerClient.dll", "nvdaControllerClient64.dll")) {
     $source = Join-Path $publishDir "lib\$native"
     if (-not (Test-Path $source)) { throw "Missing $native in $publishDir\lib - the build would start up silent." }

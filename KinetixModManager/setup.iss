@@ -1,5 +1,5 @@
 ; Inno Setup Script for Kinetix Mod Manager
-; Compatible with Single-File .NET 10 Publishing
+; Packs a self-contained .NET 10 publish folder: an exe with its DLLs beside it, not a single-file build
 
 [Setup]
 AppId={{D37D0B2E-6D3F-4B1C-BD03-9A1D2E3F4B5C}
@@ -33,7 +33,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-; The Single-File EXE
+; The program's exe
 Source: "bin\Release\net10.0-windows\win-x64\publish\KinetixModManager.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; Native DLLs (Tolk, NVDA Controller, etc.)
 Source: "lib\Tolk.dll"; DestDir: "{app}"; Flags: ignoreversion
@@ -55,11 +55,9 @@ Source: "bin\Release\net10.0-windows\win-x64\publish\sounds\*"; DestDir: "{app}\
 Source: "bin\Release\net10.0-windows\win-x64\publish\profiles\*"; DestDir: "{app}\profiles"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 [Dirs]
-; Ensure these directories exist even if they are empty in the installer
+; Ensure this directory exists even if it is empty in the installer. Profiles, downloads and backups are not here:
+; they live in the data folder under %AppData% (dataBasePath in Form1.cs).
 Name: "{app}\sounds"
-Name: "{app}\profiles"
-Name: "{app}\downloads"
-Name: "{app}\backups"
 
 [Icons]
 Name: "{group}\Kinetix Mod Manager"; Filename: "{app}\KinetixModManager.exe"
