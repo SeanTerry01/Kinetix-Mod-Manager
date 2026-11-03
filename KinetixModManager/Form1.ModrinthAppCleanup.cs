@@ -17,6 +17,9 @@ public partial class Form1
 	/// </summary>
 	private static string? ModrinthAppUninstaller()
 	{
+		// A real program, and a test copy has no business offering to remove it.
+		if (TestMode.IsOn) return null;
+
 		(RegistryKey Hive, string Path)[] lists =
 		{
 			(Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Uninstall"),
@@ -71,8 +74,8 @@ public partial class Form1
 	/// <param name="offeredAfterImport">True when offered straight after an import, where silence is right if there is nothing to do.</param>
 	private async Task RemoveModrinthAppLeftoversAsync(bool offeredAfterImport = false)
 	{
-		string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-		string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+		string appData = UserFolders.ApplicationData;
+		string localAppData = UserFolders.LocalApplicationData;
 
 		IReadOnlyList<string> folders = ModrinthAppCleanup.DataFolders(appData, localAppData);
 		if (folders.Count == 0)
@@ -226,7 +229,7 @@ public partial class Form1
 	/// </summary>
 	private async Task OfferModrinthAppCleanupAfterImportAsync()
 	{
-		string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+		string appData = UserFolders.ApplicationData;
 		bool anythingLeft = await Task.Run(() => ModrinthAppCleanup.NotImported(
 				ModrinthAppImport.FindAll(appData, Path.GetTempPath()),
 				MinecraftModpacks.FindInstalled(MinecraftModpacks.PacksFolder))

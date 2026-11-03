@@ -540,7 +540,7 @@ public partial class Form1
 		string game = "";
 		try
 		{
-			string logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+			string logPath = Path.Combine(UserFolders.ApplicationData,
 				"StardewValley", "ErrorLogs", "SMAPI-latest.txt");
 			if (File.Exists(logPath))
 			{
@@ -1321,6 +1321,13 @@ public partial class Form1
 
     private async Task CheckForAppUpdates(bool manual)
 	{
+		// Its installer would go over the real copy.
+		if (TestMode.IsOn)
+		{
+			if (manual) Speak(Loc.T("test.noSelfUpdate"));
+			return;
+		}
+
 		if (manual) Speak(Loc.T("updates.checkingManager"));
 		try
 		{

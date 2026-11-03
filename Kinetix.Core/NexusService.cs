@@ -50,7 +50,13 @@ public class NexusService
 	public string NexusUser { get; private set; } = "Unknown User";
 
 	/// <summary>Whether the validated account has Nexus premium (required for automated downloads).</summary>
-	public bool IsPremium { get; private set; }
+	public bool IsPremium
+	{
+		// A test copy can act as a free account, so what such an account hears can be checked without having one.
+		get => _isPremium && TestMode.Current?.PretendFreeNexus != true;
+		private set => _isPremium = value;
+	}
+	private bool _isPremium;
 
 	/// <summary>The API key that was last successfully validated; used to skip re-validating an unchanged key.</summary>
 	private string _validatedKey = "";

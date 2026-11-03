@@ -65,7 +65,7 @@ public partial class Form1
 		{
 			return;
 		}
-		string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StardewValley", "ErrorLogs", "SMAPI-latest.txt");
+		string path = Path.Combine(UserFolders.ApplicationData, "StardewValley", "ErrorLogs", "SMAPI-latest.txt");
 		if (!File.Exists(path))
 		{
 			return;
@@ -154,7 +154,7 @@ public partial class Form1
 	/// <summary>Uploads the SMAPI log to smapi.io/log and opens the resulting URL in the default browser.</summary>
 	private async Task UploadSmapiLog()
 	{
-		string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StardewValley", "ErrorLogs", "SMAPI-latest.txt");
+		string path = Path.Combine(UserFolders.ApplicationData, "StardewValley", "ErrorLogs", "SMAPI-latest.txt");
 		if (!File.Exists(path))
 		{
 			return;

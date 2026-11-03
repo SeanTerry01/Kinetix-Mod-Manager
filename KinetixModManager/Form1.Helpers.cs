@@ -773,7 +773,7 @@ public partial class Form1
 		else
 		{
 			string windowTitle = Loc.T("status.titleFormat", GameDisplayName(), text);
-			Text = windowTitle;
+			Text = TestMode.IsOn ? Loc.T("test.titlePrefix", windowTitle) : windowTitle;
 			if (speak)
 			{
 				Speak(text);

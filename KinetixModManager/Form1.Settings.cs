@@ -1184,6 +1184,13 @@ public partial class Form1
 			}
 			else
 			{
+				// Settings is the one place a real game folder could be typed in, after the rest of test mode has kept them out.
+				if (TestMode.Current is { } test && tempGamePaths.Values.Concat(tempModsPaths.Values).Any(path => !test.Allows(path)))
+				{
+					SayTestModeRefused(test);
+					return;
+				}
+
 				List<(string Game, string OldPath, bool Remove)> leftBehind = AskAboutDeploymentsLeftBehind(_settings.GamePaths, tempGamePaths);
 				_settings.GameModsPaths = tempModsPaths;
 				int notRemoved;

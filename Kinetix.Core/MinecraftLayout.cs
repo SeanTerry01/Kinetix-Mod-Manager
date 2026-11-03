@@ -74,8 +74,8 @@ public static class MinecraftLayout
 	/// </remarks>
 	public static string DefaultRootFolder =>
 		System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)
-			? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft")
-			: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".minecraft");
+			? Path.Combine(UserFolders.ApplicationData, ".minecraft")
+			: Path.Combine(UserFolders.UserProfile, ".minecraft");
 
 	/// <summary>The mods folder for a given <c>.minecraft</c> root.</summary>
 	public static string ModsFolderFor(string root) => Path.Combine(root, "mods");

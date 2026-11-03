@@ -687,7 +687,7 @@ public class AppSettings : IModScanContext
 	{
 		get
 		{
-			string text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AudiVentureGames", "KinetixModManager");
+			string text = Path.Combine(UserFolders.ApplicationData, "AudiVentureGames", "KinetixModManager");
 			if (!Directory.Exists(text))
 			{
 				Directory.CreateDirectory(text);

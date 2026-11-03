@@ -12,7 +12,8 @@ public partial class Form1
 		string folder = DetectInstalledGameFolder(game);
 		if (!string.IsNullOrEmpty(folder)) return folder;
 
-		return GameProfiles.Find(game)?.DefaultInstallFolder ?? "";
+		// A guess at where Steam keeps it, and in test mode that guess would be the real game.
+		return TestMode.IsOn ? "" : GameProfiles.Find(game)?.DefaultInstallFolder ?? "";
 	}
 
 	/// <summary>
@@ -103,6 +104,13 @@ public partial class Form1
 		{
 			string mcRoot = MinecraftLayout.FindRootFolder();
 			if (mcRoot.Length > 0) Consider(mcRoot, GamePlatform.Unknown);
+			return found;
+		}
+
+		// A test copy never looks for the real game. It uses the copy it was given, and nothing else counts as installed.
+		if (TestMode.Current is { } test)
+		{
+			Consider(test.GameFolderFor(game), GamePlatform.Unknown);
 			return found;
 		}
 
@@ -562,6 +570,16 @@ public partial class Form1
 			return false;
 		}
 
+		if (TestMode.Current is { } test && !test.Allows(chosen))
+		{
+			BeginInvoke(new Action(async () =>
+			{
+				await SettleAfterForeignWindowAsync();
+				SayTestModeRefused(test);
+			}));
+			return false;
+		}
+
 		RecordGameFolder(game, chosen);
 		SpeakAfterForeignWindow(Loc.T("session.locatedSpeak", targetName));
 		return true;
@@ -897,6 +915,14 @@ public partial class Form1
 			if (!ConfirmEnoughMemoryToLaunch(game, GameDisplayName())) return;
 
 			// Easily forgotten by the time the game starts with none of its mods.
+			// The manager can be kept inside the test folder, but the game then decides for itself where its saves are.
+			if (TestMode.IsOn && SpeakBox(Loc.T("test.launchWarning"), Loc.T("test.title"), MessageBoxButtons.YesNo) != DialogResult.Yes)
+			{
+				Speak(Loc.T("common.changesCancelled"));
+				return;
+			}
+
+			// After the question, which would cut it off.
 			if (_settings.DeploymentHeldOff.Contains(game)) Speak(Loc.T("launch.modsHeldOff"));
 
 			string gamePath = _settings.CurrentGamePath;
@@ -1036,6 +1062,9 @@ public partial class Form1
 	/// </summary>
 	private bool TryLaunchViaSteam(GameProfile profile, string gamePath)
 	{
+		// Steam only ever starts the real game. A test copy starts its own files.
+		if (TestMode.IsOn) return false;
+
 		try
 		{
 			if (!string.IsNullOrEmpty(profile.LoaderExeName)) return false;

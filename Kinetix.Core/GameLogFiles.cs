@@ -69,7 +69,7 @@ public static class GameLogFiles
 
 	/// <summary>SMAPI's own error-log folder. Stardew Valley only, and the same on every platform SMAPI runs on.</summary>
 	public static string SmapiLogFolder() => Path.Combine(
-		Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StardewValley", "ErrorLogs");
+		UserFolders.ApplicationData, "StardewValley", "ErrorLogs");
 
 	/// <summary>SMAPI's current log file.</summary>
 	public static string SmapiLogPath() => Path.Combine(SmapiLogFolder(), "SMAPI-latest.txt");

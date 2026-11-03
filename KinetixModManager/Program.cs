@@ -31,7 +31,7 @@ internal static class Program
 
 	/// <summary>The manager's own data folder, where the log lives. Needed before any window exists.</summary>
 	private static string DataFolder => Path.Combine(
-		Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+		UserFolders.ApplicationData,
 		"AudiVentureGames", "KinetixModManager");
 
 	/// <summary>
@@ -81,7 +81,7 @@ internal static class Program
 	{
 		try
 		{
-			string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+			string appData = UserFolders.ApplicationData;
 			string oldDir = Path.Combine(appData, "AudiVentureGames", "StardewAccessibleManager");
 			string newDir = Path.Combine(appData, "AudiVentureGames", "KinetixModManager");
 			if (Directory.Exists(oldDir) && !Directory.Exists(newDir))
@@ -97,7 +97,7 @@ internal static class Program
 	{
 		MigrateAppData();
 
-		using Mutex mutex = new Mutex(initiallyOwned: false, "Global\\KinetixModManager-Nexus-Handler");
+		using Mutex mutex = new Mutex(initiallyOwned: false, "Global\\" + TestMode.HandlerName);
 		if (!mutex.WaitOne(0, exitContext: false))
 		{
 			if (args.Length == 0 || !args[0].StartsWith("nxm://", StringComparison.OrdinalIgnoreCase))
@@ -106,7 +106,7 @@ internal static class Program
 			}
 			try
 			{
-				using NamedPipeClientStream namedPipeClientStream = new NamedPipeClientStream(".", "KinetixModManager-Nexus-Handler", PipeDirection.Out);
+				using NamedPipeClientStream namedPipeClientStream = new NamedPipeClientStream(".", TestMode.HandlerName, PipeDirection.Out);
 				namedPipeClientStream.Connect(1000);
 				using StreamWriter streamWriter = new StreamWriter(namedPipeClientStream);
 				streamWriter.WriteLine(args[0]);

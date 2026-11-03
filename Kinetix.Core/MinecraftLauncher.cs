@@ -467,6 +467,7 @@ public static class MinecraftLauncher
 	/// </summary>
 	public static string FindBundledJava(string component, string root = "")
 	{
+		// The real folder even in test mode: this is only looked at, and a test Minecraft still needs a Java to run on.
 		string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
 		var roots = new List<string>

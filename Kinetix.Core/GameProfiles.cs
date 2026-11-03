@@ -372,7 +372,7 @@ public sealed class GameProfile
 		string folder = UserDataFolderFor(gameFolder);
 		if (folder.Length == 0) return "";
 
-		string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+		string docs = UserFolders.Documents;
 		return UserDataUnderMyGames
 			? Path.Combine(docs, "My Games", folder)
 			: Path.Combine(docs, folder);

@@ -125,7 +125,7 @@ public partial class Form1 : Form, IMessageFilter
 	private AppSettings _settings;
 	private ToolStripMenuItem _menuGames = null!;
 
-	private static string dataBasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AudiVentureGames", "KinetixModManager");
+	private static string dataBasePath = Path.Combine(UserFolders.ApplicationData, "AudiVentureGames", "KinetixModManager");
 
 	private string downloadsPath => DownloadsPathFor(_settings.ActiveGame);
 
@@ -440,20 +440,23 @@ public partial class Form1 : Form, IMessageFilter
 	/// </summary>
 	private void DetectModsPath()
 	{
+		// Before anything below can act on a folder saved or defaulted to somewhere real.
+		TestMode.Current?.ForgetFoldersOutside(_settings);
+
 		if (string.IsNullOrEmpty(_settings.GameModsPaths["StardewValley"]) || !Directory.Exists(_settings.GameModsPaths["StardewValley"]))
 		{
 			// Prefer the game folder Steam actually reports (any drive / custom library), then fall back
 			// to the well-known fixed locations for non-Steam or unusual setups.
 			string detectedStardew = DetectInstalledGameFolder("StardewValley");
 			string detectedMods = string.IsNullOrEmpty(detectedStardew) ? "" : Path.Combine(detectedStardew, "Mods");
-			string[] array = new string[]
+			string[] array = TestMode.IsOn ? new[] { detectedMods } : new string[]
 			{
 				detectedMods,
 				"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Stardew Valley\\Mods",
 				"C:\\Program Files\\Steam\\steamapps\\common\\Stardew Valley\\Mods",
 				"D:\\SteamLibrary\\steamapps\\common\\Stardew Valley\\Mods",
 				"E:\\SteamLibrary\\steamapps\\common\\Stardew Valley\\Mods",
-				Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "StardewValley", "Mods")
+				Path.Combine(UserFolders.Documents, "StardewValley", "Mods")
 			};
 			foreach (string text in array)
 			{
@@ -831,6 +834,7 @@ public partial class Form1 : Form, IMessageFilter
 				// Queued, not interrupting, so it follows the reader's description of the window instead of
 				// cutting it in half. Tolk keeps the order at any speech rate; the whole opening below relies on
 				// the same thing, which is what makes it safe for a user who reads much slower or faster.
+				if (TestMode.IsOn) form.Speak(Loc.T("test.startup"));
 				form.Speak(form.ShortcutIsSet("Manual") && form.ShortcutIsSet("ContextHelp")
 					? Loc.T("app.started", form.GetShortcutString("Manual"), form.GetShortcutString("ContextHelp"))
 					: Loc.T("app.startedNoKeys"));
@@ -1026,7 +1030,7 @@ public partial class Form1 : Form, IMessageFilter
 			{
 				try
 				{
-					using NamedPipeServerStream server = new NamedPipeServerStream("KinetixModManager-Nexus-Handler", PipeDirection.In, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+					using NamedPipeServerStream server = new NamedPipeServerStream(TestMode.HandlerName, PipeDirection.In, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
 					await server.WaitForConnectionAsync(token);
 					using StreamReader reader = new StreamReader(server);
 					// A 5-second read timeout prevents a misbehaving client from blocking
@@ -1079,6 +1083,9 @@ public partial class Form1 : Form, IMessageFilter
 	/// </summary>
 	private void RegisterNxmProtocol()
 	{
+		// Nexus's button stays with the real copy. A test copy takes a link from the clipboard, on its Test Mode menu.
+		if (TestMode.IsOn) return;
+
 		try
 		{
 			string executablePath = Application.ExecutablePath;

@@ -461,7 +461,7 @@ public partial class Form1
 	/// </summary>
 	private async Task ImportFromModrinthAppAsync()
 	{
-		string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+		string appData = UserFolders.ApplicationData;
 		IReadOnlyList<ModrinthAppInstance> found = await Task.Run(() =>
 			ModrinthAppImport.FindAll(appData, Path.GetTempPath()));
 
@@ -653,7 +653,7 @@ public partial class Form1
 
 		// The Modrinth App's worlds too, straight from its folders — so a world can come across on its own, without
 		// importing a whole pack of mods just to reach it. Only ever copied from; the app's files are not changed.
-		string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+		string appData = UserFolders.ApplicationData;
 		IReadOnlyList<ModrinthAppInstance> appPacks = await Task.Run(() => ModrinthAppImport.FindAll(appData, Path.GetTempPath()));
 		foreach (ModrinthAppInstance appPack in appPacks)
 			foreach (MinecraftWorld world in MinecraftWorlds.FindIn(appPack.Folder))

@@ -403,7 +403,7 @@ public static class ModFileSystem
 		if (!GameProfiles.IsGame(activeGame, GameProfiles.Fallout4)) return null;
 		string folder = UserDataFolderName(activeGame, gameFolder);
 		if (folder.Length == 0) return null;
-		string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+		string docs = UserFolders.Documents;
 		return Path.Combine(docs, "My Games", folder, "Fallout4Custom.ini");
 	}
 
@@ -891,7 +891,7 @@ public static class ModFileSystem
 	{
 		string folderName = UserDataFolderName(activeGame, gameFolder);
 		if (folderName.Length == 0) return "";
-		string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+		string localAppData = UserFolders.LocalApplicationData;
 		return Path.Combine(localAppData, folderName, "plugins.txt");
 	}
 
@@ -2010,7 +2010,8 @@ public static class ModFileSystem
 	/// </summary>
 	public static ModUninstaller? FindUninstallerInsideGame(string gameFolder, string modFolderName)
 	{
-		if (string.IsNullOrEmpty(gameFolder)) return null;
+		// What Windows lists is for the real install, and running it from a test copy would uninstall the real mod.
+		if (TestMode.IsOn || string.IsNullOrEmpty(gameFolder)) return null;
 
 		var candidates = new List<ModUninstaller>();
 		string root;
