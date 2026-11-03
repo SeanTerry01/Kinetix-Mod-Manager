@@ -703,8 +703,6 @@ public partial class Form1
 	{
 		// Built from the games themselves: written out by hand, this still named only the first three games after
 		// three more had been added.
-		Speak(Loc.T("games.noneDetectedSpeak", string.Join(", ", GameProfiles.AllDisplayNames)));
-
 		DialogResult result = SpeakBox(
 			Loc.T("games.noneDetectedBox", string.Join("\n", GameProfiles.AllDisplayNames.Select(n => "- " + n))),
 			Loc.T("games.noneDetectedTitle"),
@@ -940,7 +938,6 @@ public partial class Form1
 				ScriptExtenderStatus? se = ModFileSystem.ReadScriptExtenderStatus(game, gamePath);
 				if (se != null && se.CanCompare && !se.Match)
 				{
-					Speak(Loc.T("launch.seMismatchSpeak", se.Name));
 					var choice = SpeakBox(
 						Loc.T("launch.seMismatchBox", se.Name, se.TargetVersion, se.GameVersion),
 						Loc.T("launch.seMismatchTitle", se.Name),
@@ -956,7 +953,6 @@ public partial class Form1
 					var lib = ScriptExtenderPlugins.ReadAddressLibrary(game, gamePath, se.GameVersion);
 					if (lib.CanJudge && !lib.CoversGame)
 					{
-						Speak(Loc.T("launch.addrLibSpeak"));
 						var choice = SpeakBox(
 							Loc.T("launch.addrLibBox", se.GameVersion, lib.NewestBuild, se.Name),
 							Loc.T("launch.addrLibTitle"),

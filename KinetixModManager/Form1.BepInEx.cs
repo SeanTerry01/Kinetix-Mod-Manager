@@ -116,7 +116,6 @@ public partial class Form1
 		string? installed = DetectBepInExVersion(gameRoot);
 		if (installed != null && !VersionsMatch(installed, BepInExPinnedVersion))
 		{
-			Speak(Loc.T("bepinex.versionDiffersSpeak"));
 			SpeakBox(
 				Loc.T("bepinex.versionDiffersBox", installed, BepInExPinnedVersion),
 				Loc.T("bepinex.versionDiffersTitle"),
@@ -175,7 +174,6 @@ public partial class Form1
 		_settings.KeybindReaderOffered.Add(_settings.ActiveGame);
 		_settings.Save();
 
-		Speak(Loc.T("keybindReader.offerSpeak"));
 		DialogResult choice = SpeakBox(
 			Loc.T("keybindReader.offerBox", GameProfiles.DisplayNameFor(_settings.ActiveGame)),
 			Loc.T("keybindReader.offerTitle"),
@@ -262,7 +260,6 @@ public partial class Form1
 	/// </summary>
 	private async Task<bool> OfferBepInExInstallAsync(string gameRoot)
 	{
-		Speak(Loc.T("bepinex.missingSpeak"));
 		DialogResult choice = SpeakBox(
 			Loc.T("bepinex.missingBox", GameProfiles.DisplayNameFor(_settings.ActiveGame), BepInExPinnedVersion),
 			Loc.T("bepinex.missingTitle"),
@@ -345,7 +342,6 @@ public partial class Form1
 	{
 		if (!IsBepInExGame || IsBepInExInstalled(gameRoot)) return true;
 
-		Speak(Loc.T("bepinex.launchWithoutSpeak"));
 		DialogResult choice = SpeakBox(
 			Loc.T("bepinex.launchWithoutBox"),
 			Loc.T("bepinex.missingTitle"),

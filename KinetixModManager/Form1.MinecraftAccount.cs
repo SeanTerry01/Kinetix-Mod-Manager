@@ -538,7 +538,6 @@ public partial class Form1
 		MinecraftIdentity? offline = MinecraftAccounts.Offline(_settings, root);
 		if (offline is null)
 		{
-			Speak(Loc.T("mc.launch.noAccountSpeak"));
 			SpeakBox(Loc.T("mc.launch.noAccountBox"), Loc.T("mc.launch.noAccountTitle"),
 				MessageBoxButtons.OK, MessageBoxIcon.Warning);
 		}

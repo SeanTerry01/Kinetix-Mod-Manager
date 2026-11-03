@@ -1173,7 +1173,6 @@ public partial class Form1
 				tempModsPaths.TryGetValue(_settings.ActiveGame, out string? activeMods);
 				if (!string.IsNullOrEmpty(activeMods) && !Directory.Exists(activeMods))
 				{
-					Speak(Loc.T("settings.errModsInvalidSpeak"));
 					SpeakBox(Loc.T("settings.errModsInvalidBox"));
 					return;
 				}
@@ -1181,7 +1180,6 @@ public partial class Form1
 				tempGamePaths.TryGetValue(_settings.ActiveGame, out string? activeGamePath);
 				if (!GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley) && !string.IsNullOrEmpty(activeGamePath) && !Directory.Exists(activeGamePath))
 				{
-					Speak(Loc.T("settings.errGameInvalidSpeak"));
 					SpeakBox(Loc.T("settings.errGameInvalidBox"));
 					return;
 				}
@@ -1194,7 +1192,6 @@ public partial class Form1
 			// until they supplied one that would never be used.
 			if (keyIsRequired && string.IsNullOrEmpty(text2))
 			{
-				Speak(Loc.T("settings.errApiKeySpeak"));
 				SpeakBox(Loc.T("settings.errApiKeyBox"));
 			}
 			else

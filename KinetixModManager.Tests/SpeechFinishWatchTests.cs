@@ -179,4 +179,38 @@ public class NvdaSpeechGuardTests
 			"These speak and then close, so the sentence is lost. Call LetSpeechFinish() before closeView():\n"
 			+ string.Join("\n", offenders));
 	}
+
+	[Fact]
+	public void NothingIsSaidInFrontOfAPromptThatWouldCutItOff()
+	{
+		// A prompt opens by speaking its question with an interrupt, so a sentence right before it is thrown away, and
+		// the sentence is left in the code looking as if it does something. What needs saying goes in the prompt.
+		// LetSpeechFinish between the two is allowed: that is a run of progress lines being heard out, and it does not
+		// match here because it is the statement next to the prompt.
+		var offenders = new List<string>();
+		string app = Path.Combine(RepositoryRoot(), "KinetixModManager");
+		var says = new Regex(@"(?<![\w.])(?:Speak|SetStatus)\(.*\);$");
+		var asks = new Regex(@"(?<![\w.])(?:SpeakBox|ShowPrompt)\(");
+		var saysThenAsks = new Regex(@"(?<![\w.])Speak\(.*\);\s*(?:\S.*)?(?<![\w.])SpeakBox\(");
+
+		foreach (string file in Directory.GetFiles(app, "Form1*.cs"))
+		{
+			string[] lines = File.ReadAllLines(file);
+			for (int i = 0; i < lines.Length; i++)
+			{
+				string line = lines[i].Split("//")[0].Trim();
+				if (saysThenAsks.IsMatch(line)) { offenders.Add($"{Path.GetFileName(file)}:{i + 1}"); continue; }
+				if (!says.IsMatch(line) || line.Contains("speak: false") || line.Contains('{') || line.Contains('}')) continue;
+
+				int next = i + 1;
+				while (next < lines.Length && lines[next].Split("//")[0].Trim().Length == 0) next++;
+				if (next < lines.Length && asks.IsMatch(lines[next]))
+					offenders.Add($"{Path.GetFileName(file)}:{i + 1}");
+			}
+		}
+
+		Assert.True(offenders.Count == 0,
+			"These speak right before a prompt, which cuts the sentence off. Put what it says in the prompt:\n"
+			+ string.Join("\n", offenders));
+	}
 }

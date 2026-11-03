@@ -212,7 +212,6 @@ public partial class Form1
 		{
 			// Said plainly rather than retried. Mojang publishing no build of this runtime for this machine is
 			// a fact, and no amount of downloading will change it.
-			Speak(Loc.T("mc.game.javaUnavailableSpeak", gameVersion));
 			SpeakBox(Loc.T("mc.game.javaUnavailableBox", gameVersion, component, platform),
 				Loc.T("mc.game.javaTitle"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
 			return "";
@@ -509,7 +508,6 @@ public partial class Form1
 	/// <summary>Says what could not be fetched, and answers <c>false</c> so the caller stops.</summary>
 	private bool FailedToInstall(string gameVersion, int count)
 	{
-		Speak(Loc.T("mc.game.failedSpeak", gameVersion, count));
 		SpeakBox(Loc.T("mc.game.failedBox", gameVersion, count), Loc.T("mc.game.failedTitle"),
 			MessageBoxButtons.OK, MessageBoxIcon.Warning);
 		return false;
@@ -524,7 +522,6 @@ public partial class Form1
 	/// </summary>
 	private bool AskToGoOnWithoutMojang(string gameVersion)
 	{
-		Speak(Loc.T("mc.game.offlineSpeak", gameVersion));
 		return SpeakBox(Loc.T("mc.game.offlineBox", gameVersion), Loc.T("mc.game.offlineTitle"),
 			MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes;
 	}

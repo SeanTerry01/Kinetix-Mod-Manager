@@ -543,7 +543,6 @@ public partial class Form1 : Form, IMessageFilter
 		if (lines.Count == 0) return;
 
 		string message = Loc.T("copies.foundBox", string.Join("\n", lines));
-		Speak(Loc.T("copies.foundSpeak", lines.Count));
 		SpeakBox(message, Loc.T("copies.foundTitle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
 	}
 

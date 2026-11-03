@@ -16,6 +16,14 @@ as before.
     the last item from a list now finishes saying so before focus goes back. The same goes for "Opening the download
     page" before the browser takes over.
 
+## 🐛 Fewer things said twice
+
+*   **A failed Mod Organizer 2 import said its error twice.** It now says it once.
+*   **A failed mod link, auto-match or manager update repeated itself** after you closed the error. The error
+    itself already says it.
+*   **Two messages now say what they left out.** When Minecraft's files cannot be fetched, you are told the game
+    was not started. When a file is not a Fabric mod, you are told it has not been installed.
+
 ## 🐛 The Witcher 3 Remastered was "not installed"
 
 *   **After the Remastered update, The Witcher 3 vanished from the Games menu**, and choosing it from the game list

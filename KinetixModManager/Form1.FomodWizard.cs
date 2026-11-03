@@ -341,7 +341,6 @@ public partial class Form1
 		{
 			if (!ValidateStep(current, out string error))
 			{
-				Speak(error);
 				SpeakBox(error, Loc.T("fomod.wizardTitle", config.ModuleName), MessageBoxButtons.OK, MessageBoxIcon.Warning);
 				return;
 			}

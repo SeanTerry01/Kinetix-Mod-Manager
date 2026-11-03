@@ -152,7 +152,6 @@ public partial class Form1
 		{
 			ResetStatus();
 			LogFailure(known.DisplayName, $"{part.Name} failed", ex);
-			Speak(Loc.T("modparts.failedSpeak", what));
 			SpeakBox(Loc.T("modparts.failedBox", what, FriendlyError(ex)), Loc.T("modparts.manualTitle"),
 				MessageBoxButtons.OK, MessageBoxIcon.Warning);
 		}

@@ -127,7 +127,7 @@ public partial class Form1
 		catch (Exception ex)
 		{
 			_soundEngine.Play("error");
-			SetStatus(Loc.T("mo2.error", FriendlyError(ex)));
+			SetStatus(Loc.T("mo2.error", FriendlyError(ex)), speak: false);
 			SpeakBox(Loc.T("mo2.error", FriendlyError(ex)));
 			return;
 		}

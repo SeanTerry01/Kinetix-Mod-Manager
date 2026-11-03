@@ -85,9 +85,9 @@ public partial class Form1
 	///
 	/// A reader that cannot say when it has finished returns from this at once, exactly as if it were not here.
 	///
-	/// ⚠️ Do not add this to a headline immediately before its own prompt: <c>Speak("Up to date."); SpeakBox("You are
-	/// on the latest version.");</c>. The prompt's question cuts the headline off today, so only the prompt is heard.
-	/// Waiting would make every such pair say the same thing twice.
+	/// ⚠️ Never put a headline in front of a prompt, with this or without it. Without it the prompt's question cuts
+	/// the headline off, so it is never heard. With it, the same thing is said twice. What needs saying goes in the
+	/// prompt itself. A run of progress lines that happens to end at a prompt is different, and is what this is for.
 	///
 	/// Any key press ends the wait, and is used up doing so: the user has heard enough, and the key must not also
 	/// act on a view that is about to close. See <see cref="PreFilterMessage"/>. Pumped rather than awaited because

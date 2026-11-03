@@ -140,7 +140,6 @@ public partial class Form1
 		string manifestPath = Path.Combine(mod.FolderPath, manifestName);
 		if (!File.Exists(manifestPath))
 		{
-			Speak(Loc.T("modactions.noManifestSpeak", mod.Name));
 			SpeakBox(Loc.T("modactions.noManifestBox", manifestName, mod.Name), Loc.T("modactions.noManifestTitle"));
 			return;
 		}
@@ -218,7 +217,6 @@ public partial class Form1
 		{
 			// Most mods write their config only after the game has run once with the mod enabled, so "not there
 			// yet" is the usual reason rather than anything being wrong.
-			Speak(Loc.T("modactions.noConfigFileSpeak", mod.Name));
 			SpeakBox(
 				IsBepInExGame
 					? Loc.T("modactions.noConfigFileBepInExBox", mod.Name, GetShortcutString("OpenConfig"))
@@ -375,7 +373,6 @@ public partial class Form1
 		string configPath = Path.Combine(mod.FolderPath, "config.json");
 		if (!File.Exists(configPath))
 		{
-			Speak(Loc.T("modactions.noConfigSpeak", mod.Name));
 			// A Bethesda mod's settings are often only reachable from an in-game menu built in the game's own
 			// scripting, which no outside program can read — worth saying, so "no settings" isn't mistaken for
 			// the manager having failed to look.
@@ -483,7 +480,6 @@ public partial class Form1
 			}
 			// Otherwise explain what the line means and how to fix it.
 			string diagnosis = LogAnalyzer.Diagnose(line);
-			Speak(Loc.T("modactions.diagnosing"));
 			SpeakBox(diagnosis, Loc.T("modactions.diagnoseTitle"));
 		}
 	}

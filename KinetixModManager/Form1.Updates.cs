@@ -482,7 +482,6 @@ public partial class Form1
 	{
 		// A check that found something, not a connection.
 		_soundEngine.Play("load_complete");
-		Speak(Loc.T("updates.smapiAvailableSpeak", current, latest));
 		if (SpeakBox(
 				Loc.T("updates.smapiBox", current, latest),
 				Loc.T("updates.smapiTitle"), MessageBoxButtons.YesNo, MessageBoxIcon.Information) != DialogResult.Yes)
@@ -1164,7 +1163,6 @@ public partial class Form1
 			_soundEngine.Play("error");
 			LogFailure("AutoMatch", "Auto-match failed", ex);
 			SpeakBox(Loc.T("updates.autoMatchFailBox", FriendlyError(ex)), Loc.T("common.error"));
-			Speak(Loc.T("updates.autoMatchFailed"));
 		}
 	}
 
@@ -1181,7 +1179,6 @@ public partial class Form1
 			{
 				// A check that found something, not a connection.
 				_soundEngine.Play("load_complete");
-				Speak(Loc.T("updates.newVersion", tag));
 				if (!string.IsNullOrEmpty(release.DownloadUrl))
 				{
 					if (SpeakBox(Loc.T("updates.versionAvailDownload", tag),
@@ -1203,13 +1200,12 @@ public partial class Form1
 			}
 			else if (manual)
 			{
-				Speak(Loc.T("updates.upToDate"));
 				SpeakBox(Loc.T("updates.upToDateBox"), Loc.T("updates.upToDateTitle"));
 			}
 		}
 		catch (Exception ex)
 		{
-			if (manual) { Speak(Loc.T("updates.checkFailed")); SpeakBox(Loc.T("updates.checkFailBox", FriendlyError(ex))); }
+			if (manual) SpeakBox(Loc.T("updates.checkFailBox", FriendlyError(ex)));
 		}
 	}
 
@@ -1263,7 +1259,6 @@ public partial class Form1
 				throw new FileNotFoundException("Installer executable not found.");
 			}
 
-			Speak(Loc.T("updates.startingInstaller"));
 			SpeakBox(Loc.T("updates.installerBox"), Loc.T("updates.installingTitle"));
 
 			Process.Start(new ProcessStartInfo(installerPath)
@@ -1279,7 +1274,6 @@ public partial class Form1
 			Text = originalTitle;
 			LogFailure("AppUpdate", "Self-update failed", ex);
 			SpeakBox(Loc.T("updates.selfUpdateFailBox", FriendlyError(ex)), Loc.T("updates.updateErrorTitle"));
-			Speak(Loc.T("updates.failed"));
 		}
 	}
 }

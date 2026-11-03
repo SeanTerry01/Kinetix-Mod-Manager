@@ -727,7 +727,6 @@ public partial class Form1
 
 		if (!ModFileSystem.IsScriptExtenderInstalled(game, gamePath))
 		{
-			Speak(Loc.T("se.uninstallNotInstalled", seName));
 			SpeakBox(Loc.T("se.uninstallNotInstalledBox", seName), Loc.T("se.uninstallTitle", seName),
 				MessageBoxButtons.OK, MessageBoxIcon.Information);
 			return;
@@ -743,12 +742,10 @@ public partial class Form1
 			string msg = usedManifest
 				? Loc.T("se.uninstallDone", seName, removed)
 				: Loc.T("se.uninstallDonePartial", seName, removed);
-			Speak(msg);
 			SpeakBox(msg, Loc.T("se.uninstallTitle", seName), MessageBoxButtons.OK, MessageBoxIcon.Information);
 		}
 		catch (Exception ex)
 		{
-			Speak(Loc.T("se.uninstallFailed", seName));
 			SpeakBox(Loc.T("se.uninstallFailedBox", FriendlyError(ex)), Loc.T("common.error"),
 				MessageBoxButtons.OK, MessageBoxIcon.Error);
 		}

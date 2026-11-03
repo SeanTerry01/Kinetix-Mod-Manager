@@ -135,7 +135,6 @@ public partial class Form1
 		// discarded. Better to say so than to appear to succeed and change nothing.
 		if (FabricInstaller.IsLauncherRunning())
 		{
-			Speak(Loc.T("mc.fabric.closeLauncherSpeak"));
 			SpeakBox(Loc.T("mc.fabric.closeLauncherBox"), Loc.T("mc.fabric.closeLauncherTitle"),
 				MessageBoxButtons.OK, MessageBoxIcon.Warning);
 			return false;
@@ -265,7 +264,6 @@ public partial class Form1
 	{
 		if (noBuildFor != null) { noBuildFor.Add(mod.DisplayName); return; }
 
-		Speak(Loc.T("mc.install.noBuildSpeak", mod.DisplayName, _settings.MinecraftGameVersion));
 		SpeakBox(
 			Loc.T("mc.install.noBuildBox", mod.DisplayName, _settings.MinecraftGameVersion),
 			Loc.T("mc.install.noBuildTitle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -565,7 +563,6 @@ public partial class Form1
 
 		// Said plainly, and the launch is stopped: starting anyway produces a Java stack trace about a missing
 		// class, which tells the player nothing about what is wrong or what to do.
-		Speak(Loc.T("mc.launch.librariesFailedSpeak", failed.Count));
 		SpeakBox(Loc.T("mc.launch.librariesFailedBox", string.Join(", ", failed)),
 			Loc.T("mc.launch.librariesFailedTitle"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
 		return false;
@@ -671,7 +668,6 @@ public partial class Form1
 	{
 		_minecraftUpdateAlreadyOffered = latest;
 
-		Speak(Loc.T("mc.update.availableSpeak", current, latest));
 		if (SpeakBox(Loc.T("mc.update.availableBox", current, latest),
 				Loc.T("mc.update.availableTitle", latest),
 				MessageBoxButtons.YesNo, MessageBoxIcon.Information) != DialogResult.Yes)
@@ -811,9 +807,10 @@ public partial class Form1
 		string done = switchedOff.Count == 0
 			? Loc.T("mc.move.doneAll", newVersion, updated + fineAsTheyAre.Count)
 			: Loc.T("mc.move.doneSome", newVersion, updated, switchedOff.Count, string.Join(", ", switchedOff));
-		Speak(done);
 		if (!silent && switchedOff.Count > 0)
 			SpeakBox(done, Loc.T("mc.move.title", newVersion), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+		else
+			Speak(done);
 
 		return true;
 	}
@@ -881,7 +878,6 @@ public partial class Form1
 		string said = notFound.Count == 0
 			? Loc.T("deps.mcDone", installed.Count, string.Join(", ", installed))
 			: Loc.T("deps.mcDoneSome", installed.Count, notFound.Count, string.Join(", ", notFound), gameVersion);
-		Speak(said);
 		SpeakBox(said, Loc.T("deps.resolveTitle"), MessageBoxButtons.OK,
 			notFound.Count == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
 	}
@@ -1162,7 +1158,6 @@ public partial class Form1
 				// The search filters on the game version, so this is rare — but a mod can lose support for a
 				// version between the search and the download, and installing a build for another version
 				// would load nothing and say nothing.
-				Speak(Loc.T("mc.install.noBuildSpeak", result.Name, gameVersion));
 				SpeakBox(Loc.T("mc.install.noBuildBox", result.Name, gameVersion),
 					Loc.T("mc.install.noBuildTitle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
 				return;
@@ -1173,7 +1168,6 @@ public partial class Form1
 			string downloaded = await ModrinthService.DownloadAsync(file, downloadsPath);
 
 			ResetStatus();
-			Speak(Loc.T("mc.download.done", result.Name, file.VersionNumber));
 
 			if (SpeakBox(
 					Loc.T("mc.download.installNowBox", result.Name, file.VersionNumber),
@@ -1212,7 +1206,6 @@ public partial class Form1
 			FabricModInfo info = MinecraftLayout.ReadModInfo(jarPath);
 			if (info.IsUnreadable)
 			{
-				Speak(Loc.T("mc.install.notAModSpeak", Path.GetFileName(jarPath)));
 				SpeakBox(Loc.T("mc.install.notAModBox", Path.GetFileName(jarPath)),
 					Loc.T("mc.install.notAModTitle"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
 				return;
@@ -1356,7 +1349,6 @@ public partial class Form1
 		string versionId = pack?.FabricVersionId ?? FabricInstaller.InstalledVersionIds(root).FirstOrDefault() ?? "";
 		if (versionId.Length == 0)
 		{
-			Speak(Loc.T("mc.launch.noFabricSpeak"));
 			SpeakBox(Loc.T("mc.launch.noFabricBox"), Loc.T("mc.launch.noFabricTitle"),
 				MessageBoxButtons.OK, MessageBoxIcon.Warning);
 			return;
@@ -1648,7 +1640,6 @@ public partial class Form1
 
 			// This can land in the middle of an install, with the run's progress still being read.
 			LetSpeechFinish();
-			Speak(Loc.T("mc.rival.speak", rival.DisplayName, chosen.DisplayName));
 			SpeakBox(
 				Loc.T("mc.rival.box", rival.DisplayName, chosen.DisplayName),
 				Loc.T("mc.rival.title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);

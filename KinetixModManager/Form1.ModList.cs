@@ -952,7 +952,6 @@ public partial class Form1
 				catch (Exception ex)
 				{
 					SpeakBox(Loc.T("link.saveFailedBox", FriendlyError(ex)), Loc.T("common.error"));
-					Speak(Loc.T("link.failed"));
 				}
 			}
 		}

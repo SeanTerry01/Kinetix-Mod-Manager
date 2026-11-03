@@ -71,7 +71,6 @@ public partial class Form1
 
 		if (needPremium.Count == rows.Count)
 		{
-			Speak(Loc.T("updateAll.premiumSpeak"));
 			SpeakBox(Loc.T("updateAll.premiumBox"), Loc.T("updateAll.premiumTitle"), MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
 		}
 		else

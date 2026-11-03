@@ -78,7 +78,6 @@ public partial class Form1
 	private bool EnsureAiReady()
 	{
 		if (_aiService.IsConfigured) return true;
-		Speak(Loc.T("ai.notConfigured"));
 		SpeakBox(Loc.T("ai.notConfiguredBox"), Loc.T("ai.title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
 		return false;
 	}

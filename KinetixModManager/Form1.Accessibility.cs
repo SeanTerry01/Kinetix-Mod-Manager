@@ -1789,7 +1789,6 @@ public partial class Form1
 				}
 				catch (Exception ex)
 				{
-					Speak(Loc.T("config.invalidJsonSpeak", ex.Message));
 					SpeakBox(Loc.T("config.invalidJsonBox", ex.Message), Loc.T("config.jsonValidationTitle"), MessageBoxButtons.OK, MessageBoxIcon.Error);
 					return;
 				}
@@ -1806,7 +1805,6 @@ public partial class Form1
 			}
 			catch (Exception ex)
 			{
-				Speak(Loc.T("config.saveFailed"));
 				SpeakBox(Loc.T("config.saveFailedBox", FriendlyError(ex)), Loc.T("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
 			}
 		};
