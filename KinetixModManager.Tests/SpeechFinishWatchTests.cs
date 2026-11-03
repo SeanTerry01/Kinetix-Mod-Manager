@@ -181,6 +181,36 @@ public class NvdaSpeechGuardTests
 	}
 
 	[Fact]
+	public void NothingIsSaidAfterAViewIsToldToCloseInTheSameHandler()
+	{
+		// closeView only sets a flag. The view really goes when the handler returns, focus goes back, and focus going back
+		// silences what was just said. That is why "Settings saved" and a failed restore's reason went unheard.
+		// What has to follow a close belongs in the view's onClosed.
+		var offenders = new List<string>();
+		string app = Path.Combine(RepositoryRoot(), "KinetixModManager");
+		var speaks = new Regex(@"(?<![\w.])(?:Speak|SpeakBox)\(");
+
+		foreach (string file in Directory.GetFiles(app, "Form1*.cs"))
+		{
+			string[] lines = File.ReadAllLines(file);
+			for (int i = 0; i < lines.Length; i++)
+			{
+				if (!lines[i].Split("//")[0].Trim().EndsWith("closeView();", StringComparison.Ordinal)) continue;
+
+				for (int after = i + 1; after < lines.Length && after <= i + 4; after++)
+				{
+					string next = lines[after].Split("//")[0].Trim();
+					if (next.Length == 0) continue;
+					if (next.StartsWith("}", StringComparison.Ordinal) || next.StartsWith("return", StringComparison.Ordinal)) break;
+					if (speaks.IsMatch(next)) offenders.Add($"{Path.GetFileName(file)}:{after + 1}");
+				}
+			}
+		}
+
+		Assert.True(offenders.Count == 0, "These speak after closeView(), so the sentence is lost. Use onClosed:\n" + string.Join("\n", offenders));
+	}
+
+	[Fact]
 	public void NothingIsSaidInFrontOfAPromptThatWouldCutItOff()
 	{
 		// A prompt opens by speaking its question with an interrupt, so a sentence right before it is thrown away, and

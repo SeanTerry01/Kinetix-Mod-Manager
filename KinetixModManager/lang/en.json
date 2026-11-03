@@ -973,6 +973,8 @@
   "safety.restoreTitle": "Restore Safety Backup",
   "safety.restored": "Restored the safety backup from {0}.",
   "safety.restoreFailed": "Could not restore the safety backup. {0}",
+  "safety.deleteConfirm": "Delete this safety backup? {0}",
+  "safety.deleteFailed": "That safety backup could not be deleted. Reason: {0}",
   "safety.deleted": "Backup deleted. {0} remaining.",
   "safety.deletedLast": "Backup deleted. No safety backups remain.",
   "rules.notApplicable": "Load order rules apply to Skyrim and Fallout 4 plugins.",

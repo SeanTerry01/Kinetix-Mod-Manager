@@ -94,6 +94,10 @@ public partial class Form1
 			return;
 		}
 
+		// Run once the view has gone. Run from the key handler, its result was said before focus went back and silenced by
+		// it: a failed restore gave its error sound and no reason.
+		SafetyBackupItem? toRestore = null;
+
 		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
 		ShowInlineView(Loc.T("safety.title"), (container, closeView) =>
 		{
@@ -120,14 +124,24 @@ public partial class Form1
 					if (SpeakBox(Loc.T("safety.restoreConfirm", item.Summary), Loc.T("safety.restoreTitle"),
 							MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
 					{
+						toRestore = item;
 						closeView();
-						RestoreSafetyBackup(item);
 					}
 				}
 				else if (e.KeyCode == Keys.Delete)
 				{
 					e.Handled = e.SuppressKeyPress = true;
-					try { Directory.Delete(item.Dir, recursive: true); } catch (Exception ex) { LogError("Safety", ex.Message); }
+					// It asks, like every other list, and a delete that failed is not reported as done.
+					if (SpeakBox(Loc.T("safety.deleteConfirm", item.Summary), Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo) != DialogResult.Yes)
+						return;
+					try { Directory.Delete(item.Dir, recursive: true); }
+					catch (Exception ex)
+					{
+						LogFailure("Safety", $"Could not delete the safety backup {item.Dir}", ex);
+						_soundEngine.Play("error");
+						Speak(Loc.T("safety.deleteFailed", FriendlyError(ex)));
+						return;
+					}
 					int idx = list.SelectedIndex;
 					list.Items.Remove(item);
 					_soundEngine.Play("disable");
@@ -141,7 +155,8 @@ public partial class Form1
 		},
 		// Through the hint so it follows the title instead of arriving ahead of it, and without the old heading
 		// clause ("Safety backups for <game>."), which said the title's own words a second time.
-		hint: Loc.T(items.Count == 1 ? "safety.countOne" : "safety.count", items.Count) + " " + Loc.T("safety.actionHint"));
+		hint: Loc.T(items.Count == 1 ? "safety.countOne" : "safety.count", items.Count) + " " + Loc.T("safety.actionHint"),
+		onClosed: () => { if (toRestore != null) RestoreSafetyBackup(toRestore); });
 	}
 
 	private List<SafetyBackupItem> LoadSafetyBackups()

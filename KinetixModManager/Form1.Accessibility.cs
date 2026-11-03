@@ -1820,6 +1820,7 @@ public partial class Form1
 						MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
 					return;
 				Speak(Loc.T("common.changesCancelled"));
+				LetSpeechFinish();
 			}
 			closeView();
 		}

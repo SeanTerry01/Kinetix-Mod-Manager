@@ -42,6 +42,7 @@ public partial class Form1
 
 		// True once Save has run, so the "changes cancelled" announcement on the way out knows to stay quiet.
 		bool saved = false;
+		string savedMessage = "";
 
 		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
 		ShowInlineView(Loc.T("settings.title"), (container, closeView) =>
@@ -1297,9 +1298,9 @@ public partial class Form1
 						Fire(RefreshModList(checkUpdates: false), "RefreshModList");
 					});
 				});
-				Speak(langChanged
+				savedMessage = langChanged
 					? Loc.T("settings.saved") + " " + Loc.T("settings.languageRestart")
-					: Loc.T("settings.saved"));
+					: Loc.T("settings.saved");
 			}
 		};
 		Button button4 = new Button
@@ -1379,7 +1380,9 @@ public partial class Form1
 			_isSettingsOpen = false;
 			// Don't leave a logo preview playing after Settings has gone.
 			_soundEngine.StopLogoSound();
-			if (!saved) Speak(Loc.T("common.changesCancelled"));
+			// Here rather than in the Save button's handler: closing a view only sets a flag, so a sentence said there came
+			// before focus went back, and focus going back silenced it. "Settings saved" and the language note went unheard.
+			Speak(saved ? savedMessage : Loc.T("common.changesCancelled"));
 		});
 	}
 }

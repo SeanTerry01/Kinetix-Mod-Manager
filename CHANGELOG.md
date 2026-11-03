@@ -27,6 +27,9 @@ as before.
     reloaded and put you back on the same row.
 *   **"Update check finished" is heard** before a SMAPI or Minecraft update prompt, not cut off by it.
 *   **Sentences come before the browser opens**, so it no longer talks over them.
+*   **"Settings saved" is heard**, and so is the note that a language change needs a restart. So is the same word from the
+    theme picker, and the reason a safety backup could not be restored. All were said as the screen closed, and lost.
+*   **Deleting a safety backup now asks first**, like every other list, and says so if it fails.
 *   **A sentence spoken as a screen closes is heard.** Saving a settings file, adding a load order rule, or removing
     the last item from a list now finishes saying so before focus goes back. The same goes for "Opening the download
     page" before the browser takes over.

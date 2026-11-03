@@ -257,7 +257,6 @@ public partial class Form1
 			_settings.Save();
 			saved = true;
 			closeView();
-			Speak(Loc.T("themeMgr.saved"));
 		};
 		Button button6 = new Button
 		{
@@ -282,7 +281,7 @@ public partial class Form1
 		ApplyScreenReaderPauses(container);
 		return lb;
 		},
-		onClosed: () => { if (!saved) Speak(Loc.T("common.changesCancelled")); });
+		onClosed: () => Speak(Loc.T(saved ? "themeMgr.saved" : "common.changesCancelled")));
 
 		void RefreshList()
 		{

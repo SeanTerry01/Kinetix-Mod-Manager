@@ -138,6 +138,7 @@ public partial class Form1
 	{
 		string key = _settings.ModSourceApiKey(row.Source.Id);
 
+		bool askForNewKey = false;
 		ShowInlineView(Loc.T("sourcekeys.viewTitle", row.Source.DisplayName), (container, closeView) =>
 		{
 			var layout = new TableLayoutPanel
@@ -160,8 +161,8 @@ public partial class Form1
 			var btnChange = new Button { Text = Loc.T("sourcekeys.change"), AutoSize = true };
 			btnChange.Click += delegate
 			{
+				askForNewKey = true;
 				closeView();
-				if (AskForKey(row)) Speak(Loc.T("sourcekeys.saved", row.Source.DisplayName));
 			};
 			layout.Controls.Add(btnChange, 0, 1);
 
@@ -169,7 +170,10 @@ public partial class Form1
 			box.SelectAll();
 			return box;
 		},
-		hint: Loc.T("sourcekeys.viewHint", row.Source.DisplayName));
+		hint: Loc.T("sourcekeys.viewHint", row.Source.DisplayName),
+		// Once the view has gone. From the button, the prompt opened over a view on its way out, and a key it refused was
+		// silenced as focus went back. AskForKey says for itself that the key was saved.
+		onClosed: () => { if (askForNewKey) AskForKey(row); });
 	}
 
 	/// <summary>
