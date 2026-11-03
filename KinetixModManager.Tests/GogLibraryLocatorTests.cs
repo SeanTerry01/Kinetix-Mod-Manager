@@ -18,7 +18,7 @@ public class GogLibraryLocatorTests
 		string root = NewFolder();
 		string game = CreateGame(root, "The Elder Scrolls V Skyrim Special Edition", "SkyrimSE.exe");
 
-		Assert.Equal(game, GogLibraryLocator.FindGameFolder(new[] { root }, "SkyrimSE.exe"));
+		Assert.Equal(game, GogLibraryLocator.FindGameFolder(new[] { root }, new[] { "SkyrimSE.exe" }));
 	}
 
 	[Fact]
@@ -28,7 +28,7 @@ public class GogLibraryLocatorTests
 		string root = NewFolder();
 		File.WriteAllText(Path.Combine(root, "Stardew Valley.exe"), "");
 
-		Assert.Equal(root, GogLibraryLocator.FindGameFolder(new[] { root }, "Stardew Valley.exe"));
+		Assert.Equal(root, GogLibraryLocator.FindGameFolder(new[] { root }, new[] { "Stardew Valley.exe" }));
 	}
 
 	[Fact]
@@ -38,7 +38,7 @@ public class GogLibraryLocatorTests
 		string real = NewFolder();
 		string game = CreateGame(real, "Fallout 4 GOTY", "Fallout4.exe");
 
-		Assert.Equal(game, GogLibraryLocator.FindGameFolder(new[] { empty, real }, "Fallout4.exe"));
+		Assert.Equal(game, GogLibraryLocator.FindGameFolder(new[] { empty, real }, new[] { "Fallout4.exe" }));
 	}
 
 	[Fact]
@@ -50,7 +50,7 @@ public class GogLibraryLocatorTests
 
 		string?[] roots = { @"Z:\nothing here", real };
 
-		Assert.Equal(game, GogLibraryLocator.FindGameFolder(roots!, "Stardew Valley.exe"));
+		Assert.Equal(game, GogLibraryLocator.FindGameFolder(roots!, new[] { "Stardew Valley.exe" }));
 	}
 
 	[Fact]
@@ -63,7 +63,7 @@ public class GogLibraryLocatorTests
 		Directory.CreateDirectory(deep);
 		File.WriteAllText(Path.Combine(deep, "SkyrimSE.exe"), "");
 
-		Assert.Null(GogLibraryLocator.FindGameFolder(new[] { root }, "SkyrimSE.exe"));
+		Assert.Null(GogLibraryLocator.FindGameFolder(new[] { root }, new[] { "SkyrimSE.exe" }));
 	}
 
 	[Fact]
@@ -72,9 +72,9 @@ public class GogLibraryLocatorTests
 		string root = NewFolder();
 		CreateGame(root, "A Different Game", "Something.exe");
 
-		Assert.Null(GogLibraryLocator.FindGameFolder(new[] { root }, "Fallout4.exe"));
-		Assert.Null(GogLibraryLocator.FindGameFolder(new[] { root }, ""));
-		Assert.Null(GogLibraryLocator.FindGameFolder(Array.Empty<string>(), "Fallout4.exe"));
+		Assert.Null(GogLibraryLocator.FindGameFolder(new[] { root }, new[] { "Fallout4.exe" }));
+		Assert.Null(GogLibraryLocator.FindGameFolder(new[] { root }, new[] { "" }));
+		Assert.Null(GogLibraryLocator.FindGameFolder(Array.Empty<string>(), new[] { "Fallout4.exe" }));
 	}
 
 	// -------------------------------------------------------------------------

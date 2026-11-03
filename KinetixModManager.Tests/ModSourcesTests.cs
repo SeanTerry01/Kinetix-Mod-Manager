@@ -134,23 +134,35 @@ public class ModSourcesTests : IDisposable
 		Assert.False(moddrop.Can(ModSourceAbilities.Download));
 	}
 
+	/// <summary>Every site, reached the way the app reaches one: <see cref="ModSources.Find"/> with its id constant.</summary>
+	private static List<ModSourceInfo> EverySite()
+	{
+		List<ModSourceInfo> sites = typeof(ModSources)
+			.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+			.Where(field => field.IsLiteral && field.FieldType == typeof(string))
+			.Select(field => ModSources.Find((string)field.GetRawConstantValue()!)!)
+			.ToList();
+		Assert.NotEmpty(sites);
+		return sites;
+	}
+
 	[Fact]
 	public void EverySiteCanAtLeastOpenAPage()
 	{
 		// The floor of the whole idea: if the manager knows a site at all, it can send the user there.
-		Assert.All(ModSources.Known, s => Assert.True(s.Can(ModSourceAbilities.Page)));
+		Assert.All(EverySite(), s => Assert.True(s.Can(ModSourceAbilities.Page)));
 	}
 
 	[Fact]
 	public void EverySiteHasAnIdAndAName()
 	{
-		Assert.All(ModSources.Known, s =>
+		Assert.All(EverySite(), s =>
 		{
 			Assert.False(string.IsNullOrWhiteSpace(s.Id));
 			Assert.False(string.IsNullOrWhiteSpace(s.DisplayName));
 			Assert.StartsWith("https://", s.HomeUrl);
 		});
-		Assert.Equal(ModSources.Known.Count, ModSources.Known.Select(s => s.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+		Assert.Equal(EverySite().Count, EverySite().Select(s => s.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count());
 	}
 
 	[Fact]

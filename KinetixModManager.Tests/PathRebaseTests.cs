@@ -89,12 +89,4 @@ public class PathRebaseTests
 		Assert.Throws<ArgumentException>(() => PathRebase.To(P("/a"), "", P("/b")));
 		Assert.Throws<ArgumentException>(() => PathRebase.To(P("/a"), P("/a", "x"), ""));
 	}
-
-	[Fact]
-	public void TheForgivingFormAnswersNullInsteadOfThrowing()
-	{
-		// For a caller walking a tree it did not build, which would rather skip an odd entry than stop.
-		Assert.Null(PathRebase.TryTo(P("/source"), P("/elsewhere", "a.txt"), P("/dest")));
-		Assert.NotNull(PathRebase.TryTo(P("/source"), P("/source", "a.txt"), P("/dest")));
-	}
 }

@@ -54,20 +54,6 @@ public static class PathRebase
 	}
 
 	/// <summary>
-	/// The same, answering null instead of throwing, for a caller walking a tree it did not build and would
-	/// rather skip an odd entry than stop.
-	/// </summary>
-	public static string? TryTo(string fromRoot, string path, string toRoot)
-	{
-		try { return To(fromRoot, path, toRoot); }
-		catch (Exception ex)
-		{
-			DiagnosticLog.WriteException("Deploy", $"working out where {path} belongs under {toRoot}", ex);
-			return null;
-		}
-	}
-
-	/// <summary>
 	/// How paths are compared here: by the rules of the filesystem the program is running on.
 	///
 	/// Windows and macOS do not care about case and Linux does, and getting this backwards is how a mod

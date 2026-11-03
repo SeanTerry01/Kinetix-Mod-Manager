@@ -96,18 +96,13 @@ public static class GogLibraryLocator
 	}
 
 	/// <summary>
-	/// The folder under <paramref name="roots"/> holding <paramref name="exeName"/>, or <c>null</c> if none does.
+	/// The folder under <paramref name="roots"/> holding any of <paramref name="exeNames"/>, or <c>null</c> if none
+	/// does. Several names because a game's executable can have lived in more than one place (see
+	/// <see cref="GameProfile.AlternateGameExeNames"/>).
 	///
 	/// A root itself is checked as well as the folders inside it, since a library root and a game folder are the
 	/// same thing for someone who installed a single game straight into it. The search stops one level down: a
 	/// game's own subfolders hold its data, and walking into them would turn a quick check into a disk crawl.
-	/// </summary>
-	public static string? FindGameFolder(IEnumerable<string> roots, string exeName) =>
-		FindGameFolder(roots, new[] { exeName });
-
-	/// <summary>
-	/// The folder under <paramref name="roots"/> holding any of <paramref name="exeNames"/> — for a game whose
-	/// executable has lived in more than one place (see <see cref="GameProfile.AlternateGameExeNames"/>).
 	/// </summary>
 	public static string? FindGameFolder(IEnumerable<string> roots, IEnumerable<string> exeNames)
 	{

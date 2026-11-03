@@ -66,12 +66,6 @@ public static class Witcher3ModSettings
 		return result;
 	}
 
-	/// <summary>Whether the file switches <paramref name="modFolderName"/> off. A mod the file says nothing
-	/// about is not switched off — the game loads a folder it can see unless told otherwise.</summary>
-	public static bool IsDisabledByFile(string modsSettingsPath, string modFolderName) =>
-		Read(modsSettingsPath).Any(e =>
-			e.Name.Equals(modFolderName, StringComparison.OrdinalIgnoreCase) && !e.Enabled);
-
 	/// <summary>
 	/// Records <paramref name="modFolderName"/> as enabled or disabled, adding its section if the file has none
 	/// for it. Does nothing when there is no file yet and the mod is being enabled: writing a file the game has

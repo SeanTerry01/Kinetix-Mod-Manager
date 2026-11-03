@@ -49,9 +49,6 @@ public sealed class MinecraftRuntimePlan
 
 	/// <summary>The links to make. Empty on Windows.</summary>
 	public required IReadOnlyList<MinecraftRuntimeLink> Links { get; init; }
-
-	/// <summary>How much there is to download, for the warning given before any of it starts.</summary>
-	public long TotalBytes => Files.Sum(f => f.Bytes);
 }
 
 /// <summary>
@@ -100,9 +97,6 @@ public static class MinecraftGameFiles
 	// -------------------------------------------------------------------------
 	// The version manifest
 	// -------------------------------------------------------------------------
-
-	/// <summary>The newest full release, which is the only version the manager ever offers to move to.</summary>
-	public static string LatestRelease(JObject manifest) => (string?)manifest["latest"]?["release"] ?? "";
 
 	/// <summary>
 	/// Where one version's JSON lives, or <c>null</c> when the manifest has never heard of it.

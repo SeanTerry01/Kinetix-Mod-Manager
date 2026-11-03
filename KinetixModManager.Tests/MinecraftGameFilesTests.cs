@@ -38,10 +38,6 @@ public class MinecraftGameFilesTests
 	""");
 
 	[Fact]
-	public void TheNewestReleaseIsReadFromTheManifest() =>
-		Assert.Equal("26.3", MinecraftGameFiles.LatestRelease(Manifest()));
-
-	[Fact]
 	public void AVersionIsFoundByIdWithItsUrlAndChecksum()
 	{
 		MinecraftVersionSource? found = MinecraftGameFiles.VersionSource(Manifest(), "26.3");
@@ -338,7 +334,7 @@ public class MinecraftGameFilesTests
 	public void TheDownloadSizeIsKnownBeforeAnyOfItStarts() =>
 		// Said out loud before the user commits to it: a runtime is around 180 MB and on a slow line that is a
 		// long silence to walk into unwarned.
-		Assert.Equal(140062000L, MinecraftGameFiles.MissingRuntimeFiles(RuntimeManifest(), @"C:\rt", Nothing).TotalBytes);
+		Assert.Equal(140062000L, MinecraftGameFiles.MissingRuntimeFiles(RuntimeManifest(), @"C:\rt", Nothing).Files.Sum(f => f.Bytes));
 
 	[Fact]
 	public void RuntimeFilesAlreadyOnDiskAreNotFetchedAgain()

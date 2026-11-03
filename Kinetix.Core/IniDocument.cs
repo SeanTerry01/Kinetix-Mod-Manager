@@ -26,9 +26,6 @@ public sealed class IniDocument
     public static IniDocument Load(string path) =>
         new IniDocument(File.Exists(path) ? File.ReadAllLines(path) : Array.Empty<string>());
 
-    /// <summary>The raw lines, including comments and blanks, in file order.</summary>
-    public IReadOnlyList<string> Lines => _lines;
-
     /// <summary>Every setting in file order, each carrying the section it belongs to. Comments/blanks are skipped.</summary>
     public List<Entry> Entries()
     {
@@ -44,22 +41,6 @@ public sealed class IniDocument
             result.Add(new Entry(section, line.Substring(0, eq).Trim(), line.Substring(eq + 1).Trim()));
         }
         return result;
-    }
-
-    /// <summary>Reads a key's trimmed value within a section, or <c>null</c> if the section or key is absent.</summary>
-    public string? GetValue(string section, string key)
-    {
-        bool inSection = false;
-        foreach (string raw in _lines)
-        {
-            string line = raw.Trim();
-            if (IsSectionHeader(line, out string name)) { inSection = name.Equals(section, StringComparison.OrdinalIgnoreCase); continue; }
-            if (!inSection || IsComment(line)) continue;
-            int eq = line.IndexOf('=');
-            if (eq > 0 && line.Substring(0, eq).Trim().Equals(key, StringComparison.OrdinalIgnoreCase))
-                return line.Substring(eq + 1).Trim();
-        }
-        return null;
     }
 
     /// <summary>Sets a key within a section, replacing it in place if present, else adding it (creating the section

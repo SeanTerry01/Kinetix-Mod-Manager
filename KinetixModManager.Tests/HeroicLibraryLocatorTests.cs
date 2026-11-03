@@ -123,7 +123,7 @@ public class HeroicLibraryLocatorTests : IDisposable
 	public void NoHeroicAtAllIsAnEmptyAnswer()
 	{
 		Assert.Empty(HeroicLibraryLocator.InstalledFolders(_home));
-		Assert.Null(HeroicLibraryLocator.FindGameFolder(_home, "SkyrimSE.exe"));
+		Assert.Null(HeroicLibraryLocator.FindGameFolder(_home, new[] { "SkyrimSE.exe" }));
 	}
 
 	[Fact]
@@ -144,7 +144,7 @@ public class HeroicLibraryLocatorTests : IDisposable
 		Library(Path.Combine("gog_store", "installed.json"),
 			$$"""{ "installed": [ { "install_path": {{System.Text.Json.JsonSerializer.Serialize(folder)}} } ] }""");
 
-		Assert.Equal(folder, HeroicLibraryLocator.FindGameFolder(_home, "SkyrimSE.exe"));
+		Assert.Equal(folder, HeroicLibraryLocator.FindGameFolder(_home, new[] { "SkyrimSE.exe" }));
 	}
 
 	[Fact]
@@ -160,7 +160,7 @@ public class HeroicLibraryLocatorTests : IDisposable
 		Library(Path.Combine("gog_store", "installed.json"),
 			$$"""{ "installed": [ { "install_path": {{System.Text.Json.JsonSerializer.Serialize(outer)}} } ] }""");
 
-		Assert.Equal(inner, HeroicLibraryLocator.FindGameFolder(_home, "SkyrimSE.exe"));
+		Assert.Equal(inner, HeroicLibraryLocator.FindGameFolder(_home, new[] { "SkyrimSE.exe" }));
 	}
 
 	[Fact]
@@ -172,7 +172,7 @@ public class HeroicLibraryLocatorTests : IDisposable
 			$$"""{ "installed": [ { "install_path": {{System.Text.Json.JsonSerializer.Serialize(folder)}} } ] }""",
 			flatpak: true);
 
-		Assert.Equal(folder, HeroicLibraryLocator.FindGameFolder(_home, "Stardew Valley.exe"));
+		Assert.Equal(folder, HeroicLibraryLocator.FindGameFolder(_home, new[] { "Stardew Valley.exe" }));
 	}
 
 	[Fact]
@@ -182,14 +182,14 @@ public class HeroicLibraryLocatorTests : IDisposable
 		Library(Path.Combine("gog_store", "installed.json"),
 			$$"""{ "installed": [ { "install_path": {{System.Text.Json.JsonSerializer.Serialize(Path.Combine(_home, "Games", "Something Else"))}} } ] }""");
 
-		Assert.Null(HeroicLibraryLocator.FindGameFolder(_home, "SkyrimSE.exe"));
+		Assert.Null(HeroicLibraryLocator.FindGameFolder(_home, new[] { "SkyrimSE.exe" }));
 	}
 
 	[Fact]
 	public void AGameWithNoExecutableNameIsNeverLookedFor()
 	{
 		// Minecraft has none, and guessing would be worse than answering nothing.
-		Assert.Null(HeroicLibraryLocator.FindGameFolder(_home, ""));
-		Assert.Null(HeroicLibraryLocator.FindGameFolder(_home, (string?)null));
+		Assert.Null(HeroicLibraryLocator.FindGameFolder(_home, new[] { "" }));
+		Assert.Null(HeroicLibraryLocator.FindGameFolder(_home, Array.Empty<string>()));
 	}
 }

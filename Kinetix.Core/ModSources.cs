@@ -231,9 +231,6 @@ public static class ModSources
 		},
 	};
 
-	/// <summary>Every site the manager knows about, in the order a list should show them.</summary>
-	public static IReadOnlyList<ModSourceInfo> Known => _known;
-
 	/// <summary>
 	/// The sites that want setting up before they will answer — what the credentials screen lists.
 	///

@@ -129,18 +129,13 @@ public static class HeroicLibraryLocator
 	}
 
 	/// <summary>
-	/// The folder holding <paramref name="exeName"/>, among everything Heroic has installed, or null.
+	/// The folder holding any of <paramref name="exeNames"/>, among everything Heroic has installed, or null. Several
+	/// names because a game's executable can have lived in more than one place (see
+	/// <see cref="GameProfile.AlternateGameExeNames"/>).
 	///
 	/// Matched by the game's own executable rather than by folder name, for the same reason
 	/// <see cref="GogLibraryLocator"/> does it: what Heroic or the user called the folder is not something to
 	/// guess at, and the executable is the one name the game itself decides.
-	/// </summary>
-	public static string? FindGameFolder(string home, string? exeName) =>
-		FindGameFolder(home, new[] { exeName ?? "" });
-
-	/// <summary>
-	/// The folder holding any of <paramref name="exeNames"/>, among everything Heroic has installed, or null — for
-	/// a game whose executable has lived in more than one place (see <see cref="GameProfile.AlternateGameExeNames"/>).
 	/// </summary>
 	public static string? FindGameFolder(string home, IEnumerable<string> exeNames)
 	{

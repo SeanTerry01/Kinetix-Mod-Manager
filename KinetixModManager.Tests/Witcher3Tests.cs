@@ -95,7 +95,7 @@ public class Witcher3Tests
         Assert.Equal(Path.GetDirectoryName(dx12), GameLogFiles.LoaderLogFolder(w3, dir.Path));
 
         // Searching by the preferred name alone is exactly the bug.
-        Assert.Null(GogLibraryLocator.FindGameFolder(new[] { dir.Path }, w3.GameExeName));
+        Assert.Null(GogLibraryLocator.FindGameFolder(new[] { dir.Path }, new[] { w3.GameExeName }));
     }
 
     [Fact]
@@ -218,8 +218,9 @@ public class Witcher3Tests
         string path = Path.Combine(dir.Path, Witcher3ModSettings.FileName);
         File.WriteAllLines(path, new[] { "[modWitcherAccess]", "Enabled=1" });
 
-        Assert.False(Witcher3ModSettings.IsDisabledByFile(path, "modSomethingElse"));
-        Assert.False(Witcher3ModSettings.IsDisabledByFile(path, "modWitcherAccess"));
+        // What ModScanner asks: which names the file switches off. A mod it does not mention cannot be one of them.
+        Assert.DoesNotContain(Witcher3ModSettings.Read(path), e => !e.Enabled);
+        Assert.DoesNotContain(Witcher3ModSettings.Read(path), e => e.Name == "modSomethingElse");
     }
 
     [Fact]
@@ -362,7 +363,7 @@ public class Witcher3Tests
         using var dir = new TempDir();
         string path = WriteInputSettings(dir, "[Exploration]", "IK_N=(Action=WA_Compass)");
 
-        Assert.Equal(new[] { "WA Compass" }, Witcher3InputSettings.Read(path).Single().Actions);
+        Assert.Equal(new[] { "WA Compass" }, Witcher3InputSettings.Read(path, null).Single().Actions);
     }
 
     [Fact]
@@ -379,7 +380,7 @@ public class Witcher3Tests
             "[Menu]",
             "IK_LeftMouse=(Action=AttackLight)");
 
-        var bindings = Witcher3InputSettings.Read(path);
+        var bindings = Witcher3InputSettings.Read(path, null);
 
         GameKeyBinding mouse = Assert.Single(bindings);
         Assert.Equal("Left Mouse Button", mouse.Key);
@@ -400,7 +401,7 @@ public class Witcher3Tests
             "IK_A=(Action=GI_AxisLeftX,State=Axis,Value=-1.0)",
             "IK_D=(Action=GI_AxisLeftX,State=Axis,Value=1.0)");
 
-        var bindings = Witcher3InputSettings.Read(path);
+        var bindings = Witcher3InputSettings.Read(path, null);
 
         Assert.Equal("Move Forward", bindings.Single(b => b.Key == "W").Actions.Single());
         Assert.Equal("Move Backward", bindings.Single(b => b.Key == "S").Actions.Single());
@@ -420,7 +421,7 @@ public class Witcher3Tests
             "IK_MouseX=(Action=MouseDampX)",
             "IK_E=(Action=Interact)");
 
-        var bindings = Witcher3InputSettings.Read(path);
+        var bindings = Witcher3InputSettings.Read(path, null);
 
         GameKeyBinding only = Assert.Single(bindings);
         Assert.Equal("E", only.Key);
@@ -446,7 +447,7 @@ public class Witcher3Tests
             "IK_R=(Action=DrinkPotion1Hold)",
             "IK_LShift=(Action=PCAlternate)");
 
-        var bindings = Witcher3InputSettings.Read(path);
+        var bindings = Witcher3InputSettings.Read(path, null);
 
         Assert.Equal("Drink Potion1 Hold", bindings.Single(b => b.Key == "R").Actions.Single());
         Assert.Equal("PC Alternate", bindings.Single(b => b.Key == "Left Shift").Actions.Single());
@@ -456,8 +457,8 @@ public class Witcher3Tests
     public void AMissingInputSettingsIsNoBindingsRatherThanACrash()
     {
         using var dir = new TempDir();
-        Assert.Empty(Witcher3InputSettings.Read(Path.Combine(dir.Path, "nope.settings")));
-        Assert.Empty(Witcher3InputSettings.Read(""));
+        Assert.Empty(Witcher3InputSettings.Read(Path.Combine(dir.Path, "nope.settings"), null));
+        Assert.Empty(Witcher3InputSettings.Read("", null));
     }
 
     /// <summary>A temporary directory that deletes itself.</summary>

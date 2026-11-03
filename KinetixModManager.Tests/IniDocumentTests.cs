@@ -10,6 +10,18 @@ public class IniDocumentTests
 {
     private static IniDocument Doc(params string[] lines) => new IniDocument(lines);
 
+    /// <summary>The lines a save leaves on disk, which is what the promise about untouched lines is a promise about.</summary>
+    private static string[] Saved(IniDocument doc)
+    {
+        string path = Path.Combine(Path.GetTempPath(), "KMM_Ini_" + Guid.NewGuid().ToString("N") + ".ini");
+        try
+        {
+            doc.Save(path);
+            return File.ReadAllLines(path);
+        }
+        finally { File.Delete(path); }
+    }
+
     [Fact]
     public void Entries_ParsesSectionsKeysAndValues_SkippingCommentsAndBlanks()
     {
@@ -42,7 +54,7 @@ public class IniDocumentTests
 
         doc.SetValue("Display", "iSizeW", "2560");
 
-        Assert.Equal(new[] { "; keep me", "[Display]", "iSizeW=2560", "iSizeH=1080" }, doc.Lines.ToArray());
+        Assert.Equal(new[] { "; keep me", "[Display]", "iSizeW=2560", "iSizeH=1080" }, Saved(doc));
     }
 
     [Fact]
@@ -50,8 +62,9 @@ public class IniDocumentTests
     {
         var doc = Doc("[Display]", "iSizeW=1920");
         doc.SetValue("display", "isizew", "800");
-        Assert.Equal("800", doc.GetValue("Display", "iSizeW"));
-        Assert.Single(doc.Entries()); // replaced, not duplicated
+        var entry = Assert.Single(doc.Entries()); // replaced, not duplicated
+        Assert.Equal("Display", entry.Section);
+        Assert.Equal("800", entry.Value);
     }
 
     [Fact]
@@ -63,7 +76,7 @@ public class IniDocumentTests
 
         Assert.Equal(
             new[] { "[Display]", "iSizeW=1920", "bFull Screen=0", "[General]", "sLanguage=ENGLISH" },
-            doc.Lines.ToArray());
+            Saved(doc));
     }
 
     [Fact]
@@ -73,9 +86,9 @@ public class IniDocumentTests
 
         doc.SetValue("Archive", "bInvalidateOlderFiles", "1");
 
-        Assert.Equal("1", doc.GetValue("Archive", "bInvalidateOlderFiles"));
-        Assert.Contains("[Archive]", doc.Lines);
-        Assert.Contains("bInvalidateOlderFiles=1", doc.Lines);
+        Assert.Contains(doc.Entries(), e => e.Section == "Archive" && e.Key == "bInvalidateOlderFiles" && e.Value == "1");
+        Assert.Contains("[Archive]", Saved(doc));
+        Assert.Contains("bInvalidateOlderFiles=1", Saved(doc));
     }
 
     [Fact]
@@ -85,17 +98,18 @@ public class IniDocumentTests
 
         doc.RemoveKey("Display", "iSizeW");
 
-        Assert.Equal(new[] { "[Display]", "iSizeH=1080" }, doc.Lines.ToArray());
-        Assert.Null(doc.GetValue("Display", "iSizeW"));
+        Assert.Equal(new[] { "[Display]", "iSizeH=1080" }, Saved(doc));
+        Assert.DoesNotContain(doc.Entries(), e => e.Key == "iSizeW");
     }
 
     [Fact]
-    public void GetValue_ScopedToSection_NotAcrossSections()
+    public void Entries_KeepTheSameKeyApartInEachSection()
     {
-        var doc = Doc("[A]", "x=1", "[B]", "x=2");
-        Assert.Equal("1", doc.GetValue("A", "x"));
-        Assert.Equal("2", doc.GetValue("B", "x"));
-        Assert.Null(doc.GetValue("C", "x"));
+        var entries = Doc("[A]", "x=1", "[B]", "x=2").Entries();
+
+        Assert.Equal(2, entries.Count);
+        Assert.Equal(("A", "x", "1"), (entries[0].Section, entries[0].Key, entries[0].Value));
+        Assert.Equal(("B", "x", "2"), (entries[1].Section, entries[1].Key, entries[1].Value));
     }
 
     [Fact]

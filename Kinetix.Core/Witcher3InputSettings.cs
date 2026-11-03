@@ -90,8 +90,6 @@ public static class Witcher3InputSettings
 		return byPrefix;
 	}
 
-	public static List<GameKeyBinding> Read(string path) => Read(path, null);
-
 	/// <summary>
 	/// Every keyboard and mouse binding in <paramref name="path"/>, one entry per key, with everything that key
 	/// does gathered under it. Gamepad bindings are left out: this list answers a keyboard question.
