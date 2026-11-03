@@ -77,7 +77,7 @@ public static class ModFolderTidy
 			string tidyBare = ModDisplayName.Clean(bare);
 			if (tidyBare.Length == 0 || tidyBare == bare) continue;
 
-			string target = ChooseName(mod, bare, tidyBare, isWitcher);
+			string target = ChooseName(mod, tidyBare, isWitcher);
 			if (target.Length == 0)
 			{
 				skips.Add(new FolderTidySkip(mod.Folder, "there is no readable name to give it"));
@@ -103,7 +103,7 @@ public static class ModFolderTidy
 	/// The name a tidied folder should carry: the mod's own name where the manager knows it, so the folder in
 	/// Explorer reads the same as the row in the list, and the cleaned folder name where it does not.
 	/// </summary>
-	private static string ChooseName(ModFolder mod, string bare, string tidyBare, bool isWitcher)
+	private static string ChooseName(ModFolder mod, string tidyBare, bool isWitcher)
 	{
 		// The Witcher's folder names are an interface to the engine, not prose: "modRandomEncounters" is the name,
 		// and the display name is something this manager invented to read it aloud. Cleaning the existing name

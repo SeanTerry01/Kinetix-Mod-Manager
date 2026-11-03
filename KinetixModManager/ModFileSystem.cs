@@ -2310,7 +2310,7 @@ public static class ModFileSystem
 	// Helpers
 	// -------------------------------------------------------------------------
 
-	public static async Task InstallScriptExtenderAsync(string archivePath, string gamePath, string activeGame, Action<string, string> logError, IProgress<double>? installProgress = null)
+	public static async Task InstallScriptExtenderAsync(string archivePath, string gamePath, string activeGame, IProgress<double>? installProgress = null)
 	{
 		string tempDir = Path.Combine(Path.GetTempPath(), "Extender_" + Path.GetRandomFileName());
 		try
@@ -2468,7 +2468,7 @@ public static class ModFileSystem
 	/// from <paramref name="archivePath"/> directly into the game's root folder (where the preloader
 	/// must live), so the user does not have to perform the manual root-folder step themselves.
 	/// </summary>
-	public static async Task InstallEnginePreloaderAsync(string archivePath, string gamePath, Action<string, string> logError)
+	public static async Task InstallEnginePreloaderAsync(string archivePath, string gamePath)
 	{
 		string tempDir = Path.Combine(Path.GetTempPath(), "Preloader_" + Path.GetRandomFileName());
 		try

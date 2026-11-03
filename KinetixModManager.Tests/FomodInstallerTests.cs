@@ -135,7 +135,7 @@ public class FomodInstallerTests : IDisposable
         return c;
     }
 
-    private static FomodSelection Select(FomodConfig config, params FomodPlugin[] chosen)
+    private static FomodSelection Select(params FomodPlugin[] chosen)
     {
         var s = new FomodSelection();
         foreach (var p in chosen)
@@ -409,7 +409,7 @@ public class FomodInstallerTests : IDisposable
         var skipped = Plugin("skipped", FomodPluginType.Optional, File_("no.txt", destination: "no.txt"));
         var config = Config(Group("g", FomodGroupType.SelectAny, chosen, skipped));
 
-        FomodInstaller.BuildStaging(config, Select(config, chosen), _root, _staging, AllMissing);
+        FomodInstaller.BuildStaging(config, Select(chosen), _root, _staging, AllMissing);
 
         Assert.True(StagedExists("yes.txt"));
         Assert.False(StagedExists("no.txt"));

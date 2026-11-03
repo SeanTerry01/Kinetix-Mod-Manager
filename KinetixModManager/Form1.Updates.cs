@@ -272,7 +272,7 @@ public partial class Form1
 
 	// A SMAPI program update found during the smapi.io check, surfaced only after the whole update
 	// run finishes so its prompt doesn't interrupt the mod-update announcement. Null when none.
-	private (string Current, string Latest, string Url)? _pendingSmapiUpdate;
+	private (string Current, string Latest)? _pendingSmapiUpdate;
 
 	// The installed mods the last update check had no Nexus/GitHub link for, so the manifest-based Nexus check
 	// couldn't cover them. Surfaced in the completion announcement so "all up to date" isn't misleading — a
@@ -363,7 +363,7 @@ public partial class Form1
 				// A prompt straight after this interrupts it, and the count and the mods that could not be checked were lost.
 				if (pendingSmapi != null || pendingMinecraft != null) LetSpeechFinish();
 				if (pendingSmapi is { } s)
-					NotifySmapiUpdateAvailable(s.Current, s.Latest, s.Url);
+					NotifySmapiUpdateAvailable(s.Current, s.Latest);
 				// The same courtesy for the one update that is not a mod at all. See
 				// NotifyMinecraftUpdateAvailable: a new Minecraft version decides whether every mod still loads.
 				if (pendingMinecraft is { } mc)
@@ -404,7 +404,7 @@ public partial class Form1
 				&& IsNewerVersion(smapiVersion, smapiUpd.Version))
 			{
 				// Defer the prompt until the whole check completes (see CompleteUpdateCheckUnit).
-				_pendingSmapiUpdate = (smapiVersion, smapiUpd.Version!, smapiUpd.Url ?? "");
+				_pendingSmapiUpdate = (smapiVersion, smapiUpd.Version!);
 			}
 
 			var linked = new Dictionary<string, string>();
@@ -515,7 +515,7 @@ public partial class Form1
 	/// is intentionally not added to the updatable mod list because it is the loader, not a mod. Declining
 	/// leaves the install untouched; any failure inside the installer falls back to opening smapi.io.
 	/// </summary>
-	private async void NotifySmapiUpdateAvailable(string current, string latest, string url)
+	private async void NotifySmapiUpdateAvailable(string current, string latest)
 	{
 		// A check that found something, not a connection.
 		_soundEngine.Play("load_complete");

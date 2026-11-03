@@ -75,7 +75,7 @@ public static class SaveGameParser
 			if (skyrim)
 				pluginsRead = ReadSkyrimPlugins(br, fs, version, shotWidth, shotHeight, masters, logError);
 			else
-				pluginsRead = ReadFalloutPlugins(br, fs, version, shotWidth, shotHeight, masters, logError);
+				pluginsRead = ReadFalloutPlugins(fs, version, shotWidth, shotHeight, masters);
 
 			return new SaveGame
 			{
@@ -131,8 +131,8 @@ public static class SaveGameParser
 
 	/// <summary>Fallout 4: uncompressed. Skip the screenshot, then read formVersion, the game-version string, the
 	/// plugin info size, and the master list (with the ESL list only on the newer save version that has one).</summary>
-	private static bool ReadFalloutPlugins(BinaryReader br, FileStream fs, uint version,
-		uint shotWidth, uint shotHeight, List<string> masters, Action<string>? logError)
+	private static bool ReadFalloutPlugins(FileStream fs, uint version,
+		uint shotWidth, uint shotHeight, List<string> masters)
 	{
 		fs.Seek(4L * shotWidth * shotHeight, SeekOrigin.Current); // screenshot is RGBA, uncompressed
 		byte[] body = ReadChunk(fs, 1 << 20);

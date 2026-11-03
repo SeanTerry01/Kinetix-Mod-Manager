@@ -120,10 +120,10 @@ public partial class Form1
 			Speak(Loc.T("tracked.upToDate", tracked.Count));
 			return;
 		}
-		ShowTrackedModsDialog(domain, tracked.Count, rows);
+		ShowTrackedModsDialog(domain, rows);
 	}
 
-	private void ShowTrackedModsDialog(string domain, int trackedTotal, List<TrackedRow> rows)
+	private void ShowTrackedModsDialog(string domain, List<TrackedRow> rows)
 	{
 		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
 		ShowInlineView(Loc.T("tracked.title"), (container, closeView) =>
