@@ -5,7 +5,7 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-11-03, after the whole-manager review.
+**Last updated:** 2026-11-03, after the second round from the whole-manager review.
 **State:** all tests passing on Windows; the solution builds clean.
 
 ---
@@ -13,28 +13,31 @@ Anything resolved gets deleted from here rather than ticked, so the file stays s
 
 ---
 
-## Left from the November 2026 review
+## Left from the November 2026 reviews
 
-Deliberately not done, because none is a bug and each needs a decision or a listening test first.
+Done or decided everything else on the list. What is here needs a person, or is a choice rather than a bug.
 
-- [ ] **Sean's listening checks, after this review:** the end of "X is now disabled" after Space; "Settings saved"; the tab
-  name twice on F6; and whether a browser talks over the manual-download box (`modparts.manualSpeak`, `suggested.manualSpeak`,
-  `suite.smapiNotFoundSpeak`). If it does, open the browser after OK and reword the box.
-- [ ] **Space during a slow deployment** can say "files could not be changed" once, because the pass is holding them. It clears
-  on the next pass, so it is left until someone hears it.
-- [ ] **`Form1.Minecraft.cs`, `SuiteDialog`, `SafetyBackup`, `FabricInstaller`, the GTK head and the wording of the `en.json`
-  changes** were not covered by the regression review of this work, only its placeholders. Worth a pass of their own.
+- [ ] **Sean's checks.** The list of what to listen for and try is in his "what to check" document. None of this round has been run.
 - [ ] **`SpeakAfterPrompt` and plain `Speak` after a Yes or No** do the same job in about 50 places, and the code cannot say
   which is right. Speech history on the two twin actions (`Form1.Input.cs` ignore and `Form1.Updates.cs` mark) would settle it.
-- [ ] **The 169 decompiler names** (`text5`, `button3`) and the `StardewMod` alias, in their own mechanical commits.
-- [ ] **Four near-identical settings views** (`ContentPatcher`, `Mcm`, `StardewConfig`, `IniEditor`) could share one builder.
-- [ ] **Bundled DLLs nothing loads:** `NAudio.Asio`, `NAudio.Midi`, `NAudio.WinForms`, `System.Speech`. A missing DLL fails at
-  run time rather than compile time, so removing them needs a publish and a sound test.
-- [ ] **Production code only tests use** (`PathRebase.TryTo`, `IniDocument.GetValue`, and others): delete each with its test.
-- [ ] **Settings parsed and never read,** notably `CpConfigOption.AllowMultiple`: multi-value Content Patcher settings can only
-  be given one value from the chooser.
-- [ ] **Unused parameters** the analyzer reports, and script extender ids repeated in four files.
-- [ ] **Wording:** plurals beyond the five most heard, and the keys still named in a few messages.
+- [ ] **A list's own GotFocus may end a file picker's settle early,** letting the caption speak over the result
+  (`SettleAfterForeignWindowAsync`). Inferred, never measured. Not changed blind: speech history first.
+- [ ] **Real signing of the manager's installer.** The checksum check catches a file damaged or swapped in transit, but it comes
+  from the same account as the file, so it can't prove who made a release. A signature needs a certificate or a key kept
+  outside GitHub. A decision and possibly a cost, not code.
+- [ ] **Themes live beside the program,** where Windows refuses an ordinary user on an installed copy. The Theme Manager now says so.
+  The real fix is keeping user themes in the data folder and reading both.
+- [ ] **`InstallKnownModPartsAsync` returns nothing,** so the suite can't count a script extender or a two-part mod that failed. Check
+  how it reports them.
+- [ ] **SMAPI's installer is waited for with no time limit** (`WaitForExit` in `InstallSmapiAsync`), so a hung one makes Escape refuse.
+- [ ] **Duplicates left because they work:** `Form1.RestoreBackupAsync` and `BackupRestore.Restore`, and the Witcher 3 helpers in
+  `ModFileSystem` and `Witcher3ModFiles`. The app could call the core's copies.
+- [ ] **Source guards read only the app project,** not `Kinetix.Core` or `Kinetix.Gtk`. `AppSettings.cs:875` and `GameLogFiles.cs:42` would need
+  a look under the install-key rule if widened.
+- [ ] **Small leftovers:** `SyncPluginsFile`'s `isDeploy` is always false; `Shortcut.Describe` stays because it is the only thing asking for
+  `shortcut.unbound`; the portable zip creates empty `profiles`, `downloads` and `backups` folders the manager doesn't use; the INI editor
+  doesn't share the settings-view builder, because it differs in font and buttons.
+- [ ] **The GTK head has been compiled, never run.** See its section below. Only an ear test on Linux can settle it.
 
 ---
 
@@ -111,10 +114,6 @@ These stand on their own merits. None is urgent.
       `AppSettings.Shortcuts`, `IsShortcut` reads it, and `ShortcutDefaultsGuardTests` holds the defaults. What
       the ladder costs is that the *dispatch* cannot be tested without running the UI, and that two actions can
       shadow one another with nothing to catch it. A command table would fix both.
-- [ ] **`using StardewMod = KinetixModManager.GameMod;` is copy-pasted at the top of 27 `Form1` partials**,
-      and `StardewMod` is used 161 times. Vestigial from when this was Stardew-only — two names for one type.
-      The empty `StardewMod.cs` that went with it is gone (§35); retiring the alias is a mechanical rename and
-      worth doing on its own rather than inside another change.
 - [ ] **No `ConfigureAwait(false)` anywhere.** Harmless while everything runs on the WinForms sync
       context; a deadlock source the moment the core is called from another host. Cheapest to fix
       during extraction rather than after.
