@@ -239,6 +239,81 @@ public class FomodInstallerTests : IDisposable
         Assert.DoesNotContain(hiddenPlugin, sel.SelectedPlugins);
     }
 
+    // ----- paths from a stranger's XML must not leave the mod ----------------------------------------
+
+    [Theory]
+    [InlineData(@"..\escaped.dll")]
+    [InlineData(@"..\..\..\escaped.dll")]
+    [InlineData(@"sub\..\..\escaped.dll")]
+    [InlineData("../escaped.dll")]
+    public void Staging_RefusesADestinationOutsideTheMod(string destination)
+    {
+        WriteSource("payload.dll", "PAYLOAD");
+        var config = new FomodConfig();
+        config.RequiredInstallFiles.Add(File_("payload.dll", destination: destination));
+
+        Assert.Throws<ModArchiveContentException>(() =>
+            FomodInstaller.BuildStaging(config, new FomodSelection(), _root, _staging, AllMissing));
+
+        Assert.False(File.Exists(Path.GetFullPath(Path.Combine(_staging, destination))));
+    }
+
+    [Fact]
+    public void Staging_RefusesAnAbsoluteDestination()
+    {
+        string target = Path.Combine(Path.GetTempPath(), "FomodEscape_" + Path.GetRandomFileName());
+        WriteSource("payload.dll", "PAYLOAD");
+        var config = new FomodConfig();
+        config.RequiredInstallFiles.Add(File_("payload.dll", destination: target));
+
+        Assert.Throws<ModArchiveContentException>(() =>
+            FomodInstaller.BuildStaging(config, new FomodSelection(), _root, _staging, AllMissing));
+
+        Assert.False(File.Exists(target));
+    }
+
+    [Fact]
+    public void Staging_RefusesAFolderDestinationOutsideTheMod()
+    {
+        WriteSource(@"folder\payload.dll", "PAYLOAD");
+        var config = new FomodConfig();
+        config.RequiredInstallFiles.Add(new FomodFileItem { Source = "folder", Destination = @"..\out", IsFolder = true });
+
+        Assert.Throws<ModArchiveContentException>(() =>
+            FomodInstaller.BuildStaging(config, new FomodSelection(), _root, _staging, AllMissing));
+    }
+
+    [Fact]
+    public void Staging_DoesNotReadFromOutsideTheArchive()
+    {
+        string outside = Path.Combine(Path.GetDirectoryName(_root)!, "FomodSecret_" + Path.GetRandomFileName() + ".txt");
+        File.WriteAllText(outside, "SECRET");
+        try
+        {
+            var config = new FomodConfig();
+            config.RequiredInstallFiles.Add(File_(@"..\" + Path.GetFileName(outside), destination: "copied.txt"));
+
+            int copied = FomodInstaller.BuildStaging(config, new FomodSelection(), _root, _staging, AllMissing);
+
+            Assert.Equal(0, copied);
+            Assert.False(File.Exists(Path.Combine(_staging, "copied.txt")));
+        }
+        finally { File.Delete(outside); }
+    }
+
+    [Fact]
+    public void Staging_AllowsDotsThatStayInsideTheMod()
+    {
+        // Untidy but harmless, and a real installer may well do it.
+        WriteSource("a.txt", "A");
+        var config = new FomodConfig();
+        config.RequiredInstallFiles.Add(File_("a.txt", destination: @"sub\..\kept.txt"));
+
+        FomodInstaller.BuildStaging(config, new FomodSelection(), _root, _staging, AllMissing);
+
+        Assert.Equal("A", ReadStaged("kept.txt"));
+    }
+
     // ----- BuildStaging ---------------------------------------------------
 
     [Fact]

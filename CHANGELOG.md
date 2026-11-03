@@ -45,6 +45,9 @@ as before.
     be recorded as done regardless, so a mod switched off could go on loading, and purging said it had worked.
 *   **Reinstalling a Witcher 3 mod that has its own installer no longer forgets its files.** Switched off afterwards, its
     `.asi` stayed in the game and kept running.
+*   **A FOMOD installer can no longer reach outside its mod.** Its file paths are written by the mod's author, and one
+    naming a place elsewhere on your computer would have been followed. Such a mod is now refused, with a message saying
+    why.
 *   **Refreshing no longer deletes mods.** On Skyrim and Fallout 4, any refresh deleted all but the newest of any mods
     sharing a Nexus page or a name, so a patch could vanish along with its main file's older sibling.
 *   **A second file from one Nexus page no longer replaces the first without asking.** You are asked whether it is a

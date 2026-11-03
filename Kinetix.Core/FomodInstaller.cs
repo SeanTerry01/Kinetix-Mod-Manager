@@ -242,8 +242,8 @@ public static class FomodInstaller
 			if (!Directory.Exists(source)) return 0;
 			// Folder destination is the directory the source's *contents* land in. Omitted => mirror the source path.
 			string destBase = item.Destination == null
-				? Path.Combine(stagingDir, NormalizeRelative(item.Source))
-				: Path.Combine(stagingDir, NormalizeRelative(item.Destination));
+				? InsideStaging(stagingDir, item.Source)
+				: InsideStaging(stagingDir, item.Destination);
 
 			int count = 0;
 			foreach (string file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
@@ -260,9 +260,9 @@ public static class FomodInstaller
 		// File destination is the full target path. Omitted => mirror source; "" => Data root with the source's file name.
 		string destPath = item.Destination switch
 		{
-			null => Path.Combine(stagingDir, NormalizeRelative(item.Source)),
+			null => InsideStaging(stagingDir, item.Source),
 			"" => Path.Combine(stagingDir, Path.GetFileName(source)),
-			_ => Path.Combine(stagingDir, NormalizeRelative(item.Destination))
+			_ => InsideStaging(stagingDir, item.Destination)
 		};
 		CopyFile(source, destPath);
 		return 1;
@@ -274,7 +274,24 @@ public static class FomodInstaller
 		File.Copy(source, dest, overwrite: true);
 	}
 
-	/// <summary>Turns a FOMOD path (back-slashed, possibly with a leading slash) into a safe relative path.</summary>
+	/// <summary>
+	/// Where a FOMOD path lands in the staging folder.
+	///
+	/// ⚠️ A FOMOD's paths come from a stranger's XML, and <c>..\..\..\x.dll</c> or <c>C:\Windows\x.dll</c> is otherwise a file
+	/// written anywhere the user can write. Refusing the whole install is right: no working installer does this by
+	/// accident, and the rest of what it asks for cannot be trusted either.
+	/// </summary>
+	private static string InsideStaging(string stagingDir, string fomodPath)
+	{
+		string root = Path.GetFullPath(stagingDir).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+		string full = Path.GetFullPath(Path.Combine(root, NormalizeRelative(fomodPath)));
+		if (!(full + Path.DirectorySeparatorChar).StartsWith(root, StringComparison.OrdinalIgnoreCase))
+			throw new ModArchiveContentException(
+				$"This mod's installer tries to write a file outside the mod, to \"{fomodPath}\", so it has not been installed.");
+		return full;
+	}
+
+	/// <summary>Turns a FOMOD path (back-slashed, possibly with a leading slash) into a relative one. Not safe by itself: see <see cref="InsideStaging"/>.</summary>
 	private static string NormalizeRelative(string path) =>
 		path.Replace('\\', Path.DirectorySeparatorChar)
 			.Replace('/', Path.DirectorySeparatorChar)
@@ -293,6 +310,9 @@ public static class FomodInstaller
 		foreach (string part in parts)
 		{
 			if (part == ".") continue;
+
+			// Reading from outside the archive would copy whatever is there into the mod. It counts as not being there.
+			if (part == "..") return null;
 
 			// Fast path: an exact-case match exists.
 			string direct = Path.Combine(current, part);
