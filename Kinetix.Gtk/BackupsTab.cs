@@ -51,15 +51,29 @@ public sealed partial class MainWindow
 		return box;
 	}
 
+	/// <summary>
+	/// Reads the backups into the list. Never throws, because it runs straight after other things have worked, and a folder
+	/// that cannot be read must not take those with it. One that cannot be read is not an empty one, so it says that instead.
+	/// </summary>
 	private void LoadBackups(bool announce)
 	{
-		_backupsView = BackupsView.Of(BackupStore.List(BackupsFolder));
+		string said;
+		try
+		{
+			_backupsView = BackupsView.Of(BackupStore.List(BackupsFolder));
+			said = _backupsView.Announcement;
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Backup", $"listing {BackupsFolder}", ex);
+			_backupsView = BackupsView.Of(Array.Empty<BackupItem>());
+			said = Loc.T("gtk.backupsUnreadable", ex.Message);
+		}
 
-		ClearRows(_backups);
-		foreach (BackupRow row in _backupsView.Rows) _backups.Append(RowLabel(row.Spoken));
+		RefillRows(_backups, _backupsView.Rows.Select(row => row.Spoken));
 
-		SetStatus(_backupsView.Announcement);
-		if (announce) Say(_backupsView.Announcement, interrupt: true);
+		SetStatus(said);
+		if (announce) Say(said, interrupt: true);
 	}
 
 	private void CancelArmedRestore()
@@ -162,15 +176,17 @@ public sealed partial class MainWindow
 		try
 		{
 			File.Delete(row.Path);
-			LoadBackups(announce: false);
-			_sound.Play("disable");
-			Say(Loc.T("gtk.backupsDeleted", row.ModName), interrupt: true);
 		}
 		catch (Exception ex)
 		{
 			DiagnosticLog.WriteException("Backup", $"deleting {row.Path}", ex);
 			_sound.Play("error");
 			Say(Loc.T("gtk.backupsDeleteFailed", ex.Message), interrupt: true);
+			return;
 		}
+
+		LoadBackups(announce: false);
+		_sound.Play("disable");
+		Say(Loc.T("gtk.backupsDeleted", row.ModName), interrupt: true);
 	}
 }

@@ -32,6 +32,14 @@ public sealed record ModSearchResults(IReadOnlyList<GameMod> Results, int Total)
 	/// asked for was not among them. Silence would read as "there is nothing there".
 	/// </summary>
 	public IReadOnlyList<string> Notes { get; init; } = Array.Empty<string>();
+
+	/// <summary>
+	/// True when none of the <paramref name="asked"/> catalogues answered, as each one that could not leaves one note.
+	///
+	/// A note alone does not say that. One catalogue answering "nothing" and another being unreachable also comes to no
+	/// results and a note, and the first of those is a real answer the user should hear.
+	/// </summary>
+	public bool NobodyAnswered(int asked) => asked > 0 && Results.Count == 0 && Notes.Count >= asked;
 }
 
 /// <summary>

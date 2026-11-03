@@ -367,7 +367,10 @@ public sealed partial class MainWindow
 		// Every tab holds the old game's rows until told otherwise, and each acts on the current game's folders. So the
 		// old game's backup was unpacked into the new game, its update installed there, and Save on the Settings tab
 		// pointed the new game at the old game's mods folder. Status last, so what stays on the line is about the mods.
+		// Unselected first, or each list would put its selection back at the same place in the new game's rows.
 		_installed.UnselectAll();
+		_backups.UnselectAll();
+		_profiles.UnselectAll();
 		ForgetTheOtherGamesRows();
 		LoadBackups(announce: false);
 		FillSettingsForGame();
@@ -389,6 +392,10 @@ public sealed partial class MainWindow
 		_found.Clear();
 		ClearRows(_results);
 
+		// Two more things that are about the last game, and that the user would otherwise read as being about this one.
+		_search.GetBuffer().SetText("", 0);
+		_web?.Load(BlankPage);
+
 		_updatesView = ModUpdatesView.CannotCheck(null, "");
 		ClearRows(_updates);
 
@@ -404,6 +411,38 @@ public sealed partial class MainWindow
 	private static void ClearRows(Gtk.ListBox list)
 	{
 		while (list.GetFirstChild() is { } child) list.Remove(child);
+	}
+
+	/// <summary>
+	/// Replaces a list's rows, keeping the user's place in it.
+	///
+	/// Rebuilding a list takes away the row that had focus. Handed back, or the next key would land nowhere and the list's
+	/// own keys would stop working until someone moved back into it. A list shorter than it was keeps them at its last row.
+	/// </summary>
+	private static void RefillRows(Gtk.ListBox list, IEnumerable<string> rows)
+	{
+		int place = list.GetSelectedRow()?.GetIndex() ?? -1;
+		bool hadFocus = FocusIsIn(list);
+
+		ClearRows(list);
+
+		int count = 0;
+		foreach (string row in rows)
+		{
+			list.Append(RowLabel(row));
+			count++;
+		}
+
+		if (place >= 0 && count > 0)
+		{
+			Gtk.ListBoxRow? again = list.GetRowAtIndex(Math.Min(place, count - 1));
+			list.SelectRow(again);
+			if (hadFocus) again?.GrabFocus();
+		}
+		else if (hadFocus)
+		{
+			list.GrabFocus();
+		}
 	}
 
 	private Gtk.Widget BuildInstalledTab()
@@ -443,28 +482,10 @@ public sealed partial class MainWindow
 
 	private void LoadInstalled()
 	{
-		// Rebuilding the list takes away the row that had focus. Handed back, or the next key would land nowhere and the
-		// list's own keys would stop working until someone moved back into it.
-		int place = _installed.GetSelectedRow()?.GetIndex() ?? -1;
-		bool hadFocus = FocusIsIn(_installed);
-
-		ClearRows(_installed);
-
 		ReadInstalledFolder();
 
-		foreach (InstalledModRow row in _view.Rows) _installed.Append(RowLabel(row.Spoken));
+		RefillRows(_installed, _view.Rows.Select(row => row.Spoken));
 		SetStatus(_view.StatusLine);
-
-		if (place >= 0 && _view.Rows.Count > 0)
-		{
-			Gtk.ListBoxRow? again = _installed.GetRowAtIndex(Math.Min(place, _view.Rows.Count - 1));
-			_installed.SelectRow(again);
-			if (hadFocus) again?.GrabFocus();
-		}
-		else if (hadFocus)
-		{
-			_installed.GrabFocus();
-		}
 
 		// What a profile would change, and which is the current one, both depend on what is on disk.
 		LoadProfiles(setStatus: false);
@@ -539,26 +560,40 @@ public sealed partial class MainWindow
 		InstalledModRow row = _view.Rows[i];
 		if (RefusedAsTheWholeModsFolder(row)) return;
 
+		// The Witcher 3's files outside the mod, which can stay behind even though the folder itself moved.
+		var stuck = new List<string>();
+
 		try
 		{
 			// Every layout switches a mod off differently - a leading dot for Stardew, a tilde for The Witcher, a
 			// move out of plugins for BepInEx, a suffix for Minecraft - and the core is the one place that knows
 			// which. Reimplementing any of it here is how the two front ends would start to disagree about what
 			// "disabled" means.
-			ModOnDisk.SetEnabled(row.Path, !row.Enabled, _game.Id, (where, what) => DiagnosticLog.Write(where, what));
-			// The cue lands while the reader is still saying the mod's name, which is the whole point of
-			// having one: the fact arrives without waiting for the sentence.
-			_sound.Play(row.Enabled ? "disable" : "enable");
-			LoadInstalled();
-			Say(Loc.T(row.Enabled ? "gtk.modDisabled" : "gtk.modEnabled", row.Name), interrupt: true);
-			SayIfListFailed();
+			ModOnDisk.SetEnabled(row.Path, !row.Enabled, _game.Id, WitcherGameFolder(), (where, what) => DiagnosticLog.Write(where, what), stuck);
 		}
 		catch (Exception ex)
 		{
 			_sound.Play("error");
 			DiagnosticLog.WriteException("Mods", $"toggling {row.Path}", ex);
-			Say(Loc.T("gtk.toggleFailed", row.Name, ex.Message), interrupt: true);
+
+			string failed = Loc.T("gtk.toggleFailed", row.Name, ex.Message);
+			if (stuck.Count > 0) failed += " " + Loc.T("gtk.toggleFilesLeftOut", string.Join(", ", stuck));
+			Say(failed, interrupt: true);
+			return;
 		}
+
+		// Past the point where anything can have failed, so a list that will not reload cannot be heard as the switch failing.
+		// The cue lands while the reader is still saying the mod's name, which is the whole point of
+		// having one: the fact arrives without waiting for the sentence.
+		_sound.Play(stuck.Count > 0 ? "error" : row.Enabled ? "disable" : "enable");
+		LoadInstalled();
+
+		if (stuck.Count > 0)
+			Say(Loc.T(row.Enabled ? "gtk.modDisabledPartly" : "gtk.modEnabledPartly", row.Name, string.Join(", ", stuck)), interrupt: true);
+		else
+			Say(Loc.T(row.Enabled ? "gtk.modDisabled" : "gtk.modEnabled", row.Name), interrupt: true);
+
+		SayIfListFailed();
 	}
 
 	// -------------------------------------------------------------------------
@@ -615,7 +650,8 @@ public sealed partial class MainWindow
 		var open = Gtk.Button.NewWithLabel(Loc.T("gtk.openWikiButton"));
 		open.OnClicked += (_, _) => OpenWiki();
 		var back = Gtk.Button.NewWithLabel(Loc.T("gtk.backButton"));
-		back.OnClicked += (_, _) => { if (_web?.CanGoBack == true) _web.GoBack(); };
+		// Not past the blank page a change of game leaves, because behind that is the last game's wiki.
+		back.OnClicked += (_, _) => { if (_web?.CanGoBack == true && _web.Uri != BlankPage) _web.GoBack(); };
 		var login = Gtk.Button.NewWithLabel(Loc.T("gtk.nexusLoginButton"));
 		login.OnClicked += (_, _) => _ = SignInToNexusAsync();
 		bar.Append(open);
@@ -645,6 +681,9 @@ public sealed partial class MainWindow
 
 		return box;
 	}
+
+	/// <summary>What the web view shows after a change of game.</summary>
+	private const string BlankPage = "about:blank";
 
 	private void OpenWiki()
 	{
@@ -805,7 +844,9 @@ public sealed partial class MainWindow
 				LoadBackups(announce: false);
 				LoadInstalled();
 
-				// Not "installed": the new copy was taken back out, because Fabric will not start with two.
+				// Not "installed": an older copy would not go, and Fabric will not start with two. The new copy was taken back
+				// out, unless it wrote over a file of the same name, when it stays beside the stuck one. So the sentence names
+				// what is stuck and says nothing about where the new one is.
 				if (result.Value.CouldNotRemove.Count > 0)
 				{
 					_sound.Play("error");
@@ -918,7 +959,7 @@ public sealed partial class MainWindow
 			return;
 		}
 
-		SetStatus(Loc.T("gtk.searchingStatus", term));
+		SetStatus(Loc.T("gtk.searchingStatus", string.Join(", ", asking.Select(s => s.Info.DisplayName)), term));
 		Say(Loc.T("gtk.searching", term));
 
 		string gameId = _game.Id;
@@ -938,16 +979,29 @@ public sealed partial class MainWindow
 				ClearRows(_results);
 				foreach (GameMod m in _found) _results.Append(RowLabel(Trim(m.ToString())));
 
-				// A catalogue that could not answer says so out loud rather than leaving a quiet gap.
-				foreach (string note in found.Notes) Say(note);
-
-				// "0 results" straight after "Nexus did not answer" would take back what the note just said.
-				if (_found.Count == 0 && found.Notes.Count > 0)
+				// "0 results" straight after "Nexus did not answer" would take back what the note just said. Nobody having
+				// answered is the only failure here, and the only time the error cue is true.
+				if (found.NobodyAnswered(asking.Count))
 				{
+					foreach (string note in found.Notes) Say(note);
 					_sound.Play("error");
 					SetStatus(found.Notes[0]);
 					return;
 				}
+
+				// Someone answered, and with nothing, which is a real answer the user asked for. It comes first, because "CurseForge
+				// could not be reached" on its own left them not knowing Modrinth had been asked at all.
+				if (_found.Count == 0 && found.Notes.Count > 0)
+				{
+					string nothing = Loc.T("gtk.resultsNoneFromTheRest", term);
+					SetStatus(nothing);
+					Say(nothing);
+					foreach (string note in found.Notes) Say(note);
+					return;
+				}
+
+				// A catalogue that could not answer says so out loud rather than leaving a quiet gap.
+				foreach (string note in found.Notes) Say(note);
 
 				SetStatus(Loc.T("gtk.resultsStatus", _found.Count, found.Total, term));
 				Say(Loc.T("gtk.results", _found.Count));
@@ -1031,24 +1085,66 @@ public sealed partial class MainWindow
 	/// </summary>
 	private void AddKeyboardShortcuts()
 	{
+		// First in line for every key, wherever the focus is, which is how a release is seen after the press moved the focus.
+		var heldKeys = Gtk.EventControllerKey.New();
+		heldKeys.SetPropagationPhase(Gtk.PropagationPhase.Capture);
+		heldKeys.OnKeyPressed += (controller, args) =>
+		{
+			// Not counted as another key, or tapping Shift during a held Delete would make its next repeat look like a new press.
+			if (IsModifierKey(args.Keyval))
+			{
+				_keyIsHeld = false;
+				return false;
+			}
+
+			// By its place on the keyboard rather than its letter. Press Shift+A and let go of Shift first, and A's release
+			// arrives as a different letter from its press.
+			_keyIsHeld = !_keysDown.IsFirstPress((int)args.Keycode);
+			_lastKeycode = args.Keycode;
+
+			// What is waiting for a second press is waiting for a deliberate one, and this is also what covers the buttons:
+			// holding Enter on Restore would otherwise arm it and then confirm it.
+			return _keyIsHeld && SomethingIsArmed;
+		};
+		heldKeys.OnKeyReleased += (controller, args) =>
+		{
+			// Only that key's release, for the same reason as above: the filter clears on any.
+			if (args.Keycode == _lastKeycode) _keysDown.Released();
+		};
+		_window.AddController(heldKeys);
+
+		// A key let go while another window has the focus is never reported here.
+		var windowFocus = Gtk.EventControllerFocus.New();
+		windowFocus.OnLeave += (controller, args) => _keysDown.FocusLost();
+		_window.AddController(windowFocus);
+
 		var keys = Gtk.EventControllerKey.New();
 		keys.OnKeyPressed += (controller, args) =>
 		{
 			bool ctrl = (args.State & Gdk.ModifierType.ControlMask) != 0;
 
+			// Lowered because Caps Lock turns Ctrl+B into an uppercase keyval, which no case below would match.
+			uint key = Gdk.Functions.KeyvalToLower(args.Keyval);
+
 			// A modifier on its own is the start of a key, not another key. Counting it, the Alt of a second Alt+F4 called
 			// off the close it was about to confirm.
-			if (args.Keyval is >= 0xFFE1 and <= 0xFFEE) return false;
+			if (IsModifierKey(key)) return false;
 
 			// Here rather than on each case below: the point is that ONLY a second press goes ahead, so every other key
 			// has to be a way out. A second press never reaches this. It is taken by the button, or by the list's own keys.
 			CancelArmed();
 
-			switch (args.Keyval)
+			// F6 only moves the focus, so it may run on while held as an arrow key does. The rest do something each time.
+			if (key == 0xFFC3)
 			{
-				case 0xFFC3:                     // F6
-					CycleFocus();
-					return true;
+				CycleFocus();
+				return true;
+			}
+
+			if (_keyIsHeld) return false;
+
+			switch (key)
+			{
 				case 0xFFC2:                     // F5
 					LoadInstalled();
 					Say(RefreshedSentence(), interrupt: true);
@@ -1061,7 +1157,7 @@ public sealed partial class MainWindow
 				case 0x066 when ctrl:            // Ctrl+F
 					_tabs.SetCurrentPage(FindModsTabIndex);
 					_search.GrabFocus();
-					Say(Loc.T("gtk.searchFocused"), interrupt: true);
+					Say(Loc.T("gtk.searchFocused", _game.DisplayName), interrupt: true);
 					return true;
 			}
 
@@ -1081,7 +1177,15 @@ public sealed partial class MainWindow
 		{
 			bool ctrl = (args.State & Gdk.ModifierType.ControlMask) != 0;
 
-			switch (args.Keyval)
+			// Lowered because Caps Lock turns Ctrl+B into an uppercase keyval, which no case below would match.
+			uint key = Gdk.Functions.KeyvalToLower(args.Keyval);
+
+			// Each of the keys below does something every time, so one still held does nothing and goes no further. It would
+			// otherwise answer "press Delete again" by itself, or flip a mod on and off until let go.
+			bool oneOfOurs = key == 0xFFFF || (key == 0x020 && !ctrl) || (ctrl && key is 0x062 or 0x06E);
+			if (oneOfOurs && _keyIsHeld) return true;
+
+			switch (key)
 			{
 				case 0xFFFF:                     // Delete — arms, then confirms. See ModActions.
 					_armedForRestore = null;
@@ -1103,10 +1207,47 @@ public sealed partial class MainWindow
 					return true;
 			}
 
+			// Every other key is a way out too, and has to be called off here. The window's own check is too late for the keys
+			// the list keeps for itself: it takes Return, and Up or Home on the first row, so that check never saw them, and
+			// Delete, Enter, Delete deleted the mod. Returning false still leaves the key to do its usual work.
+			if (!IsModifierKey(key)) CancelArmed();
+
 			return false;
 		};
 		_installed.AddController(listKeys);
+
+		// The same hole on the two other lists that arm. Their second press comes from a button, so here every key is a way out.
+		foreach (Gtk.ListBox list in new[] { _backups, _profiles })
+		{
+			var anyKey = Gtk.EventControllerKey.New();
+			anyKey.SetPropagationPhase(Gtk.PropagationPhase.Capture);
+			anyKey.OnKeyPressed += (controller, args) =>
+			{
+				if (!IsModifierKey(args.Keyval)) CancelArmed();
+				return false;
+			};
+			list.AddController(anyKey);
+		}
 	}
+
+	/// <summary>Tells a press from a key being held, the same way the Windows head does. See <see cref="KeyRepeatFilter"/>.</summary>
+	private readonly KeyRepeatFilter _keysDown = new();
+
+	/// <summary>The key <see cref="_keysDown"/> was last told about.</summary>
+	private uint _lastKeycode;
+
+	/// <summary>Whether the key being handled right now was already down. Set first by the window's capture controller.</summary>
+	private bool _keyIsHeld;
+
+	/// <summary>Whether anything is waiting for a second press.</summary>
+	private bool SomethingIsArmed =>
+		_armedForDelete != null || _armedForRestore != null || _armedForProfile != null || _closeArmed;
+
+	/// <summary>
+	/// A modifier on its own: Shift, Control, Caps Lock, Alt, Super and the like, and AltGr. Such a key is the start of
+	/// another key, so it must not call anything off.
+	/// </summary>
+	private static bool IsModifierKey(uint keyval) => keyval is (>= 0xFFE1 and <= 0xFFEE) or 0xFE03;
 
 	/// <summary>Calls off whatever is waiting for a second press, saying so.</summary>
 	private void CancelArmed()

@@ -25,6 +25,30 @@ public sealed partial class MainWindow
 	private string BackupsFolder => Path.Combine(AppSettings.AppDataFolder, "backups", _game.Id);
 
 	/// <summary>
+	/// Where The Witcher 3's files outside a mod are looked for, or empty for any other game. See
+	/// <see cref="Witcher3ModFiles.GameFolderFor"/>: the mods folder may be one the user typed, anywhere at all.
+	/// </summary>
+	private string WitcherGameFolder() =>
+		_game.IsWitcher3 ? Witcher3ModFiles.GameFolderFor(_modsFolder, _locator.InstallFolder(_game)) : "";
+
+	/// <summary>
+	/// Says so, refreshes the list and returns true when a row's mod is no longer on disk.
+	///
+	/// Checked here because <see cref="BackupStore.CreateBackup"/> returns without a word when the path has gone, which has
+	/// callers that rely on it. So a stale row was announced as backed up, or as deleted with a backup kept, with no backup.
+	/// </summary>
+	private bool RefusedAsGone(InstalledModRow row)
+	{
+		if (File.Exists(row.Path) || Directory.Exists(row.Path)) return false;
+
+		LoadInstalled();
+		_sound.Play("error");
+		Say(Loc.T("gtk.modGone", row.Name), interrupt: true);
+		SayIfListFailed();
+		return true;
+	}
+
+	/// <summary>
 	/// Says so and returns true for a row whose path is the mods folder itself, which Delete or Space would do to every
 	/// mod at once. See <see cref="ModOnDisk.IsTheModsFolderItself"/>.
 	/// </summary>
@@ -75,6 +99,8 @@ public sealed partial class MainWindow
 
 	private async Task DeleteAsync(InstalledModRow row)
 	{
+		if (RefusedAsGone(row)) return;
+
 		using IDisposable busy = _modOperations.Begin();
 
 		SetStatus(Loc.T("gtk.deleting", row.Name));
@@ -82,6 +108,7 @@ public sealed partial class MainWindow
 
 		string backups = BackupsFolder;
 		string gameId = _game.Id;
+		string gameFolder = WitcherGameFolder();
 		Action<string, string> log = (where, what) => DiagnosticLog.Write(where, what);
 
 		try
@@ -90,22 +117,37 @@ public sealed partial class MainWindow
 			// being written when the original is deleted is not a backup. Zipping a large mod takes long
 			// enough to be worth doing off the interface's thread.
 			await Task.Run(() => BackupStore.CreateBackup(row.Path, row.Name, backups));
-			await Task.Run(() =>
+			IReadOnlyList<string> stuck = await Task.Run(() =>
 			{
 				// A Witcher 3 mod's dlc and bin parts live in the game folder, and the record of them is inside the folder
 				// about to go, so they go first. Without this it said "deleted" with those parts still loading.
-				Witcher3ModFiles.RemoveExtras(row.Path, gameId, log);
+				IReadOnlyList<string> notRemoved = Witcher3ModFiles.RemoveExtras(row.Path, gameId, gameFolder, log);
+
+				// ⚠️ The folder stays while any of them does, because its manifest is the only record of where they are.
+				if (notRemoved.Count > 0) return notRemoved;
 
 				// Clears read-only flags and retries a passing lock, which a plain delete fails on.
 				ModOnDisk.Delete(row.Path);
 
-				Witcher3ModFiles.Forget(row.Path, gameId, log);
+				Witcher3ModFiles.Forget(row.Path, gameId, gameFolder, log);
+				return notRemoved;
 			});
 
 			_ui.Post(() =>
 			{
 				LoadBackups(announce: false);
 				LoadInstalled();
+
+				if (stuck.Count > 0)
+				{
+					string partly = Loc.T("gtk.deletedPartly", row.Name, string.Join(", ", stuck));
+					_sound.Play("error");
+					SetStatus(partly);
+					Say(partly, interrupt: true);
+					SayIfListFailed();
+					return;
+				}
+
 				_sound.Play("disable");
 				Say(Loc.T("gtk.deleted", row.Name), interrupt: true);
 				SetStatus(_view.StatusLine);
@@ -135,9 +177,11 @@ public sealed partial class MainWindow
 
 		if (RefusedWhileChanging()) return;
 
+		InstalledModRow row = _view.Rows[i];
+		if (RefusedAsGone(row)) return;
+
 		using IDisposable busy = _modOperations.Begin();
 
-		InstalledModRow row = _view.Rows[i];
 		SetStatus(Loc.T("gtk.backingUp", row.Name));
 		Say(Loc.T("gtk.backingUp", row.Name));
 

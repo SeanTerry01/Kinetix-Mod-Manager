@@ -20,14 +20,23 @@ public sealed class GlibDispatcher : IDispatcher
 		// Running it here when we are already on the main loop is not merely an optimisation: queuing it
 		// would defer it past whatever is posted next, and two announcements meant to be heard in order
 		// would swap. The WinForms implementation makes the same point.
-		if (IsOnUiThread) { action(); return; }
+		//
+		// Guarded just as the queued path is. After an await this head is already back on the main loop, so this is the
+		// path nearly every action takes, and a throw from here landed in the caller's own catch: the backup list failing
+		// to reload after a good delete was announced as the delete having failed.
+		if (IsOnUiThread) { RunGuarded(action); return; }
 
 		GLib.Functions.IdleAdd(GLib.Constants.PRIORITY_DEFAULT_IDLE, () =>
 		{
-			try { action(); }
-			catch (Exception ex) { DiagnosticLog.WriteException("UI", "work posted to the main loop", ex); }
+			RunGuarded(action);
 			return false;   // false = do not run again
 		});
+	}
+
+	private static void RunGuarded(Action action)
+	{
+		try { action(); }
+		catch (Exception ex) { DiagnosticLog.WriteException("UI", "work posted to the main loop", ex); }
 	}
 
 }

@@ -181,25 +181,59 @@ public class NexusService
 	/// <param name="nexusId">Nexus Mods numeric mod ID.</param>
 	/// <returns>The latest version string, or <c>null</c> on failure or non-success status.</returns>
 	/// <param name="domain">The game's page to ask. Read before a queued wait, or a game switch changes the answer.</param>
-	public async Task<string?> GetLatestVersionAsync(string nexusId, string? domain = null)
+	public async Task<string?> GetLatestVersionAsync(string nexusId, string? domain = null) =>
+		(await AskLatestVersionAsync(nexusId, domain)).Version;
+
+	/// <summary>
+	/// <see cref="GetLatestVersionAsync"/>, and why it came back as it did, for a caller that treats a removed mod
+	/// differently from an outage.
+	///
+	/// ⚠️ Handed back with the answer rather than kept in a property saying how the last call went. The Windows head runs
+	/// these several at a time, so "the last call" could be anybody's.
+	/// </summary>
+	public async Task<NexusLatestVersion> AskLatestVersionAsync(string nexusId, string? domain = null)
 	{
 		// Minecraft's mods come from Modrinth; a Nexus call for it would name no game at all.
-		if (!UsesNexus) return null;
+		if (!UsesNexus) return new NexusLatestVersion(null, NexusVersionAnswer.NoAnswer);
 		await _apiSemaphore.WaitAsync();
 		try
 		{
 			// Asked after the wait: a pause usually begins while a long queue of these is waiting.
-			if (Pause.IsActive(DateTime.UtcNow)) return null;
+			if (Pause.IsActive(DateTime.UtcNow)) return new NexusLatestVersion(null, NexusVersionAnswer.NoAnswer);
 			await Task.Delay(Random.Shared.Next(100, 1000));
 			using var req = BuildRequest(HttpMethod.Get,
 				$"https://api.nexusmods.com/v1/games/{domain ?? CurrentGameDomain}/mods/{nexusId}.json");
 			var resp = await HttpClient.SendAsync(req);
 			CaptureRateLimit(resp);
-			if (!resp.IsSuccessStatusCode) return null;
-			return ((string?)JObject.Parse(await resp.Content.ReadAsStringAsync())["version"]) ?? "0";
+			return ReadLatestVersion(resp.StatusCode, resp.IsSuccessStatusCode ? await resp.Content.ReadAsStringAsync() : null);
 		}
-		catch { return null; }
+		catch { return new NexusLatestVersion(null, NexusVersionAnswer.NoAnswer); }
 		finally { _apiSemaphore.Release(); }
+	}
+
+	/// <summary>
+	/// What a reply to asking for a mod's page says. Throws on a success whose body cannot be read, which is not an answer.
+	/// </summary>
+	/// <param name="status">The reply's status.</param>
+	/// <param name="body">The reply's body, when it succeeded.</param>
+	public static NexusLatestVersion ReadLatestVersion(HttpStatusCode status, string? body)
+	{
+		if (status == HttpStatusCode.NotFound || status == HttpStatusCode.Gone)
+			return new NexusLatestVersion(null, NexusVersionAnswer.ModGone);
+
+		if (status == HttpStatusCode.Unauthorized) return new NexusLatestVersion(null, NexusVersionAnswer.KeyRefused);
+
+		if (status == HttpStatusCode.Forbidden) return new NexusLatestVersion(null, NexusVersionAnswer.Forbidden);
+
+		if ((int)status < 200 || (int)status >= 300) return new NexusLatestVersion(null, NexusVersionAnswer.NoAnswer);
+
+		JObject page = JObject.Parse(body ?? "");
+		string version = (string?)page["version"] ?? "0";
+
+		// A removed page can still answer with a page. The version stays as it was for the caller that only wants that.
+		return page["available"]?.Type == JTokenType.Boolean && !(bool)page["available"]!
+			? new NexusLatestVersion(version, NexusVersionAnswer.ModGone)
+			: new NexusLatestVersion(version, NexusVersionAnswer.Answered);
 	}
 
 	/// <summary>
@@ -1428,6 +1462,31 @@ public class NexusService
 		return req;
 	}
 }
+
+/// <summary>Why asking Nexus for a mod's latest version came back as it did.</summary>
+public enum NexusVersionAnswer
+{
+	/// <summary>Nexus has the page and gave its version.</summary>
+	Answered,
+
+	/// <summary>Nexus answered, and it no longer has this mod. Something the user can be told, and asking again will not change it.</summary>
+	ModGone,
+
+	/// <summary>Nexus refused the key itself, so every other mod will get the same answer.</summary>
+	KeyRefused,
+
+	/// <summary>
+	/// Nexus would not show this page. Nexus's own 401 is what refuses a key, and a 403 can be a hidden mod with a good key,
+	/// so telling those apart needs <see cref="NexusService.CheckConnectionAsync"/>.
+	/// </summary>
+	Forbidden,
+
+	/// <summary>No usable answer: offline, rate limited, paused or an outage. Says nothing about the mod.</summary>
+	NoAnswer
+}
+
+/// <summary>A mod's latest version, or null, and why.</summary>
+public readonly record struct NexusLatestVersion(string? Version, NexusVersionAnswer Answer);
 
 /// <summary>The outcome of asking Nexus whether the stored API key works.</summary>
 public enum NexusConnection

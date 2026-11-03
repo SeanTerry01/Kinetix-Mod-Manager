@@ -39,10 +39,11 @@ public sealed class ModUpdatesView
 {
 	private readonly bool _toldToSlowDown;
 	private readonly int _notLinked;
+	private readonly IReadOnlyList<string> _goneFromSite;
 
 	private ModUpdatesView(
 		ModUpdatesStatus status, GameProfile? game, IReadOnlyList<ModUpdateRow> rows, int checkedCount, string reason,
-		int unanswered = 0, bool toldToSlowDown = false, int notLinked = 0)
+		int unanswered = 0, bool toldToSlowDown = false, int notLinked = 0, IReadOnlyList<string>? goneFromSite = null)
 	{
 		Status = status;
 		Game = game;
@@ -52,6 +53,7 @@ public sealed class ModUpdatesView
 		Unanswered = unanswered;
 		_toldToSlowDown = toldToSlowDown;
 		_notLinked = notLinked;
+		_goneFromSite = goneFromSite ?? Array.Empty<string>();
 	}
 
 	public ModUpdatesStatus Status { get; }
@@ -92,9 +94,13 @@ public sealed class ModUpdatesView
 	/// <param name="unanswered">How many of <paramref name="installed"/> got no answer.</param>
 	/// <param name="toldToSlowDown">Whether the site asked the manager to slow down, which changes what the user should do about it.</param>
 	/// <param name="notLinked">How many other mods have no link to any catalogue, so were not asked about.</param>
+	/// <param name="goneFromSite">
+	/// The names of those in <paramref name="installed"/> the site says it no longer has. A real answer, not one of the
+	/// unanswered: counted as those, one removed mod made every check play the error cue and say to try again later, for ever.
+	/// </param>
 	public static ModUpdatesView Of(
 		GameProfile? game, IEnumerable<GameMod> installed, IReadOnlyDictionary<string, string> latestByPath,
-		int unanswered = 0, bool toldToSlowDown = false, int notLinked = 0)
+		int unanswered = 0, bool toldToSlowDown = false, int notLinked = 0, IReadOnlyList<string>? goneFromSite = null)
 	{
 		var rows = new List<ModUpdateRow>();
 		int asked = 0;
@@ -104,6 +110,10 @@ public sealed class ModUpdatesView
 			asked++;
 			if (!latestByPath.TryGetValue(mod.FolderPath, out string? latest)) continue;
 			if (string.IsNullOrWhiteSpace(latest)) continue;
+
+			// ⚠️ Settled first on Minecraft, as the Windows head does. The comparison below splits on dots, so it reads
+			// "1.1.0+mc26.2" as having a fourth segment "1.1.0" lacks, and offers the same release as an update for ever.
+			if (game?.IsMinecraft == true && MinecraftLayout.SameRelease(mod.Version, latest)) continue;
 
 			// The same comparison the Windows head makes, so the two builds never disagree about whether
 			// something is an update — a version that merely differs is not necessarily newer.
@@ -117,7 +127,8 @@ public sealed class ModUpdatesView
 			return new ModUpdatesView(ModUpdatesStatus.CannotCheck, game, Array.Empty<ModUpdateRow>(), 0,
 				Loc.T(toldToSlowDown ? "gtk.updatesToldToSlowDown" : "gtk.updatesNoAnswer"), unanswered);
 
-		return new ModUpdatesView(ModUpdatesStatus.Checked, game, rows, asked - unanswered, "", unanswered, toldToSlowDown, notLinked);
+		int gone = goneFromSite?.Count ?? 0;
+		return new ModUpdatesView(ModUpdatesStatus.Checked, game, rows, asked - unanswered - gone, "", unanswered, toldToSlowDown, notLinked, goneFromSite);
 	}
 
 	/// <summary>
@@ -137,13 +148,16 @@ public sealed class ModUpdatesView
 			string said =
 				Rows.Count > 0 ? Loc.T("updatesview.available", name, Rows.Count) :
 				Unanswered > 0 ? Loc.T("updates.checkFoundNoneSoFar") :
+				// Every mod asked about has gone. "Everything is up to date, 0 mods were checked" is true of nothing.
+				CheckedCount == 0 && _goneFromSite.Count > 0 ? "" :
 				_notLinked > 0 ? Loc.T("gtk.updatesLinkedUpToDate", name, CheckedCount) :
 				Loc.T("updatesview.upToDate", name, CheckedCount);
 
 			if (Unanswered > 0) said += " " + Loc.T(_toldToSlowDown ? "updates.toldToSlowDown" : "updates.someUnanswered");
+			if (_goneFromSite.Count > 0) said += " " + Loc.T("gtk.updatesGoneFromSite", _goneFromSite.Count, string.Join(", ", _goneFromSite));
 			if (_notLinked > 0) said += " " + Loc.T("gtk.updatesNotLinked", _notLinked);
 
-			return said;
+			return said.TrimStart();
 		}
 	}
 }

@@ -62,7 +62,8 @@ public static class BackupRestore
 
 	/// <summary>
 	/// Puts a backup back in place of the mod it came from, as the only thing that touches the mods folder. Throws if it
-	/// cannot be done, with what was there left as it was.
+	/// cannot be done, with what was there left as it was. The one exception is a jar that wrote over a file of the same
+	/// name while another copy would not go: see <see cref="ModInstaller.InstallFile"/>.
 	///
 	/// <para>
 	/// ⚠️ Never unpacked straight into the mods folder. A backup of a folder has no top folder of its own, so its files

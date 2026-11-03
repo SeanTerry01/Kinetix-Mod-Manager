@@ -283,7 +283,7 @@ public sealed class GtkHeadSharedLogicTests : IDisposable
 	{
 		string folder = ModFolder("Cool");
 
-		string target = ModOnDisk.SetEnabled(folder, false, GameProfiles.StardewValley, Log);
+		string target = ModOnDisk.SetEnabled(folder, false, GameProfiles.StardewValley, "", Log);
 
 		Assert.Equal(Path.Combine(_mods, ".Cool"), target);
 		Assert.True(File.Exists(Path.Combine(target, "marker.txt")));
@@ -295,7 +295,7 @@ public sealed class GtkHeadSharedLogicTests : IDisposable
 	{
 		string jar = Jar(_mods, "sodium.jar", "sodium", "0.6.0");
 
-		string target = ModOnDisk.SetEnabled(jar, false, GameProfiles.Minecraft, Log);
+		string target = ModOnDisk.SetEnabled(jar, false, GameProfiles.Minecraft, "", Log);
 
 		Assert.False(File.Exists(jar));
 		Assert.True(File.Exists(target));
@@ -310,12 +310,12 @@ public sealed class GtkHeadSharedLogicTests : IDisposable
 		Directory.CreateDirectory(mod);
 		string bepInEx = GameProfiles.All.First(g => g.IsBepInEx).Id;
 
-		string target = ModOnDisk.SetEnabled(mod, false, bepInEx, Log);
+		string target = ModOnDisk.SetEnabled(mod, false, bepInEx, "", Log);
 
 		Assert.Equal(Path.Combine(_root, "BepInEx", ModEnableState.BepInExDisabledFolderName, "Cool"), target);
 		Assert.True(Directory.Exists(target));
 
-		Assert.Equal(mod, ModOnDisk.SetEnabled(target, true, bepInEx, Log));
+		Assert.Equal(mod, ModOnDisk.SetEnabled(target, true, bepInEx, "", Log));
 		Assert.True(Directory.Exists(mod));
 	}
 
@@ -325,7 +325,7 @@ public sealed class GtkHeadSharedLogicTests : IDisposable
 		string folder = ModFolder("Cool");
 		string inTheWay = ModFolder(".Cool", content: "in the way");
 
-		Assert.ThrowsAny<IOException>(() => ModOnDisk.SetEnabled(folder, false, GameProfiles.StardewValley, Log));
+		Assert.ThrowsAny<IOException>(() => ModOnDisk.SetEnabled(folder, false, GameProfiles.StardewValley, "", Log));
 
 		Assert.Equal("old", File.ReadAllText(Path.Combine(folder, "marker.txt")));
 		Assert.Equal("in the way", File.ReadAllText(Path.Combine(inTheWay, "marker.txt")));
@@ -343,6 +343,8 @@ public sealed class GtkHeadSharedLogicTests : IDisposable
 	// ---------------------------------------------------------------------
 	// The Witcher 3's files outside its mod folders
 	// ---------------------------------------------------------------------
+
+	private string WitcherGame => Path.Combine(_root, "game");
 
 	private string WitcherMod(params string[] extras)
 	{
@@ -366,7 +368,7 @@ public sealed class GtkHeadSharedLogicTests : IDisposable
 		string keep = GameFile(Path.Combine("bin", "x64", "witcher3.exe"), "the game");
 		string folder = WitcherMod(Path.Combine("bin", "x64", "cool.asi"));
 
-		Witcher3ModFiles.RemoveExtras(folder, GameProfiles.Witcher3, Log);
+		Witcher3ModFiles.RemoveExtras(folder, GameProfiles.Witcher3, WitcherGame, Log);
 
 		Assert.False(File.Exists(asi));
 		Assert.True(File.Exists(keep));
@@ -378,7 +380,7 @@ public sealed class GtkHeadSharedLogicTests : IDisposable
 		string asi = GameFile(Path.Combine("bin", "x64", "cool.asi"));
 		string folder = WitcherMod(Path.Combine("bin", "x64", "cool.asi"));
 
-		Witcher3ModFiles.RemoveExtras(folder, GameProfiles.Witcher3, Log);
+		Witcher3ModFiles.RemoveExtras(folder, GameProfiles.Witcher3, WitcherGame, Log);
 
 		Assert.False(File.Exists(asi));
 		Assert.True(Directory.Exists(Path.GetDirectoryName(asi)));
@@ -395,7 +397,7 @@ public sealed class GtkHeadSharedLogicTests : IDisposable
 		File.WriteAllText(above, "keep me");
 		string folder = WitcherMod(Path.Combine("..", "game2", "precious.txt"), Path.Combine("..", "precious.txt"));
 
-		Witcher3ModFiles.RemoveExtras(folder, GameProfiles.Witcher3, Log);
+		Witcher3ModFiles.RemoveExtras(folder, GameProfiles.Witcher3, WitcherGame, Log);
 
 		Assert.True(File.Exists(beside));
 		Assert.True(File.Exists(above));
@@ -408,10 +410,10 @@ public sealed class GtkHeadSharedLogicTests : IDisposable
 		string asi = GameFile(relative);
 		string folder = WitcherMod(relative);
 
-		Assert.Equal(1, Witcher3ModFiles.SetExtrasEnabled(folder, false, GameProfiles.Witcher3, Log));
+		Assert.Equal(1, Witcher3ModFiles.SetExtrasEnabled(folder, false, GameProfiles.Witcher3, WitcherGame, Log));
 		Assert.False(File.Exists(asi));
 
-		Assert.Equal(1, Witcher3ModFiles.SetExtrasEnabled(folder, true, GameProfiles.Witcher3, Log));
+		Assert.Equal(1, Witcher3ModFiles.SetExtrasEnabled(folder, true, GameProfiles.Witcher3, WitcherGame, Log));
 		Assert.Equal("from the mod", File.ReadAllText(asi));
 		Assert.False(Directory.Exists(Path.Combine(_root, "game", Witcher3ModFiles.DisabledExtrasFolderName, "modCool")));
 	}
@@ -423,10 +425,10 @@ public sealed class GtkHeadSharedLogicTests : IDisposable
 		string relative = Path.Combine("bin", "x64", "shared.dll");
 		string inGame = GameFile(relative, "from the mod");
 		string folder = WitcherMod(relative);
-		Witcher3ModFiles.SetExtrasEnabled(folder, false, GameProfiles.Witcher3, Log);
+		Witcher3ModFiles.SetExtrasEnabled(folder, false, GameProfiles.Witcher3, WitcherGame, Log);
 		File.WriteAllText(inGame, "the game's own");
 
-		Witcher3ModFiles.RemoveExtras(folder, GameProfiles.Witcher3, Log);
+		Witcher3ModFiles.RemoveExtras(folder, GameProfiles.Witcher3, WitcherGame, Log);
 
 		Assert.Equal("the game's own", File.ReadAllText(inGame));
 		Assert.False(Directory.Exists(Path.Combine(_root, "game", Witcher3ModFiles.DisabledExtrasFolderName, "modCool")));
@@ -438,10 +440,164 @@ public sealed class GtkHeadSharedLogicTests : IDisposable
 		string file = GameFile(Path.Combine("bin", "x64", "cool.asi"));
 		string folder = WitcherMod(Path.Combine("bin", "x64", "cool.asi"));
 
-		Witcher3ModFiles.RemoveExtras(folder, GameProfiles.SkyrimSE, Log);
-		Assert.Equal(0, Witcher3ModFiles.SetExtrasEnabled(folder, false, GameProfiles.SkyrimSE, Log));
+		Witcher3ModFiles.RemoveExtras(folder, GameProfiles.SkyrimSE, WitcherGame, Log);
+		Assert.Equal(0, Witcher3ModFiles.SetExtrasEnabled(folder, false, GameProfiles.SkyrimSE, WitcherGame, Log));
 
 		Assert.True(File.Exists(file));
+	}
+
+	private static List<string> RecordedExtras(string folder) =>
+		JObject.Parse(File.ReadAllText(Path.Combine(folder, ".manager_manifest.json")))["ExtraPaths"]!
+			.Select(entry => entry.ToString())
+			.ToList();
+
+	[Fact]
+	public void AWitcherFileThatWillNotGoIsNamedAndIsAllThatStaysOnRecord()
+	{
+		// On Linux a held file can still be deleted, so this only means anything on Windows.
+		if (!OperatingSystem.IsWindows()) return;
+
+		string goes = Path.Combine("bin", "x64", "goes.asi");
+		string stays = Path.Combine("bin", "x64", "stays.asi");
+		string goesFile = GameFile(goes);
+		string staysFile = GameFile(stays);
+		string folder = WitcherMod(goes, stays);
+
+		IReadOnlyList<string> stuck;
+		using (new FileStream(staysFile, FileMode.Open, FileAccess.Read, FileShare.Read))
+			stuck = Witcher3ModFiles.RemoveExtras(folder, GameProfiles.Witcher3, WitcherGame, Log);
+
+		Assert.Equal(stays, Assert.Single(stuck));
+		Assert.False(File.Exists(goesFile));
+		Assert.True(File.Exists(staysFile));
+		Assert.Equal(stays, Assert.Single(RecordedExtras(folder)));
+	}
+
+	[Fact]
+	public void ASecondTryAtDeletingLeavesTheGamesOwnFileAlone()
+	{
+		// The record was left listing everything once, so the second try found the parked copy gone, took the listed path to
+		// be the mod's file in the game, and deleted the game's own file sitting there.
+		if (!OperatingSystem.IsWindows()) return;
+
+		string parks = Path.Combine("bin", "x64", "shared.dll");
+		string stays = Path.Combine("bin", "x64", "stays.asi");
+		string parksFile = GameFile(parks, "from the mod");
+		string staysFile = GameFile(stays);
+		string folder = WitcherMod(parks, stays);
+
+		using (new FileStream(staysFile, FileMode.Open, FileAccess.Read, FileShare.Read))
+		{
+			var stuck = new List<string>();
+			Witcher3ModFiles.SetExtrasEnabled(folder, false, GameProfiles.Witcher3, WitcherGame, Log, stuck);
+			Assert.Equal(stays, Assert.Single(stuck));
+
+			File.WriteAllText(parksFile, "the game's own");
+			Assert.Equal(stays, Assert.Single(Witcher3ModFiles.RemoveExtras(folder, GameProfiles.Witcher3, WitcherGame, Log)));
+		}
+
+		Assert.Empty(Witcher3ModFiles.RemoveExtras(folder, GameProfiles.Witcher3, WitcherGame, Log));
+
+		Assert.Equal("the game's own", File.ReadAllText(parksFile));
+		Assert.False(File.Exists(staysFile));
+	}
+
+	[Fact]
+	public void AWitcherFileThatWillNotMoveIsNamed()
+	{
+		if (!OperatingSystem.IsWindows()) return;
+
+		string relative = Path.Combine("bin", "x64", "cool.asi");
+		string asi = GameFile(relative);
+		string folder = WitcherMod(relative);
+		var stuck = new List<string>();
+
+		using (new FileStream(asi, FileMode.Open, FileAccess.Read, FileShare.Read))
+			Assert.Equal(0, Witcher3ModFiles.SetExtrasEnabled(folder, false, GameProfiles.Witcher3, WitcherGame, Log, stuck));
+
+		Assert.Equal(relative, Assert.Single(stuck));
+	}
+
+	[Fact]
+	public void NotKnowingWhereTheGameIsDoesNotCountAsTheFilesBeingGone()
+	{
+		string relative = Path.Combine("bin", "x64", "cool.asi");
+		string asi = GameFile(relative);
+		string folder = WitcherMod(relative);
+		var stuck = new List<string>();
+
+		Assert.Equal(relative, Assert.Single(Witcher3ModFiles.RemoveExtras(folder, GameProfiles.Witcher3, "", Log)));
+		Assert.Equal(0, Witcher3ModFiles.SetExtrasEnabled(folder, false, GameProfiles.Witcher3, "", Log, stuck));
+
+		Assert.Equal(relative, Assert.Single(stuck));
+		Assert.True(File.Exists(asi));
+		Assert.Equal(relative, Assert.Single(RecordedExtras(folder)));
+	}
+
+	[Fact]
+	public void SwitchingAWitcherModSaysWhichOutsideFilesStayedBehind()
+	{
+		// An empty game folder, which also keeps this away from mods.settings in the real Documents folder.
+		string relative = Path.Combine("bin", "x64", "cool.asi");
+		GameFile(relative);
+		string folder = WitcherMod(relative);
+		var stuck = new List<string>();
+
+		string target = ModOnDisk.SetEnabled(folder, false, GameProfiles.Witcher3, "", Log, stuck);
+
+		Assert.True(Directory.Exists(target));
+		Assert.False(Directory.Exists(folder));
+		Assert.Equal(relative, Assert.Single(stuck));
+	}
+
+	[Fact]
+	public void AFailedSwitchSaysWhichOutsideFilesWouldNotComeBack()
+	{
+		// The folder's move fails because something already has its new name, so what was parked has to come back.
+		string relative = Path.Combine("bin", "x64", "cool.asi");
+		string asi = GameFile(relative);
+		string folder = WitcherMod(relative);
+		Directory.CreateDirectory(ModEnableState.TargetPath(folder, false, GameProfiles.Witcher3));
+		var stuck = new List<string> { "left from before" };
+
+		Assert.ThrowsAny<IOException>(() => ModOnDisk.SetEnabled(folder, false, GameProfiles.Witcher3, WitcherGame, Log, stuck));
+
+		Assert.True(File.Exists(asi));
+		Assert.Empty(stuck);
+	}
+
+	[Fact]
+	public void TheOutsideFilesOfAModsFolderKeptElsewhereAreLookedForInTheGame()
+	{
+		// A folder the user typed. Two levels above the mod is not the game, and looking there found nothing and reported success.
+		string relative = Path.Combine("bin", "x64", "cool.asi");
+		string asi = GameFile(relative);
+		string elsewhere = Path.Combine(_root, "somewhere", "my mods", "modCool");
+		Directory.CreateDirectory(elsewhere);
+		File.WriteAllText(Path.Combine(elsewhere, ".manager_manifest.json"), new JObject { ["ExtraPaths"] = new JArray(relative) }.ToString());
+
+		string gameFolder = Witcher3ModFiles.GameFolderFor(Path.GetDirectoryName(elsewhere)!, WitcherGame);
+
+		Assert.Equal(WitcherGame, gameFolder);
+		Assert.Equal(1, Witcher3ModFiles.SetExtrasEnabled(elsewhere, false, GameProfiles.Witcher3, gameFolder, Log));
+		Assert.False(File.Exists(asi));
+	}
+
+	[Fact]
+	public void AModsFolderInsideACopyOfTheGameBelongsToThatCopy()
+	{
+		string copy = Path.Combine(_root, "a second copy");
+		string exe = Path.Combine(copy, "bin", "x64_dx12", "witcher3.exe");
+		Directory.CreateDirectory(Path.GetDirectoryName(exe)!);
+		File.WriteAllText(exe, "");
+
+		Assert.Equal(copy, Witcher3ModFiles.GameFolderFor(Path.Combine(copy, "mods"), WitcherGame));
+	}
+
+	[Fact]
+	public void AModsFolderWithNoGameAboveItAndNoneLocatedHasNoGameFolder()
+	{
+		Assert.Equal("", Witcher3ModFiles.GameFolderFor(Path.Combine(_root, "somewhere", "mods"), null));
 	}
 
 	// ---------------------------------------------------------------------
@@ -522,6 +678,145 @@ public sealed class GtkHeadSharedLogicTests : IDisposable
 		Assert.False(ModUpdatesView.CannotCheck(Game(GameProfiles.SkyrimSE), "No key.").IsComplete);
 	}
 
+	[Fact]
+	public void TheSameReleaseWrittenTwoWaysIsNoUpdateOnMinecraft()
+	{
+		// The general comparison reads "1.1.0+mc26.2" as having a fourth segment "1.1.0" lacks.
+		Assert.True(ModVersions.IsNewer("1.1.0", "1.1.0+mc26.2"), "This is what the test exists to get past.");
+
+		var answers = new Dictionary<string, string> { ["/same"] = "1.1.0+mc26.2", ["/newer"] = "1.2.0+mc26.2" };
+		ModUpdatesView view = ModUpdatesView.Of(Game(GameProfiles.Minecraft), new[] { Mod("/same", "1.1.0"), Mod("/newer", "1.1.0") }, answers);
+
+		Assert.Equal("/newer", Assert.Single(view.Rows).Path);
+	}
+
+	[Fact]
+	public void AModGoneFromTheSiteIsNotAnUnansweredOne()
+	{
+		ModUpdatesView view = ModUpdatesView.Of(Game(GameProfiles.SkyrimSE), new[] { Mod("/a"), Mod("/b") },
+			new Dictionary<string, string> { ["/a"] = "1.0" }, goneFromSite: new[] { "b" });
+
+		Assert.Equal(0, view.Unanswered);
+		Assert.Equal(1, view.CheckedCount);
+		Assert.True(view.IsComplete, "One removed mod must not put every check on the error cue for ever.");
+		Assert.DoesNotContain("Try again later", view.Announcement);
+		Assert.Contains("up to date", view.Announcement);
+		Assert.Contains("no longer on Nexus Mods", view.Announcement);
+		Assert.Contains(": b.", view.Announcement);
+	}
+
+	[Fact]
+	public void EveryModGoneFromTheSiteIsNotEverythingUpToDate()
+	{
+		ModUpdatesView view = ModUpdatesView.Of(Game(GameProfiles.SkyrimSE), new[] { Mod("/a") }, NoAnswers, goneFromSite: new[] { "a" });
+
+		Assert.Equal(ModUpdatesStatus.Checked, view.Status);
+		Assert.DoesNotContain("up to date", view.Announcement);
+		Assert.StartsWith("1 mod is no longer", view.Announcement);
+	}
+
+	[Fact]
+	public void AGoneModBesideAnUnansweredOneStillSaysToTryAgain()
+	{
+		ModUpdatesView view = ModUpdatesView.Of(Game(GameProfiles.SkyrimSE), new[] { Mod("/a"), Mod("/b") }, NoAnswers,
+			unanswered: 1, goneFromSite: new[] { "a" });
+
+		Assert.False(view.IsComplete);
+		Assert.Contains("Try again later", view.Announcement);
+		Assert.Contains("no longer on Nexus Mods", view.Announcement);
+	}
+
+	[Fact]
+	public void NothingToAskAboutSaysWhatTheListSaysAndIsNotAFinishedCheck()
+	{
+		GameProfile game = Game(GameProfiles.SkyrimSE);
+		InstalledModsView list = InstalledModsView.NotInstalled(game);
+
+		ModUpdatesView view = ModUpdatesView.CannotCheck(game, list.Announcement);
+
+		Assert.False(view.IsComplete);
+		Assert.Equal(list.Announcement, view.Announcement);
+		Assert.DoesNotContain("up to date", view.Announcement);
+	}
+
+	[Theory]
+	[InlineData(System.Net.HttpStatusCode.NotFound, NexusVersionAnswer.ModGone)]
+	[InlineData(System.Net.HttpStatusCode.Gone, NexusVersionAnswer.ModGone)]
+	[InlineData(System.Net.HttpStatusCode.Unauthorized, NexusVersionAnswer.KeyRefused)]
+	// Not called refused here. It can be one hidden mod with a good key, which only asking about the key can tell.
+	[InlineData(System.Net.HttpStatusCode.Forbidden, NexusVersionAnswer.Forbidden)]
+	[InlineData(System.Net.HttpStatusCode.TooManyRequests, NexusVersionAnswer.NoAnswer)]
+	[InlineData(System.Net.HttpStatusCode.InternalServerError, NexusVersionAnswer.NoAnswer)]
+	public void AFailedNexusReplySaysWhy(System.Net.HttpStatusCode status, NexusVersionAnswer expected)
+	{
+		NexusLatestVersion read = NexusService.ReadLatestVersion(status, null);
+
+		Assert.Equal(expected, read.Answer);
+		Assert.Null(read.Version);
+	}
+
+	[Theory]
+	[InlineData("{\"version\":\"2.1\",\"available\":true}", "2.1", NexusVersionAnswer.Answered)]
+	[InlineData("{\"version\":\"2.1\"}", "2.1", NexusVersionAnswer.Answered)]
+	// What the Windows head has always been handed for a page with no version on it.
+	[InlineData("{}", "0", NexusVersionAnswer.Answered)]
+	[InlineData("{\"version\":\"2.1\",\"available\":false}", "2.1", NexusVersionAnswer.ModGone)]
+	public void ASuccessfulNexusReplyGivesTheVersion(string body, string version, NexusVersionAnswer expected)
+	{
+		NexusLatestVersion read = NexusService.ReadLatestVersion(System.Net.HttpStatusCode.OK, body);
+
+		Assert.Equal(version, read.Version);
+		Assert.Equal(expected, read.Answer);
+	}
+
+	[Fact]
+	public async Task AGameWithNoNexusPageGetsNoAnswerBothWaysOfAsking()
+	{
+		// The shape the Windows head counts on: null for anything but a version. Answered here without touching the network.
+		var nexus = new NexusService(new AppSettings { ActiveGame = GameProfiles.Minecraft });
+
+		Assert.Null(await nexus.GetLatestVersionAsync("1"));
+		Assert.Equal(NexusVersionAnswer.NoAnswer, (await nexus.AskLatestVersionAsync("1")).Answer);
+	}
+
+	// ---------------------------------------------------------------------
+	// What a search says
+	// ---------------------------------------------------------------------
+
+	private static ModSearchResults NoAnswerFrom(string note) => ModSearchResults.Empty with { Notes = new[] { note } };
+
+	[Fact]
+	public void OneCatalogueSayingNothingBesideOneUnreachableIsAnAnswer()
+	{
+		ModSearchResults merged = ModSearchPlan.Merge(new[] { ModSearchResults.Empty, NoAnswerFrom("CurseForge could not be reached.") });
+
+		Assert.False(merged.NobodyAnswered(2));
+		Assert.Single(merged.Notes);
+	}
+
+	[Fact]
+	public void EveryCatalogueFailingIsNobodyAnswering()
+	{
+		ModSearchResults merged = ModSearchPlan.Merge(new[] { NoAnswerFrom("One."), NoAnswerFrom("Two.") });
+
+		Assert.True(merged.NobodyAnswered(2));
+		Assert.True(NoAnswerFrom("Only one asked.").NobodyAnswered(1));
+	}
+
+	[Fact]
+	public void AnEmptySearchWithNoNotesIsAnAnswer()
+	{
+		Assert.False(ModSearchResults.Empty.NobodyAnswered(1));
+	}
+
+	[Fact]
+	public void TheSearchSentencesNoLongerNameOneCatalogueForEveryGame()
+	{
+		Assert.DoesNotContain("Modrinth", Loc.T("gtk.searchCaption"));
+		Assert.Equal("Search for Stardew Valley mods.", Loc.T("gtk.searchFocused", "Stardew Valley"));
+		Assert.Equal("Searching Nexus Mods for cheese\u2026", Loc.T("gtk.searchingStatus", "Nexus Mods", "cheese"));
+	}
+
 	// ---------------------------------------------------------------------
 	// Lists that did not get read
 	// ---------------------------------------------------------------------
@@ -586,6 +881,10 @@ public sealed class GtkHeadSharedLogicTests : IDisposable
 	[InlineData(".HasFocus")]
 	// Hides Modrinth not answering, which reads as up to date.
 	[InlineData("GetLatestForHashesAsync(")]
+	// Hides why Nexus did not give a version, and a removed mod then reads as an outage on every check.
+	[InlineData("GetLatestVersionAsync(")]
+	// Caps Lock makes these uppercase, and then Ctrl+B and the rest stop matching.
+	[InlineData("switch (args.Keyval)")]
 	// Nothing in the head unpacks a backup itself, because into the mods folder is where that went.
 	[InlineData("ModArchive.Extract(")]
 	// A mod can be either shape, so a move or a delete has to go through ModOnDisk.

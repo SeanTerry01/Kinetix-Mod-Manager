@@ -80,18 +80,33 @@ public sealed partial class MainWindow
 
 	private readonly Gtk.Entry _profileName = Gtk.Entry.New();
 
+	/// <summary>
+	/// Reads the profiles into the list. Never throws, for the same reason <see cref="LoadBackups"/> does not: this runs
+	/// straight after other things have worked, including every switch of a mod. One bad profile was already survivable.
+	/// A folder that cannot be listed, which LoadAll lets out, was not.
+	/// </summary>
 	private void LoadProfiles(bool setStatus = true)
 	{
-		List<ModProfile> saved = ProfileStore.LoadAll(
-			ProfilesFolder,
-			(where, ex) => DiagnosticLog.WriteException("Profiles", where, ex));
+		string said;
+		try
+		{
+			List<ModProfile> saved = ProfileStore.LoadAll(
+				ProfilesFolder,
+				(where, ex) => DiagnosticLog.WriteException("Profiles", where, ex));
 
-		_profilesView = ProfilesView.Of(saved, _scanned);
+			_profilesView = ProfilesView.Of(saved, _scanned);
+			said = _profilesView.Announcement;
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Profiles", $"listing {ProfilesFolder}", ex);
+			_profilesView = ProfilesView.Of(Array.Empty<ModProfile>(), _scanned);
+			said = Loc.T("gtk.profilesUnreadable", ex.Message);
+		}
 
-		ClearRows(_profiles);
-		foreach (ProfileRow row in _profilesView.Rows) _profiles.Append(RowLabel(row.Spoken));
+		RefillRows(_profiles, _profilesView.Rows.Select(row => row.Spoken));
 
-		if (setStatus) SetStatus(_profilesView.Announcement);
+		if (setStatus) SetStatus(said);
 	}
 
 	/// <summary>
@@ -153,9 +168,13 @@ public sealed partial class MainWindow
 
 		_armedForProfile = null;
 
+		string gameFolder = WitcherGameFolder();
+		var stuckFiles = new List<string>();
+
 		int done = 0;
 		foreach (ProfileStore.StateChange change in changes)
 		{
+			var stuck = new List<string>();
 			try
 			{
 				// Renaming this one would rename the mods folder, and every mod would go with it.
@@ -166,23 +185,31 @@ public sealed partial class MainWindow
 				}
 
 				// Each game's own rule, from the core — a leading dot for Stardew, a suffix for Minecraft.
-				ModOnDisk.SetEnabled(change.Mod.FolderPath, change.Enable, _game.Id, (where, what) => DiagnosticLog.Write(where, what));
-				done++;
+				ModOnDisk.SetEnabled(change.Mod.FolderPath, change.Enable, _game.Id, gameFolder, (where, what) => DiagnosticLog.Write(where, what), stuck);
+
+				// A Witcher mod with a file left in the wrong place has not changed, even though its folder did.
+				if (stuck.Count == 0) done++;
 			}
 			catch (Exception ex)
 			{
 				// One mod that will not move is not a reason to abandon the rest half-applied.
 				DiagnosticLog.WriteException("Profiles", $"switching {change.Mod.FolderPath}", ex);
 			}
+
+			stuckFiles.AddRange(stuck);
 		}
 
 		LoadInstalled();
 		LoadProfiles();
 
 		_sound.Play(done == changes.Count ? "load_complete" : "error");
-		Say(done == changes.Count
+
+		string said = done == changes.Count
 			? Loc.T("gtk.profilesApplied", profile.Name, done)
-			: Loc.T("gtk.profilesAppliedPartly", profile.Name, done, changes.Count - done), interrupt: true);
+			: Loc.T("gtk.profilesAppliedPartly", profile.Name, done, changes.Count - done);
+		if (stuckFiles.Count > 0) said += " " + Loc.T("gtk.profilesStuckFiles", string.Join(", ", stuckFiles));
+
+		Say(said, interrupt: true);
 		SayIfListFailed();
 	}
 
@@ -197,19 +224,20 @@ public sealed partial class MainWindow
 			// let a profile called "Mage/Thief" save under one name and refuse to delete under another.
 			ModProfile profile = ProfileStore.Capture(name, InstalledAsMods(), null, null, null);
 			ProfileStore.Save(ProfilesFolder, profile);
-
-			_profileName.GetBuffer().SetText("", 0);
-			LoadProfiles();
-
-			_sound.Play("load_complete");
-			Say(Loc.T("gtk.profilesSaved", name), interrupt: true);
 		}
 		catch (Exception ex)
 		{
 			DiagnosticLog.WriteException("Profiles", $"saving {name}", ex);
 			_sound.Play("error");
 			Say(Loc.T("gtk.profilesSaveFailed", name, ex.Message), interrupt: true);
+			return;
 		}
+
+		_profileName.GetBuffer().SetText("", 0);
+		LoadProfiles();
+
+		_sound.Play("load_complete");
+		Say(Loc.T("gtk.profilesSaved", name), interrupt: true);
 	}
 
 	private void DeleteSelectedProfile()

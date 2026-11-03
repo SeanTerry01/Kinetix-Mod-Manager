@@ -22,8 +22,9 @@ public static class ModInstaller
 {
 	/// <summary>What an install did, so the caller can say so without guessing.</summary>
 	/// <param name="CouldNotRemove">
-	/// Older copies still there, usually because the game has them open. The new one is in place, but Fabric refuses to
-	/// start with two copies of a mod, so this is a failure the caller has to report.
+	/// Older copies still there, usually because the game has them open. The new one was taken back out, unless it wrote
+	/// over a file of the same name: then it stays, beside the stuck one. Fabric refuses to start with two copies of a mod,
+	/// so either way this is a failure the caller has to report, and it must not say the new one is not there.
 	/// </param>
 	public readonly record struct InstallResult(string Path, string ModId, IReadOnlyList<string> Replaced, IReadOnlyList<string> CouldNotRemove)
 	{

@@ -78,13 +78,26 @@ public static class ModOnDisk
 	/// folder, so moving by one shape only fails on every mod of the other. The destination's folder may not exist yet:
 	/// BepInEx's <c>plugins-disabled</c> does not until the first mod is switched off.
 	/// </summary>
-	public static string SetEnabled(string modPath, bool enable, string gameId, Action<string, string> logError)
+	/// <param name="modPath">The mod, as a folder or a file.</param>
+	/// <param name="enable">Which way to switch it.</param>
+	/// <param name="gameId">The game it is for.</param>
+	/// <param name="gameFolder">
+	/// The game's folder, for The Witcher 3's files outside the mod. Not worked out from the mod's path, because the user
+	/// can keep their mods anywhere. See <see cref="Witcher3ModFiles.GameFolderFor"/>. Ignored for every other game.
+	/// </param>
+	/// <param name="logError">Told why anything could not be moved.</param>
+	/// <param name="stuckFiles">
+	/// Given the outside files left in the wrong place. Filled even when this throws, so read it after either. Without it
+	/// the mod is reported switched with its .asi still running, because the folder itself did move.
+	/// </param>
+	public static string SetEnabled(string modPath, bool enable, string gameId, string gameFolder,
+		Action<string, string> logError, ICollection<string>? stuckFiles = null)
 	{
 		string target = ModEnableState.TargetPath(modPath, enable, gameId);
 		bool moving = !string.Equals(target, modPath, StringComparison.Ordinal);
 
 		// Before the folder moves, while the record of these files is still at this path.
-		Witcher3ModFiles.SetExtrasEnabled(modPath, enable, gameId, logError);
+		Witcher3ModFiles.SetExtrasEnabled(modPath, enable, gameId, gameFolder, logError, stuckFiles);
 
 		if (moving)
 		{
@@ -99,12 +112,17 @@ public static class ModOnDisk
 			catch
 			{
 				// The folder is staying as it was, so its outside files have to as well, or it reads as on with its parts away.
-				Witcher3ModFiles.SetExtrasEnabled(modPath, !enable, gameId, logError);
+				// A file that would not move on the way out is already where it now belongs, so only one that will not come back counts.
+				if (!string.IsNullOrEmpty(gameFolder))
+				{
+					stuckFiles?.Clear();
+					Witcher3ModFiles.SetExtrasEnabled(modPath, !enable, gameId, gameFolder, logError, stuckFiles);
+				}
 				throw;
 			}
 		}
 
-		Witcher3ModFiles.SyncSettings(modPath, enable, gameId, logError);
+		Witcher3ModFiles.SyncSettings(modPath, enable, gameId, gameFolder, logError);
 		return target;
 	}
 

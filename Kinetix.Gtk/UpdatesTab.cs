@@ -53,8 +53,21 @@ public sealed partial class MainWindow
 	/// One request for the whole folder rather than one per mod — the API takes a list of hashes, and asking
 	/// fifty times would be fifty round trips and a rate limit besides.
 	/// </summary>
-	private async Task CheckForUpdatesAsync()
+	/// <param name="interrupt">
+	/// False when this follows a sentence that has to be heard out. Straight after "X updated to Y", the answer to this check
+	/// cut it off, and the update was the news.
+	/// </param>
+	private async Task CheckForUpdatesAsync(bool interrupt = true)
 	{
+		// Nothing to ask about. Asked anyway, this came back as "Everything is up to date, 0 mods were checked" with the
+		// completed cue, even for a game that is not installed. The list's own sentence says which of those it is.
+		if (_view.Rows.Count == 0)
+		{
+			_updatesView = ModUpdatesView.CannotCheck(_game, _view.Announcement);
+			ShowUpdates(interrupt);
+			return;
+		}
+
 		// Two ways of asking, because the catalogues answer different questions. Modrinth is asked what the
 		// newest build of THIS FILE is, by hash, so nothing has to have been linked first. Nexus is asked
 		// about a mod id, so only a mod carrying one can be checked — which is why the two are not one call.
@@ -68,7 +81,7 @@ public sealed partial class MainWindow
 		if (version.Length == 0)
 		{
 			_updatesView = ModUpdatesView.CannotCheck(_game, Loc.T("gtk.noGameVersion"));
-			ShowUpdates();
+			ShowUpdates(interrupt);
 			return;
 		}
 
@@ -115,7 +128,7 @@ public sealed partial class MainWindow
 			if (latest == null)
 			{
 				_updatesView = ModUpdatesView.Of(game, installed, new Dictionary<string, string>(), unanswered: installed.Count);
-				_ui.Post(ShowUpdates);
+				_ui.Post(() => ShowUpdates(interrupt));
 				return;
 			}
 
@@ -124,7 +137,7 @@ public sealed partial class MainWindow
 				if (byHash.TryGetValue(hash, out string? path)) latestByPath[path] = file.VersionNumber;
 
 			_updatesView = ModUpdatesView.Of(game, installed, latestByPath, unanswered: unreadable);
-			_ui.Post(ShowUpdates);
+			_ui.Post(() => ShowUpdates(interrupt));
 		}
 		catch (Exception ex)
 		{
@@ -132,14 +145,13 @@ public sealed partial class MainWindow
 			if (_game.Id != game.Id) return;
 
 			_updatesView = ModUpdatesView.CannotCheck(game, Loc.T("gtk.updatesFailed", ex.Message));
-			_ui.Post(() => { _sound.Play("error"); ShowUpdates(); });
+			_ui.Post(() => { _sound.Play("error"); ShowUpdates(interrupt); });
 		}
 	}
 
-	private void ShowUpdates()
+	private void ShowUpdates(bool interrupt = true)
 	{
-		ClearRows(_updates);
-		foreach (ModUpdateRow row in _updatesView.Rows) _updates.Append(RowLabel(row.Spoken));
+		RefillRows(_updates, _updatesView.Rows.Select(row => row.Spoken));
 
 		SetStatus(_updatesView.Announcement);
 
@@ -148,7 +160,7 @@ public sealed partial class MainWindow
 		if (_updatesView.IsComplete) _sound.Play("load_complete");
 		else if (_updatesView.Unanswered > 0) _sound.Play("error");
 
-		Say(_updatesView.Announcement, interrupt: true);
+		Say(_updatesView.Announcement, interrupt);
 	}
 
 	/// <summary>
@@ -230,7 +242,9 @@ public sealed partial class MainWindow
 				LoadInstalled();
 				LoadBackups(announce: false);
 
-				// Not "updated": the new copy was taken back out, because Fabric will not start with two.
+				// Not "updated": an older copy would not go, and Fabric will not start with two. The new copy was taken back
+				// out, unless it wrote over a file of the same name, when it stays beside the stuck one. So the sentence names
+				// what is stuck and says nothing about where the new one is.
 				if (result.CouldNotRemove.Count > 0)
 				{
 					string stuck = Loc.T("mc.install.oldCopyStuck", string.Join(", ", result.CouldNotRemove));
@@ -248,7 +262,7 @@ public sealed partial class MainWindow
 
 				// The row is gone now, so the list is rebuilt rather than left showing an update that has
 				// just been taken.
-				_ = CheckForUpdatesAsync();
+				_ = CheckForUpdatesAsync(interrupt: false);
 			});
 		}
 		catch (Exception ex)
@@ -291,40 +305,89 @@ public sealed partial class MainWindow
 		{
 			List<GameMod> installed = InstalledAsMods();
 
+			// The folder was emptied after the list was last read. Nothing was asked, so nothing can be up to date.
+			if (installed.Count == 0)
+			{
+				_updatesView = ModUpdatesView.CannotCheck(game, Loc.T("installed.noneYet", game.DisplayName));
+				_ui.Post(() => ShowUpdates());
+				return;
+			}
+
 			// Only a mod with an id can be asked about. Counting the rest as checked said "40 mods were checked" of a
 			// folder where three had been.
 			List<GameMod> linked = installed.Where(m => !string.IsNullOrEmpty(m.NexusID)).ToList();
 
-			if (installed.Count > 0 && linked.Count == 0)
+			if (linked.Count == 0)
 			{
 				_updatesView = ModUpdatesView.CannotCheck(game, Loc.T("gtk.updatesNoneLinked"));
-				_ui.Post(ShowUpdates);
+				_ui.Post(() => ShowUpdates());
 				return;
 			}
 
 			var latestByPath = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+			var goneFromNexus = new List<string>();
 			int unanswered = 0;
+
+			// Set once the key has been shown to work, so that one hidden mod after another does not cost a request each.
+			bool keyWorks = false;
 
 			foreach (GameMod mod in linked)
 			{
 				// One at a time, and that is what NexusService's own rate limiting expects — it holds a
 				// semaphore across these calls precisely so a folder of two hundred mods does not spend the
 				// user's hourly quota in one go.
-				string? latest = await _nexus.GetLatestVersionAsync(mod.NexusID!, domain);
+				NexusLatestVersion latest = await _nexus.AskLatestVersionAsync(mod.NexusID!, domain);
 
 				// The user has moved to another game. The rest of this list is no use to them, and costs requests.
 				if (_game.Id != game.Id) return;
 
-				// Null is an outage, a rate limit or a refused key, not a mod with nothing newer. Anything else
-				// reports a check that learned nothing as everything being up to date.
-				if (string.IsNullOrWhiteSpace(latest)) unanswered++;
-				else latestByPath[mod.FolderPath] = latest!;
+				NexusVersionAnswer answer = latest.Answer;
+
+				// A 403 may be this one mod, hidden by its author, or may be the key. Only asking about the key can tell, and
+				// telling someone their good key was refused because of one mod would send them off to fix the wrong thing.
+				if (answer == NexusVersionAnswer.Forbidden)
+				{
+					NexusConnection connection = keyWorks ? NexusConnection.Connected : await _nexus.CheckConnectionAsync();
+					if (_game.Id != game.Id) return;
+
+					keyWorks = connection == NexusConnection.Connected;
+					answer = connection switch
+					{
+						NexusConnection.Connected => NexusVersionAnswer.ModGone,
+						NexusConnection.KeyRejected => NexusVersionAnswer.KeyRefused,
+						_ => NexusVersionAnswer.NoAnswer,
+					};
+				}
+
+				switch (answer)
+				{
+					case NexusVersionAnswer.KeyRefused:
+						// Every other mod would get the same answer, and asking on would only spend requests to learn it.
+						_updatesView = ModUpdatesView.CannotCheck(game, Loc.T("gtk.updatesKeyRefused"));
+						_ui.Post(() => { _sound.Play("error"); ShowUpdates(); });
+						return;
+
+					case NexusVersionAnswer.ModGone:
+						goneFromNexus.Add(mod.Name);
+						break;
+
+					case NexusVersionAnswer.Answered when !string.IsNullOrWhiteSpace(latest.Version):
+						latestByPath[mod.FolderPath] = latest.Version!;
+						break;
+
+					// An outage or a rate limit, not a mod with nothing newer. Anything else reports a check that learned
+					// nothing as everything being up to date.
+					default:
+						unanswered++;
+						break;
+				}
 			}
 
 			_updatesView = ModUpdatesView.Of(game, linked, latestByPath, unanswered,
 				toldToSlowDown: _nexus.Pause.IsActive(DateTime.UtcNow),
-				notLinked: installed.Count - linked.Count);
-			_ui.Post(ShowUpdates);
+				notLinked: installed.Count - linked.Count,
+				goneFromSite: goneFromNexus);
+			_ui.Post(() => ShowUpdates());
 		}
 		catch (Exception ex)
 		{
