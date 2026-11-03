@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-
 namespace KinetixModManager;
 
 /// <summary>One kept backup, and the sentence that describes it.</summary>

@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
 namespace KinetixModManager;
 
 /// <summary>How much of a log is worth reading out.</summary>

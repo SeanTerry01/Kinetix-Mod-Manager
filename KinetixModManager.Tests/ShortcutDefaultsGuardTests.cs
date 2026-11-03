@@ -1,8 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using KinetixManagerSettings = KinetixModManager.AppSettings;
-using KinetixModManager;
 using Xunit;
 
 namespace KinetixModManager.Tests;

@@ -4,11 +4,6 @@
 // it reads aloud - so they belong beside the rules rather than inside the window that happens to
 // show them today. While they were private to Form1 no second front end could name them at all.
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-
 namespace KinetixModManager;
 
 /// <summary>A regular MO2 mod read from modlist.txt: its folder name and whether it is enabled.</summary>

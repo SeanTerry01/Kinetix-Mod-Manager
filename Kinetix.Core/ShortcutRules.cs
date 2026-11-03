@@ -1,6 +1,3 @@
-using System.Collections.Generic;
-using System.Linq;
-
 namespace KinetixModManager;
 
 /// <summary>What the shortcut manager makes of a key it was just given.</summary>

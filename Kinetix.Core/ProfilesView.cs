@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
 namespace KinetixModManager;
 
 /// <summary>One saved profile, and the sentence that describes it.</summary>

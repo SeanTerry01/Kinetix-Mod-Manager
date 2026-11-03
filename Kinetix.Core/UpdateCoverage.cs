@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-
 namespace KinetixModManager;
 
 /// <summary>How a mod's updates are (or aren't) covered by the update check.</summary>

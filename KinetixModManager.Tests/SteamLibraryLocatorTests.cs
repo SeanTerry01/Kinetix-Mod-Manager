@@ -1,7 +1,3 @@
-using System;
-using System.IO;
-using System.Linq;
-using KinetixModManager;
 using Xunit;
 
 namespace KinetixModManager.Tests;

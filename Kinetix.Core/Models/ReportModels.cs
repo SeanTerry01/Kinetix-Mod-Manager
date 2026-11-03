@@ -4,11 +4,6 @@
 // it reads aloud - so they belong beside the rules rather than inside the window that happens to
 // show them today. While they were private to Form1 no second front end could name them at all.
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-
 namespace KinetixModManager;
 
 /// <summary>One row in a report list: the spoken/displayed text plus an optional Enter action.</summary>

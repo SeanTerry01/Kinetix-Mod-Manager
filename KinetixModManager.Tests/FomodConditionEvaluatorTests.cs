@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using KinetixModManager;
 using Xunit;
 
 namespace KinetixModManager.Tests;

@@ -1,6 +1,3 @@
-using System;
-using System.IO;
-using KinetixModManager;
 using Newtonsoft.Json.Linq;
 using Xunit;
 

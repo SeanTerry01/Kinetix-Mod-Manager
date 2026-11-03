@@ -1,8 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using KinetixModManager;
-
 namespace KinetixModManager.GtkHead;
 
 /// <summary>

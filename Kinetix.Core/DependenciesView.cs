@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
 namespace KinetixModManager;
 
 /// <summary>How badly a dependency is missing, worst first.</summary>

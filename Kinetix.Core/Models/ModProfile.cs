@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace KinetixModManager;
 
 /// <summary>A saved mod profile: a named snapshot of which mods are enabled or disabled.</summary>

@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-
 namespace KinetixModManager;
 
 /// <summary>A Modrinth App pack that has not been brought across, and what would go with its folder.</summary>

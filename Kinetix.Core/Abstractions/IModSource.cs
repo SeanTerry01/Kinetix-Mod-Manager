@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace KinetixModManager;
 
 /// <summary>What to look for, and everything a catalogue might need in order to answer.</summary>

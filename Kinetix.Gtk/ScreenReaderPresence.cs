@@ -1,6 +1,3 @@
-using System;
-using KinetixModManager;
-
 namespace KinetixModManager.GtkHead;
 
 /// <summary>

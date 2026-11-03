@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
 namespace KinetixModManager;
 
 /// <summary>One program and how much memory it is holding.</summary>

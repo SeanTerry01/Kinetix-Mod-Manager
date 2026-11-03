@@ -1,9 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Windows.Forms;
-
 namespace KinetixModManager;
 
 /// <summary>The accessible "Search History" dialog for the active game's mod searches.</summary>

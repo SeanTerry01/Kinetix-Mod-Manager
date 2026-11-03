@@ -1,5 +1,3 @@
-using System.Linq;
-using KinetixModManager;
 using Newtonsoft.Json.Linq;
 using Xunit;
 

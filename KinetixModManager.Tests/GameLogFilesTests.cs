@@ -1,8 +1,4 @@
-using System;
-using System.IO;
 using System.Text;
-using System.Threading;
-using KinetixModManager;
 using Xunit;
 
 namespace KinetixModManager.Tests;
