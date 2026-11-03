@@ -182,7 +182,7 @@ public class BatchAGuardTests
 		// It adds a second tab control and menu beside the first rather than replacing them. Calling it to refresh
 		// the shortcut labels left focus on the old lists while every field pointed at new, empty ones.
 		string app = Path.Combine(RepositoryRoot(), "KinetixModManager");
-		int calls = Directory.GetFiles(app, "Form1*.cs")
+		int calls = TestPaths.SourceFiles(app, "Form1*.cs")
 			.Sum(f => Regex.Matches(WithoutComments(File.ReadAllText(f)), @"(?<!void )\bSetupAccessibleUI\(\)").Count);
 		Assert.Equal(1, calls);
 	}
@@ -192,7 +192,7 @@ public class BatchAGuardTests
 	{
 		// A shortcut in the table with nothing checking it is silence when pressed, and it can be remapped to no effect.
 		string app = Path.Combine(RepositoryRoot(), "KinetixModManager");
-		string source = string.Concat(Directory.GetFiles(app, "Form1*.cs").Select(f => WithoutComments(File.ReadAllText(f))));
+		string source = string.Concat(TestPaths.SourceFiles(app, "Form1*.cs").Select(f => WithoutComments(File.ReadAllText(f))));
 
 		var settings = new AppSettings();
 		settings.InitializeDefaults();

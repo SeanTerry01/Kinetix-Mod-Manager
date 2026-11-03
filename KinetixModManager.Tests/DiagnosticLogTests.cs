@@ -201,7 +201,7 @@ public class BackgroundWorkGuardTests
 		// only looked for a bare identifier.
 		var discard = new Regex(@"(?<![A-Za-z0-9_])_ = ([A-Za-z_][A-Za-z0-9_.?]*)\(");
 
-		foreach (string file in Directory.EnumerateFiles(SourceFolder(), "*.cs"))
+		foreach (string file in TestPaths.SourceFiles(SourceFolder()))
 			foreach (string line in File.ReadAllLines(file))
 			{
 				Match m = discard.Match(line);
@@ -256,6 +256,8 @@ public class SilentFailureGuardTests
 	{
 		var offenders = new List<string>();
 
+		// Top level only for now: Platform/WinFormsDispatcher.cs:28-29 break this rule. Use TestPaths.SourceFiles here
+		// once they record what they catch.
 		foreach (string file in Directory.EnumerateFiles(SourceFolder(), "*.cs"))
 		{
 			// The log itself is the one thing that has to swallow. It is called from the crash handler, when the
@@ -318,7 +320,7 @@ public class ForeignWindowGuardTests
 		var gate = new Regex(@"if\s*\(\s*!\s*await\s+SettleAfterForeignWindowAsync", RegexOptions.Compiled);
 		var offenders = new List<string>();
 
-		foreach (string file in Directory.EnumerateFiles(SourceFolder(), "*.cs"))
+		foreach (string file in TestPaths.SourceFiles(SourceFolder()))
 		{
 			string[] lines = File.ReadAllLines(file);
 			for (int i = 0; i < lines.Length; i++)

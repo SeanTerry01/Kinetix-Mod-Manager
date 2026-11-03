@@ -71,7 +71,7 @@ public class InstallKeyGuardTests
     }
 
     /// <summary>
-    /// The app project's <c>.cs</c> files. Walks up from the test binary to the repository root (the folder
+    /// The app project's <c>.cs</c> files, subfolders included. Walks up from the test binary to the repository root (the folder
     /// holding the solution) rather than assuming a build layout, so this keeps working under <c>dotnet test</c>,
     /// the IDE, and a published test run alike.
     /// </summary>
@@ -86,8 +86,7 @@ public class InstallKeyGuardTests
         string appDir = Path.Combine(dir!.FullName, "KinetixModManager");
         Assert.True(Directory.Exists(appDir), "Could not find the app project at " + appDir);
 
-        // Top level only: bin/ and obj/ hold generated copies that would report the same line twice.
-        string[] files = Directory.GetFiles(appDir, "*.cs", SearchOption.TopDirectoryOnly);
+        string[] files = TestPaths.SourceFiles(appDir).ToArray();
         Assert.NotEmpty(files);
         return files;
     }

@@ -83,7 +83,7 @@ public sealed class DeploymentHoldTests
 	[Fact]
 	public void TheLoadingPulseIsNotOneFlagAgain()
 	{
-		foreach (string file in Directory.GetFiles(Path.GetDirectoryName(ModsFolder())!, "Form1*.cs"))
+		foreach (string file in TestPaths.SourceFiles(Path.GetDirectoryName(ModsFolder())!, "Form1*.cs"))
 			Assert.DoesNotContain("_isLoading", File.ReadAllText(file));
 	}
 

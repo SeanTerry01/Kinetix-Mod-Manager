@@ -220,7 +220,7 @@ public class SearchTermGuardTests
 		var assignment = new Regex(@"(SearchTerm|txtSearch\.Text)\s*=", RegexOptions.Compiled);
 		var offenders = new List<string>();
 
-		foreach (string file in Directory.EnumerateFiles(SourceFolder(), "*.cs"))
+		foreach (string file in TestPaths.SourceFiles(SourceFolder()))
 		{
 			string[] lines = File.ReadAllLines(file);
 			for (int i = 0; i < lines.Length; i++)

@@ -145,7 +145,7 @@ public class NvdaSpeechGuardTests
 		string app = Path.Combine(RepositoryRoot(), "KinetixModManager");
 		var speaks = new Regex(@"(?<![\w.])Speak\(");
 
-		foreach (string file in Directory.GetFiles(app, "Form1*.cs"))
+		foreach (string file in TestPaths.SourceFiles(app, "Form1*.cs"))
 		{
 			string[] lines = File.ReadAllLines(file);
 			for (int i = 0; i < lines.Length; i++)
@@ -185,7 +185,7 @@ public class NvdaSpeechGuardTests
 		string app = Path.Combine(RepositoryRoot(), "KinetixModManager");
 		var speaks = new Regex(@"(?<![\w.])(?:Speak|SpeakBox)\(");
 
-		foreach (string file in Directory.GetFiles(app, "Form1*.cs"))
+		foreach (string file in TestPaths.SourceFiles(app, "Form1*.cs"))
 		{
 			string[] lines = File.ReadAllLines(file);
 			for (int i = 0; i < lines.Length; i++)
@@ -218,7 +218,7 @@ public class NvdaSpeechGuardTests
 		var asks = new Regex(@"(?<![\w.])(?:SpeakBox|ShowPrompt)\(");
 		var saysThenAsks = new Regex(@"(?<![\w.])Speak\(.*\);\s*(?:\S.*)?(?<![\w.])SpeakBox\(");
 
-		foreach (string file in Directory.GetFiles(app, "Form1*.cs"))
+		foreach (string file in TestPaths.SourceFiles(app, "Form1*.cs"))
 		{
 			string[] lines = File.ReadAllLines(file);
 			for (int i = 0; i < lines.Length; i++)

@@ -34,4 +34,17 @@ internal static class TestPaths
 	/// <summary>An absolute path under <see cref="DriveRoot"/>, with the host's separator between segments.</summary>
 	public static string Under(char driveLetter, params string[] segments) =>
 		Path.Combine(new[] { DriveRoot(driveLetter) }.Concat(segments).ToArray());
+
+	/// <summary>
+	/// The source files in <paramref name="folder"/>, subfolders included, for a guard that reads source.
+	///
+	/// A guard scanning only the top level stops seeing a file the day it moves into a folder, and goes on passing.
+	/// <c>bin</c> and <c>obj</c> are left out because they hold generated copies that would report one line twice.
+	/// Only those folders inside <paramref name="folder"/> count, so where the repository sits cannot empty the list.
+	/// </summary>
+	public static IEnumerable<string> SourceFiles(string folder, string pattern = "*.cs") =>
+		Directory.EnumerateFiles(folder, pattern, SearchOption.AllDirectories)
+			.Where(file => !Path.GetRelativePath(folder, file)
+				.Split(Path.DirectorySeparatorChar)
+				.Any(part => part is "bin" or "obj"));
 }
