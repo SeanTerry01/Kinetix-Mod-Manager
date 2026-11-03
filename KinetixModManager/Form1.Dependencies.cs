@@ -261,16 +261,16 @@ public partial class Form1
 		_soundEngine.Play(failed.Count == 0 ? "load_complete" : "error");
 
 		// Report what happened, reusing the shared dialog. Manual/failed rows open the Nexus files page on Enter.
-		var rows2 = new List<ReportRow>();
+		var reportRows = new List<ReportRow>();
 		foreach (string name in installed)
-			rows2.Add(new ReportRow { Text = Loc.T("deps.resolveReportInstalled", name) });
+			reportRows.Add(new ReportRow { Text = Loc.T("deps.resolveReportInstalled", name) });
 		foreach (NexusService.ModRequirementInfo m in manual)
-			rows2.Add(new ReportRow { Text = Loc.T("deps.resolveReportManual", m.ModName), OpenUrl = FilesUrl(m) });
+			reportRows.Add(new ReportRow { Text = Loc.T("deps.resolveReportManual", m.ModName), OpenUrl = FilesUrl(m) });
 		foreach ((NexusService.ModRequirementInfo m, string reason) in failed)
-			rows2.Add(new ReportRow { Text = Loc.T("deps.resolveReportFailed", m.ModName, reason), OpenUrl = FilesUrl(m) });
+			reportRows.Add(new ReportRow { Text = Loc.T("deps.resolveReportFailed", m.ModName, reason), OpenUrl = FilesUrl(m) });
 
 		string header = Loc.T("deps.resolveReportHeader", mod.Name, installed.Count, manual.Count, failed.Count);
 		string? hint = (manual.Count > 0 || failed.Count > 0) ? Loc.T("deps.resolveReportHint") : null;
-		ShowReportDialog(Loc.T("deps.resolveTitle"), header, Loc.T("deps.resolveNoneMissing"), rows2, hint);
+		ShowReportDialog(Loc.T("deps.resolveTitle"), header, Loc.T("deps.resolveNoneMissing"), reportRows, hint);
 	}
 }

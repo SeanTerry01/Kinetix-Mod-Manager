@@ -72,7 +72,7 @@ public partial class Form1
 				bool hasKey = list.SelectedItem is ModSourceKeyRow { HasKey: true };
 				btnEdit.Enabled = list.SelectedItem != null;
 				btnRemove.Enabled = hasKey;
-				btnGetKey.Enabled = list.SelectedItem is ModSourceKeyRow r2 && r2.Source.ApiKeyUrl.Length > 0;
+				btnGetKey.Enabled = list.SelectedItem is ModSourceKeyRow selectedRow && selectedRow.Source.ApiKeyUrl.Length > 0;
 			}
 
 			Reload();

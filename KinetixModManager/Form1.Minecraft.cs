@@ -199,10 +199,10 @@ public partial class Form1
 		if (accessMod.Origin != MinecraftModOrigin.Modrinth)
 		{
 			IReadOnlyList<GitHubRelease>? releases = await GitHubReleasesOfAsync(accessMod.Source);
-			string supported2 = releases == null
+			string newestSupported = releases == null
 				? ""
 				: MinecraftSuite.NewestSupportedVersion(releases, await FabricInstaller.GetStableGameVersionsAsync());
-			return supported2.Length > 0 ? supported2 : fabricNewest;
+			return newestSupported.Length > 0 ? newestSupported : fabricNewest;
 		}
 
 		IReadOnlyList<string> supported = await ModrinthService.GetSupportedGameVersionsAsync(accessMod.Source);
@@ -881,9 +881,9 @@ public partial class Form1
 				if (await GitHubHasBuildForAsync(mod.GitHubRepo!, newVersion)) onGitHub.Add(mod);
 
 			Dictionary<string, ModrinthFile> builds = available, known = installedBuilds;
-			Dictionary<GameMod, string> hashes2 = hashOf;
+			Dictionary<GameMod, string> modHashes = hashOf;
 			plan = await Task.Run(() => MinecraftMovePlan.Decide(mods,
-				hasBuild: m => builds.ContainsKey(hashes2[m]) || onGitHub.Contains(m),
+				hasBuild: m => builds.ContainsKey(modHashes[m]) || onGitHub.Contains(m),
 				survives: m => SurvivesTheMove(m, newVersion, known)));
 		}
 		catch (Exception ex)

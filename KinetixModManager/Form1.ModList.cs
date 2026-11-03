@@ -254,16 +254,16 @@ public partial class Form1
 			try
 			{
 				cmbCategoryFilter.BeginUpdate();
-				string text2 = cmbCategoryFilter.SelectedItem?.ToString() ?? "All Categories";
+				string previousCategory = cmbCategoryFilter.SelectedItem?.ToString() ?? "All Categories";
 				cmbCategoryFilter.Items.Clear();
 				cmbCategoryFilter.Items.Add("All Categories");
-				foreach (string item2 in hashSet.OrderBy((string c) => c))
+				foreach (string categoryName in hashSet.OrderBy((string c) => c))
 				{
-					cmbCategoryFilter.Items.Add(item2);
+					cmbCategoryFilter.Items.Add(categoryName);
 				}
-				if (cmbCategoryFilter.Items.Contains(text2))
+				if (cmbCategoryFilter.Items.Contains(previousCategory))
 				{
-					cmbCategoryFilter.SelectedItem = text2;
+					cmbCategoryFilter.SelectedItem = previousCategory;
 				}
 				else
 				{
@@ -430,9 +430,9 @@ public partial class Form1
 			? _nexusService.GetRecentlyUpdatedModIdsAsync("1m", _nexusService.CurrentGameDomain)
 			: null;
 		Task<Dictionary<string, string>?>? modrinthAnswers = minecraft ? LatestModrinthVersionsAsync(list.Select(g => g.First()).ToList()) : null;
-		foreach (IGrouping<string, GameMod> item3 in list)
+		foreach (IGrouping<string, GameMod> modsToCheck in list)
 		{
-			Fire(CheckForUpdates(item3.ToList(), updatedThisMonth, modrinthAnswers), "CheckForUpdates");
+			Fire(CheckForUpdates(modsToCheck.ToList(), updatedThisMonth, modrinthAnswers), "CheckForUpdates");
 		}
 		}
 		finally
@@ -586,27 +586,27 @@ public partial class Form1
 		// report only the ones that happen to be visible.
 		_installedMatchCount = 0;
 		listInstalled.BeginUpdate();
-		GameMod? stardewMod = listInstalled.SelectedItem as GameMod;
-		string? restoreId = preferUniqueId ?? stardewMod?.UniqueId;
+		GameMod? selectedMod = listInstalled.SelectedItem as GameMod;
+		string? restoreId = preferUniqueId ?? selectedMod?.UniqueId;
 		// Read before the list is emptied. Compared afterwards, it was always -1, so every rescan counted as moving the user
 		// even when they were put back on the same row, which started the swallow that destroys whatever was just said:
 		// "Foo is now dis...", then the row again.
 		int indexBefore = listInstalled.SelectedIndex;
 		listInstalled.Items.Clear();
-		foreach (IGrouping<string, GameMod> item2 in from g in _allInstalledMods.Where((GameMod m) => !m.IsGroup).GroupBy(InstalledGroupKey)
+		foreach (IGrouping<string, GameMod> folderGroup in from g in _allInstalledMods.Where((GameMod m) => !m.IsGroup).GroupBy(InstalledGroupKey)
 			orderby g.Key
 			select g)
 		{
-			List<GameMod> list = item2.ToList();
+			List<GameMod> folderMods = folderGroup.ToList();
 			// Status 4 and 5 filter by shape, not by state, so they are decided here: whether something is a mod
 			// group is a property of the folder it lives in and not of any one mod, which is all StatusMatch can
 			// see. "Single mods only" keeps folders holding exactly one mod; "Mod groups only" keeps the rest.
-			if (status == 4 && list.Count > 1) continue;
-			if (status == 5 && list.Count == 1) continue;
+			if (status == 4 && folderMods.Count > 1) continue;
+			if (status == 5 && folderMods.Count == 1) continue;
 
-			List<GameMod> list2 = list.Where((GameMod m) => (string.IsNullOrEmpty(query) || m.Name.ToLower().Contains(query) || m.Author.ToLower().Contains(query) || m.Note.ToLower().Contains(query)) && (category == "All Categories" || m.Category == category) && StatusMatch(m)).ToList();
-			_installedMatchCount += list2.Count;
-			if (list2.Count == 0)
+			List<GameMod> matchingMods = folderMods.Where((GameMod m) => (string.IsNullOrEmpty(query) || m.Name.ToLower().Contains(query) || m.Author.ToLower().Contains(query) || m.Note.ToLower().Contains(query)) && (category == "All Categories" || m.Category == category) && StatusMatch(m)).ToList();
+			_installedMatchCount += matchingMods.Count;
+			if (matchingMods.Count == 0)
 			{
 				continue;
 			}
@@ -614,48 +614,48 @@ public partial class Form1
 			// one group when more than one of its mods matched, and the header counts only those, so "Contains 3
 			// mods" is never a claim about rows that are not there. A folder with a single match is not a group at
 			// all, the same rule an unfiltered list of one follows.
-			if (list2.Count == 1)
+			if (matchingMods.Count == 1)
 			{
-				foreach (GameMod item3 in list2)
+				foreach (GameMod onlyMatch in matchingMods)
 				{
-					item3.IsSubMod = false;
-					item3.IsGroup = false;
-					listInstalled.Items.Add(item3);
+					onlyMatch.IsSubMod = false;
+					onlyMatch.IsGroup = false;
+					listInstalled.Items.Add(onlyMatch);
 				}
 				continue;
 			}
 			// Collapsed or expanded exactly as the user last left it, filter or no filter. A collapsed group under
 			// a filter reads as "Contains 2 mods", meaning two that matched — the same bargain the unfiltered list
 			// already makes, and the reason the count above is not taken from the visible rows.
-			bool flag2 = _expandedGroups.Contains(item2.Key);
-			GameMod item = new GameMod
+			bool groupIsOpen = _expandedGroups.Contains(folderGroup.Key);
+			GameMod groupRow = new GameMod
 			{
 				IsGroup = true,
-				GroupName = item2.Key,
-				IsExpanded = flag2,
-				UniqueId = "GROUP:" + item2.Key,
-				SubMods = list2,
+				GroupName = folderGroup.Key,
+				IsExpanded = groupIsOpen,
+				UniqueId = "GROUP:" + folderGroup.Key,
+				SubMods = matchingMods,
 				// The active game's mods folder, not the legacy Stardew one this used — and for a group keyed by
 				// a Witcher family there is no folder of that name at all, so the parent is the honest answer.
 				FolderPath = _settings.CurrentModsPath
 			};
-			listInstalled.Items.Add(item);
-			if (!flag2)
+			listInstalled.Items.Add(groupRow);
+			if (!groupIsOpen)
 			{
 				continue;
 			}
-			foreach (GameMod item4 in list2)
+			foreach (GameMod subMod in matchingMods)
 			{
-				item4.IsSubMod = true;
-				item4.IsGroup = false;
-				listInstalled.Items.Add(item4);
+				subMod.IsSubMod = true;
+				subMod.IsGroup = false;
+				listInstalled.Items.Add(subMod);
 			}
 		}
 		if (restoreId != null)
 		{
 			for (int num = 0; num < listInstalled.Items.Count; num++)
 			{
-				if (listInstalled.Items[num] is GameMod stardewMod2 && stardewMod2.UniqueId == restoreId)
+				if (listInstalled.Items[num] is GameMod rowMod && rowMod.UniqueId == restoreId)
 				{
 					// Putting the user back after a rescan is a move they did not make, so the row has to name
 					// itself — otherwise a refresh finishing under them reads out a position and nothing else.
@@ -907,18 +907,18 @@ public partial class Form1
 
 	private async Task LinkModUpdateSource(GameMod? target = null)
 	{
-		if ((target ?? ModOnThisTab()) is GameMod stardewMod3)
+		if ((target ?? ModOnThisTab()) is GameMod linkedMod)
 		{
-			if (stardewMod3.IsGroup)
+			if (linkedMod.IsGroup)
 			{
 				Speak(Loc.T("common.modGroupFirst"));
 				return;
 			}
 
-			string currentId = stardewMod3.NexusID ?? stardewMod3.GitHubRepo ?? "";
+			string currentId = linkedMod.NexusID ?? linkedMod.GitHubRepo ?? "";
 			string? typed = ShowTextPrompt(
 				Loc.T("link.title"),
-				Loc.T("link.prompt", stardewMod3.Name),
+				Loc.T("link.prompt", linkedMod.Name),
 				currentId);
 
 			if (typed == null) { Speak(Loc.T("common.changesCancelled")); return; }
@@ -934,10 +934,10 @@ public partial class Form1
 
 				try
 				{
-					string manifestPath = Path.Combine(stardewMod3.FolderPath, ".manager_manifest.json");
+					string manifestPath = Path.Combine(linkedMod.FolderPath, ".manager_manifest.json");
 					if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley))
 					{
-						manifestPath = Path.Combine(stardewMod3.FolderPath, "manifest.json");
+						manifestPath = Path.Combine(linkedMod.FolderPath, "manifest.json");
 					}
 
 					if (!File.Exists(manifestPath))
@@ -950,8 +950,8 @@ public partial class Form1
 
 					if (isGitHub)
 					{
-						stardewMod3.GitHubRepo = val;
-						stardewMod3.NexusID = null;
+						linkedMod.GitHubRepo = val;
+						linkedMod.NexusID = null;
 
 						if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley))
 						{
@@ -965,8 +965,8 @@ public partial class Form1
 					}
 					else
 					{
-						stardewMod3.NexusID = val;
-						stardewMod3.GitHubRepo = null;
+						linkedMod.NexusID = val;
+						linkedMod.GitHubRepo = null;
 
 						if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley))
 						{
@@ -985,7 +985,7 @@ public partial class Form1
 					{
 						string mapPath = Path.Combine(AppSettings.AppDataFolder, "mod_id_map.json");
 						JObject mapObj = AtomicFile.ReadJsonObjectOrEmpty(mapPath);
-						mapObj[stardewMod3.UniqueId] = val;
+						mapObj[linkedMod.UniqueId] = val;
 						AtomicFile.WriteAllText(mapPath, mapObj.ToString());
 					}
 					catch (Exception ex) { LogFailure("ModIdMap", "Failed to persist Nexus ID mapping", ex); }
@@ -1001,22 +1001,22 @@ public partial class Form1
 							if (resp.IsSuccessStatusCode)
 							{
 								var details = JObject.Parse(await resp.Content.ReadAsStringAsync());
-								stardewMod3.Name = details["name"]?.ToString() ?? stardewMod3.Name;
-								stardewMod3.Description = details["description"]?.ToString() ?? stardewMod3.Description;
+								linkedMod.Name = details["name"]?.ToString() ?? linkedMod.Name;
+								linkedMod.Description = details["description"]?.ToString() ?? linkedMod.Description;
 
 								// The repository's latest release is NOT the version installed here — recording it
 								// as such would mark the mod up to date and hide every future update. The version
 								// stays whatever the installed copy reports.
 								manifest = JObject.Parse(File.ReadAllText(manifestPath));
-								manifest["Name"] = stardewMod3.Name;
-								manifest["Description"] = stardewMod3.Description;
+								manifest["Name"] = linkedMod.Name;
+								manifest["Description"] = linkedMod.Description;
 								AtomicFile.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
 							}
 						}
 						else
 						{
 							Speak(Loc.T("link.updatingNexus"));
-							await EnrichLinkedModFromNexusAsync(stardewMod3, val!);
+							await EnrichLinkedModFromNexusAsync(linkedMod, val!);
 						}
 					}
 

@@ -8,12 +8,12 @@ public partial class Form1
 	/// <summary>Prompts the user to assign a custom category string to the selected mod.</summary>
 	private void SetManualCategory()
 	{
-		if (ModOnThisTab() is not GameMod stardewMod)
+		if (ModOnThisTab() is not GameMod selectedMod)
 		{
 			Speak(Loc.T("common.noModSelected"));
 			return;
 		}
-		if (stardewMod.IsGroup)
+		if (selectedMod.IsGroup)
 		{
 			Speak(Loc.T("common.modGroupFirst"));
 			return;
@@ -21,8 +21,8 @@ public partial class Form1
 
 		string? text = ShowTextPrompt(
 			Loc.T("modactions.changeCategoryTitle"),
-			Loc.T("modactions.changeCategoryPrompt", stardewMod.Name),
-			stardewMod.Category);
+			Loc.T("modactions.changeCategoryPrompt", selectedMod.Name),
+			selectedMod.Category);
 
 		if (text == null) { Speak(Loc.T("common.changesCancelled")); return; }
 
@@ -33,21 +33,21 @@ public partial class Form1
 		// as "do nothing" and there was no way to undo a category at all.
 		if (text.Length == 0)
 		{
-			if (!_settings.ModCategories.Remove(stardewMod.UniqueId))
+			if (!_settings.ModCategories.Remove(selectedMod.UniqueId))
 			{
 				Speak(Loc.T("common.changesCancelled"));
 				return;
 			}
 			_settings.Save();
 			Fire(RefreshModList(checkUpdates: false), "RefreshModList");
-			Speak(Loc.T("modactions.categoryCleared", stardewMod.Name));
+			Speak(Loc.T("modactions.categoryCleared", selectedMod.Name));
 			return;
 		}
 
-		_settings.ModCategories[stardewMod.UniqueId] = text;
+		_settings.ModCategories[selectedMod.UniqueId] = text;
 		_settings.Save();
 		Fire(RefreshModList(checkUpdates: false), "RefreshModList");
-		Speak(Loc.T("modactions.categorySet", stardewMod.Name, text));
+		Speak(Loc.T("modactions.categorySet", selectedMod.Name, text));
 	}
 
 	/// <summary>
@@ -466,7 +466,7 @@ public partial class Form1
 	/// </summary>
 	private async void ToggleModStatus()
 	{
-		if (!(listInstalled.SelectedItem is GameMod stardewMod))
+		if (!(listInstalled.SelectedItem is GameMod selectedMod))
 		{
 			return;
 		}
@@ -478,18 +478,18 @@ public partial class Form1
 		}
 		// A group row's folder is the whole mods folder, so switching one "off" renamed that, and every mod in the game
 		// vanished from the list with no way back from inside the manager.
-		if (stardewMod.IsGroup)
+		if (selectedMod.IsGroup)
 		{
 			Speak(Loc.T("common.modGroupFirst"));
 			return;
 		}
 		try
 		{
-			stardewMod.FolderPath = ModFileSystem.SetModEnabled(
-				stardewMod.FolderPath, !stardewMod.IsEnabled, _settings.ActiveGame, LogError);
-			stardewMod.IsEnabled = !stardewMod.IsEnabled;
+			selectedMod.FolderPath = ModFileSystem.SetModEnabled(
+				selectedMod.FolderPath, !selectedMod.IsEnabled, _settings.ActiveGame, LogError);
+			selectedMod.IsEnabled = !selectedMod.IsEnabled;
 
-			if (stardewMod.IsEnabled)
+			if (selectedMod.IsEnabled)
 			{
 				_soundEngine.Play("enable");
 			}
@@ -501,7 +501,7 @@ public partial class Form1
 			// says the key press worked. It is only spoken, not set as the status: "X is now disabled" is
 			// news about a moment, and leaving it in the title bar leaves it reading as the current state of
 			// the program long after it stopped being true.
-			Speak(Loc.T("modactions.toggleStatus", stardewMod.Name, stardewMod.IsEnabled ? Loc.T("modactions.enabled") : Loc.T("modactions.disabled")));
+			Speak(Loc.T("modactions.toggleStatus", selectedMod.Name, selectedMod.IsEnabled ? Loc.T("modactions.enabled") : Loc.T("modactions.disabled")));
 
 			// Asset deployment and plugins.txt are reconciled inside RefreshModList, which re-scans the
 			// toggled enabled set and rewrites both for Skyrim/Fallout 4.
@@ -521,7 +521,7 @@ public partial class Form1
 	/// </summary>
 	private async void DeleteSelectedMod()
 	{
-		if (listInstalled.SelectedItem is not GameMod stardewMod || stardewMod.IsGroup) return;
+		if (listInstalled.SelectedItem is not GameMod selectedMod || selectedMod.IsGroup) return;
 		// Pressed again during the backup, this used to ask again and delete twice.
 		if (ModOperationRunning)
 		{
@@ -531,8 +531,8 @@ public partial class Form1
 
 		// Warn if other installed mods declare a required dependency on this one — deleting it would break them.
 		// The check is offline (manifest UniqueIDs on Stardew, plugin masters on Skyrim/Fallout 4).
-		string confirm = Loc.T("modactions.deleteConfirm", stardewMod.Name);
-		List<string> dependents = GetReverseDependents(stardewMod);
+		string confirm = Loc.T("modactions.deleteConfirm", selectedMod.Name);
+		List<string> dependents = GetReverseDependents(selectedMod);
 		if (dependents.Count > 0)
 			confirm += Loc.T("modactions.deleteDependentsWarning", dependents.Count,
 				string.Join("\n", dependents.Take(10)));
@@ -545,15 +545,15 @@ public partial class Form1
 		{
 			// Deleting keeps a backup first, and zipping a large mod is not instant. Say what is happening and
 			// report progress the way downloads and installs do, so a long pause is never mistaken for a hang.
-			SetStatus(Loc.T("modactions.deletingStatus", stardewMod.Name));
-			if (!await BackupModWithProgressAsync(stardewMod.FolderPath, stardewMod.Name + "_Delete", stardewMod.Name))
+			SetStatus(Loc.T("modactions.deletingStatus", selectedMod.Name));
+			if (!await BackupModWithProgressAsync(selectedMod.FolderPath, selectedMod.Name + "_Delete", selectedMod.Name))
 			{
 				// The whole point of backing up first is that the mod can be got back. If that did not work,
 				// deleting it destroys something with no copy anywhere — so it stops here and says so, rather
 				// than going ahead and reporting that a backup was kept.
 				ResetStatus();
 				_soundEngine.Play("error");
-				SpeakBox(Loc.T("modactions.deleteNoBackupBox", stardewMod.Name), Loc.T("modactions.deleteNoBackupTitle"),
+				SpeakBox(Loc.T("modactions.deleteNoBackupBox", selectedMod.Name), Loc.T("modactions.deleteNoBackupTitle"),
 					MessageBoxButtons.OK);
 				return;
 			}
@@ -562,21 +562,21 @@ public partial class Form1
 			// "Access to the path '…' is denied" on mods that ship a read-only file such as SkyPatcher's DLL.
 			// A mod that installed itself with a setup program usually leaves an uninstaller, and that knows far
 			// more about what it put where than the manager ever can. Run it in preference to guessing.
-			await RunModUninstallerIfAnyAsync(stardewMod);
+			await RunModUninstallerIfAnyAsync(selectedMod);
 
 			// A Witcher 3 mod's dlc and menu-config parts live in the game folder, not in the mod folder, and the
 			// record of them is inside the folder about to be deleted — so they go first.
 			ModFileSystem.RemoveWitcher3Extras(
-				stardewMod.FolderPath, _settings.ActiveGame, _settings.CurrentGamePath, LogError);
+				selectedMod.FolderPath, _settings.ActiveGame, _settings.CurrentGamePath, LogError);
 
-			await Task.Run(() => ModFileSystem.DeleteModFolder(stardewMod.FolderPath));
+			await Task.Run(() => ModFileSystem.DeleteModFolder(selectedMod.FolderPath));
 			// The Witcher 3 lists its mods in a file of its own, and an entry outliving the folder keeps a deleted
 			// mod in the game's own menu.
-			ModFileSystem.ForgetWitcherMod(stardewMod.FolderPath, _settings.ActiveGame);
+			ModFileSystem.ForgetWitcherMod(selectedMod.FolderPath, _settings.ActiveGame);
 			// RefreshModList below re-scans without the deleted mod and reconciles deployment and
 			// plugins.txt, pruning its files/plugins and restoring any provider it had overridden.
 			_soundEngine.Play("disable");
-			Speak(Loc.T("modactions.deletedStatus", stardewMod.Name));
+			Speak(Loc.T("modactions.deletedStatus", selectedMod.Name));
 			await RefreshModList(checkUpdates: false);
 			ResetStatus();
 		}

@@ -81,32 +81,32 @@ public partial class Form1
 		_menuGames = new ToolStripMenuItem(Loc.T("menu.games"));
 		UpdateGamesMenu();
 
-		ToolStripMenuItem toolStripMenuItem2 = new ToolStripMenuItem(Loc.T("menu.mods")) { Name = "menuMods" };
+		ToolStripMenuItem menuMods = new ToolStripMenuItem(Loc.T("menu.mods")) { Name = "menuMods" };
 		// The Mods menu is grouped into submenus so a screen-reader user isn't faced with one 40-item list. The most
 		// common actions stay at the top level; everything else is filed under a themed submenu. Items keep their
 		// stable Names (some are relabeled/hidden per game in SwitchActiveGame, which finds them recursively).
 
 		// Common, frequently-used actions at the top level.
-		toolStripMenuItem2.DropDownItems.Add(ShortcutLabel("menu.installZip", "InstallZip"), null, delegate
+		menuMods.DropDownItems.Add(ShortcutLabel("menu.installZip", "InstallZip"), null, delegate
 		{
 			ManualInstall();
 		});
 		// Beside "install a file", because it is the same act with the finding-the-file part done for you.
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.installGitHub"), null, delegate
+		menuMods.DropDownItems.Add(Loc.T("menu.installGitHub"), null, delegate
 		{
 			Fire(InstallFromGitHubAsync(), "InstallFromGitHubAsync");
 		}).Name = "menuInstallGitHub";
-		toolStripMenuItem2.DropDownItems.Add(ShortcutLabel("menu.markVersionInstalled", "MarkVersionInstalled"), null,
+		menuMods.DropDownItems.Add(ShortcutLabel("menu.markVersionInstalled", "MarkVersionInstalled"), null,
 			delegate { MarkSelectedUpdateAsInstalled(); }).Name = "menuMarkVersionInstalled";
-		toolStripMenuItem2.DropDownItems.Add(ShortcutLabel("menu.updateAll", "UpdateAll"), null, async delegate
+		menuMods.DropDownItems.Add(ShortcutLabel("menu.updateAll", "UpdateAll"), null, async delegate
 		{
 			await UpdateAllMods();
 		});
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.launch", gameName, GetShortcutString("LaunchGame")), null, delegate
+		menuMods.DropDownItems.Add(Loc.T("menu.launch", gameName, GetShortcutString("LaunchGame")), null, delegate
 		{
 			LaunchGame();
 		}).Name = "menuLaunch";
-		toolStripMenuItem2.DropDownItems.Add(new ToolStripSeparator());
+		menuMods.DropDownItems.Add(new ToolStripSeparator());
 
 		// Submenu: actions on the currently selected mod.
 		var grpSelected = new ToolStripMenuItem(Loc.T("menu.groupSelectedMod")) { Name = "menuGroupSelectedMod" };
@@ -120,7 +120,7 @@ public partial class Form1
 		grpSelected.DropDownItems.Add(ShortcutLabel("menu.viewDescription", "ViewDescription"), null, delegate { ViewModDescription(); });
 		grpSelected.DropDownItems.Add(ShortcutLabel("menu.endorse", "Endorse"), null, delegate { EndorseSelectedMod(); });
 		grpSelected.DropDownItems.Add(Loc.T("menu.verifyDeployment"), null, delegate { VerifyModDeployment(); }).Name = "menuVerifyDeployment";
-		toolStripMenuItem2.DropDownItems.Add(grpSelected);
+		menuMods.DropDownItems.Add(grpSelected);
 
 		// Submenu: installing and updating mods.
 		var grpInstall = new ToolStripMenuItem(Loc.T("menu.groupInstall")) { Name = "menuGroupInstall" };
@@ -129,7 +129,7 @@ public partial class Form1
 		grpInstall.DropDownItems.Add(ShortcutLabel("menu.downloadsHistory", "DownloadsHistory"), null, delegate { ShowDownloadsHistory(); });
 		grpInstall.DropDownItems.Add(Loc.T("menu.tidyFolders"), null, delegate { TidyModFolderNames(); });
 		grpInstall.DropDownItems.Add(ShortcutLabel("menu.trackedMods", "TrackedMods"), null, async delegate { await ShowTrackedMods(); });
-		toolStripMenuItem2.DropDownItems.Add(grpInstall);
+		menuMods.DropDownItems.Add(grpInstall);
 
 		// Submenu: building a list of mods worth suggesting to other players. Everything but the on/off switch is
 		// disabled until curation is on — shown rather than hidden, so the two commands are discoverable and the
@@ -155,11 +155,11 @@ public partial class Form1
 			delegate { ShowSuggestedModsReview(); }).Name = "menuSuggestedList";
 		grpCurate.DropDownItems.Add(Loc.T("menu.manageCategories"), null,
 			delegate { ShowCategoryManager(); }).Name = "menuManageCategories";
-		toolStripMenuItem2.DropDownItems.Add(grpCurate);
+		menuMods.DropDownItems.Add(grpCurate);
 
 		// Curation can be switched on from the keyboard without the menu having been opened, so the tick and the
 		// greying are brought up to date as the menu opens rather than only when the switch itself is used.
-		toolStripMenuItem2.DropDownOpening += delegate { UpdateCuratorMenuState(); };
+		menuMods.DropDownOpening += delegate { UpdateCuratorMenuState(); };
 
 		// Submenu: profiles and shareable collections.
 		var grpProfiles = new ToolStripMenuItem(Loc.T("menu.groupProfiles")) { Name = "menuGroupProfiles" };
@@ -167,7 +167,7 @@ public partial class Form1
 		grpProfiles.DropDownItems.Add(ShortcutLabel("menu.exportCollection", "ExportCollection"), null, async delegate { await ExportCollection(); });
 		grpProfiles.DropDownItems.Add(ShortcutLabel("menu.installCollection", "InstallCollection"), null, async delegate { await InstallCollectionAsync(); });
 		grpProfiles.DropDownItems.Add(Loc.T("menu.importMO2"), null, delegate { ImportFromMO2(); }).Name = "menuImportMO2";
-		toolStripMenuItem2.DropDownItems.Add(grpProfiles);
+		menuMods.DropDownItems.Add(grpProfiles);
 
 		// Submenu: health checks and reports.
 		var grpHealth = new ToolStripMenuItem(Loc.T("menu.groupHealth")) { Name = "menuGroupHealth" };
@@ -178,7 +178,7 @@ public partial class Form1
 		grpHealth.DropDownItems.Add(Loc.T("menu.updateCoverage"), null, async delegate { await ShowUpdateCoverageReport(); }).Name = "menuUpdateCoverage";
 		grpHealth.DropDownItems.Add(ShortcutLabel("menu.pluginSlots", "PluginSlots"), null, delegate { AnnouncePluginSlotUsage(); }).Name = "menuPluginSlots";
 		grpHealth.DropDownItems.Add(Loc.T("menu.resetIgnoredReqs"), null, delegate { ResetIgnoredRequirements(); });
-		toolStripMenuItem2.DropDownItems.Add(grpHealth);
+		menuMods.DropDownItems.Add(grpHealth);
 
 		// Submenu: Skyrim/Fallout 4 load order and loose-file deployment.
 		var grpLoad = new ToolStripMenuItem(Loc.T("menu.groupLoadOrder")) { Name = "menuGroupLoadOrder" };
@@ -190,7 +190,7 @@ public partial class Form1
 		grpLoad.DropDownItems.Add(Loc.T("menu.purgeDeploy"), null, delegate { PurgeDeployment(); }).Name = "menuPurgeDeploy";
 		grpLoad.DropDownItems.Add(Loc.T("menu.exportLoadOrder"), null, async delegate { await ExportLoadOrder(); }).Name = "menuExportLoadOrder";
 		grpLoad.DropDownItems.Add(Loc.T("menu.importLoadOrder"), null, async delegate { await ImportLoadOrder(); }).Name = "menuImportLoadOrder";
-		toolStripMenuItem2.DropDownItems.Add(grpLoad);
+		menuMods.DropDownItems.Add(grpLoad);
 
 		// Submenu: game launch/setup and maintenance operations.
 		var grpGame = new ToolStripMenuItem(Loc.T("menu.groupGame")) { Name = "menuGroupGame" };
@@ -229,87 +229,87 @@ public partial class Form1
 		grpGame.DropDownItems.Add(Loc.T("menu.prepUpdate"), null, delegate { PrepareForGameUpdate(); }).Name = "menuPrepUpdate";
 		grpGame.DropDownItems.Add(Loc.T("menu.restoreUpdate"), null, delegate { RestoreAfterUpdate(); }).Name = "menuRestoreUpdate";
 		grpGame.DropDownItems.Add(Loc.T("menu.restoreSafety"), null, delegate { ShowRestoreSafetyBackup(); }).Name = "menuRestoreSafety";
-		toolStripMenuItem2.DropDownItems.Add(grpGame);
+		menuMods.DropDownItems.Add(grpGame);
 
-		ToolStripMenuItem toolStripMenuItem3 = new ToolStripMenuItem(Loc.T("menu.view")) { Name = "menuView" };
-		toolStripMenuItem3.DropDownItems.Add(ShortcutLabel("menu.apiCredits", "ApiCredits"), null, delegate
+		ToolStripMenuItem menuView = new ToolStripMenuItem(Loc.T("menu.view")) { Name = "menuView" };
+		menuView.DropDownItems.Add(ShortcutLabel("menu.apiCredits", "ApiCredits"), null, delegate
 		{
 			ShowApiCredits();
 		});
-		toolStripMenuItem3.DropDownItems.Add(ShortcutLabel("menu.diagnoseAi", "DiagnoseAi"), null, delegate
+		menuView.DropDownItems.Add(ShortcutLabel("menu.diagnoseAi", "DiagnoseAi"), null, delegate
 		{
 			DiagnoseWithAi();
 		});
-		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.askAi"), null, delegate
+		menuView.DropDownItems.Add(Loc.T("menu.askAi"), null, delegate
 		{
 			AskFreeformAi();
 		});
-		toolStripMenuItem3.DropDownItems.Add(ShortcutLabel("menu.openDownloads", "OpenDownloads"), null, delegate
+		menuView.DropDownItems.Add(ShortcutLabel("menu.openDownloads", "OpenDownloads"), null, delegate
 		{
 			OpenFolder(downloadsPath);
 		});
-		toolStripMenuItem3.DropDownItems.Add(ShortcutLabel("menu.openBackups", "OpenBackups"), null, delegate
+		menuView.DropDownItems.Add(ShortcutLabel("menu.openBackups", "OpenBackups"), null, delegate
 		{
 			OpenFolder(backupsPath);
 		});
-		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.freeUpSpace"), null, delegate
+		menuView.DropDownItems.Add(Loc.T("menu.freeUpSpace"), null, delegate
 		{
 			FreeUpSpace();
 		});
-		toolStripMenuItem3.DropDownItems.Add(ShortcutLabel("menu.openSmapiLog", "OpenLogFile"), null, delegate
+		menuView.DropDownItems.Add(ShortcutLabel("menu.openSmapiLog", "OpenLogFile"), null, delegate
 		{
 			OpenGameLog();
 		}).Name = "menuOpenLog";
-		toolStripMenuItem3.DropDownItems.Add(ShortcutLabel("menu.openErrorLog", "OpenErrorLog"), null, delegate
+		menuView.DropDownItems.Add(ShortcutLabel("menu.openErrorLog", "OpenErrorLog"), null, delegate
 		{
 			OpenErrorLog();
 		});
-		ToolStripMenuItem toolStripMenuItem4 = new ToolStripMenuItem(Loc.T("menu.help"));
-		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.setupWizard"), null, delegate
+		ToolStripMenuItem menuHelp = new ToolStripMenuItem(Loc.T("menu.help"));
+		menuHelp.DropDownItems.Add(Loc.T("menu.setupWizard"), null, delegate
 		{
 			ShowSetupWizard();
 		});
-		toolStripMenuItem4.DropDownItems.Add(ShortcutLabel("menu.userManual", "Manual"), null, delegate
+		menuHelp.DropDownItems.Add(ShortcutLabel("menu.userManual", "Manual"), null, delegate
 		{
 			ShowManual();
 		});
-		toolStripMenuItem4.DropDownItems.Add(ShortcutLabel("menu.changeLog", "ChangeLog"), null, delegate
+		menuHelp.DropDownItems.Add(ShortcutLabel("menu.changeLog", "ChangeLog"), null, delegate
 		{
 			ShowChangeLog();
 		});
-		toolStripMenuItem4.DropDownItems.Add(ShortcutLabel("menu.modDocs", "ModDocs"), null, delegate
+		menuHelp.DropDownItems.Add(ShortcutLabel("menu.modDocs", "ModDocs"), null, delegate
 		{
 			ShowModDocs();
 		});
-		toolStripMenuItem4.DropDownItems.Add(ShortcutLabel("menu.accessibilityControls", "ControlsHelp"), null, delegate
+		menuHelp.DropDownItems.Add(ShortcutLabel("menu.accessibilityControls", "ControlsHelp"), null, delegate
 		{
 			ShowAccessibilityControls();
 		});
-		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.soundDemo"), null, delegate
+		menuHelp.DropDownItems.Add(Loc.T("menu.soundDemo"), null, delegate
 		{
 			ShowSoundDemo();
 		});
-		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.themeManager"), null, delegate
+		menuHelp.DropDownItems.Add(Loc.T("menu.themeManager"), null, delegate
 		{
 			ShowThemeManager();
 		});
-		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.shortcutCustomization"), null, delegate
+		menuHelp.DropDownItems.Add(Loc.T("menu.shortcutCustomization"), null, delegate
 		{
 			ShowShortcutManager();
 		});
-		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.donate"), null, delegate
+		menuHelp.DropDownItems.Add(Loc.T("menu.donate"), null, delegate
 		{
 			ShowDonate();
 		});
-		toolStripMenuItem4.DropDownItems.Add(Loc.T("about.title"), null, delegate
+		menuHelp.DropDownItems.Add(Loc.T("about.title"), null, delegate
 		{
 			ShowAbout();
 		});
 		menuStrip.Items.Add(_menuFile);
 		menuStrip.Items.Add(_menuGames);
-		menuStrip.Items.Add(toolStripMenuItem2);
-		menuStrip.Items.Add(toolStripMenuItem3);
-		menuStrip.Items.Add(toolStripMenuItem4);
+		menuStrip.Items.Add(menuMods);
+		menuStrip.Items.Add(menuView);
+		menuStrip.Items.Add(menuHelp);
 		base.MainMenuStrip = menuStrip;
 		tableLayoutPanel = new TableLayoutPanel
 		{
@@ -325,15 +325,15 @@ public partial class Form1
 			AccessibleName = SilentAccessibleName
 		};
 		tabInstalled = new TabPage(Loc.T("tab.installed"));
-		TableLayoutPanel tableLayoutPanel2 = new TableLayoutPanel
+		TableLayoutPanel installedLayout = new TableLayoutPanel
 		{
 			Dock = DockStyle.Fill,
 			RowCount = 2,
 			ColumnCount = 1
 		};
-		tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Absolute, 40f));
-		tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-		FlowLayoutPanel flowLayoutPanel = new FlowLayoutPanel
+		installedLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40f));
+		installedLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+		FlowLayoutPanel installedFilterBar = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Fill,
 			FlowDirection = FlowDirection.LeftToRight
@@ -380,20 +380,20 @@ public partial class Form1
 			// The reader names the dropdown's new value itself, so the counts wait their turn behind it.
 			FilterInstalledMods(readerNamesTheChange: true);
 		};
-		flowLayoutPanel.Controls.Add(new Label
+		installedFilterBar.Controls.Add(new Label
 		{
 			Text = Loc.T("ui.searchLabel"),
 			AutoSize = true,
 			Padding = new Padding(5, 8, 0, 0)
 		});
-		flowLayoutPanel.Controls.Add(txtSearchInstalled);
-		flowLayoutPanel.Controls.Add(new Label
+		installedFilterBar.Controls.Add(txtSearchInstalled);
+		installedFilterBar.Controls.Add(new Label
 		{
 			Text = Loc.T("ui.categoryLabel"),
 			AutoSize = true,
 			Padding = new Padding(10, 8, 0, 0)
 		});
-		flowLayoutPanel.Controls.Add(cmbCategoryFilter);
+		installedFilterBar.Controls.Add(cmbCategoryFilter);
 		cmbStatusFilter = new ComboBox
 		{
 			Width = 150,
@@ -416,13 +416,13 @@ public partial class Form1
 			// The reader names the dropdown's new value itself, so the counts wait their turn behind it.
 			FilterInstalledMods(readerNamesTheChange: true);
 		};
-		flowLayoutPanel.Controls.Add(new Label
+		installedFilterBar.Controls.Add(new Label
 		{
 			Text = Loc.T("ui.statusLabel"),
 			AutoSize = true,
 			Padding = new Padding(10, 8, 0, 0)
 		});
-		flowLayoutPanel.Controls.Add(cmbStatusFilter);
+		installedFilterBar.Controls.Add(cmbStatusFilter);
 		listInstalled = new ListBox
 		{
 			Dock = DockStyle.Fill,
@@ -430,9 +430,9 @@ public partial class Form1
 			Font = new Font("Segoe UI", 12f)
 		};
 		listInstalled.AccessibleName = Loc.T("ui.installedList");
-		tableLayoutPanel2.Controls.Add(flowLayoutPanel, 0, 0);
-		tableLayoutPanel2.Controls.Add(listInstalled, 0, 1);
-		tabInstalled.Controls.Add(tableLayoutPanel2);
+		installedLayout.Controls.Add(installedFilterBar, 0, 0);
+		installedLayout.Controls.Add(listInstalled, 0, 1);
+		tabInstalled.Controls.Add(installedLayout);
 		tabUpdates = new TabPage(Loc.T("tab.updates"));
 		listUpdates = new ListBox
 		{
@@ -443,14 +443,14 @@ public partial class Form1
 		listUpdates.AccessibleName = Loc.T("ui.updatesList");
 		tabUpdates.Controls.Add(listUpdates);
 		tabBackups = new TabPage(Loc.T("tab.backups"));
-		TableLayoutPanel tableLayoutPanel3 = new TableLayoutPanel
+		TableLayoutPanel backupsLayout = new TableLayoutPanel
 		{
 			Dock = DockStyle.Fill,
 			RowCount = 2,
 			ColumnCount = 1
 		};
-		tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Absolute, 45f));
-		tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+		backupsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 45f));
+		backupsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
 		btnPruneBackups = new Button
 		{
 			Text = ShortcutLabel("ui.pruneBackups", "DeleteOldBackups"),
@@ -461,7 +461,7 @@ public partial class Form1
 		{
 			PruneAllBackups();
 		};
-		tableLayoutPanel3.Controls.Add(btnPruneBackups, 0, 0);
+		backupsLayout.Controls.Add(btnPruneBackups, 0, 0);
 		listBackups = new ListBox
 		{
 			Dock = DockStyle.Fill,
@@ -469,18 +469,18 @@ public partial class Form1
 			Font = new Font("Segoe UI", 12f)
 		};
 		listBackups.AccessibleName = Loc.T("ui.backupsList");
-		tableLayoutPanel3.Controls.Add(listBackups, 0, 1);
-		tabBackups.Controls.Add(tableLayoutPanel3);
+		backupsLayout.Controls.Add(listBackups, 0, 1);
+		tabBackups.Controls.Add(backupsLayout);
 		tabDiscovery = new TabPage(Loc.T("tab.discovery"));
-		TableLayoutPanel tableLayoutPanel4 = new TableLayoutPanel
+		TableLayoutPanel discoveryLayout = new TableLayoutPanel
 		{
 			Dock = DockStyle.Fill,
 			RowCount = 2,
 			ColumnCount = 1
 		};
-		tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f));
-		tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-		FlowLayoutPanel flowLayoutPanel2 = new FlowLayoutPanel
+		discoveryLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f));
+		discoveryLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+		FlowLayoutPanel discoverySearchBar = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Fill,
 			FlowDirection = FlowDirection.LeftToRight,
@@ -499,14 +499,14 @@ public partial class Form1
 			DropDownStyle = ComboBoxStyle.DropDownList,
 			AccessibleName = Loc.T("ui.searchTypeName")
 		};
-		ComboBox.ObjectCollection items = cmbDiscoveryType.Items;
+		ComboBox.ObjectCollection discoveryTypeItems = cmbDiscoveryType.Items;
 		// "All" browses the game's whole catalogue alphabetically — the way to find a specific mod you already
 		// know exists, rather than whatever is currently popular.
 		// "Nexus Categories" browses the category chosen beside it, best-known first — the one-step way in when
 		// what you want is "show me the armour mods" rather than a search or a popularity chart.
-		object[] items2 = new string[6]
+		object[] comboChoices = new string[6]
 			{ "Search", "All", "Trending", "Most Popular", "Recent", NexusService.NexusCategoryBrowse };
-		items.AddRange(items2);
+		discoveryTypeItems.AddRange(comboChoices);
 		cmbDiscoveryType.SelectedIndex = 0;
 		cmbDiscoveryLanguage = new ComboBox
 		{
@@ -590,16 +590,16 @@ public partial class Form1
 				listDiscovery.Focus();
 			}
 		};
-		flowLayoutPanel2.Controls.Add(new Label
+		discoverySearchBar.Controls.Add(new Label
 		{
 			Text = Loc.T("ui.searchTypeLabel"),
 			AutoSize = true,
 			Padding = new Padding(0, 5, 0, 0)
 		});
-		flowLayoutPanel2.Controls.Add(txtSearch);
+		discoverySearchBar.Controls.Add(txtSearch);
 		// Search history sits right after the search box and before the search-type selector, per user preference.
-		flowLayoutPanel2.Controls.Add(btnHistory);
-		flowLayoutPanel2.Controls.Add(cmbDiscoveryType);
+		discoverySearchBar.Controls.Add(btnHistory);
+		discoverySearchBar.Controls.Add(cmbDiscoveryType);
 		// Minecraft only: search for mods, or for modpacks — whole setups that install as packs of their own.
 		_lblDiscoveryContent = new Label { Text = Loc.T("ui.searchForLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) };
 		cmbDiscoveryContent = new ComboBox
@@ -614,16 +614,16 @@ public partial class Form1
 		cmbDiscoveryContent.SelectedIndex = 0;
 		bool minecraftSearch = GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.Minecraft);
 		_lblDiscoveryContent.Visible = cmbDiscoveryContent.Visible = minecraftSearch;
-		flowLayoutPanel2.Controls.Add(_lblDiscoveryContent);
-		flowLayoutPanel2.Controls.Add(cmbDiscoveryContent);
+		discoverySearchBar.Controls.Add(_lblDiscoveryContent);
+		discoverySearchBar.Controls.Add(cmbDiscoveryContent);
 		_lblDiscoveryCategory = new Label { Text = Loc.T("ui.nexusCategoryLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) };
-		flowLayoutPanel2.Controls.Add(_lblDiscoveryCategory);
-		flowLayoutPanel2.Controls.Add(cmbDiscoveryCategory);
-		flowLayoutPanel2.Controls.Add(new Label { Text = Loc.T("ui.languageLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
-		flowLayoutPanel2.Controls.Add(cmbDiscoveryLanguage);
-		flowLayoutPanel2.Controls.Add(new Label { Text = Loc.T("ui.resultsPerLoadLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
-		flowLayoutPanel2.Controls.Add(cmbDiscoveryPageSize);
-		flowLayoutPanel2.Controls.Add(btnSearch);
+		discoverySearchBar.Controls.Add(_lblDiscoveryCategory);
+		discoverySearchBar.Controls.Add(cmbDiscoveryCategory);
+		discoverySearchBar.Controls.Add(new Label { Text = Loc.T("ui.languageLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
+		discoverySearchBar.Controls.Add(cmbDiscoveryLanguage);
+		discoverySearchBar.Controls.Add(new Label { Text = Loc.T("ui.resultsPerLoadLabel"), AutoSize = true, Padding = new Padding(10, 5, 0, 0) });
+		discoverySearchBar.Controls.Add(cmbDiscoveryPageSize);
+		discoverySearchBar.Controls.Add(btnSearch);
 		// The category selector belongs to one search type, so it comes and goes with the type. Set once here for
 		// the starting type (silently -- nothing has changed yet from the user's point of view), and on each change.
 		cmbDiscoveryType.SelectedIndexChanged += delegate { UpdateDiscoveryCategoryVisibility(announce: true); };
@@ -638,15 +638,15 @@ public partial class Form1
 
 		// Two rows: the search bar and the results list. "Load more" is an inline row at the bottom
 		// of the list itself (see DiscoveryLoadMoreRow), so there is no separate button row.
-		tableLayoutPanel4.RowCount = 2;
-		tableLayoutPanel4.RowStyles.Clear();
-		tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f)); // Search bar
-		tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Percent, 100f)); // List
+		discoveryLayout.RowCount = 2;
+		discoveryLayout.RowStyles.Clear();
+		discoveryLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f)); // Search bar
+		discoveryLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f)); // List
 
-		tableLayoutPanel4.Controls.Add(flowLayoutPanel2, 0, 0);
-		tableLayoutPanel4.Controls.Add(listDiscovery, 0, 1);
+		discoveryLayout.Controls.Add(discoverySearchBar, 0, 0);
+		discoveryLayout.Controls.Add(listDiscovery, 0, 1);
 
-		tabDiscovery.Controls.Add(tableLayoutPanel4);
+		tabDiscovery.Controls.Add(discoveryLayout);
 		tabProfiles = new TabPage(Loc.T("tab.profiles"));
 		listProfiles = new ListBox
 		{
@@ -688,15 +688,15 @@ public partial class Form1
 		tabCreations.Controls.Add(listCreations);
 		BuildMinecraftPacksTab();
 		tabSmapiLog = new TabPage(Loc.T("tab.smapiLog"));
-		TableLayoutPanel tableLayoutPanel5 = new TableLayoutPanel
+		TableLayoutPanel smapiLogLayout = new TableLayoutPanel
 		{
 			Dock = DockStyle.Fill,
 			RowCount = 2,
 			ColumnCount = 1
 		};
-		tableLayoutPanel5.RowStyles.Add(new RowStyle(SizeType.Absolute, 40f));
-		tableLayoutPanel5.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-		FlowLayoutPanel flowLayoutPanel3 = new FlowLayoutPanel
+		smapiLogLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40f));
+		smapiLogLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+		FlowLayoutPanel smapiLogFilterBar = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Fill,
 			FlowDirection = FlowDirection.LeftToRight
@@ -708,9 +708,9 @@ public partial class Form1
 			Font = new Font("Segoe UI", 12f),
 			DropDownStyle = ComboBoxStyle.DropDownList
 		};
-		ComboBox.ObjectCollection items3 = cmbLogFilter.Items;
-		items2 = new string[4] { "Errors and Warnings", "Errors Only", "Full Log", "Links Only" };
-		items3.AddRange(items2);
+		ComboBox.ObjectCollection logFilterItems = cmbLogFilter.Items;
+		comboChoices = new string[4] { "Errors and Warnings", "Errors Only", "Full Log", "Links Only" };
+		logFilterItems.AddRange(comboChoices);
 		cmbLogFilter.SelectedIndex = 0;
 		cmbLogFilter.SelectedIndexChanged += async delegate
 		{
@@ -744,20 +744,20 @@ public partial class Form1
 				SearchSmapiLog();
 			}
 		};
-		flowLayoutPanel3.Controls.Add(new Label
+		smapiLogFilterBar.Controls.Add(new Label
 		{
 			Text = Loc.T("ui.filterLabel"),
 			AutoSize = true,
 			Padding = new Padding(5, 8, 0, 0)
 		});
-		flowLayoutPanel3.Controls.Add(cmbLogFilter);
-		flowLayoutPanel3.Controls.Add(new Label
+		smapiLogFilterBar.Controls.Add(cmbLogFilter);
+		smapiLogFilterBar.Controls.Add(new Label
 		{
 			Text = Loc.T("ui.searchLabel"),
 			AutoSize = true,
 			Padding = new Padding(10, 8, 0, 0)
 		});
-		flowLayoutPanel3.Controls.Add(txtSearchLog);
+		smapiLogFilterBar.Controls.Add(txtSearchLog);
 		listLog = new ListBox
 		{
 			Dock = DockStyle.Fill,
@@ -768,9 +768,9 @@ public partial class Form1
 			SelectionMode = SelectionMode.MultiExtended
 		};
 		listLog.AccessibleName = Loc.T("ui.logList");
-		tableLayoutPanel5.Controls.Add(flowLayoutPanel3, 0, 0);
-		tableLayoutPanel5.Controls.Add(listLog, 0, 1);
-		tabSmapiLog.Controls.Add(tableLayoutPanel5);
+		smapiLogLayout.Controls.Add(smapiLogFilterBar, 0, 0);
+		smapiLogLayout.Controls.Add(listLog, 0, 1);
+		tabSmapiLog.Controls.Add(smapiLogLayout);
 
 		// Game Log tab (Skyrim SE / Fallout 4): a picker over every .log in the script-extender folder,
 		// plus a keyword filter and search. Mirrors the SMAPI log tab's layout and keyboard conventions.

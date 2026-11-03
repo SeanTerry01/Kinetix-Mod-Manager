@@ -469,12 +469,12 @@ public partial class Form1
 			}
 			listBox = listDiscovery;
 		}
-		if (listBox.SelectedItem is GameMod stardewMod)
+		if (listBox.SelectedItem is GameMod selectedMod)
 		{
-			if (!string.IsNullOrEmpty(stardewMod.Description))
+			if (!string.IsNullOrEmpty(selectedMod.Description))
 			{
 				// Chunked so a long description is read in full — a single long spoken string can be clipped.
-				SpeakLong(stardewMod.Description);
+				SpeakLong(selectedMod.Description);
 			}
 			else
 			{
@@ -522,10 +522,10 @@ public partial class Form1
 			_searchTimer.Stop();
 			_searchBuffer += c;
 			_searchTimer.Start();
-			int num = list.SelectedIndex;
+			int searchStart = list.SelectedIndex;
 			if (_searchBuffer.Length == 1)
 			{
-				num++;
+				searchStart++;
 			}
 			// A mod by its name and anything else by what the row says. Only mods used to be looked at, and this still claimed
 			// the key, so on Backups, Profiles and the logs letters did nothing at all, the list box's own search included.
@@ -535,10 +535,10 @@ public partial class Form1
 
 			for (int i = 0; i < list.Items.Count; i++)
 			{
-				int num2 = (num + i) % list.Items.Count;
-				if (RowText(list.Items[num2]).StartsWith(_searchBuffer, StringComparison.OrdinalIgnoreCase))
+				int rowIndex = (searchStart + i) % list.Items.Count;
+				if (RowText(list.Items[rowIndex]).StartsWith(_searchBuffer, StringComparison.OrdinalIgnoreCase))
 				{
-					list.SelectedIndex = num2;
+					list.SelectedIndex = rowIndex;
 					e.Handled = true;
 					e.SuppressKeyPress = true;
 					return;
@@ -547,18 +547,18 @@ public partial class Form1
 			bool found = false;
 			if (_searchBuffer.Length > 1)
 			{
-				string text2 = c.ToString();
+				string lastLetter = c.ToString();
 				for (int j = 0; j < list.Items.Count; j++)
 				{
-					int num3 = (list.SelectedIndex + 1 + j) % list.Items.Count;
-					if (RowText(list.Items[num3]).StartsWith(text2, StringComparison.OrdinalIgnoreCase))
+					int nextRowIndex = (list.SelectedIndex + 1 + j) % list.Items.Count;
+					if (RowText(list.Items[nextRowIndex]).StartsWith(lastLetter, StringComparison.OrdinalIgnoreCase))
 					{
-						list.SelectedIndex = num3;
+						list.SelectedIndex = nextRowIndex;
 						found = true;
 						break;
 					}
 				}
-				_searchBuffer = text2;
+				_searchBuffer = lastLetter;
 			}
 			if (!found) Speak(Loc.T("common.noRowStartsWith", _searchBuffer));
 			e.Handled = true;
@@ -570,18 +570,18 @@ public partial class Form1
 			e.Handled = true;
 			e.SuppressKeyPress = true;
 		}
-		if (list.Name == "listInstalled" && list.SelectedItem is GameMod stardewMod3)
+		if (list.Name == "listInstalled" && list.SelectedItem is GameMod selectedMod)
 		{
 			// Enter on a group opens or closes it, whichever it is not. It used to do nothing, in silence.
-			bool enterOnGroup = stardewMod3.IsGroup && e.KeyCode == Keys.Return;
-			bool flag = e.KeyCode == Keys.Right || e.KeyValue == 187 || e.KeyCode == Keys.Add || (enterOnGroup && !stardewMod3.IsExpanded);
-			bool flag2 = e.KeyCode == Keys.Left || e.KeyValue == 189 || e.KeyCode == Keys.Subtract || (enterOnGroup && stardewMod3.IsExpanded);
-			if (stardewMod3.IsGroup)
+			bool enterOnGroup = selectedMod.IsGroup && e.KeyCode == Keys.Return;
+			bool wantsOpen = e.KeyCode == Keys.Right || e.KeyValue == 187 || e.KeyCode == Keys.Add || (enterOnGroup && !selectedMod.IsExpanded);
+			bool wantsClose = e.KeyCode == Keys.Left || e.KeyValue == 189 || e.KeyCode == Keys.Subtract || (enterOnGroup && selectedMod.IsExpanded);
+			if (selectedMod.IsGroup)
 			{
-				string groupName = stardewMod3.GroupName;
+				string groupName = selectedMod.GroupName;
 				// The screen reader re-reads the group line on selection (it states "Expanded"/"Collapsed") and
 				// List_SelectedIndexChanged adds the position, which is all that should be heard here.
-				if (flag)
+				if (wantsOpen)
 				{
 					if (!_expandedGroups.Contains(groupName))
 					{
@@ -589,25 +589,25 @@ public partial class Form1
 						RebuildInstalledListBox();
 					}
 				}
-				else if (flag2 && _expandedGroups.Contains(groupName))
+				else if (wantsClose && _expandedGroups.Contains(groupName))
 				{
 					_expandedGroups.Remove(groupName);
 					RebuildInstalledListBox();
 				}
 			}
-			else if (stardewMod3.IsSubMod && flag2)
+			else if (selectedMod.IsSubMod && wantsClose)
 			{
 				// The same key the list grouped by, worked out the same way — a sub-mod has to name the group it
 				// is under, and a disabled BepInEx mod does not live under the mods folder to be measured from.
-				string text3 = ModEnableState.InstalledGroupFolder(_settings.CurrentModsPath, stardewMod3.FolderPath);
-				if (_expandedGroups.Contains(text3))
+				string groupKey = ModEnableState.InstalledGroupFolder(_settings.CurrentModsPath, selectedMod.FolderPath);
+				if (_expandedGroups.Contains(groupKey))
 				{
-					_expandedGroups.Remove(text3);
+					_expandedGroups.Remove(groupKey);
 					// Select the parent group directly in the rebuild. Passing its id avoids the previous
 					// null-then-reselect, which briefly selected index 0 and made the screen reader announce
 					// the first mod before landing on the collapsed group. The screen reader reads the group
 					// line (stating "Collapsed") on selection, so suppress the rebuild's own speech.
-					RebuildInstalledListBox("GROUP:" + text3);
+					RebuildInstalledListBox("GROUP:" + groupKey);
 				}
 				e.Handled = true;
 				e.SuppressKeyPress = true;
@@ -626,13 +626,13 @@ public partial class Form1
 			}
 			// Enter on a mod says what it is, as the context key does. Not every keyboard has that key, so Shift+F10 does the
 			// same, as it does throughout Windows.
-			if (!stardewMod3.IsGroup && (e.KeyCode == Keys.Return || IsContextKey(e)))
+			if (!selectedMod.IsGroup && (e.KeyCode == Keys.Return || IsContextKey(e)))
 			{
-				SpeakBox(Loc.T("modlist.detailsBox", stardewMod3.Name, stardewMod3.Author, stardewMod3.Description), Loc.T("modlist.detailsTitle"));
+				SpeakBox(Loc.T("modlist.detailsBox", selectedMod.Name, selectedMod.Author, selectedMod.Description), Loc.T("modlist.detailsTitle"));
 				e.Handled = true;
 				e.SuppressKeyPress = true;
 			}
-			else if (stardewMod3.IsGroup && IsContextKey(e))
+			else if (selectedMod.IsGroup && IsContextKey(e))
 			{
 				Speak(Loc.T("common.modGroupFirst"));
 				e.Handled = true;
@@ -645,13 +645,13 @@ public partial class Form1
 				e.SuppressKeyPress = true;
 			}
 		}
-		if (list.Name == "listUpdates" && list.SelectedItem is GameMod stardewMod4 && e.KeyCode == Keys.Delete)
+		if (list.Name == "listUpdates" && list.SelectedItem is GameMod modWithUpdate && e.KeyCode == Keys.Delete)
 		{
-			if (SpeakBox(Loc.T("modlist.ignoreConfirm", stardewMod4.LatestVersion ?? "", stardewMod4.Name), Loc.T("modlist.ignoreTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
+			if (SpeakBox(Loc.T("modlist.ignoreConfirm", modWithUpdate.LatestVersion ?? "", modWithUpdate.Name), Loc.T("modlist.ignoreTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 			{
-				_settings.IgnoredVersions[stardewMod4.UniqueId] = stardewMod4.LatestVersion ?? "";
+				_settings.IgnoredVersions[modWithUpdate.UniqueId] = modWithUpdate.LatestVersion ?? "";
 				_settings.Save();
-				if (RemoveSettledUpdateRow(stardewMod4) is { } landed)
+				if (RemoveSettledUpdateRow(modWithUpdate) is { } landed)
 					Speak(Loc.T("modlist.updateIgnoredPos", landed.Row, landed.Index, landed.Count));
 				else
 					Speak(Loc.T("modlist.updateIgnoredEmpty"));
@@ -734,14 +734,14 @@ public partial class Form1
 				e.Handled = true;
 				return;
 			}
-			string text4 = logEntry.Text;
-			string suggestedFix = LogAnalyzer.GetSuggestedFix(text4);
-			string text5 = text4;
+			string logLine = logEntry.Text;
+			string suggestedFix = LogAnalyzer.GetSuggestedFix(logLine);
+			string detailText = logLine;
 			if (!string.IsNullOrEmpty(suggestedFix))
 			{
-				text5 = text5 + Loc.T("modlist.suggestedFixSuffix", suggestedFix);
+				detailText = detailText + Loc.T("modlist.suggestedFixSuffix", suggestedFix);
 			}
-			SpeakBox(text5, Loc.T("modlist.logDetailTitle"));
+			SpeakBox(detailText, Loc.T("modlist.logDetailTitle"));
 			e.Handled = true;
 		}
 		// Re-read SMAPI-latest.txt on demand. SMAPI holds the log open for the whole game session, so this

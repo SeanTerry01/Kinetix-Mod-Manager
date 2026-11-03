@@ -220,23 +220,23 @@ public partial class Form1
 
 	private void OpenModPage()
 	{
-		if (SelectedNexusMod() is not GameMod stardewMod) return;
+		if (SelectedNexusMod() is not GameMod selectedMod) return;
 
 		// Whichever catalogue the mod came from. This used to know about two of them and require a Nexus id,
 		// so the one action available on a search result was silently unavailable for a whole game — and it
 		// would have gone the same way for every source added since. ModSources answers for all of them, and
 		// for a site the manager can do nothing else with, opening the page is the whole of what it offers.
-		string url = ModSources.PageUrlFor(stardewMod, _nexusService.CurrentGameDomain) ?? "";
+		string url = ModSources.PageUrlFor(selectedMod, _nexusService.CurrentGameDomain) ?? "";
 
 		// Nexus's Files tab rather than its front page, which is where somebody who pressed Enter on a search
 		// result is trying to get to.
 		if (url.Contains("nexusmods.com/", StringComparison.OrdinalIgnoreCase) && !url.Contains("?tab=", StringComparison.OrdinalIgnoreCase))
 			url += "?tab=files";
 
-		if (url.Length == 0) { Speak(Loc.T("modpage.noPage", stardewMod.Name)); return; }
+		if (url.Length == 0) { Speak(Loc.T("modpage.noPage", selectedMod.Name)); return; }
 
 		try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
-		catch (Exception ex) { LogFailure(stardewMod.Name, "Failed to open the mod page", ex); }
+		catch (Exception ex) { LogFailure(selectedMod.Name, "Failed to open the mod page", ex); }
 	}
 
 	/// <summary>

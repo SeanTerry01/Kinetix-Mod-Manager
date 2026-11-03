@@ -1070,15 +1070,15 @@ public partial class Form1 : Form, IMessageFilter
 		try
 		{
 			string executablePath = Application.ExecutablePath;
-			using RegistryKey registryKey = Registry.CurrentUser.CreateSubKey("Software\\Classes\\nxm");
-			registryKey.SetValue("", "Nexus Mod Manager Link");
-			registryKey.SetValue("URL Protocol", "");
-			using RegistryKey registryKey2 = registryKey.CreateSubKey("shell\\open\\command");
-			string? obj = registryKey2.GetValue("")?.ToString() ?? "";
+			using RegistryKey nxmKey = Registry.CurrentUser.CreateSubKey("Software\\Classes\\nxm");
+			nxmKey.SetValue("", "Nexus Mod Manager Link");
+			nxmKey.SetValue("URL Protocol", "");
+			using RegistryKey commandKey = nxmKey.CreateSubKey("shell\\open\\command");
+			string? obj = commandKey.GetValue("")?.ToString() ?? "";
 			string text = "\"" + executablePath + "\" \"%1\"";
 			if (obj != text)
 			{
-				registryKey2.SetValue("", text);
+				commandKey.SetValue("", text);
 			}
 		}
 		catch (Exception ex)

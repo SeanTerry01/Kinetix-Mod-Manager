@@ -373,7 +373,7 @@ public partial class Form1
 			}, 0, pr++);
 		}
 
-		FlowLayoutPanel flowLayoutPanel = new FlowLayoutPanel
+		FlowLayoutPanel flowStartupOptions = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Fill,
 			FlowDirection = FlowDirection.LeftToRight,
@@ -425,8 +425,8 @@ public partial class Form1
 		{
 			Speak(cUpdates.Checked ? Loc.T("settings.updatesOn") : Loc.T("settings.updatesOff"));
 		};
-		flowLayoutPanel.Controls.AddRange(cSplash, cUpdates, cManagerUpdates);
-		tabStartup.Controls.Add(flowLayoutPanel, 0, sr++);
+		flowStartupOptions.Controls.AddRange(cSplash, cUpdates, cManagerUpdates);
+		tabStartup.Controls.Add(flowStartupOptions, 0, sr++);
 
 		// Spoken-message toggles: the startup welcome/hint and the shutdown goodbye. Both default on.
 		CheckBox cStartupMsg = new CheckBox
@@ -517,12 +517,12 @@ public partial class Form1
 			cmbLogo.Visible = logo;
 		};
 
-		FlowLayoutPanel flowLayoutPanel2 = new FlowLayoutPanel
+		FlowLayoutPanel flowVolume = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Fill,
 			FlowDirection = FlowDirection.LeftToRight
 		};
-		flowLayoutPanel2.Controls.Add(new Label
+		flowVolume.Controls.Add(new Label
 		{
 			Text = Loc.T("settings.volume"),
 			AutoSize = true,
@@ -539,8 +539,8 @@ public partial class Form1
 		for (int v = 0; v <= 100; v++) nVol.Items.Add(v);
 		nVol.SelectedItem = Math.Clamp(_settings.SoundVolume, 0, 100);
 		if (nVol.SelectedIndex < 0) nVol.SelectedIndex = nVol.Items.Count - 1;
-		flowLayoutPanel2.Controls.Add(nVol);
-		tabAudio.Controls.Add(flowLayoutPanel2, 0, ar++);
+		flowVolume.Controls.Add(nVol);
+		tabAudio.Controls.Add(flowVolume, 0, ar++);
 
 		// --- Display (low-vision) tab: high-contrast colours and larger text ---
 		tabDisplay.Controls.Add(new Label { Text = Loc.T("settings.displayIntro"), AutoSize = true }, 0, dr++);
@@ -579,12 +579,12 @@ public partial class Form1
 		cmbTextSize.SelectedIndex = Math.Max(0, Array.IndexOf(textSizeOptions, _settings.TextSize));
 		tabDisplay.Controls.Add(cmbTextSize, 0, dr++);
 
-		FlowLayoutPanel flowLayoutPanel3 = new FlowLayoutPanel
+		FlowLayoutPanel flowMaxBackups = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Fill,
 			FlowDirection = FlowDirection.LeftToRight
 		};
-		flowLayoutPanel3.Controls.Add(new Label
+		flowMaxBackups.Controls.Add(new Label
 		{
 			Text = Loc.T("settings.maxBackups"),
 			AutoSize = true,
@@ -599,15 +599,15 @@ public partial class Form1
 		for (int v = 1; v <= 50; v++) nPrune.Items.Add(v);
 		nPrune.SelectedItem = Math.Clamp(_settings.MaxBackupsPerMod, 1, 50);
 		if (nPrune.SelectedIndex < 0) nPrune.SelectedIndex = 0;
-		flowLayoutPanel3.Controls.Add(nPrune);
-		tabMods.Controls.Add(flowLayoutPanel3, 0, mr++);
+		flowMaxBackups.Controls.Add(nPrune);
+		tabMods.Controls.Add(flowMaxBackups, 0, mr++);
 
-		FlowLayoutPanel flowLayoutPanel4 = new FlowLayoutPanel
+		FlowLayoutPanel flowSoundTheme = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Fill,
 			FlowDirection = FlowDirection.LeftToRight
 		};
-		flowLayoutPanel4.Controls.Add(new Label
+		flowSoundTheme.Controls.Add(new Label
 		{
 			Text = Loc.T("settings.currentTheme"),
 			AutoSize = true,
@@ -652,10 +652,10 @@ public partial class Form1
 				: Loc.T("settings.manualThemeOff"));
 		};
 		// Checkbox sits before the theme dropdown so it reads and tabs first.
-		flowLayoutPanel4.Controls.Add(cManualTheme);
-		flowLayoutPanel4.Controls.Add(cTheme);
+		flowSoundTheme.Controls.Add(cManualTheme);
+		flowSoundTheme.Controls.Add(cTheme);
 
-		tabAudio.Controls.Add(flowLayoutPanel4, 0, ar++);
+		tabAudio.Controls.Add(flowSoundTheme, 0, ar++);
 		RefreshLogoList(_settings.CurrentTheme);
 
 		FlowLayoutPanel flowLang = new FlowLayoutPanel
@@ -860,8 +860,8 @@ public partial class Form1
 			cRandomLogo.Visible = logo;
 			lblSelectLogo.Visible = logo;
 			cmbLogo.Visible = logo;
-			flowLayoutPanel2.Visible = sounds; // volume
-			flowLayoutPanel4.Visible = sounds; // sound theme
+			flowVolume.Visible = sounds; // volume
+			flowSoundTheme.Visible = sounds; // sound theme
 		}
 		cEnableSounds.CheckedChanged += delegate
 		{
@@ -1133,19 +1133,19 @@ public partial class Form1
 			finally { aiTestBusy = false; }
 		};
 
-		FlowLayoutPanel flowLayoutPanel5 = new FlowLayoutPanel
+		FlowLayoutPanel flowSaveCancel = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Bottom,
 			FlowDirection = FlowDirection.RightToLeft,
 			Height = 45
 		};
-		Button button3 = new Button
+		Button btnSave = new Button
 		{
 			Text = Loc.T("settings.save"),
 			Width = 120,
 			Height = 35
 		};
-		button3.Click += delegate
+		btnSave.Click += delegate
 		{
 			tempModsPaths[currentEditingGame] = tPath.Text.Trim();
 			tempGamePaths[currentEditingGame] = tGamePath.Text.Trim();
@@ -1170,14 +1170,14 @@ public partial class Form1
 				}
 			}
 
-			string text2 = tKey.Text.Trim();
+			string enteredApiKey = tKey.Text.Trim();
 
 			// Required only when the loaded game actually needs it. Everything below is the whole of Save, so
 			// demanding a key unconditionally meant a Minecraft player could not change any setting at all
 			// until they supplied one that would never be used.
 			// A question rather than a refusal. Every other setting on every tab used to be held hostage to this one, for
 			// someone who only has local mods.
-			if (keyIsRequired && string.IsNullOrEmpty(text2) &&
+			if (keyIsRequired && string.IsNullOrEmpty(enteredApiKey) &&
 				SpeakBox(Loc.T("settings.errApiKeyBox"), Loc.T("ui.appTitle"), MessageBoxButtons.YesNo) != DialogResult.Yes)
 			{
 				return;
@@ -1205,7 +1205,7 @@ public partial class Form1
 					if (tempGamePaths.TryGetValue(copy.Key, out string? typed) && !string.IsNullOrEmpty(typed))
 						copy.Folder = typed;
 
-				_settings.ApiKey = text2;
+				_settings.ApiKey = enteredApiKey;
 				_settings.ShowSplashScreen = cSplash.Checked;
 				_settings.RandomLogoStartup = cRandomLogo.Checked;
 				_settings.SelectedLogoFile = cmbLogo.SelectedItem?.ToString() ?? "";
@@ -1298,25 +1298,25 @@ public partial class Form1
 					: Loc.T("settings.saved");
 			}
 		};
-		Button button4 = new Button
+		Button btnCancel = new Button
 		{
 			Text = Loc.T("common.cancel"),
 			Width = 100,
 			Height = 35
 		};
-		button4.Click += delegate
+		btnCancel.Click += delegate
 		{
 			closeView();
 		};
-		flowLayoutPanel5.Controls.AddRange(button3, button4);
-		container.Controls.Add(flowLayoutPanel5);
+		flowSaveCancel.Controls.AddRange(btnSave, btnCancel);
+		container.Controls.Add(flowSaveCancel);
 		container.Controls.Add(tabs);
 		// The buttons panel is added first (so the tabs dock-fill above it), which would otherwise make the Save
 		// button the first tab stop and the window's initial focus — the screen reader then announces "Save" even
 		// after we move focus to the tabs. Put the tab strip first in tab order so initial focus lands on it and
 		// the active tab is what gets announced.
 		tabs.TabIndex = 0;
-		flowLayoutPanel5.TabIndex = 1;
+		flowSaveCancel.TabIndex = 1;
 		// Escape is handled by the view itself; "changes cancelled" is announced from onClosed below, so it is
 		// said whichever way Settings was left — Escape or the Cancel button — and not at all after a Save.
 

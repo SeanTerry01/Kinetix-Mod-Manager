@@ -48,9 +48,9 @@ public partial class Form1
 			Font = new Font("Segoe UI", 12f),
 			AccessibleName = Loc.T("soundDemo.soundList")
 		};
-		foreach (string key2 in SoundEngine.SoundDescriptions.Keys)
+		foreach (string soundName in SoundEngine.SoundDescriptions.Keys)
 		{
-			lb.Items.Add(key2);
+			lb.Items.Add(soundName);
 		}
 		// The list item text (the sound name) is already read by the screen reader on focus, so
 		// our announcement is just the description plus list position to avoid speaking the name
@@ -123,13 +123,13 @@ public partial class Form1
 			RowCount = 6
 		};
 		RefreshList();
-		Button button = new Button
+		Button btnSetActive = new Button
 		{
 			Text = Loc.T("themeMgr.setActive"),
 			Dock = DockStyle.Top,
 			Height = 35
 		};
-		button.Click += delegate
+		btnSetActive.Click += delegate
 		{
 			if (lb.SelectedItem != null)
 			{
@@ -137,79 +137,79 @@ public partial class Form1
 				Speak(Loc.T("themeMgr.activeChanged", tempActiveTheme));
 			}
 		};
-		Button button2 = new Button
+		Button btnCreateTheme = new Button
 		{
 			Text = Loc.T("themeMgr.createNew"),
 			Dock = DockStyle.Top,
 			Height = 35
 		};
-		button2.Click += delegate
+		btnCreateTheme.Click += delegate
 		{
-			string? text = ShowTextPrompt(Loc.T("themeMgr.createTitle"), Loc.T("themeMgr.createPrompt"), "");
-			if (text == null) { Speak(Loc.T("common.changesCancelled")); return; }
+			string? themeName = ShowTextPrompt(Loc.T("themeMgr.createTitle"), Loc.T("themeMgr.createPrompt"), "");
+			if (themeName == null) { Speak(Loc.T("common.changesCancelled")); return; }
 
-			text = text.Trim();
-			if (text.Length == 0) { Speak(Loc.T("themeMgr.nameEmpty")); return; }
+			themeName = themeName.Trim();
+			if (themeName.Length == 0) { Speak(Loc.T("themeMgr.nameEmpty")); return; }
 
-			string text2 = Path.Combine(themesPath, text);
+			string themeFolder = Path.Combine(themesPath, themeName);
 			// Said rather than passed over in silence: a name that already exists used to leave the button looking
 			// like it had done nothing, with no way to tell that from a failure.
-			if (Directory.Exists(text2)) { Speak(Loc.T("themeMgr.nameTaken", text)); return; }
+			if (Directory.Exists(themeFolder)) { Speak(Loc.T("themeMgr.nameTaken", themeName)); return; }
 
-			Directory.CreateDirectory(text2);
+			Directory.CreateDirectory(themeFolder);
 			foreach (string key in SoundEngine.SoundDescriptions.Keys)
 			{
-				Directory.CreateDirectory(Path.Combine(text2, key));
+				Directory.CreateDirectory(Path.Combine(themeFolder, key));
 			}
-			Directory.CreateDirectory(Path.Combine(text2, "logo"));
+			Directory.CreateDirectory(Path.Combine(themeFolder, "logo"));
 			Speak(Loc.T("themeMgr.created"));
 			LetSpeechFinish();
-			OpenFolder(text2);
+			OpenFolder(themeFolder);
 			RefreshList();
 		};
-		Button button3 = new Button
+		Button btnAddMissingFolders = new Button
 		{
 			Text = Loc.T("themeMgr.addMissing"),
 			Dock = DockStyle.Top,
 			Height = 35
 		};
-		button3.Click += delegate
+		btnAddMissingFolders.Click += delegate
 		{
-			int num = 0;
+			int foldersAdded = 0;
 			string[] directories = Directory.GetDirectories(themesPath);
-			foreach (string path in directories)
+			foreach (string themeFolder in directories)
 			{
-				foreach (string key2 in SoundEngine.SoundDescriptions.Keys)
+				foreach (string soundName in SoundEngine.SoundDescriptions.Keys)
 				{
-					string path2 = Path.Combine(path, key2);
-					if (!Directory.Exists(path2))
+					string soundFolder = Path.Combine(themeFolder, soundName);
+					if (!Directory.Exists(soundFolder))
 					{
-						Directory.CreateDirectory(path2);
-						num++;
+						Directory.CreateDirectory(soundFolder);
+						foldersAdded++;
 					}
 				}
 			}
-			Speak(Loc.T("themeMgr.foldersAdded", num));
+			Speak(Loc.T("themeMgr.foldersAdded", foldersAdded));
 		};
-		Button button4 = new Button
+		Button btnDeleteTheme = new Button
 		{
 			Text = Loc.T("themeMgr.delete"),
 			Dock = DockStyle.Top,
 			Height = 35
 		};
-		button4.Click += delegate
+		btnDeleteTheme.Click += delegate
 		{
 			if (lb.SelectedItem != null)
 			{
-				string text = lb.SelectedItem.ToString() ?? "";
-				if (text == "Default")
+				string themeName = lb.SelectedItem.ToString() ?? "";
+				if (themeName == "Default")
 				{
 					SpeakBox(Loc.T("themeMgr.cannotDeleteDefault"));
 				}
-				else if (SpeakBox(Loc.T("themeMgr.confirmDelete", text), Loc.T("common.confirm"), MessageBoxButtons.YesNo) == DialogResult.Yes)
+				else if (SpeakBox(Loc.T("themeMgr.confirmDelete", themeName), Loc.T("common.confirm"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 				{
-					Directory.Delete(Path.Combine(themesPath, text), recursive: true);
-					if (tempActiveTheme == text)
+					Directory.Delete(Path.Combine(themesPath, themeName), recursive: true);
+					if (tempActiveTheme == themeName)
 					{
 						tempActiveTheme = "Default";
 					}
@@ -218,42 +218,42 @@ public partial class Form1
 				}
 			}
 		};
-		FlowLayoutPanel flowLayoutPanel = new FlowLayoutPanel
+		FlowLayoutPanel saveCancelBar = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Bottom,
 			FlowDirection = FlowDirection.RightToLeft,
 			Height = 50
 		};
-		Button button5 = new Button
+		Button btnSave = new Button
 		{
 			Text = Loc.T("common.saveAndClose"),
 			Width = 120,
 			Height = 35
 		};
-		button5.Click += delegate
+		btnSave.Click += delegate
 		{
 			_settings.CurrentTheme = tempActiveTheme;
 			_settings.Save();
 			saved = true;
 			closeView();
 		};
-		Button button6 = new Button
+		Button btnCancel = new Button
 		{
 			Text = Loc.T("common.cancel"),
 			Width = 100,
 			Height = 35
 		};
-		button6.Click += delegate
+		btnCancel.Click += delegate
 		{
 			closeView();
 		};
-		flowLayoutPanel.Controls.AddRange(button5, button6);
+		saveCancelBar.Controls.AddRange(btnSave, btnCancel);
 		tableLayoutPanel.Controls.Add(lb, 0, 0);
-		tableLayoutPanel.Controls.Add(button, 0, 1);
-		tableLayoutPanel.Controls.Add(button2, 0, 2);
-		tableLayoutPanel.Controls.Add(button3, 0, 3);
-		tableLayoutPanel.Controls.Add(button4, 0, 4);
-		tableLayoutPanel.Controls.Add(flowLayoutPanel, 0, 5);
+		tableLayoutPanel.Controls.Add(btnSetActive, 0, 1);
+		tableLayoutPanel.Controls.Add(btnCreateTheme, 0, 2);
+		tableLayoutPanel.Controls.Add(btnAddMissingFolders, 0, 3);
+		tableLayoutPanel.Controls.Add(btnDeleteTheme, 0, 4);
+		tableLayoutPanel.Controls.Add(saveCancelBar, 0, 5);
 		container.Controls.Add(tableLayoutPanel);
 		// Escape is handled by the view itself; "changes cancelled" is announced from onClosed below so it is
 		// said whichever way the view was left — Escape or the Cancel button.
@@ -313,13 +313,13 @@ public partial class Form1
 			Speak(Loc.T("shortcutMgr.pressFor", ShortcutNames.For(awaitingFor)));
 		}
 
-		Button button = new Button
+		Button btnRemap = new Button
 		{
 			Text = Loc.T("shortcutMgr.remap"),
 			Dock = DockStyle.Fill,
 			Height = 35
 		};
-		button.Click += delegate
+		btnRemap.Click += delegate
 		{
 			BeginRemap();
 			// The keystroke has to land on the list, so send focus back there to catch it.
@@ -386,13 +386,13 @@ public partial class Form1
 			// now shown against the action — and you can hear whether the combination you meant is what landed.
 			Speak(Loc.T("shortcutMgr.remapped", ShortcutNames.For(action), GetShortcutStringForMap(tempShortcuts, action)));
 		};
-		Button button2 = new Button
+		Button btnResetDefaults = new Button
 		{
 			Text = Loc.T("shortcutMgr.reset"),
 			Dock = DockStyle.Fill,
 			Height = 35
 		};
-		button2.Click += delegate
+		btnResetDefaults.Click += delegate
 		{
 			if (SpeakBox(Loc.T("shortcutMgr.resetConfirm"), Loc.T("common.confirm"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 			{
@@ -407,19 +407,19 @@ public partial class Form1
 				Speak(Loc.T("shortcutMgr.resetDone"));
 			}
 		};
-		FlowLayoutPanel flowLayoutPanel = new FlowLayoutPanel
+		FlowLayoutPanel saveCancelBar = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Bottom,
 			FlowDirection = FlowDirection.RightToLeft,
 			Height = 50
 		};
-		Button button3 = new Button
+		Button btnSave = new Button
 		{
 			Text = Loc.T("common.saveAndClose"),
 			Width = 120,
 			Height = 35
 		};
-		button3.Click += delegate
+		btnSave.Click += delegate
 		{
 			_settings.Shortcuts = tempShortcuts;
 			_settings.Save();
@@ -427,21 +427,21 @@ public partial class Form1
 			RefreshShortcutLabels();
 			closeView();
 		};
-		Button button4 = new Button
+		Button btnCancel = new Button
 		{
 			Text = Loc.T("common.cancel"),
 			Width = 100,
 			Height = 35
 		};
-		button4.Click += delegate
+		btnCancel.Click += delegate
 		{
 			closeView();
 		};
-		flowLayoutPanel.Controls.AddRange(button3, button4);
+		saveCancelBar.Controls.AddRange(btnSave, btnCancel);
 		tableLayoutPanel.Controls.Add(lb, 0, 0);
-		tableLayoutPanel.Controls.Add(button, 0, 1);
-		tableLayoutPanel.Controls.Add(button2, 0, 2);
-		tableLayoutPanel.Controls.Add(flowLayoutPanel, 0, 3);
+		tableLayoutPanel.Controls.Add(btnRemap, 0, 1);
+		tableLayoutPanel.Controls.Add(btnResetDefaults, 0, 2);
+		tableLayoutPanel.Controls.Add(saveCancelBar, 0, 3);
 		container.Controls.Add(tableLayoutPanel);
 		// Escape is handled by the view itself; "changes cancelled" is announced from onClosed below so it is
 		// said whichever way the view was left — Escape or the Cancel button.

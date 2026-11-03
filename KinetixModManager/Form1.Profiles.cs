@@ -102,8 +102,8 @@ public partial class Form1
 		try
 		{
 			SetStatus(Loc.T("profiles.applying"));
-			bool flag = false;
-			bool flag2 = false;
+			bool anyEnabled = false;
+			bool anyDisabled = false;
 			// Only what actually differs. A mod the profile never mentioned is left alone rather than
 			// switched off for not appearing, and one already in the right state is not renamed to the name
 			// it already has - see ProfileStore.Changes.
@@ -115,7 +115,7 @@ public partial class Form1
 					change.Mod.FolderPath, change.Enable, _settings.ActiveGame);
 				change.Mod.IsEnabled = change.Enable;
 
-				if (change.Enable) flag = true; else flag2 = true;
+				if (change.Enable) anyEnabled = true; else anyDisabled = true;
 			}
 			// Restore the profile's saved load order (mod priority and plugin order) for Skyrim/Fallout 4.
 			// The RefreshModList call below then reconciles assets and rewrites plugins.txt accordingly.
@@ -134,11 +134,11 @@ public partial class Form1
 				_settings.Save();
 				Speak(Loc.T("profiles.themeSwitched", profile.ThemeOverride));
 			}
-			if (flag)
+			if (anyEnabled)
 			{
 				_soundEngine.Play("enable");
 			}
-			else if (flag2)
+			else if (anyDisabled)
 			{
 				_soundEngine.Play("disable");
 			}

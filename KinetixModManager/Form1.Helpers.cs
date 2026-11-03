@@ -772,8 +772,8 @@ public partial class Form1
 		}
 		else
 		{
-			string text2 = Loc.T("status.titleFormat", GameDisplayName(), text);
-			Text = text2;
+			string windowTitle = Loc.T("status.titleFormat", GameDisplayName(), text);
+			Text = windowTitle;
 			if (speak)
 			{
 				Speak(text);
