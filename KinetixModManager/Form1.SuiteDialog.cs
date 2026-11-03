@@ -767,7 +767,7 @@ public partial class Form1
 				?? Directory.EnumerateFiles(extractDir, "SMAPI.Installer.exe", SearchOption.AllDirectories).FirstOrDefault();
 			if (installerExe == null) throw new Exception("SMAPI.Installer.exe was not found in the download.");
 
-			SetStatus(Loc.T("suite.smapiInstallingStatus"));
+			SetStatus(Loc.T("suite.smapiInstallingStatus"), speak: false);
 			Speak(Loc.T("suite.smapiInstalling"));
 
 			var psi = new ProcessStartInfo(installerExe)

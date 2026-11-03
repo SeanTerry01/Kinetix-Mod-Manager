@@ -12,7 +12,8 @@ public sealed class RefreshOffThreadTests
 	{
 		DirectoryInfo? dir = new DirectoryInfo(AppContext.BaseDirectory);
 		while (dir != null && !File.Exists(Path.Combine(dir.FullName, "KinetixModManager.slnx"))) dir = dir.Parent;
-		return File.ReadAllText(Path.Combine(dir!.FullName, "KinetixModManager", file));
+		// A checkout can hold either line ending, and these searches span lines.
+		return File.ReadAllText(Path.Combine(dir!.FullName, "KinetixModManager", file)).ReplaceLineEndings("\n");
 	}
 
 	private static string Body(string file, string signature, int length)

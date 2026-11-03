@@ -256,9 +256,7 @@ public class SilentFailureGuardTests
 	{
 		var offenders = new List<string>();
 
-		// Top level only for now: Platform/WinFormsDispatcher.cs:28-29 break this rule. Use TestPaths.SourceFiles here
-		// once they record what they catch.
-		foreach (string file in Directory.EnumerateFiles(SourceFolder(), "*.cs"))
+		foreach (string file in TestPaths.SourceFiles(SourceFolder()))
 		{
 			// The log itself is the one thing that has to swallow. It is called from the crash handler, when the
 			// app is already in trouble; a logger that throws while recording a crash destroys the very record

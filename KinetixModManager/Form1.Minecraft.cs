@@ -208,7 +208,9 @@ public partial class Form1
 		IReadOnlyList<string> supported = await ModrinthService.GetSupportedGameVersionsAsync(accessMod.Source);
 		if (supported.Contains(fabricNewest)) return fabricNewest;
 
-		string best = supported.FirstOrDefault() ?? fabricNewest;
+		// Newest first, but it can hold snapshots or versions Fabric has no loader for, and pinning one of those can't work.
+		IReadOnlyList<string> fabricStable = await FabricInstaller.GetStableGameVersionsAsync();
+		string best = supported.FirstOrDefault(fabricStable.Contains) ?? fabricNewest;
 		if (best != fabricNewest)
 			Speak(Loc.T("mc.fabric.pinnedOlder", accessMod.DisplayName, best));
 
@@ -525,11 +527,14 @@ public partial class Form1
 			string inUse = MinecraftGameVersionInUse(root);
 			if (inUse.Length == 0) return;
 
+			// Asked again before each row goes in: a game switch during these lookups would put this game's row on the other's list.
+			string game = _settings.ActiveGame;
+
 			try
 			{
 				string installed = InstalledLoaderVersionFor(root, inUse);
 				string newest = await FabricInstaller.GetLatestStableLoaderVersionAsync(inUse);
-				if (installed.Length > 0 && ModVersions.IsNewer(installed, newest))
+				if (_settings.ActiveGame == game && installed.Length > 0 && ModVersions.IsNewer(installed, newest))
 					AddPlatformUpdateRow(FabricLoaderRowId, Loc.T("mc.update.loaderName"), Loc.T("mc.update.loaderAuthor"), installed, newest);
 			}
 			catch (Exception ex) { DiagnosticLog.WriteException("Fabric", $"asking for the newest loader for Minecraft {inUse}", ex); }
@@ -539,7 +544,7 @@ public partial class Form1
 				string newestGame = await FabricInstaller.GetLatestStableGameVersionAsync();
 				// Offered only once the accessibility mod has a build for it. Fabric is ready for a new Minecraft
 				// version well before the mods are, and moving early gives a game that launches and says nothing.
-				if (ModVersions.IsNewer(inUse, newestGame) && await AccessModSupportsAsync(newestGame))
+				if (ModVersions.IsNewer(inUse, newestGame) && await AccessModSupportsAsync(newestGame) && _settings.ActiveGame == game)
 				{
 					AddPlatformUpdateRow(MinecraftVersionRowId, Loc.T("mc.update.gameName"), Loc.T("mc.update.gameAuthor"), inUse, newestGame);
 

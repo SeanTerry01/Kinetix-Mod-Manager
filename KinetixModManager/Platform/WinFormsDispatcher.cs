@@ -25,8 +25,11 @@ internal sealed class WinFormsDispatcher : IDispatcher
 			if (IsOnUiThread) { action(); return; }
 			_owner.BeginInvoke(action);
 		}
-		catch (ObjectDisposedException) { /* window closed while work was in flight; nothing to post to */ }
-		catch (InvalidOperationException) { /* handle went away between the check and the call */ }
+		// The window closed while work was in flight, or its handle went between the check and the call. Nothing to post to.
+		catch (Exception ex) when (ex is ObjectDisposedException or InvalidOperationException)
+		{
+			DiagnosticLog.WriteException("Dispatcher", "posting to a window that has gone", ex);
+		}
 	}
 
 }
