@@ -48,7 +48,7 @@ public sealed class CategoryRow
 }
 
 /// <summary>One row of the suggested list: either a category heading, or a mod under it.</summary>
-public sealed class SuggestionRow
+public sealed class SuggestionRow : IListHeadingRow
 {
 	/// <summary>The mod this row is about, or <c>null</c> when the row is a heading.</summary>
 	public SuggestedMod? Entry { get; init; }

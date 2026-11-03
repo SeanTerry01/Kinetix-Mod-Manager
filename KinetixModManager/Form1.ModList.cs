@@ -325,11 +325,8 @@ public partial class Form1
 				Speak(Loc.T("common.listEmpty"));
 			}
 			listUpdates.EndUpdate();
-
-			if (doUpdateChecks)
-			{
-				listUpdates.BeginUpdate();
-			}
+			// The one the rescan opened when it cleared the list. Left open, the list stayed suspended for the session.
+			if (doUpdateChecks) listUpdates.EndUpdate();
 
 			// Startup only, and last: once the list is actually on screen, put the user on the first tab and say
 			// which one it is. Before this, a session opened, announced it was connected, and then went quiet with
@@ -841,6 +838,12 @@ public partial class Form1
 	{
 		if ((target ?? listInstalled.SelectedItem as StardewMod) is StardewMod stardewMod3)
 		{
+			if (stardewMod3.IsGroup)
+			{
+				Speak(Loc.T("common.modGroupFirst"));
+				return;
+			}
+
 			string currentId = stardewMod3.NexusID ?? stardewMod3.GitHubRepo ?? "";
 			string? typed = ShowTextPrompt(
 				Loc.T("link.title"),

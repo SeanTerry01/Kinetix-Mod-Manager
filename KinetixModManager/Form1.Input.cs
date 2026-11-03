@@ -129,6 +129,10 @@ public partial class Form1
 			{
 				Fire(LinkModUpdateSource(), "LinkModUpdateSource");
 			}
+			else if (listLog.Focused)
+			{
+				Fire(UploadSmapiLog(), "UploadSmapiLog");
+			}
 			else
 			{
 				PromptForApiKey();
@@ -177,14 +181,12 @@ public partial class Form1
 		if (IsShortcut(e, "ChangeCategory"))
 		{
 			e.SuppressKeyPress = true;
-			if (e.Shift)
-			{
-				BatchManageCategory();
-			}
-			else
-			{
-				SetManualCategory();
-			}
+			SetManualCategory();
+		}
+		if (IsShortcut(e, "BatchCategory"))
+		{
+			e.SuppressKeyPress = true;
+			BatchManageCategory();
 		}
 		if (IsShortcut(e, "ShowDependencies"))
 		{
@@ -486,7 +488,7 @@ public partial class Form1
 		}
 	}
 
-	private async void List_KeyDown(object? sender, KeyEventArgs e)
+	private void List_KeyDown(object? sender, KeyEventArgs e)
 	{
 		if (!(sender is ListBox list))
 		{
@@ -595,7 +597,8 @@ public partial class Form1
 			}
 			if (e.KeyCode == Keys.Apps)
 			{
-				SpeakBox(Loc.T("modlist.detailsBox", stardewMod3.Name, stardewMod3.Author, stardewMod3.Description), Loc.T("modlist.detailsTitle"));
+				if (stardewMod3.IsGroup) Speak(Loc.T("common.modGroupFirst"));
+				else SpeakBox(Loc.T("modlist.detailsBox", stardewMod3.Name, stardewMod3.Author, stardewMod3.Description), Loc.T("modlist.detailsTitle"));
 				e.Handled = true;
 			}
 			if (e.KeyCode == Keys.L && e.Control)
@@ -703,12 +706,6 @@ public partial class Form1
 			}
 			SpeakBox(text5, Loc.T("modlist.logDetailTitle"));
 			e.Handled = true;
-		}
-		if (list.Name == "listLog" && IsShortcut(e, "Login"))
-		{
-			await UploadSmapiLog();
-			e.Handled = true;
-			e.SuppressKeyPress = true;
 		}
 		// Re-read SMAPI-latest.txt on demand. SMAPI holds the log open for the whole game session, so this
 		// pulls in lines written since the tab was last loaded (e.g. after triggering an error in-game)

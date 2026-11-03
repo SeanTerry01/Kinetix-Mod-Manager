@@ -16,6 +16,21 @@ as before.
     the last item from a list now finishes saying so before focus goes back. The same goes for "Opening the download
     page" before the browser takes over.
 
+## 🐛 Bugs that could lose your mods or leave you stuck
+
+*   **Space on a mod group renamed your whole mods folder**, on Stardew Valley and The Witcher 3, and every mod
+    vanished from the list. It now says a group has to be expanded first.
+*   **Deleting a Minecraft mod said "Deleted" and left it in place**, still loading. It now really goes, and if the
+    game has it open you are told it could not be removed.
+*   **Saving in Shortcut Customization broke the manager until you restarted it**: the lists stopped responding.
+    Saving now just updates the shortcuts shown in the menus.
+*   **Escape on an open dropdown closed the whole screen** and threw away your changes. It now closes the dropdown.
+*   **Escape did nothing on FOMOD installer steps after the first.** It now cancels from any step.
+*   **Control Shift J did nothing.** It now opens the batch action for a category, as the manual says.
+*   **Control L on the SMAPI log asked for your API key.** It now uploads the log, as the manual says.
+*   **Suggested Mods counted its category headings** in "5 of 20". It now counts only the mods.
+*   **A manager update now says it is the manager.** At startup, a bare "Version 1.7.0 is available" could have
+    been anything.
 ## 🐛 Fewer things said twice
 
 *   **A failed Mod Organizer 2 import said its error twice.** It now says it once.

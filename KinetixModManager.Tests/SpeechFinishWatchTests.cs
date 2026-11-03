@@ -204,7 +204,8 @@ public class NvdaSpeechGuardTests
 
 				int next = i + 1;
 				while (next < lines.Length && lines[next].Split("//")[0].Trim().Length == 0) next++;
-				if (next < lines.Length && asks.IsMatch(lines[next]))
+				// An "else" means only one of the two ever runs, so nothing is cut off.
+				if (next < lines.Length && asks.IsMatch(lines[next]) && !lines[next].TrimStart().StartsWith("else"))
 					offenders.Add($"{Path.GetFileName(file)}:{i + 1}");
 			}
 		}

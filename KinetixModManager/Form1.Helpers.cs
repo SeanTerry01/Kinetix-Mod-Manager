@@ -68,6 +68,49 @@ public partial class Form1
 		return label.ToString();
 	}
 
+	/// <summary>Where each label built by <see cref="ShortcutLabel"/> came from, so it can be built again.</summary>
+	private readonly Dictionary<string, (string Key, string Action)> _shortcutLabels = new();
+
+	/// <summary>A menu or button label that names its shortcut, remembered so a remap can correct it.</summary>
+	private string ShortcutLabel(string key, string action)
+	{
+		string text = Loc.T(key, GetShortcutString(action));
+		_shortcutLabels[text] = (key, action);
+		return text;
+	}
+
+	/// <summary>
+	/// Corrects every label that names a shortcut, after the shortcuts have changed. The keys themselves need nothing:
+	/// each press is checked against the settings as it happens.
+	///
+	/// ⚠️ Never SetupAccessibleUI for this. It adds a second interface beside the first, and left focus on the old
+	/// lists while every field pointed at new, empty ones, until the manager was restarted.
+	/// </summary>
+	private void RefreshShortcutLabels()
+	{
+		var before = new Dictionary<string, (string Key, string Action)>(_shortcutLabels);
+		_shortcutLabels.Clear();
+
+		string Relabelled(string text) =>
+			before.TryGetValue(text, out var label) ? ShortcutLabel(label.Key, label.Action) : text;
+
+		void Walk(ToolStripItemCollection items)
+		{
+			foreach (ToolStripItem item in items)
+			{
+				item.Text = Relabelled(item.Text ?? "");
+				if (item is ToolStripMenuItem { HasDropDownItems: true } menu) Walk(menu.DropDownItems);
+			}
+		}
+
+		if (MainMenuStrip != null) Walk(MainMenuStrip.Items);
+		btnPruneBackups.Text = Relabelled(btnPruneBackups.Text);
+
+		// These few are named for the game or a mode, so they are built where that is known rather than remembered.
+		ConfigureModsMenuForGame();
+		ConfigureLogMenuItemForGame();
+	}
+
 	/// <summary>Returns <c>true</c> if <paramref name="e"/> matches the configured shortcut for <paramref name="action"/>.</summary>
 	private bool IsShortcut(KeyEventArgs e, string action)
 	{

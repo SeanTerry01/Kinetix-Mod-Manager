@@ -62,11 +62,11 @@ public partial class Form1
 			BeginInvoke(new Action(AnnounceFocusRestored));
 		};
 		_menuFile = new ToolStripMenuItem(Loc.T("menu.file")) { Name = "menuFile" };
-		_menuFile.DropDownItems.Add(Loc.T("menu.refreshAll", GetShortcutString("RefreshAll")), null, delegate
+		_menuFile.DropDownItems.Add(ShortcutLabel("menu.refreshAll", "RefreshAll"), null, delegate
 		{
 			RequestManualRefresh(everything: true);
 		}).Name = "menuRefreshAll";
-		_menuFile.DropDownItems.Add(Loc.T("menu.refreshInstalled", GetShortcutString("RefreshInstalled")), null, delegate
+		_menuFile.DropDownItems.Add(ShortcutLabel("menu.refreshInstalled", "RefreshInstalled"), null, delegate
 		{
 			RequestManualRefresh(everything: false);
 		}).Name = "menuRefreshInstalled";
@@ -80,7 +80,7 @@ public partial class Form1
 		{
 			ShowModSourceKeys();
 		}).Name = "menuModSourceKeys";
-		_menuFile.DropDownItems.Add(Loc.T("menu.settings", GetShortcutString("Settings")), null, delegate
+		_menuFile.DropDownItems.Add(ShortcutLabel("menu.settings", "Settings"), null, delegate
 		{
 			ShowSettings();
 		});
@@ -113,7 +113,7 @@ public partial class Form1
 		// stable Names (some are relabeled/hidden per game in SwitchActiveGame, which finds them recursively).
 
 		// Common, frequently-used actions at the top level.
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.installZip", GetShortcutString("InstallZip")), null, delegate
+		toolStripMenuItem2.DropDownItems.Add(ShortcutLabel("menu.installZip", "InstallZip"), null, delegate
 		{
 			ManualInstall();
 		});
@@ -122,9 +122,9 @@ public partial class Form1
 		{
 			Fire(InstallFromGitHubAsync(), "InstallFromGitHubAsync");
 		}).Name = "menuInstallGitHub";
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.markVersionInstalled", GetShortcutString("MarkVersionInstalled")), null,
+		toolStripMenuItem2.DropDownItems.Add(ShortcutLabel("menu.markVersionInstalled", "MarkVersionInstalled"), null,
 			delegate { MarkSelectedUpdateAsInstalled(); }).Name = "menuMarkVersionInstalled";
-		toolStripMenuItem2.DropDownItems.Add(Loc.T("menu.updateAll", GetShortcutString("UpdateAll")), null, async delegate
+		toolStripMenuItem2.DropDownItems.Add(ShortcutLabel("menu.updateAll", "UpdateAll"), null, async delegate
 		{
 			await UpdateAllMods();
 		});
@@ -136,25 +136,25 @@ public partial class Form1
 
 		// Submenu: actions on the currently selected mod.
 		var grpSelected = new ToolStripMenuItem(Loc.T("menu.groupSelectedMod")) { Name = "menuGroupSelectedMod" };
-		grpSelected.DropDownItems.Add(Loc.T("menu.editNote", GetShortcutString("EditNote")), null, delegate { SetModNote(); });
-		grpSelected.DropDownItems.Add(Loc.T("menu.editConfig", GetShortcutString("OpenConfig")), null, delegate { OpenSelectedModConfig(); });
-		grpSelected.DropDownItems.Add(Loc.T("menu.editConfigFile", GetShortcutString("OpenConfigFile")), null, delegate { OpenSelectedModConfigFile(); });
-		grpSelected.DropDownItems.Add(Loc.T("menu.editManifest", GetShortcutString("OpenManifest")), null, delegate { OpenSelectedModManifest(); });
-		grpSelected.DropDownItems.Add(Loc.T("menu.viewDependencies", GetShortcutString("ShowDependencies")), null, delegate { ShowDependencies(); });
-		grpSelected.DropDownItems.Add(Loc.T("menu.resolveDependencies", GetShortcutString("QuickFix")), null, delegate { QuickFixDependencies(); });
-		grpSelected.DropDownItems.Add(Loc.T("menu.viewChangelog", GetShortcutString("ViewChangelog")), null, delegate { ViewModChangelog(); });
-		grpSelected.DropDownItems.Add(Loc.T("menu.viewDescription", GetShortcutString("ViewDescription")), null, delegate { ViewModDescription(); });
-		grpSelected.DropDownItems.Add(Loc.T("menu.endorse", GetShortcutString("Endorse")), null, delegate { EndorseSelectedMod(); });
+		grpSelected.DropDownItems.Add(ShortcutLabel("menu.editNote", "EditNote"), null, delegate { SetModNote(); });
+		grpSelected.DropDownItems.Add(ShortcutLabel("menu.editConfig", "OpenConfig"), null, delegate { OpenSelectedModConfig(); });
+		grpSelected.DropDownItems.Add(ShortcutLabel("menu.editConfigFile", "OpenConfigFile"), null, delegate { OpenSelectedModConfigFile(); });
+		grpSelected.DropDownItems.Add(ShortcutLabel("menu.editManifest", "OpenManifest"), null, delegate { OpenSelectedModManifest(); });
+		grpSelected.DropDownItems.Add(ShortcutLabel("menu.viewDependencies", "ShowDependencies"), null, delegate { ShowDependencies(); });
+		grpSelected.DropDownItems.Add(ShortcutLabel("menu.resolveDependencies", "QuickFix"), null, delegate { QuickFixDependencies(); });
+		grpSelected.DropDownItems.Add(ShortcutLabel("menu.viewChangelog", "ViewChangelog"), null, delegate { ViewModChangelog(); });
+		grpSelected.DropDownItems.Add(ShortcutLabel("menu.viewDescription", "ViewDescription"), null, delegate { ViewModDescription(); });
+		grpSelected.DropDownItems.Add(ShortcutLabel("menu.endorse", "Endorse"), null, delegate { EndorseSelectedMod(); });
 		grpSelected.DropDownItems.Add(Loc.T("menu.verifyDeployment"), null, delegate { VerifyModDeployment(); });
 		toolStripMenuItem2.DropDownItems.Add(grpSelected);
 
 		// Submenu: installing and updating mods.
 		var grpInstall = new ToolStripMenuItem(Loc.T("menu.groupInstall")) { Name = "menuGroupInstall" };
 		grpInstall.DropDownItems.Add(Loc.T("menu.autoMatch"), null, async delegate { await AutoMatchNexusIDs(); });
-		grpInstall.DropDownItems.Add(Loc.T("menu.pendingDownloads", GetShortcutString("InstallPendingDownload")), null, delegate { ShowPendingDownloads(); });
-		grpInstall.DropDownItems.Add(Loc.T("menu.downloadsHistory", GetShortcutString("DownloadsHistory")), null, delegate { ShowDownloadsHistory(); });
+		grpInstall.DropDownItems.Add(ShortcutLabel("menu.pendingDownloads", "InstallPendingDownload"), null, delegate { ShowPendingDownloads(); });
+		grpInstall.DropDownItems.Add(ShortcutLabel("menu.downloadsHistory", "DownloadsHistory"), null, delegate { ShowDownloadsHistory(); });
 		grpInstall.DropDownItems.Add(Loc.T("menu.tidyFolders"), null, delegate { TidyModFolderNames(); });
-		grpInstall.DropDownItems.Add(Loc.T("menu.trackedMods", GetShortcutString("TrackedMods")), null, async delegate { await ShowTrackedMods(); });
+		grpInstall.DropDownItems.Add(ShortcutLabel("menu.trackedMods", "TrackedMods"), null, async delegate { await ShowTrackedMods(); });
 		toolStripMenuItem2.DropDownItems.Add(grpInstall);
 
 		// Submenu: building a list of mods worth suggesting to other players. Everything but the on/off switch is
@@ -163,7 +163,7 @@ public partial class Form1
 		var grpCurate = new ToolStripMenuItem(Loc.T("menu.groupCurate")) { Name = "menuGroupCurate" };
 		// The list itself first and always available: it is the thing this submenu is named after, and reading it
 		// has nothing to do with whether you are building one.
-		grpCurate.DropDownItems.Add(Loc.T("menu.suggestedMods", GetShortcutString("SuggestedMods")), null,
+		grpCurate.DropDownItems.Add(ShortcutLabel("menu.suggestedMods", "SuggestedMods"), null,
 			delegate { ShowSuggestedMods(); }).Name = "menuSuggestedMods";
 		// Import and export sit together, and neither is gated on curation mode. Taking in somebody else's list is
 		// how a player gets one at all, and separating the pair so that one of them came and went with a setting
@@ -173,11 +173,11 @@ public partial class Form1
 		grpCurate.DropDownItems.Add(Loc.T("menu.exportSuggestions"), null,
 			async delegate { await ExportSuggestions(); }).Name = "menuExportSuggestions";
 		grpCurate.DropDownItems.Add(new ToolStripSeparator());
-		grpCurate.DropDownItems.Add(Loc.T("menu.curationMode", GetShortcutString("CurationMode")), null,
+		grpCurate.DropDownItems.Add(ShortcutLabel("menu.curationMode", "CurationMode"), null,
 			delegate { ToggleCurationMode(); }).Name = "menuCurationMode";
-		grpCurate.DropDownItems.Add(Loc.T("menu.markSuggestion", GetShortcutString("MarkSuggestion")), null,
+		grpCurate.DropDownItems.Add(ShortcutLabel("menu.markSuggestion", "MarkSuggestion"), null,
 			delegate { ToggleModSuggestion(); }).Name = "menuMarkSuggestion";
-		grpCurate.DropDownItems.Add(Loc.T("menu.suggestedList", GetShortcutString("SuggestedList")), null,
+		grpCurate.DropDownItems.Add(ShortcutLabel("menu.suggestedList", "SuggestedList"), null,
 			delegate { ShowSuggestedModsReview(); }).Name = "menuSuggestedList";
 		grpCurate.DropDownItems.Add(Loc.T("menu.manageCategories"), null,
 			delegate { ShowCategoryManager(); }).Name = "menuManageCategories";
@@ -189,26 +189,26 @@ public partial class Form1
 
 		// Submenu: profiles and shareable collections.
 		var grpProfiles = new ToolStripMenuItem(Loc.T("menu.groupProfiles")) { Name = "menuGroupProfiles" };
-		grpProfiles.DropDownItems.Add(Loc.T("menu.saveProfile", GetShortcutString("SaveProfile")), null, delegate { CreateProfileFromCurrent(); });
-		grpProfiles.DropDownItems.Add(Loc.T("menu.exportCollection", GetShortcutString("ExportCollection")), null, async delegate { await ExportCollection(); });
-		grpProfiles.DropDownItems.Add(Loc.T("menu.installCollection", GetShortcutString("InstallCollection")), null, async delegate { await InstallCollectionAsync(); });
+		grpProfiles.DropDownItems.Add(ShortcutLabel("menu.saveProfile", "SaveProfile"), null, delegate { CreateProfileFromCurrent(); });
+		grpProfiles.DropDownItems.Add(ShortcutLabel("menu.exportCollection", "ExportCollection"), null, async delegate { await ExportCollection(); });
+		grpProfiles.DropDownItems.Add(ShortcutLabel("menu.installCollection", "InstallCollection"), null, async delegate { await InstallCollectionAsync(); });
 		grpProfiles.DropDownItems.Add(Loc.T("menu.importMO2"), null, delegate { ImportFromMO2(); }).Name = "menuImportMO2";
 		toolStripMenuItem2.DropDownItems.Add(grpProfiles);
 
 		// Submenu: health checks and reports.
 		var grpHealth = new ToolStripMenuItem(Loc.T("menu.groupHealth")) { Name = "menuGroupHealth" };
-		grpHealth.DropDownItems.Add(Loc.T("menu.healthCheck", GetShortcutString("HealthCheck")), null, async delegate { await RunHealthCheck(); });
-		grpHealth.DropDownItems.Add(Loc.T("menu.checkRequirements", GetShortcutString("CheckRequirements")), null, async delegate { await ShowRequirementsReport(); });
-		grpHealth.DropDownItems.Add(Loc.T("menu.checkBrokenMods", GetShortcutString("CheckBrokenMods")), null, async delegate { await ShowBrokenModsReport(); });
-		grpHealth.DropDownItems.Add(Loc.T("menu.fileConflicts", GetShortcutString("FileConflicts")), null, delegate { ShowFileConflictsReport(); });
+		grpHealth.DropDownItems.Add(ShortcutLabel("menu.healthCheck", "HealthCheck"), null, async delegate { await RunHealthCheck(); });
+		grpHealth.DropDownItems.Add(ShortcutLabel("menu.checkRequirements", "CheckRequirements"), null, async delegate { await ShowRequirementsReport(); });
+		grpHealth.DropDownItems.Add(ShortcutLabel("menu.checkBrokenMods", "CheckBrokenMods"), null, async delegate { await ShowBrokenModsReport(); });
+		grpHealth.DropDownItems.Add(ShortcutLabel("menu.fileConflicts", "FileConflicts"), null, delegate { ShowFileConflictsReport(); });
 		grpHealth.DropDownItems.Add(Loc.T("menu.updateCoverage"), null, async delegate { await ShowUpdateCoverageReport(); }).Name = "menuUpdateCoverage";
-		grpHealth.DropDownItems.Add(Loc.T("menu.pluginSlots", GetShortcutString("PluginSlots")), null, delegate { AnnouncePluginSlotUsage(); });
+		grpHealth.DropDownItems.Add(ShortcutLabel("menu.pluginSlots", "PluginSlots"), null, delegate { AnnouncePluginSlotUsage(); });
 		grpHealth.DropDownItems.Add(Loc.T("menu.resetIgnoredReqs"), null, delegate { ResetIgnoredRequirements(); });
 		toolStripMenuItem2.DropDownItems.Add(grpHealth);
 
 		// Submenu: Skyrim/Fallout 4 load order and loose-file deployment.
 		var grpLoad = new ToolStripMenuItem(Loc.T("menu.groupLoadOrder")) { Name = "menuGroupLoadOrder" };
-		grpLoad.DropDownItems.Add(Loc.T("menu.autoSort", GetShortcutString("AutoSort")), null, async delegate { await AutoSortPluginsAsync(); }).Name = "menuAutoSort";
+		grpLoad.DropDownItems.Add(ShortcutLabel("menu.autoSort", "AutoSort"), null, async delegate { await AutoSortPluginsAsync(); }).Name = "menuAutoSort";
 		grpLoad.DropDownItems.Add(Loc.T("menu.conflictWinners"), null, delegate { ShowConflictOverride(); }).Name = "menuConflictWinners";
 		grpLoad.DropDownItems.Add(Loc.T("menu.addLoadRule"), null, delegate { AddLoadOrderRule(); }).Name = "menuAddLoadRule";
 		grpLoad.DropDownItems.Add(Loc.T("menu.manageLoadRules"), null, delegate { ShowLoadOrderRules(); }).Name = "menuManageLoadRules";
@@ -251,18 +251,18 @@ public partial class Form1
 			Fire(RemoveModrinthAppLeftoversAsync(), "RemoveModrinthAppLeftoversAsync");
 		}).Name = "menuRemoveModrinthAppLeftovers";
 		grpGame.DropDownItems.Add(Loc.T("menu.editGameIni"), null, delegate { EditGameIni(); }).Name = "menuEditGameIni";
-		grpGame.DropDownItems.Add(Loc.T("menu.saveManager", GetShortcutString("SaveManager")), null, async delegate { await ShowSaveManager(); }).Name = "menuSaveManager";
+		grpGame.DropDownItems.Add(ShortcutLabel("menu.saveManager", "SaveManager"), null, async delegate { await ShowSaveManager(); }).Name = "menuSaveManager";
 		grpGame.DropDownItems.Add(Loc.T("menu.prepUpdate"), null, delegate { PrepareForGameUpdate(); }).Name = "menuPrepUpdate";
 		grpGame.DropDownItems.Add(Loc.T("menu.restoreUpdate"), null, delegate { RestoreAfterUpdate(); }).Name = "menuRestoreUpdate";
 		grpGame.DropDownItems.Add(Loc.T("menu.restoreSafety"), null, delegate { ShowRestoreSafetyBackup(); }).Name = "menuRestoreSafety";
 		toolStripMenuItem2.DropDownItems.Add(grpGame);
 
 		ToolStripMenuItem toolStripMenuItem3 = new ToolStripMenuItem(Loc.T("menu.view")) { Name = "menuView" };
-		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.apiCredits", GetShortcutString("ApiCredits")), null, delegate
+		toolStripMenuItem3.DropDownItems.Add(ShortcutLabel("menu.apiCredits", "ApiCredits"), null, delegate
 		{
 			ShowApiCredits();
 		});
-		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.diagnoseAi", GetShortcutString("DiagnoseAi")), null, delegate
+		toolStripMenuItem3.DropDownItems.Add(ShortcutLabel("menu.diagnoseAi", "DiagnoseAi"), null, delegate
 		{
 			DiagnoseWithAi();
 		});
@@ -270,11 +270,11 @@ public partial class Form1
 		{
 			AskFreeformAi();
 		});
-		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.openDownloads", GetShortcutString("OpenDownloads")), null, delegate
+		toolStripMenuItem3.DropDownItems.Add(ShortcutLabel("menu.openDownloads", "OpenDownloads"), null, delegate
 		{
 			Process.Start("explorer.exe", downloadsPath);
 		});
-		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.openBackups", GetShortcutString("OpenBackups")), null, delegate
+		toolStripMenuItem3.DropDownItems.Add(ShortcutLabel("menu.openBackups", "OpenBackups"), null, delegate
 		{
 			Process.Start("explorer.exe", backupsPath);
 		});
@@ -282,11 +282,11 @@ public partial class Form1
 		{
 			FreeUpSpace();
 		});
-		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.openSmapiLog", GetShortcutString("OpenLogFile")), null, delegate
+		toolStripMenuItem3.DropDownItems.Add(ShortcutLabel("menu.openSmapiLog", "OpenLogFile"), null, delegate
 		{
 			OpenGameLog();
 		}).Name = "menuOpenLog";
-		toolStripMenuItem3.DropDownItems.Add(Loc.T("menu.openErrorLog", GetShortcutString("OpenErrorLog")), null, delegate
+		toolStripMenuItem3.DropDownItems.Add(ShortcutLabel("menu.openErrorLog", "OpenErrorLog"), null, delegate
 		{
 			OpenErrorLog();
 		});
@@ -295,19 +295,19 @@ public partial class Form1
 		{
 			ShowSetupWizard();
 		});
-		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.userManual", GetShortcutString("Manual")), null, delegate
+		toolStripMenuItem4.DropDownItems.Add(ShortcutLabel("menu.userManual", "Manual"), null, delegate
 		{
 			ShowManual();
 		});
-		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.changeLog", GetShortcutString("ChangeLog")), null, delegate
+		toolStripMenuItem4.DropDownItems.Add(ShortcutLabel("menu.changeLog", "ChangeLog"), null, delegate
 		{
 			ShowChangeLog();
 		});
-		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.modDocs", GetShortcutString("ModDocs")), null, delegate
+		toolStripMenuItem4.DropDownItems.Add(ShortcutLabel("menu.modDocs", "ModDocs"), null, delegate
 		{
 			ShowModDocs();
 		});
-		toolStripMenuItem4.DropDownItems.Add(Loc.T("menu.accessibilityControls", GetShortcutString("ControlsHelp")), null, delegate
+		toolStripMenuItem4.DropDownItems.Add(ShortcutLabel("menu.accessibilityControls", "ControlsHelp"), null, delegate
 		{
 			ShowAccessibilityControls();
 		});
@@ -461,7 +461,7 @@ public partial class Form1
 		tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
 		btnPruneBackups = new Button
 		{
-			Text = Loc.T("ui.pruneBackups", GetShortcutString("DeleteOldBackups")),
+			Text = ShortcutLabel("ui.pruneBackups", "DeleteOldBackups"),
 			Width = 250,
 			Height = 35
 		};

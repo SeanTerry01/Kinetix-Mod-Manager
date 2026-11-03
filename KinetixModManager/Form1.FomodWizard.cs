@@ -306,7 +306,15 @@ public partial class Form1
 			// view's own title — so it is passed as the hint instead and spoken in its proper place. See
 			// Form1.InlineView.
 			if (firstRender) firstRender = false;
-			else Speak(Loc.T("fomod.stepAnnounce", step.Name, VisiblePosition(current), VisibleCount()));
+			else
+			{
+				Speak(Loc.T("fomod.stepAnnounce", step.Name, VisiblePosition(current), VisibleCount()));
+				// The view did these once as it opened, to the first step's controls. These are new, so without this
+				// Escape was dead on every later step, and contrast and text size were lost.
+				AttachEscape(content, closeView);
+				StylePromptPanel(content);
+				SilenceUnnamedContainers(content);
+			}
 			FocusFirstOption(content, btnNext);
 		}
 

@@ -23,7 +23,7 @@ public class PathRebaseTests
 	public void AFileMovesUnderTheNewRoot()
 	{
 		Assert.Equal(
-			P("/dest", "mod", "file.txt"),
+			Path.GetFullPath(P("/dest", "mod", "file.txt")),
 			PathRebase.To(P("/source"), P("/source", "mod", "file.txt"), P("/dest")));
 	}
 
@@ -45,7 +45,7 @@ public class PathRebaseTests
 
 		string rebased = PathRebase.To(source, file, P("/dest"));
 
-		Assert.Equal(P("/dest", "Pack", "games", "Mods", "texture.png"), rebased);
+		Assert.Equal(Path.GetFullPath(P("/dest", "Pack", "games", "Mods", "texture.png")), rebased);
 		Assert.NotEqual(file.Replace(source, P("/dest")), rebased);
 	}
 
@@ -65,7 +65,7 @@ public class PathRebaseTests
 	public void AnUntidyPathIsStillPlacedCorrectly()
 	{
 		Assert.Equal(
-			P("/dest", "a.txt"),
+			Path.GetFullPath(P("/dest", "a.txt")),
 			PathRebase.To(P("/source"), P("/source", "sub", "..", "a.txt"), P("/dest")));
 	}
 

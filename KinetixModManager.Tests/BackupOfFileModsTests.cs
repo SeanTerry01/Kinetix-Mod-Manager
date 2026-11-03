@@ -149,17 +149,13 @@ public class BackupOfFileModsTests : IDisposable
 	{
 		// It MUST throw. A backup that silently did not happen is how a delete removes something with no copy
 		// anywhere while reporting that a copy was kept — see Form1.ModActions, which now stops on this.
+		//
+		// A file where the folder should be, because that fails on every system. A read-only attribute does not: Windows
+		// ignores it on a folder, so nothing threw, and this test failed for a reason unrelated to backups.
 		string blocked = Path.Combine(_dir, "blocked");
-        Directory.CreateDirectory(blocked);
-		File.WriteAllText(Path.Combine(blocked, "Sodium_20260101_000000.zip"), "");
+		File.WriteAllText(blocked, "");
 
-		try { File.SetAttributes(blocked, FileAttributes.ReadOnly); } catch { return; }
-
-		try
-		{
-			Assert.ThrowsAny<Exception>(() => BackupStore.CreateBackup(Jar("sodium.jar"), "Sodium", blocked));
-		}
-		finally { try { File.SetAttributes(blocked, FileAttributes.Normal); } catch { } }
+		Assert.ThrowsAny<Exception>(() => BackupStore.CreateBackup(Jar("sodium.jar"), "Sodium", blocked));
 	}
 
 	/// <summary>Synchronous <see cref="IProgress{T}"/>; the built-in one posts to a context tests do not have.</summary>

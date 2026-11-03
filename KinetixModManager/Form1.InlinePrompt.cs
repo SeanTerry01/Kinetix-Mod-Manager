@@ -163,6 +163,12 @@ public partial class Form1
 		string? hostNameBefore = host.AccessibleName;
 		var disabled = new List<Control>();
 
+		// An overlay can open inside LetSpeechFinish's pump: a download arriving, an update check finishing. The hold
+		// swallows every key, and the wait cannot resume until this overlay is answered, so with it left on nothing
+		// could answer the prompt and nothing could end the wait.
+		bool holdingBefore = _holdingForSpeech;
+		_holdingForSpeech = false;
+
 		_overlayDepth++;
 		try
 		{
@@ -221,6 +227,7 @@ public partial class Form1
 		finally
 		{
 			_overlayDepth--;
+			_holdingForSpeech = holdingBefore;
 			try
 			{
 				if (!host.IsDisposed)
@@ -316,6 +323,9 @@ public partial class Form1
 				// into a mode Escape should leave rather than close out of — capturing a keystroke, say.
 				// Handlers added while the view was built run before this one, so their Handled flag is seen.
 				if (e.Handled || e.KeyCode != Keys.Escape) return;
+				// Escape on an open dropdown is the dropdown's: it closes the list and keeps the view. Taking it here
+				// closed all of Settings and threw away every edit.
+				if (s is ComboBox { DroppedDown: true }) return;
 				e.Handled = true;
 				e.SuppressKeyPress = true;
 				onEscape();

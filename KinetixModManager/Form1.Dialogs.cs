@@ -419,9 +419,8 @@ public partial class Form1
 			_settings.Shortcuts = tempShortcuts;
 			_settings.Save();
 			saved = true;
+			RefreshShortcutLabels();
 			closeView();
-			Speak(Loc.T("shortcutMgr.saved"));
-			SetupAccessibleUI();
 		};
 		Button button4 = new Button
 		{
@@ -444,7 +443,7 @@ public partial class Form1
 		ApplyScreenReaderPauses(container);
 		return lb;
 		},
-		onClosed: () => { if (!saved) Speak(Loc.T("common.changesCancelled")); });
+		onClosed: () => Speak(Loc.T(saved ? "shortcutMgr.saved" : "common.changesCancelled")));
 
 		/// <summary>
 		/// Rebuilds the action list, landing back on the action named by <paramref name="selectAction"/> — or on

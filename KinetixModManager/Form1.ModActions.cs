@@ -32,6 +32,11 @@ public partial class Form1
 	private void SetManualCategory()
 	{
 		if (listInstalled.SelectedItem is not StardewMod stardewMod) return;
+		if (stardewMod.IsGroup)
+		{
+			Speak(Loc.T("common.modGroupFirst"));
+			return;
+		}
 
 		string? text = ShowTextPrompt(
 			Loc.T("modactions.changeCategoryTitle"),
@@ -492,6 +497,13 @@ public partial class Form1
 	{
 		if (!(listInstalled.SelectedItem is StardewMod stardewMod))
 		{
+			return;
+		}
+		// A group row's folder is the whole mods folder, so switching one "off" renamed that, and every mod in the game
+		// vanished from the list with no way back from inside the manager.
+		if (stardewMod.IsGroup)
+		{
+			Speak(Loc.T("common.modGroupFirst"));
 			return;
 		}
 		try

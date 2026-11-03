@@ -2476,39 +2476,16 @@ public static class ModFileSystem
 	/// <summary>Deletes a directory tree robustly: clears read-only attributes first (the common cause of an
 	/// "access is denied" on delete) and retries a few times for a transient lock (e.g. an antivirus scanning a
 	/// freshly written file).</summary>
-	private static void ForceDeleteDirectory(string path)
-	{
-		if (!Directory.Exists(path)) return;
-		ClearReadOnlyRecursive(path);
-		for (int attempt = 0; ; attempt++)
-		{
-			try { Directory.Delete(path, recursive: true); return; }
-			catch (Exception) when (attempt < 3) { Thread.Sleep(200); }
-		}
-	}
+	private static void ForceDeleteDirectory(string path) => ModOnDisk.DeleteDirectory(path);
 
 	/// <summary>Public entry point for deleting a mod's folder from the managed mods directory. Uses the same
 	/// read-only-clearing, retrying delete as the installer, so a mod that ships a read-only file (e.g. SkyPatcher's
 	/// DLL) no longer fails the user's Delete action with "Access to the path '…' is denied".</summary>
-	public static void DeleteModFolder(string path) => ForceDeleteDirectory(path);
+	public static void DeleteModFolder(string path) => ModOnDisk.Delete(path);
 
 	/// <summary>Deletes a single file robustly: clears a read-only attribute first (otherwise the delete throws
 	/// "access is denied" on mods that mark files read-only) and retries a few times for a transient lock.</summary>
-	private static void RobustDeleteFile(string path)
-	{
-		if (!File.Exists(path)) return;
-		for (int attempt = 0; ; attempt++)
-		{
-			try
-			{
-				FileAttributes attrs = File.GetAttributes(path);
-				if ((attrs & FileAttributes.ReadOnly) != 0) File.SetAttributes(path, attrs & ~FileAttributes.ReadOnly);
-				File.Delete(path);
-				return;
-			}
-			catch (Exception) when (attempt < 3) { Thread.Sleep(200); }
-		}
-	}
+	private static void RobustDeleteFile(string path) => ModOnDisk.DeleteFile(path);
 
 	/// <summary>An overwriting file copy that first clears a read-only destination (otherwise the copy fails with
 	/// "access is denied") and retries a few times for a transient lock.</summary>
