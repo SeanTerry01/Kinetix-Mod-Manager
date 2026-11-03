@@ -1,5 +1,70 @@
 ﻿# Unreleased
 
+## 🐛 Minecraft can no longer be left unable to start, or silent, by an update or a move
+
+*   **F5 starts the right Minecraft.** It started whichever Fabric install sorted first by name, so a modpack's newer Fabric could
+    be used for your own mods, and the game refused to start. It now goes by the version your setup is on.
+*   **Updating Fabric no longer moves Minecraft.** With no version chosen yet, a loader update could move the game to the newest
+    Minecraft without asking, and leave every mod behind.
+*   **United Minecraft only updates to a release for your Minecraft version.** It offered the newest release whichever version it
+    was for, and Fabric then refused to start the game.
+*   **Moving to a new Minecraft version downloads everything first.** If your accessibility mod can't be fetched, the move stops
+    with nothing changed. It used to move first, and could leave a silent game on the new version.
+*   **Not being able to ask a mod site no longer counts as a mod having no build.** During an outage, working mods could be
+    switched off. The move now stops and says so.
+*   **Mods you switched off stay off.** A move turned them back on, a rival accessibility mod included, which says everything twice.
+*   **If an old copy of a mod can't be removed, the new one is taken back out**, so the game keeps starting on the old one. Two
+    copies stop Fabric starting.
+*   **A fresh install with United Minecraft** chooses a Minecraft version United really has a build for.
+*   **Pressing F5 twice** no longer starts two games.
+
+## 🐛 The suite and safety backups say what really happened
+
+*   **The accessibility suite no longer says "setup complete" after a failure.** A loader that failed, a mod that failed to
+    install, a download that never started and a mod left for you to download are all named at the end.
+*   **A switched-off accessibility mod shows as switched off**, with Install available. It said Installed, with the button greyed
+    out, on the very screen meant to fix a silent game.
+*   **The suite waits for the mod list**, so right after switching game your mods no longer look missing, and it opens on the
+    accessibility mod you already have.
+*   **Escape during a suite install** says it is still installing, instead of leaving it running behind you.
+*   **Restoring a safety backup taken for an MCM or INI change now undoes that change.** It held neither file, and said "Restored".
+    Those backups are taken at your first real change, because just opening the screen used to push an older one out.
+*   **One damaged safety backup no longer hides the others**, and restoring one no longer freezes the window.
+*   **Restoring a backup of a deleted mod** no longer claims it replaced a copy.
+
+## ⚡ Update checks spend far fewer of your Nexus requests
+
+*   **Nexus's list of this month's changes now answers for every mod not on it**, for one request. A check could cost two requests
+    per mod, so a large setup could use most of a day's allowance to learn that almost nothing had changed.
+*   **When a site says to slow down, the manager does**, and says that is why some mods were not checked.
+*   **Minecraft asks Modrinth once, not once per mod**, and no longer freezes while it reads your mods.
+
+## ✨ Cancel a download
+
+*   **Ctrl+Shift+C stops downloads**, and stops Update All. A large file could only be stopped by closing the manager.
+*   **Downloads no longer slow the keyboard**, because they stopped working through the window's own message queue.
+*   **The manager's own installer, SMAPI's installer and GitHub installs are checked against the checksum GitHub publishes**, and
+    thrown away if they don't match. This catches a file damaged or changed on the way. It can't prove who made a release.
+
+## 🐛 A purge stays purged
+
+*   **After a purge, or preparing for a game update, your mods stay out until you ask for them back**, even across a restart. Any
+    refresh used to put everything back, including during a game update. F5 reminds you the game is starting without them.
+*   **Changing a game's folder in Settings** asks about the mod files left in the old one, and deploys into the new one.
+*   **MO2 import works on a second copy of a game**, and a copy that fails part way no longer counts as imported next time.
+
+## 💬 Smaller things you may hear
+
+*   **"1 mods" and "1 files" are gone everywhere**, not only in the messages heard most.
+*   **Sentences that name a key use your key**, if you changed it, and a key you cleared is no longer read as "Press Unmapped".
+*   **Typing in the installed search** reads the count once, after you pause.
+*   **After a file picker closes**, you hear which mod you are on as well as its position.
+*   **Shift+F1 works in every in-window screen.**
+*   **Ignoring a version on a bundled download** now sticks.
+*   **A Content Patcher setting that takes several values** can now be given several. Picking one used to replace the others.
+*   **Auto-match, Load more and searches** can no longer run over each other.
+
+
 ## 💬 What is said is true, and easier to hear
 
 *   **Directions that led nowhere are fixed.** "Link it first with Control plus L" opened the wrong prompt, "Find New Mods" is a
