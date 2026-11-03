@@ -23,6 +23,15 @@ public class ModVersionsTests
 	[InlineData("1.9.0", "1.10.0", true)]     // not a string comparison: "10" beats "9"
 	[InlineData("2.0.0", "1.9.9", false)]
 	[InlineData("1.0.0", "1.0.0", false)]
+	[InlineData("1.1.0+mc26.2", "1.1.1+mc26.2", true)]   // United Minecraft's patch releases
+	[InlineData("1.7.0+mc26.3", "1.8.0+mc26.3", true)]
+	[InlineData("1.1.1+mc26.2", "1.1.0+mc26.2", false)]
+	[InlineData("1.1.0+mc26.2", "1.1.0+mc26.2", false)]
+	[InlineData("1.5-rc1", "1.5", true)]                 // a release is newer than its own pre-release
+	[InlineData("1.5", "1.5-rc1", false)]
+	[InlineData("1.5a", "1.6", true)]
+	[InlineData("1.6a", "1.5", false)]                   // read as nothing, this looked older than 1.5
+	[InlineData("1.5", "1.6a", true)]
 	public void TheLaterVersionIsRecognisedAsLater(string current, string target, bool expected) =>
 		Assert.Equal(expected, ModVersions.IsNewer(current, target));
 

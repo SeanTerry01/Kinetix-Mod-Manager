@@ -38,6 +38,11 @@ Done or decided everything else on the list. What is here needs a person, or is 
   `shortcut.unbound`; the portable zip creates empty `profiles`, `downloads` and `backups` folders the manager doesn't use; the INI editor
   doesn't share the settings-view builder, because it differs in font and buttons.
 - [ ] **The GTK head has been compiled, never run.** See its section below. Only an ear test on Linux can settle it.
+- [ ] **GTK gaps found while fixing it:** GitHub-hosted mods such as United Minecraft are never checked for updates on Linux, yet count as
+  checked. `mods.settings` looks wrong under Proton (`UserDataDirectoryFor` ignores `IGameLocator.UserDocumentsFolder`). A Linux user may have
+  no way to enter a Nexus key: `gtk.updatesNeedKey` names a File menu entry this head doesn't appear to have.
+- [ ] **Witcher 3 with a typed mods folder on Windows:** `SetModEnabled`, `ForgetWitcherMod` and `SyncWitcherModSettings` derive the game folder two
+  levels up from the mod. Only a mods folder outside `game\mods` is affected, and the game only loads mods from there.
 
 ---
 

@@ -42,10 +42,8 @@ public static class ModVersions
 		string[] array2 = target.Split('.');
 		for (int i = 0; i < Math.Max(array.Length, array2.Length); i++)
 		{
-			int result;
-			int num = ((i < array.Length && int.TryParse(array[i], out result)) ? result : 0);
-			int result2;
-			int num2 = ((i < array2.Length && int.TryParse(array2[i], out result2)) ? result2 : 0);
+			(int num, string tail) = SplitSegment(i < array.Length ? array[i] : "");
+			(int num2, string tail2) = SplitSegment(i < array2.Length ? array2[i] : "");
 			if (num2 > num)
 			{
 				return true;
@@ -54,8 +52,27 @@ public static class ModVersions
 			{
 				return false;
 			}
+
+			// The same number, and one has a suffix: "5-rc1" comes before "5". A "+" is only build information, not a pre-release.
+			bool isPreRelease = tail.Length > 0 && tail[0] != '+';
+			bool isPreRelease2 = tail2.Length > 0 && tail2[0] != '+';
+			if (isPreRelease && tail2.Length == 0) return true;
+			if (isPreRelease2 && tail.Length == 0) return false;
 		}
 		return false;
+	}
+
+	/// <summary>
+	/// A dotted part of a version as its leading number and whatever follows it.
+	///
+	/// ⚠️ Going by the number alone. Parsing the whole part read "1+mc26" as nothing, so "1.1.0+mc26.2" to "1.1.1+mc26.2" was
+	/// not newer, and United Minecraft's patch releases were never offered.
+	/// </summary>
+	private static (int Number, string Tail) SplitSegment(string segment)
+	{
+		int digits = 0;
+		while (digits < segment.Length && char.IsAsciiDigit(segment[digits])) digits++;
+		return int.TryParse(segment.AsSpan(0, digits), out int number) ? (number, segment[digits..]) : (0, segment);
 	}
 
 	/// <summary>

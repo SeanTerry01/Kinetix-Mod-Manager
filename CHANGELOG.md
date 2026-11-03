@@ -15,6 +15,8 @@
 *   **Mods you switched off stay off.** A move turned them back on, a rival accessibility mod included, which says everything twice.
 *   **If an old copy of a mod can't be removed, the new one is taken back out**, so the game keeps starting on the old one. Two
     copies stop Fabric starting.
+*   **Patch releases are no longer missed.** 1.1.0+mc26.2 to 1.1.1+mc26.2 did not count as newer, so United Minecraft's small
+    updates were never offered.
 *   **A fresh install with United Minecraft** chooses a Minecraft version United really has a build for.
 *   **Pressing F5 twice** no longer starts two games.
 
@@ -52,6 +54,16 @@
     refresh used to put everything back, including during a game update. F5 reminds you the game is starting without them.
 *   **Changing a game's folder in Settings** asks about the mod files left in the old one, and deploys into the new one.
 *   **MO2 import works on a second copy of a game**, and a copy that fails part way no longer counts as imported next time.
+
+## 🐛 Deleting a switched-off Witcher 3 mod kept the game's own files
+
+*   **It could delete a file the game needs.** Switching a mod off puts back whatever the mod replaced, and deleting the mod then
+    deleted that too, so only verifying the game could bring it back.
+
+## 🐧 The Linux version
+
+*   **Restoring a backup, updating and deleting** now do what they say, and failures are said rather than reported as success.
+    A switch of game no longer leaves another game's rows live. This has been compiled, but not yet run.
 
 ## 💬 Smaller things you may hear
 
