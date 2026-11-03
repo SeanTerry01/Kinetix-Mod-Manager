@@ -248,14 +248,22 @@ public class FomodInstallerTests : IDisposable
     [InlineData("../escaped.dll")]
     public void Staging_RefusesADestinationOutsideTheMod(string destination)
     {
+        // A name of its own each run, and removed afterwards. With the guard gone this really does write outside the
+        // staging folder, so a fixed name would be left behind and then fail every later run for the wrong reason.
+        string named = destination.Replace("escaped.dll", "FomodEscape_" + Path.GetRandomFileName());
+        string wouldLand = Path.GetFullPath(Path.Combine(_staging, named));
         WriteSource("payload.dll", "PAYLOAD");
         var config = new FomodConfig();
-        config.RequiredInstallFiles.Add(File_("payload.dll", destination: destination));
+        config.RequiredInstallFiles.Add(File_("payload.dll", destination: named));
 
-        Assert.Throws<ModArchiveContentException>(() =>
-            FomodInstaller.BuildStaging(config, new FomodSelection(), _root, _staging, AllMissing));
+        try
+        {
+            Assert.Throws<ModArchiveContentException>(() =>
+                FomodInstaller.BuildStaging(config, new FomodSelection(), _root, _staging, AllMissing));
 
-        Assert.False(File.Exists(Path.GetFullPath(Path.Combine(_staging, destination))));
+            Assert.False(File.Exists(wouldLand));
+        }
+        finally { File.Delete(wouldLand); }
     }
 
     [Fact]

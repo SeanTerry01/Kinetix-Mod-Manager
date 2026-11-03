@@ -175,6 +175,9 @@ public partial class Form1
 		catch (Exception ex)
 		{
 			LogFailure("Fabric", "Failed to install the Fabric loader", ex);
+			// Said, because the callers stop here without a word, and a move or update just ended in silence.
+			_soundEngine.Play("error");
+			SpeakBox(Loc.T("mc.fabric.failedBox", FriendlyError(ex)), Loc.T("mc.fabric.failedTitle"));
 			return false;
 		}
 	}
@@ -615,14 +618,7 @@ public partial class Form1
 				return (await ModrinthService.GetSupportedGameVersionsAsync(access.Source))
 					.Contains(gameVersion, StringComparer.OrdinalIgnoreCase);
 
-			// A GitHub release publishes no version list, so its tag and file names are the only answer available.
-			using var req = new HttpRequestMessage(HttpMethod.Get, GitHubReleases.LatestReleaseApiUrl(access.Source));
-			req.Headers.UserAgent.ParseAdd($"KinetixModManager/{NexusService.AppVersion}");
-			using HttpResponseMessage resp = await NexusService.HttpClient.SendAsync(req);
-			if (!resp.IsSuccessStatusCode) return false;
-
-			return MinecraftSuite.ReleaseIsForGameVersion(
-				GitHubReleases.Parse(await resp.Content.ReadAsStringAsync()), gameVersion);
+			return await GitHubHasBuildForAsync(access.Source, gameVersion);
 		}
 		catch (Exception ex)
 		{
@@ -705,6 +701,40 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// Whether a repository's newest release is for this Minecraft version. A release publishes no version list, so its
+	/// tag and file names are the only answer available. Throws when GitHub cannot be asked.
+	/// </summary>
+	private static async Task<bool> GitHubHasBuildForAsync(string repo, string gameVersion)
+	{
+		using var req = new HttpRequestMessage(HttpMethod.Get, GitHubReleases.LatestReleaseApiUrl(repo));
+		req.Headers.UserAgent.ParseAdd($"KinetixModManager/{NexusService.AppVersion}");
+		using HttpResponseMessage resp = await NexusService.HttpClient.SendAsync(req);
+		if (!resp.IsSuccessStatusCode) return false;
+
+		return MinecraftSuite.ReleaseIsForGameVersion(
+			GitHubReleases.Parse(await resp.Content.ReadAsStringAsync()), gameVersion);
+	}
+
+	/// <summary>
+	/// Puts a downloaded jar in place. Throws if the old copy cannot be removed: the new one is there, but Fabric refuses
+	/// to start with two copies of a mod, and nothing about that refusal would point back to this.
+	/// </summary>
+	private static async Task InstallJarAsync(string jar, string modsFolder)
+	{
+		ModInstaller.InstallResult result = await Task.Run(() => ModInstaller.InstallFile(jar, modsFolder));
+		if (result.CouldNotRemove.Count > 0)
+			throw new IOException(Loc.T("mc.install.oldCopyStuck", string.Join(", ", result.CouldNotRemove)));
+	}
+
+	/// <summary>Backs up a jar about to be replaced. Throws if it cannot be, which stops the replacement.</summary>
+	private void BackUpJarOrThrow(string jar, string modName)
+	{
+		BackupStore.CreateBackup(jar, modName, backupsPath);
+		BackupStore.PruneBackups(modName, backupsPath, _settings.MaxBackupsPerMod);
+		RefreshBackupsList();
+	}
+
+	/// <summary>
 	/// Installs the newest Fabric loader for the Minecraft version in use. The pinned version does not change, so
 	/// every installed mod goes on working: a loader update is the safe half of keeping Fabric current.
 	/// </summary>
@@ -732,22 +762,33 @@ public partial class Form1
 		List<GameMod> mods = _allInstalledMods.Where(m => !m.IsGroup && !string.IsNullOrEmpty(m.FolderPath) && File.Exists(m.FolderPath)).ToList();
 		Dictionary<string, ModrinthFile> available = await BuildsForVersionAsync(mods, newVersion);
 
-		// Three outcomes, not two. A mod with a build for the new version is updated; a mod whose own declared
-		// range already accepts it needs nothing; and the rest have to be switched OFF, because Fabric does not
-		// skip a mod built for another version — it refuses to start the game and names every offender.
 		Dictionary<string, ModrinthFile> installedBuilds = await InstalledBuildsAsync(mods);
 
-		List<GameMod> ready = mods.Where(m => available.ContainsKey(ModrinthService.Sha1Of(m.FolderPath))).ToList();
-		List<GameMod> fineAsTheyAre = mods.Except(ready)
-			.Where(m => SurvivesTheMove(m, newVersion, installedBuilds))
-			.ToList();
-		List<GameMod> leftBehind = mods.Except(ready).Except(fineAsTheyAre).ToList();
+		// Asked of each mod that says where it lives. Only a release naming this version counts, so a Modrinth mod that
+		// merely has its source on GitHub is not caught by this.
+		var onGitHub = new HashSet<GameMod>();
+		foreach (GameMod mod in mods.Where(m => !string.IsNullOrEmpty(m.GitHubRepo) && !available.ContainsKey(ModrinthService.Sha1Of(m.FolderPath))))
+		{
+			try { if (await GitHubHasBuildForAsync(mod.GitHubRepo!, newVersion)) onGitHub.Add(mod); }
+			catch (Exception ex) { DiagnosticLog.WriteException("GitHub", $"asking whether {mod.Name} has a build for {newVersion}", ex); }
+		}
+
+		MinecraftMovePlan plan = MinecraftMovePlan.Decide(mods,
+			hasBuild: m => available.ContainsKey(ModrinthService.Sha1Of(m.FolderPath)) || onGitHub.Contains(m),
+			survives: m => SurvivesTheMove(m, newVersion, installedBuilds));
+		IReadOnlyList<GameMod> ready = plan.ToUpdate;
+		IReadOnlyList<GameMod> fineAsTheyAre = plan.FineAsTheyAre;
+		var leftBehind = new List<GameMod>(plan.ToSwitchOff);
 
 		// Asked even in a batch: this is not an update, it is a change to what the game is.
 		string question = leftBehind.Count == 0
 			? Loc.T("mc.move.confirmAll", newVersion, ready.Count + fineAsTheyAre.Count)
 			: Loc.T("mc.move.confirmSome", newVersion, ready.Count, leftBehind.Count,
 				string.Join(", ", leftBehind.Select(m => m.Name)));
+		// A game that will not speak is the one outcome worth stopping someone over before they agree.
+		MinecraftSuiteMod accessMod = ActiveAccessMod();
+		if (plan.SwitchesOffAccessMod(accessMod.FabricModId))
+			question += " " + Loc.T("mc.move.accessModWarning", accessMod.DisplayName);
 		if (SpeakBox(question, Loc.T("mc.move.title", newVersion), MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
 		{
 			Speak(Loc.T("common.changesCancelled"));
@@ -769,36 +810,55 @@ public partial class Form1
 
 		string modsFolder = MinecraftLayout.ModsFolderFor(root);
 		int updated = 0;
+		var couldNotUpdate = new List<GameMod>();
 		foreach (GameMod mod in ready)
 		{
 			try
 			{
-				if (!available.TryGetValue(ModrinthService.Sha1Of(mod.FolderPath), out ModrinthFile? file)) continue;
-
 				SetStatus(Loc.T("updateAll.updatingStatus", updated + 1, ready.Count, mod.Name), speak: false);
-				string downloaded = await ModrinthService.DownloadAsync(file, downloadsPath);
-				if (File.Exists(mod.FolderPath)) BackupMod(mod.FolderPath, mod.Name);
-				await Task.Run(() => ModInstaller.InstallFile(downloaded, modsFolder));
+				string? downloaded = available.TryGetValue(ModrinthService.Sha1Of(mod.FolderPath), out ModrinthFile? file)
+					? await ModrinthService.DownloadAsync(file, downloadsPath)
+					: await DownloadNewestMinecraftJarAsync(mod, root);
+				if (downloaded == null || !MinecraftLayout.IsModFile(downloaded, null))
+					throw new IOException($"No Fabric mod jar was downloaded for {mod.Name}.");
+
+				if (File.Exists(mod.FolderPath)) BackUpJarOrThrow(mod.FolderPath, mod.Name);
+				await InstallJarAsync(downloaded, modsFolder);
 				RecordDownloadInstalled(downloaded);
 				updated++;
 			}
-			catch (Exception ex) { LogFailure(mod.Name, $"Failed to update for Minecraft {newVersion}", ex); }
+			catch (Exception ex)
+			{
+				LogFailure(mod.Name, $"Failed to update for Minecraft {newVersion}", ex);
+				couldNotUpdate.Add(mod);
+			}
 		}
+
+		// A failed update is still the old build. If that one cannot run here, leaving it on stops the game starting.
+		leftBehind.AddRange(MinecraftMovePlan.FailedThatMustGoOff(couldNotUpdate, m => SurvivesTheMove(m, newVersion, installedBuilds)));
 
 		// Switched off rather than left to break the launch. A mod Fabric rejects takes the whole game down with
 		// it, so leaving these enabled would hand back a setup that cannot start — which is precisely what
 		// happened the first time this ran.
 		var switchedOff = new List<string>();
+		var couldNotSwitchOff = new List<string>();
 		foreach (GameMod mod in leftBehind)
 		{
 			try
 			{
 				string off = MinecraftLayout.PathWithEnabled(mod.FolderPath, enable: false,
 					GameProfiles.Require(GameProfiles.Minecraft).DisabledModSuffix);
-				if (off != mod.FolderPath && File.Exists(mod.FolderPath)) File.Move(mod.FolderPath, off);
-				switchedOff.Add(mod.Name);
+				if (off != mod.FolderPath && File.Exists(mod.FolderPath))
+				{
+					File.Move(mod.FolderPath, off);
+					switchedOff.Add(mod.Name);
+				}
 			}
-			catch (Exception ex) { LogFailure(mod.Name, $"Could not switch off a mod with no build for Minecraft {newVersion}", ex); }
+			catch (Exception ex)
+			{
+				LogFailure(mod.Name, $"Could not switch off a mod with no build for Minecraft {newVersion}", ex);
+				couldNotSwitchOff.Add(mod.Name);
+			}
 		}
 
 		ResetStatus();
@@ -807,7 +867,15 @@ public partial class Form1
 		string done = switchedOff.Count == 0
 			? Loc.T("mc.move.doneAll", newVersion, updated + fineAsTheyAre.Count)
 			: Loc.T("mc.move.doneSome", newVersion, updated, switchedOff.Count, string.Join(", ", switchedOff));
-		if (!silent && switchedOff.Count > 0)
+
+		// "Moved, nothing had to be switched off" followed by Java refusing to start is what these replace.
+		if (couldNotUpdate.Count > 0)
+			done += " " + Loc.T("mc.move.updateFailed", couldNotUpdate.Count, string.Join(", ", couldNotUpdate.Select(m => m.Name)));
+		if (couldNotSwitchOff.Count > 0)
+			done += " " + Loc.T("mc.move.switchOffFailed", couldNotSwitchOff.Count, string.Join(", ", couldNotSwitchOff));
+
+		bool anythingToKnow = switchedOff.Count > 0 || couldNotUpdate.Count > 0 || couldNotSwitchOff.Count > 0;
+		if (!silent && anythingToKnow)
 			SpeakBox(done, Loc.T("mc.move.title", newVersion), MessageBoxButtons.OK, MessageBoxIcon.Warning);
 		else
 			Speak(done);
@@ -1040,10 +1108,10 @@ public partial class Form1
 		// Minecraft's did not, so when a move to a new Minecraft version turned out badly the jars that had been
 		// replaced were simply gone — and two of them had been installed straight into the mods folder, so they
 		// were not in the downloads folder either.
-		if (File.Exists(mod.FolderPath)) BackupMod(mod.FolderPath, mod.Name);
+		if (File.Exists(mod.FolderPath)) BackUpJarOrThrow(mod.FolderPath, mod.Name);
 
 		ProgressAnnouncer? progress = NewProgress(mod.Name, installing: true);
-		ModInstaller.InstallResult result = await Task.Run(() => ModInstaller.InstallFile(downloaded, modsFolder));
+		await InstallJarAsync(downloaded, modsFolder);
 		progress?.Complete();
 
 		RecordDownloadInstalled(downloaded);
@@ -1227,17 +1295,13 @@ public partial class Form1
 			if (existing != null && !ConfirmOverwrite(info.Name, MinecraftLayout.ReadModInfo(existing).Version))
 				return;
 
-			// Backed up before it is replaced, like every other game's install path does.
+			// Backed up before it is replaced, like every other game's install path does, and a backup that fails stops it.
 			if (existing != null && File.Exists(existing))
-				BackupMod(existing, MinecraftLayout.ReadModInfo(existing).Name is { Length: > 0 } had ? had : info.Name);
+				BackUpJarOrThrow(existing, MinecraftLayout.ReadModInfo(existing).Name is { Length: > 0 } had ? had : info.Name);
 
-			await Task.Run(() =>
-			{
-				if (existing != null && !string.Equals(existing, destination, StringComparison.OrdinalIgnoreCase))
-					File.Delete(existing);
-
-				File.Copy(jarPath, destination, overwrite: true);
-			});
+			// The new copy first and the old one after, so a failure cannot leave the mod missing. It used to delete first,
+			// and a locked jar or a full disk could remove the mod the game's speech depends on.
+			await InstallJarAsync(jarPath, modsFolder);
 			RecordDownloadInstalled(jarPath);
 
 			Speak(Loc.T("mc.install.done", info.Name));
@@ -1246,6 +1310,10 @@ public partial class Form1
 		catch (Exception ex)
 		{
 			LogFailure(Path.GetFileName(jarPath), "Failed to install the mod", ex);
+			// To the log alone, this was silence after pressing Enter.
+			ResetStatus();
+			_soundEngine.Play("error");
+			SpeakBox(Loc.T("install.failed", FriendlyError(ex)));
 		}
 	}
 

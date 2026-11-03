@@ -27,7 +27,11 @@ namespace KinetixModManager;
 public static class ModInstaller
 {
 	/// <summary>What an install did, so the caller can say so without guessing.</summary>
-	public readonly record struct InstallResult(string Path, string ModId, IReadOnlyList<string> Replaced)
+	/// <param name="CouldNotRemove">
+	/// Older copies still there, usually because the game has them open. The new one is in place, but Fabric refuses to
+	/// start with two copies of a mod, so this is a failure the caller has to report.
+	/// </param>
+	public readonly record struct InstallResult(string Path, string ModId, IReadOnlyList<string> Replaced, IReadOnlyList<string> CouldNotRemove)
 	{
 		/// <summary>True when this install took the place of a copy already there.</summary>
 		public bool WasUpgrade => Replaced.Count > 0;
@@ -97,6 +101,7 @@ public static class ModInstaller
 		catch (Exception ex) { DiagnosticLog.WriteException("Install", $"reading the id of {destination}", ex); }
 
 		var replaced = new List<string>();
+		var couldNotRemove = new List<string>();
 		foreach (string old in ExistingCopies(modsFolder, destination, modId))
 		{
 			try { File.Delete(old); replaced.Add(Path.GetFileName(old)); }
@@ -105,10 +110,11 @@ public static class ModInstaller
 				// Worth reporting rather than swallowing: the mod is installed, but the game will now refuse
 				// to start on a duplicate id, and nothing about that failure would point back here.
 				DiagnosticLog.WriteException("Install", $"removing the older copy at {old}", ex);
+				couldNotRemove.Add(Path.GetFileName(old));
 			}
 		}
 
-		return new InstallResult(destination, modId, replaced);
+		return new InstallResult(destination, modId, replaced, couldNotRemove);
 	}
 
 	/// <summary>

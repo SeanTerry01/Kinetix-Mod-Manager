@@ -48,6 +48,14 @@ as before.
 *   **A FOMOD installer can no longer reach outside its mod.** Its file paths are written by the mod's author, and one
     naming a place elsewhere on your computer would have been followed. Such a mod is now refused, with a message saying
     why.
+*   **A Minecraft version move no longer switches off United Minecraft.** It only looked for builds on Modrinth, and this
+    mod is published on GitHub, so accepting the manager's own offer left a game with no speech. And if a move would
+    switch off your accessibility mod, you are now told before you agree.
+*   **Failures during a Minecraft move are said**, by name. It used to say "Moved" and then Java would refuse to start,
+    and a failed Fabric install said nothing at all.
+*   **Installing a Minecraft mod puts the new copy in before removing the old**, and says so if it fails. A locked file
+    used to be able to remove the mod with no message, and a copy that could not be removed is now reported rather than
+    leaving a game that refuses to start.
 *   **Refreshing no longer deletes mods.** On Skyrim and Fallout 4, any refresh deleted all but the newest of any mods
     sharing a Nexus page or a name, so a patch could vanish along with its main file's older sibling.
 *   **A second file from one Nexus page no longer replaces the first without asking.** You are asked whether it is a
