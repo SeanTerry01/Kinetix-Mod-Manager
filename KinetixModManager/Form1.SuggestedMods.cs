@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using StardewMod = KinetixModManager.GameMod;
 
 namespace KinetixModManager;
 
@@ -304,7 +303,7 @@ public partial class Form1
 		{
 			SetStatus(Loc.T("suggested.downloading", entry.Name), speak: true);
 
-			var target = new StardewMod { NexusID = entry.NexusId, Name = entry.Name };
+			var target = new GameMod { NexusID = entry.NexusId, Name = entry.Name };
 			ProgressAnnouncer progress = NewProgress(entry.Name, installing: false);
 			string archive = await _nexusService.DownloadModUpdateAsync(target, downloadsPath, progress);
 			progress.Complete();

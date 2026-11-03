@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using StardewMod = KinetixModManager.GameMod;
 
 namespace KinetixModManager;
 
@@ -18,11 +17,11 @@ public partial class Form1
 	/// leaving a row reading "Current: 2.2.0. Latest: 2.2.0". Taking the maximum makes the result independent
 	/// of which check finishes first.
 	/// </summary>
-	private void RecordLatestVersion(StardewMod mod, string? candidate) =>
+	private void RecordLatestVersion(GameMod mod, string? candidate) =>
 		mod.LatestVersion = ModVersions.Best(mod.LatestVersion, candidate) ?? mod.LatestVersion;
 
 	/// <summary>The key identifying the one download a mod comes from — its Nexus page or GitHub repo.</summary>
-	private static string DownloadKey(StardewMod mod) => ModVersions.DownloadKey(mod);
+	private static string DownloadKey(GameMod mod) => ModVersions.DownloadKey(mod);
 
 	/// <summary>The release of <paramref name="key"/>'s download the manager knows is installed, or null.</summary>
 	private string? InstalledDownloadVersion(string key) =>
@@ -59,7 +58,7 @@ public partial class Form1
 	/// Uses the recorded release of its download when there is one, so a mod whose manifest version the author
 	/// never bumped isn't offered the same update forever. The single place this question is answered.
 	/// </summary>
-	private bool HasPendingUpdate(StardewMod installed, string? latestVersion) =>
+	private bool HasPendingUpdate(GameMod installed, string? latestVersion) =>
 		ModVersions.HasPendingUpdate(installed, latestVersion, InstalledDownloadVersion(DownloadKey(installed)));
 
 	/// <summary>
@@ -72,7 +71,7 @@ public partial class Form1
 	/// <c>SpokenStringGuardTests</c> can see it. Passing the key in as a variable would put the announcement
 	/// beyond the reach of the test that stops a typo being read aloud as itself.
 	/// </summary>
-	private (string Row, int Index, int Count)? RemoveSettledUpdateRow(StardewMod mod)
+	private (string Row, int Index, int Count)? RemoveSettledUpdateRow(GameMod mod)
 	{
 		int oldIndex = listUpdates.SelectedIndex;
 		listUpdates.Items.Remove(mod);
@@ -101,7 +100,7 @@ public partial class Form1
 		// The Updates tab has to be the one in front. This is a global shortcut, and listUpdates keeps whatever
 		// was selected the last time the user was there — so without this, pressing it from the Installed tab
 		// would silently settle a row they are not looking at and cannot hear.
-		if (mainTabs.SelectedTab != tabUpdates || listUpdates.SelectedItem is not StardewMod mod || mod.IsGroup)
+		if (mainTabs.SelectedTab != tabUpdates || listUpdates.SelectedItem is not GameMod mod || mod.IsGroup)
 		{
 			Speak(Loc.T("updates.markSelectMod"));
 			return;
@@ -156,7 +155,7 @@ public partial class Form1
 		return versions.Aggregate((best, v) => IsNewerVersion(best, v) ? v : best);
 	}
 
-	private async Task CheckForUpdates(List<StardewMod> group, Task<HashSet<int>?>? updatedThisMonth, Task<Dictionary<string, string>?>? modrinthAnswers)
+	private async Task CheckForUpdates(List<GameMod> group, Task<HashSet<int>?>? updatedThisMonth, Task<Dictionary<string, string>?>? modrinthAnswers)
 	{
 		// Read now, while this is the game the check is for. A queued request reading it later asked the other game's
 		// page about this mod's id, and a row for an unrelated mod landed on the new game's list.
@@ -227,13 +226,13 @@ public partial class Form1
 			if (group.Any(m => _settings.IgnoredVersions.TryGetValue(m.UniqueId, out string? ignored) && ignored == latestVersion))
 				return;
 
-			foreach (StardewMod mod in group) RecordLatestVersion(mod, latestVersion);
+			foreach (GameMod mod in group) RecordLatestVersion(mod, latestVersion);
 
 			if (!IsNewerVersion(installedVersion, latestVersion)) return;
 
 			// One row per download, named after the mod that best stands for it — the main mod rather than a
 			// content pack bundled with it — so the row is recognisable (see UpdateCoverage.PickRepresentative).
-			StardewMod representative = UpdateCoverage.PickRepresentative(group, _settings.CurrentModsPath);
+			GameMod representative = UpdateCoverage.PickRepresentative(group, _settings.CurrentModsPath);
 
 			Invoke(delegate
 			{
@@ -277,7 +276,7 @@ public partial class Form1
 	// The installed mods the last update check had no Nexus/GitHub link for, so the manifest-based Nexus check
 	// couldn't cover them. Surfaced in the completion announcement so "all up to date" isn't misleading — a
 	// manually-placed mod with a null NexusID would otherwise be silently ignored. See RefreshModList.
-	private List<StardewMod> _updateUnlinkedMods = new();
+	private List<GameMod> _updateUnlinkedMods = new();
 
 	// UniqueIDs the SMAPI web API recognised during this check. Those mods were version-checked against SMAPI's
 	// mod database whether or not their manifest carries an update key, so they are not "unchecked" — Stardew
@@ -306,7 +305,7 @@ public partial class Form1
 		listUpdates.BeginUpdate();
 		for (int i = listUpdates.Items.Count - 1; i >= 0; i--)
 		{
-			if (listUpdates.Items[i] is StardewMod m && !HasPendingUpdate(m, m.LatestVersion))
+			if (listUpdates.Items[i] is GameMod m && !HasPendingUpdate(m, m.LatestVersion))
 				listUpdates.Items.RemoveAt(i);
 		}
 		listUpdates.EndUpdate();
@@ -380,13 +379,13 @@ public partial class Form1
 	/// existing download/open-page actions work on it. Also surfaces a SMAPI program update if one is offered.
 	/// Runs alongside the Nexus group checks and de-dupes against them by reusing the same mod instances.
 	/// </summary>
-	private async Task CheckUpdatesViaSmapiApi(List<StardewMod> installed, string smapiVersion, string gameVersion)
+	private async Task CheckUpdatesViaSmapiApi(List<GameMod> installed, string smapiVersion, string gameVersion)
 	{
 		string game = _settings.ActiveGame;
 		try
 		{
 			var entries = new List<(string Id, string Version, IEnumerable<string> UpdateKeys)>();
-			foreach (StardewMod mod in installed)
+			foreach (GameMod mod in installed)
 			{
 				if (mod.IsGroup || string.IsNullOrEmpty(mod.UniqueId)) continue;
 				var keys = new List<string>();
@@ -409,7 +408,7 @@ public partial class Form1
 
 			var linked = new Dictionary<string, string>();
 			var pages = new Dictionary<string, string>();
-			foreach (StardewMod mod in installed)
+			foreach (GameMod mod in installed)
 			{
 				if (mod.IsGroup || string.IsNullOrEmpty(mod.UniqueId)) continue;
 				if (!updates.TryGetValue(mod.UniqueId, out var upd)) continue;
@@ -581,7 +580,7 @@ public partial class Form1
 	/// via <see cref="InstallFromZip"/>. Pass <paramref name="silent"/> as <c>true</c> to suppress
 	/// per-mod spoken feedback during a batch update.
 	/// </summary>
-    private async Task DownloadAndInstallUpdate(StardewMod mod, bool silent = false)
+    private async Task DownloadAndInstallUpdate(GameMod mod, bool silent = false)
     {
         // Enter on a row during Update All downloaded the same file twice at once, and one of them failed.
         if (!silent && ModOperationRunning)
@@ -708,7 +707,7 @@ public partial class Form1
                     listUpdates.BeginUpdate();
                     for (int i = listUpdates.Items.Count - 1; i >= 0; i--)
                     {
-                        if (listUpdates.Items[i] is StardewMod m &&
+                        if (listUpdates.Items[i] is GameMod m &&
                             !string.IsNullOrEmpty(m.GitHubRepo) &&
                             m.GitHubRepo.Equals(mod.GitHubRepo, StringComparison.OrdinalIgnoreCase))
                             listUpdates.Items.RemoveAt(i);
@@ -787,7 +786,7 @@ public partial class Form1
                 listUpdates.BeginUpdate();
                 for (int i = listUpdates.Items.Count - 1; i >= 0; i--)
                 {
-                    if (listUpdates.Items[i] is StardewMod m &&
+                    if (listUpdates.Items[i] is GameMod m &&
                         !string.IsNullOrEmpty(m.NexusID) &&
                         m.NexusID.Equals(mod.NexusID, StringComparison.OrdinalIgnoreCase))
                         listUpdates.Items.RemoveAt(i);
@@ -840,7 +839,7 @@ public partial class Form1
 	/// only one.
 	/// </para>
 	/// </summary>
-	private async Task OfferUpdateChoiceAsync(StardewMod mod)
+	private async Task OfferUpdateChoiceAsync(GameMod mod)
 	{
 		string[] actions = { Loc.T("updates.choiceUpdate"), Loc.T("updates.choicePage") };
 
@@ -862,13 +861,13 @@ public partial class Form1
 	/// Takes a mod's row out of the Updates list once its update has gone in. Matched on the mod's own id, which is
 	/// what identifies a Minecraft mod — it has neither a Nexus id nor, usually, a GitHub repository.
 	/// </summary>
-	private void RemoveUpdateRowsFor(StardewMod mod)
+	private void RemoveUpdateRowsFor(GameMod mod)
 	{
 		Invoke(delegate
 		{
 			listUpdates.BeginUpdate();
 			for (int i = listUpdates.Items.Count - 1; i >= 0; i--)
-				if (listUpdates.Items[i] is StardewMod m && !string.IsNullOrEmpty(m.UniqueId) &&
+				if (listUpdates.Items[i] is GameMod m && !string.IsNullOrEmpty(m.UniqueId) &&
 					m.UniqueId.Equals(mod.UniqueId, StringComparison.OrdinalIgnoreCase))
 					listUpdates.Items.RemoveAt(i);
 			listUpdates.EndUpdate();
@@ -905,7 +904,7 @@ public partial class Form1
 	/// recorded separately (see <see cref="RecordInstalledDownloadVersion"/>), which settles the comparison
 	/// without editing anyone's manifest.
 	/// </summary>
-	private async Task SyncManifestVersionAfterUpdate(StardewMod original, string? installedVersion)
+	private async Task SyncManifestVersionAfterUpdate(GameMod original, string? installedVersion)
 	{
 		if (string.IsNullOrEmpty(installedVersion)) return;
 		if (UpdateCoverage.HasUpdateLink(original))
@@ -916,7 +915,7 @@ public partial class Form1
 		}
 		try
 		{
-			StardewMod? updated = _allInstalledMods.FirstOrDefault(m => !m.IsGroup
+			GameMod? updated = _allInstalledMods.FirstOrDefault(m => !m.IsGroup
 					&& !string.IsNullOrEmpty(original.UniqueId) && m.UniqueId == original.UniqueId)
 				?? _allInstalledMods.FirstOrDefault(m => !m.IsGroup &&
 					((!string.IsNullOrEmpty(original.NexusID) && original.NexusID.Equals(m.NexusID, StringComparison.OrdinalIgnoreCase)) ||
@@ -964,11 +963,11 @@ public partial class Form1
 	/// back switched on.
 	/// </para>
 	/// </summary>
-	private async Task ReapplyDisabledIfNeeded(StardewMod original, bool wasDisabled, bool silent = false)
+	private async Task ReapplyDisabledIfNeeded(GameMod original, bool wasDisabled, bool silent = false)
 	{
 		if (!wasDisabled) return;
 
-		StardewMod? updated = _allInstalledMods.FirstOrDefault(m => !m.IsGroup && m.IsEnabled && ModHealth.IsSameMod(original, m));
+		GameMod? updated = _allInstalledMods.FirstOrDefault(m => !m.IsGroup && m.IsEnabled && ModHealth.IsSameMod(original, m));
 		if (updated == null || !updated.IsEnabled) return;
 
 		// In a batch nothing is asked: the run is unattended by design, and the state the user chose is kept. The
@@ -1105,7 +1104,7 @@ public partial class Form1
 	/// which resolves a mod by its UniqueID. Links found this way are exact, so they replace the name-search
 	/// guesswork for every mod the database knows. Returns how many mods were linked; a no-op for other games.
 	/// </summary>
-	private async Task<int> MatchStardewIdsViaSmapiAsync(List<StardewMod> targetMods)
+	private async Task<int> MatchStardewIdsViaSmapiAsync(List<GameMod> targetMods)
 	{
 		if (!GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley) || targetMods.Count == 0) return 0;
 
@@ -1119,7 +1118,7 @@ public partial class Form1
 
 		int matched = 0;
 		var links = new Dictionary<string, string>();
-		foreach (StardewMod mod in targetMods)
+		foreach (GameMod mod in targetMods)
 		{
 			if (!info.TryGetValue(mod.UniqueId, out var entry)) continue;
 			if (!string.IsNullOrEmpty(entry.NexusId))
@@ -1147,7 +1146,7 @@ public partial class Form1
 	/// — the state every mod is in that the manager did not install itself, because nothing on disk records
 	/// either. The placeholder texts here are the ones the scanners write when they have nothing better.
 	/// </summary>
-	private static bool NeedsNexusDetails(StardewMod mod) => ModVersions.NeedsDetails(mod);
+	private static bool NeedsNexusDetails(GameMod mod) => ModVersions.NeedsDetails(mod);
 
 	/// <summary>
 	/// Fetches the author and summary for every linked mod that is still missing them, and returns how many were
@@ -1155,7 +1154,7 @@ public partial class Form1
 	/// </summary>
 	private async Task<int> FillInMissingNexusDetailsAsync()
 	{
-		List<StardewMod> needing = _allInstalledMods
+		List<GameMod> needing = _allInstalledMods
 			.Where(m => !m.IsGroup && !string.IsNullOrEmpty(m.NexusID) && NeedsNexusDetails(m))
 			.ToList();
 		if (needing.Count == 0) return 0;
@@ -1163,7 +1162,7 @@ public partial class Form1
 		int filled = 0;
 		for (int i = 0; i < needing.Count; i++)
 		{
-			StardewMod mod = needing[i];
+			GameMod mod = needing[i];
 			SetStatus(Loc.T("updates.fillingDetails", i + 1, needing.Count, mod.Name), speak: false);
 
 			string before = mod.Author + "" + mod.Description;

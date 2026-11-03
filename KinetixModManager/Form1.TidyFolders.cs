@@ -1,5 +1,4 @@
 using Newtonsoft.Json;
-using StardewMod = KinetixModManager.GameMod;
 
 namespace KinetixModManager;
 
@@ -48,7 +47,7 @@ public partial class Form1
 		// The mod's own name comes from the list the manager has already scanned, which is the same name the user
 		// hears — so a tidied folder reads the same in Explorer as it does in the mod list.
 		var namesByFolder = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-		foreach (StardewMod mod in _allInstalledMods.Where(m => !m.IsGroup && m.FolderPath.Length > 0))
+		foreach (GameMod mod in _allInstalledMods.Where(m => !m.IsGroup && m.FolderPath.Length > 0))
 			namesByFolder[Path.GetFileName(mod.FolderPath)] = mod.Name;
 
 		var folders = Directory.GetDirectories(modsPath)

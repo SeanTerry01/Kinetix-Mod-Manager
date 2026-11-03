@@ -80,7 +80,7 @@ public sealed class RefreshOffThreadTests
 	public void AFailedScanWithdrawsTrustAndAnOvertakenOneDoesNot()
 	{
 		InOrder(Body("Form1.ModList.cs", "private async Task RefreshModList(", 12000),
-			"catch (Exception ex)", "if (Superseded()) return;", "_scannedGame = null;", "_allInstalledMods = new List<StardewMod>();");
+			"catch (Exception ex)", "if (Superseded()) return;", "_scannedGame = null;", "_allInstalledMods = new List<GameMod>();");
 	}
 
 	[Fact]
@@ -109,7 +109,7 @@ public sealed class RefreshOffThreadTests
 	{
 		// Reading it mid-rescan after a game switch saw nothing installed, so nothing was backed up.
 		InOrder(Body("Form1.Install.cs", "private async Task<bool> InstallFromZip(", 3000),
-			"_refreshInFlight", "List<StardewMod> installed = _allInstalledMods.ToList();");
+			"_refreshInFlight", "List<GameMod> installed = _allInstalledMods.ToList();");
 	}
 
 	[Fact]

@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
-using StardewMod = KinetixModManager.GameMod;
 
 namespace KinetixModManager;
 
@@ -23,13 +22,13 @@ public partial class Form1
 		// do not, and a free account still gets everything the manager can fetch by itself.
 		// Moving to a new Minecraft version is never part of "update everything": it changes what the game is, and
 		// leaves behind any mod without a build for it. It stays in the list, to be chosen deliberately.
-		List<StardewMod> rows = listUpdates.Items.Cast<StardewMod>()
+		List<GameMod> rows = listUpdates.Items.Cast<GameMod>()
 			.Where(m => m.UniqueId != MinecraftVersionRowId && m.UniqueId != ModpackRowId).ToList();
 		if (rows.Count == 0) return;
 		// A modpack's own mods are a set its maker tested together, so in a pack's session they are asked about as a
 		// group before anything else — with "only the ones you added" first, because that is the safe answer and
 		// the pack's own update will bring its mods up to date as a tested set. See CameWithPack.
-		List<StardewMod> packMods = rows.Where(CameWithPack).ToList();
+		List<GameMod> packMods = rows.Where(CameWithPack).ToList();
 		if (packMods.Count > 0 && ActiveMinecraftPack() is { } activePack)
 		{
 			int yours = rows.Count - packMods.Count;
@@ -44,8 +43,8 @@ public partial class Form1
 			if (picked is null) { Speak(Loc.T("common.changesCancelled")); return; }
 			if (picked == onlyYours) rows = rows.Except(packMods).ToList();
 		}
-		List<StardewMod> needPremium = _nexusService.IsPremium
-			? new List<StardewMod>()
+		List<GameMod> needPremium = _nexusService.IsPremium
+			? new List<GameMod>()
 			: rows.Where(NeedsPremiumToUpdate).ToList();
 
 		if (needPremium.Count == rows.Count)
@@ -65,7 +64,7 @@ public partial class Form1
 				.GroupBy(UpdateGroupKey)
 				.ToDictionary(g => g.Key, g => g.Count());
 			var seenSources = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-			List<StardewMod> mods = rows.Where(m => seenSources.Add(UpdateGroupKey(m))).ToList();
+			List<GameMod> mods = rows.Where(m => seenSources.Add(UpdateGroupKey(m))).ToList();
 
 			// When some updates are bundled, the download count is lower than the mod count. Say both so "1 download"
 			// never looks like it is skipping the other mods it actually updates.
@@ -143,7 +142,7 @@ public partial class Form1
 	/// a mod that ships two separate files on one page, which must stay distinct. Unmatched mods key on their
 	/// UniqueID so they are never merged with anything else.
 	/// </summary>
-	private static string UpdateGroupKey(StardewMod m)
+	private static string UpdateGroupKey(GameMod m)
 	{
 		string part = m.Name.Contains("Part 2", StringComparison.OrdinalIgnoreCase) ? "|p2"
 			: m.Name.Contains("Part 1", StringComparison.OrdinalIgnoreCase) ? "|p1" : "";
@@ -157,7 +156,7 @@ public partial class Form1
 	/// or <c>null</c> if no such tab is active or nothing is selected. Shared by the Nexus actions that work
 	/// on the current selection (open page, endorse).
 	/// </summary>
-	private StardewMod? SelectedNexusMod()
+	private GameMod? SelectedNexusMod()
 	{
 		ListBox listBox;
 		if (CurrentTab() == AppTab.Installed)
@@ -176,7 +175,7 @@ public partial class Form1
 		{
 			return null;
 		}
-		return listBox.SelectedItem as StardewMod;
+		return listBox.SelectedItem as GameMod;
 	}
 
 	/// <summary>Whether updating this mod needs a Nexus Premium account. The rule lives in the core.</summary>
@@ -221,7 +220,7 @@ public partial class Form1
 
 	private void OpenModPage()
 	{
-		if (SelectedNexusMod() is not StardewMod stardewMod) return;
+		if (SelectedNexusMod() is not GameMod stardewMod) return;
 
 		// Whichever catalogue the mod came from. This used to know about two of them and require a Nexus id,
 		// so the one action available on a search result was silently unavailable for a whole game — and it
@@ -954,7 +953,7 @@ public partial class Form1
 			// The list says what this replaces and what to back up, so it has to be current. A download arriving just after a
 			// game switch would otherwise see nothing installed, and one just after a Space a folder that has since moved.
 			while (Volatile.Read(ref _refreshInFlight) > 0) await Task.Delay(25);
-			List<StardewMod> installed = _allInstalledMods.ToList();
+			List<GameMod> installed = _allInstalledMods.ToList();
 			Func<string, string, SamePageChoice>? askSamePage = confirmReinstall ? ConfirmSamePage : null;
 			string name = await Task.Run(() => ModFileSystem.ExtractModAsync(
 				zipPath, modsPath, installed,

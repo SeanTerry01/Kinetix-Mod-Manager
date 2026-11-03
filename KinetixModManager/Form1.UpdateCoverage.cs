@@ -1,5 +1,4 @@
 using System.Text;
-using StardewMod = KinetixModManager.GameMod;
 
 namespace KinetixModManager;
 
@@ -33,7 +32,7 @@ public partial class Form1
 	/// a mod from the same mod page as another — an optional file, typically — that unpacked into a folder of
 	/// its own, with no update key and no shared folder to give the connection away.
 	/// </summary>
-	private void SetBundledWith(StardewMod child, StardewMod parent)
+	private void SetBundledWith(GameMod child, GameMod parent)
 	{
 		if (string.IsNullOrEmpty(child.UniqueId) || string.IsNullOrEmpty(parent.UniqueId)) return;
 		if (!_settings.ModBundledWith.TryGetValue(_settings.ActiveGame, out var map) || map == null)
@@ -48,7 +47,7 @@ public partial class Form1
 	/// Lists the installed mods that can be checked for updates, so the user can say which one a stray mod
 	/// arrives with. Only linked mods are offered: picking one that can't be checked itself would cover nothing.
 	/// </summary>
-	private void ShowBundleParentPicker(StardewMod child)
+	private void ShowBundleParentPicker(GameMod child)
 	{
 		// One entry per download rather than per mod, named after the mod that best stands for it and described
 		// by the folder it lives in — a download that installs five mods is recognised by "Cape Stardew 1.6",
@@ -64,7 +63,7 @@ public partial class Form1
 		var rows = new List<ReportRow>();
 		foreach (var (candidate, count) in downloads)
 		{
-			StardewMod chosen = candidate;
+			GameMod chosen = candidate;
 			string link = !string.IsNullOrEmpty(candidate.NexusID)
 				? Loc.T("coverage.viaNexus", candidate.NexusID)
 				: Loc.T("coverage.viaGitHub", candidate.GitHubRepo ?? "");
@@ -130,7 +129,7 @@ public partial class Form1
 		var rows = new List<ReportRow>();
 		foreach (UpdateCoverageEntry info in notChecked)
 		{
-			StardewMod m = info.Mod;
+			GameMod m = info.Mod;
 			// Say which of the two it is: a manifest with no update key at all, or one whose key is there but
 			// blank ("UpdateKeys": [""] / ["Nexus: "]) — an author's typo. Both need the same fix from the
 			// user, but knowing the mod isn't simply unknown to the world is the difference between an
@@ -154,8 +153,8 @@ public partial class Form1
 		// covered, and this report is the only place that says which download covers them.
 		foreach (UpdateCoverageEntry info in bundled)
 		{
-			StardewMod m = info.Mod;
-			StardewMod p = info.Parent!;
+			GameMod m = info.Mod;
+			GameMod p = info.Parent!;
 			string parentLink = !string.IsNullOrEmpty(p.NexusID)
 				? Loc.T("coverage.viaNexus", p.NexusID)
 				: Loc.T("coverage.viaGitHub", p.GitHubRepo ?? "");
@@ -172,7 +171,7 @@ public partial class Form1
 	/// Whether <paramref name="mod"/> has been dealt with: given a page to check, or said to come with another mod.
 	/// The pickers reached from the coverage report close once it is, and the report drops the mod.
 	/// </summary>
-	private bool CoverageSettled(StardewMod mod) =>
+	private bool CoverageSettled(GameMod mod) =>
 		UpdateCoverage.HasUpdateLink(mod) ||
 		(!string.IsNullOrEmpty(mod.UniqueId) && BundledWithMap().ContainsKey(mod.UniqueId));
 
@@ -183,7 +182,7 @@ public partial class Form1
 	/// name and author agree with are marked as likely and listed first; the last row always falls back to
 	/// typing an ID by hand.
 	/// </summary>
-	private async Task ShowLinkCandidatesAsync(StardewMod mod)
+	private async Task ShowLinkCandidatesAsync(GameMod mod)
 	{
 		// Every name the mod goes by, best first, rather than only the one it calls itself.
 		//
@@ -251,7 +250,7 @@ public partial class Form1
 	/// Links a mod to a Nexus page the user picked, remembering it in the manager's own map rather than editing
 	/// the author's manifest, then re-scans so the mod is immediately checkable.
 	/// </summary>
-	private async Task ApplyNexusLink(StardewMod mod, string nexusId, string pageName)
+	private async Task ApplyNexusLink(GameMod mod, string nexusId, string pageName)
 	{
 		mod.NexusID = nexusId;
 		mod.GitHubRepo = null;
@@ -286,7 +285,7 @@ public partial class Form1
 
 		var known = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		var links = new Dictionary<string, string>();
-		foreach (StardewMod mod in candidates)
+		foreach (GameMod mod in candidates)
 		{
 			if (!info.TryGetValue(mod.UniqueId, out var entry) || !entry.Known) continue;
 			known.Add(mod.UniqueId);
@@ -343,7 +342,7 @@ public partial class Form1
 			{
 				if (!byUniqueId.TryGetValue(id, out var mods)) continue;
 				installedFromHere = true;   // this download's mods are on disk
-				foreach (StardewMod mod in mods)
+				foreach (GameMod mod in mods)
 				{
 					if (UpdateCoverage.HasUpdateLink(mod)) continue;
 					mod.NexusID = nexusId;
@@ -383,7 +382,7 @@ public partial class Form1
 			string prefix = root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
 
 			var links = new Dictionary<string, string>();
-			foreach (StardewMod mod in _allInstalledMods.Where(m => !m.IsGroup && !UpdateCoverage.HasUpdateLink(m)))
+			foreach (GameMod mod in _allInstalledMods.Where(m => !m.IsGroup && !UpdateCoverage.HasUpdateLink(m)))
 			{
 				string path = Path.GetFullPath(mod.FolderPath);
 				if (!path.Equals(root, StringComparison.OrdinalIgnoreCase) &&
@@ -401,7 +400,7 @@ public partial class Form1
 	}
 
 	/// <summary>The mod's folder relative to the Mods directory, falling back to the full path if it sits elsewhere.</summary>
-	private string DisplayFolder(StardewMod mod)
+	private string DisplayFolder(GameMod mod)
 	{
 		string relative = UpdateCoverage.RelativeFolder(mod, _settings.CurrentModsPath);
 		return relative.Length > 0 ? relative : mod.FolderPath;
@@ -418,7 +417,7 @@ public partial class Form1
 		sb.AppendLine($"--- Update coverage for {_settings.ActiveGame}: {coverage.Count} mods ---");
 		foreach (UpdateCoverageEntry info in coverage.OrderBy(c => c.Kind).ThenBy(c => c.Mod.Name))
 		{
-			StardewMod m = info.Mod;
+			GameMod m = info.Mod;
 			string link = !string.IsNullOrEmpty(m.NexusID) ? "Nexus:" + m.NexusID
 				: !string.IsNullOrEmpty(m.GitHubRepo) ? "GitHub:" + m.GitHubRepo
 				: "no link";
@@ -438,6 +437,6 @@ public partial class Form1
 		LogError("UpdateCoverage", Environment.NewLine + sb.ToString().TrimEnd());
 	}
 
-	private static string LinkOf(StardewMod mod) =>
+	private static string LinkOf(GameMod mod) =>
 		!string.IsNullOrEmpty(mod.NexusID) ? "Nexus:" + mod.NexusID : "GitHub:" + mod.GitHubRepo;
 }

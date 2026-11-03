@@ -1,4 +1,3 @@
-using StardewMod = KinetixModManager.GameMod;
 
 namespace KinetixModManager;
 
@@ -11,7 +10,7 @@ namespace KinetixModManager;
 public partial class Form1
 {
 	/// <summary>Enumerates the plugin file paths (.esp/.esm/.esl) a Skyrim/Fallout 4 mod ships, IO errors ignored.</summary>
-	private static IEnumerable<string> ModPluginFiles(StardewMod mod) => ModDependencies.PluginFiles(mod);
+	private static IEnumerable<string> ModPluginFiles(GameMod mod) => ModDependencies.PluginFiles(mod);
 
 	// ---------------------------------------------------------------------
 	// Dependency tree view
@@ -26,7 +25,7 @@ public partial class Form1
 	/// </summary>
 	private async void ShowDependencies()
 	{
-		if (ModOnThisTab() is not StardewMod mod || mod.IsGroup)
+		if (ModOnThisTab() is not GameMod mod || mod.IsGroup)
 		{
 			Speak(Loc.T("deps.selectMod"));
 			return;
@@ -119,7 +118,7 @@ public partial class Form1
 	/// one of the target's plugins as a master). Offline and best-effort — it never touches the network, so it is
 	/// safe to run inside a delete confirmation. Returns one human-readable line per dependent.
 	/// </summary>
-	private List<string> GetReverseDependents(StardewMod target) =>
+	private List<string> GetReverseDependents(GameMod target) =>
 		ModDependencies.Dependents(target, _allInstalledMods, _settings.ActiveGame)
 			.Select(d => d.IsDeclared
 				? Loc.T("deps.reverseStardew", d.Mod.Name)
@@ -142,7 +141,7 @@ public partial class Form1
 	{
 		using IDisposable busy = BeginModOperation();
 
-		if (ModOnThisTab() is not StardewMod mod || mod.IsGroup)
+		if (ModOnThisTab() is not GameMod mod || mod.IsGroup)
 		{
 			Speak(Loc.T("deps.selectMod"));
 			return;

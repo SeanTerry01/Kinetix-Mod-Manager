@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using StardewMod = KinetixModManager.GameMod;
 
 namespace KinetixModManager;
 
@@ -9,7 +8,7 @@ public partial class Form1
 	/// <summary>Prompts the user to assign a custom category string to the selected mod.</summary>
 	private void SetManualCategory()
 	{
-		if (ModOnThisTab() is not StardewMod stardewMod)
+		if (ModOnThisTab() is not GameMod stardewMod)
 		{
 			Speak(Loc.T("common.noModSelected"));
 			return;
@@ -59,7 +58,7 @@ public partial class Form1
 	/// </summary>
 	private void SetModNote()
 	{
-		if (ModOnThisTab() is not StardewMod mod)
+		if (ModOnThisTab() is not GameMod mod)
 		{
 			Speak(Loc.T("common.noModSelected"));
 			return;
@@ -112,7 +111,7 @@ public partial class Form1
 	/// </summary>
 	private void OpenSelectedModManifest()
 	{
-		if (!(ModOnThisTab() is StardewMod mod))
+		if (!(ModOnThisTab() is GameMod mod))
 		{
 			Speak(Loc.T("common.noModSelected"));
 			return;
@@ -148,7 +147,7 @@ public partial class Form1
 	/// id into the header of each — so the match is made on the id first (exact, and what BepInEx itself uses)
 	/// and on the displayed name second, for a plugin too old to have written an id.
 	/// </summary>
-	private string? FindBepInExConfigFor(StardewMod mod)
+	private string? FindBepInExConfigFor(GameMod mod)
 	{
 		if (!IsBepInExGame) return null;
 
@@ -177,7 +176,7 @@ public partial class Form1
 	/// </summary>
 	private void OpenSelectedModConfigFile()
 	{
-		if (!(ModOnThisTab() is StardewMod mod))
+		if (!(ModOnThisTab() is GameMod mod))
 		{
 			Speak(Loc.T("common.noModSelected"));
 			return;
@@ -218,7 +217,7 @@ public partial class Form1
 
 	private void OpenSelectedModConfig()
 	{
-		if (!(ModOnThisTab() is StardewMod mod))
+		if (!(ModOnThisTab() is GameMod mod))
 		{
 			Speak(Loc.T("common.noModSelected"));
 			return;
@@ -286,7 +285,7 @@ public partial class Form1
 		return true;
 	}
 
-	private void OpenModSettingsFor(StardewMod mod)
+	private void OpenModSettingsFor(GameMod mod)
 	{
 		// A Content Patcher pack declares what each of its settings accepts, so it gets the settings editor
 		// rather than raw JSON: the choices are offered instead of typed. Checked before the config file exists,
@@ -379,7 +378,7 @@ public partial class Form1
 	private async void BatchManageCategory()
 	{
 		string category = cmbCategoryFilter.SelectedItem?.ToString() ?? "All Categories";
-		List<StardewMod> list = _allInstalledMods.Where((StardewMod m) => category == "All Categories" || m.Category == category).ToList();
+		List<GameMod> list = _allInstalledMods.Where((GameMod m) => category == "All Categories" || m.Category == category).ToList();
 		if (list.Count == 0)
 		{
 			Speak(Loc.T("modactions.noModsInCategory"));
@@ -394,7 +393,7 @@ public partial class Form1
 		try
 		{
 			SetStatus(Loc.T("modactions.batchStatus", flag ? Loc.T("modactions.batchEnabling") : Loc.T("modactions.batchDisabling"), list.Count));
-			foreach (StardewMod item in list)
+			foreach (GameMod item in list)
 			{
 				if (item.IsEnabled != flag)
 				{
@@ -429,7 +428,7 @@ public partial class Form1
 	/// </summary>
 	private void QuickFixDependencies()
 	{
-		if (CurrentTab() == AppTab.Installed && listInstalled.SelectedItem is StardewMod)
+		if (CurrentTab() == AppTab.Installed && listInstalled.SelectedItem is GameMod)
 		{
 			Fire(ResolveDependenciesAsync(), "ResolveDependenciesAsync");
 		}
@@ -467,7 +466,7 @@ public partial class Form1
 	/// </summary>
 	private async void ToggleModStatus()
 	{
-		if (!(listInstalled.SelectedItem is StardewMod stardewMod))
+		if (!(listInstalled.SelectedItem is GameMod stardewMod))
 		{
 			return;
 		}
@@ -522,7 +521,7 @@ public partial class Form1
 	/// </summary>
 	private async void DeleteSelectedMod()
 	{
-		if (listInstalled.SelectedItem is not StardewMod stardewMod || stardewMod.IsGroup) return;
+		if (listInstalled.SelectedItem is not GameMod stardewMod || stardewMod.IsGroup) return;
 		// Pressed again during the backup, this used to ask again and delete twice.
 		if (ModOperationRunning)
 		{
@@ -599,7 +598,7 @@ public partial class Form1
 	///
 	/// Asked first, always, and a "no" simply falls through to removing the mod folder as usual.
 	/// </summary>
-	private async Task RunModUninstallerIfAnyAsync(StardewMod mod)
+	private async Task RunModUninstallerIfAnyAsync(GameMod mod)
 	{
 		if (GameProfiles.Find(_settings.ActiveGame)?.IsWitcher3 != true) return;
 
@@ -671,7 +670,7 @@ public partial class Form1
 			return;
 		}
 
-		StardewMod? mod = SelectedNexusMod();
+		GameMod? mod = SelectedNexusMod();
 		if (mod == null || string.IsNullOrEmpty(mod.NexusID))
 		{
 			Speak(Loc.T("endorse.noNexusMod"));

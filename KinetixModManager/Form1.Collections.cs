@@ -1,4 +1,3 @@
-using StardewMod = KinetixModManager.GameMod;
 
 namespace KinetixModManager;
 
@@ -31,9 +30,9 @@ public partial class Form1
 	/// For Skyrim/Fallout 4 this follows the saved mod-priority order; other games have no priority, so it's the
 	/// installed-list order.
 	/// </summary>
-	private List<StardewMod> EnabledModsInOrder()
+	private List<GameMod> EnabledModsInOrder()
 	{
-		IEnumerable<StardewMod> enabled = _allInstalledMods.Where(m => !m.IsGroup && m.IsEnabled);
+		IEnumerable<GameMod> enabled = _allInstalledMods.Where(m => !m.IsGroup && m.IsEnabled);
 		if (!IsBethesdaGame) return enabled.ToList();
 
 		EnsureModPriorityList();
@@ -41,11 +40,11 @@ public partial class Form1
 			.GroupBy(PriorityKey, StringComparer.OrdinalIgnoreCase)
 			.ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-		var ordered = new List<StardewMod>();
+		var ordered = new List<GameMod>();
 		foreach (string name in _settings.ModPriority[_settings.ActiveGame])
-			if (byKey.TryGetValue(name, out StardewMod? mod)) ordered.Add(mod);
+			if (byKey.TryGetValue(name, out GameMod? mod)) ordered.Add(mod);
 		// Safety net: include any enabled mod that somehow isn't in the priority list yet.
-		foreach (StardewMod mod in enabled)
+		foreach (GameMod mod in enabled)
 			if (!ordered.Contains(mod)) ordered.Add(mod);
 		return ordered;
 	}
@@ -70,7 +69,7 @@ public partial class Form1
 		};
 
 		int index = 0;
-		foreach (StardewMod mod in EnabledModsInOrder())
+		foreach (GameMod mod in EnabledModsInOrder())
 		{
 			if (string.IsNullOrEmpty(mod.NexusID))
 			{

@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Text;
-using StardewMod = KinetixModManager.GameMod;
 
 namespace KinetixModManager;
 
@@ -129,7 +128,7 @@ public partial class Form1
 		// and groups are named as well: a group is one row standing for several mods, so the two counts differ —
 		// fewer rows than mods while groups are collapsed, more once they are expanded — and either reading is
 		// puzzling without the other.
-		int groups = listInstalled.Items.OfType<StardewMod>().Count(m => m.IsGroup);
+		int groups = listInstalled.Items.OfType<GameMod>().Count(m => m.IsGroup);
 		string counts = groups == 0
 			? Loc.T(_installedMatchCount == 1 ? "modlist.foundOne" : "modlist.found", _installedMatchCount)
 			: Loc.T("modlist.foundWithGroups", _installedMatchCount, listInstalled.Items.Count, groups);
@@ -1134,7 +1133,7 @@ public partial class Form1
 	/// so nothing looser than those two tests is used.
 	/// </para>
 	/// </summary>
-	private void MarkAlreadyInstalled(List<StardewMod> results)
+	private void MarkAlreadyInstalled(List<GameMod> results)
 	{
 		if (results.Count == 0 || _allInstalledMods.Count == 0) return;
 
@@ -1148,7 +1147,7 @@ public partial class Form1
 			.Where(m => !m.IsGroup && string.IsNullOrWhiteSpace(m.NexusID))
 			.ToList();
 
-		foreach (StardewMod result in results)
+		foreach (GameMod result in results)
 		{
 			if (!string.IsNullOrWhiteSpace(result.NexusID) && installedIds.Contains(result.NexusID.Trim()))
 			{
@@ -1177,7 +1176,7 @@ public partial class Form1
 	/// the question being answered is "when did I last take a copy", not "when did I first".
 	/// </para>
 	/// </summary>
-	private void MarkAlreadyDownloaded(List<StardewMod> results)
+	private void MarkAlreadyDownloaded(List<GameMod> results)
 	{
 		if (results.Count == 0) return;
 
@@ -1202,7 +1201,7 @@ public partial class Form1
 			return;
 		}
 
-		foreach (StardewMod result in results)
+		foreach (GameMod result in results)
 		{
 			result.LastDownloaded =
 				!string.IsNullOrWhiteSpace(result.NexusID) && newest.TryGetValue(result.NexusID.Trim(), out DateTime when)
@@ -1233,7 +1232,7 @@ public partial class Form1
 	{
 		if (listDiscovery == null || listDiscovery.Items.Count == 0) return;
 
-		List<StardewMod> results = listDiscovery.Items.OfType<StardewMod>().ToList();
+		List<GameMod> results = listDiscovery.Items.OfType<GameMod>().ToList();
 		if (results.Count == 0) return;
 
 		bool[] before = results.Select(r => r.IsInstalled).ToArray();
@@ -1257,7 +1256,7 @@ public partial class Form1
 		{
 			listDiscovery.BeginUpdate();
 			listDiscovery.Items.Clear();
-			foreach (StardewMod result in results) listDiscovery.Items.Add(result);
+			foreach (GameMod result in results) listDiscovery.Items.Add(result);
 			// Put the "Load more" row back where it was, or the rest of the results become unreachable.
 			if (hadLoadMore) listDiscovery.Items.Add(new DiscoveryLoadMoreRow());
 			listDiscovery.EndUpdate();
@@ -1272,7 +1271,7 @@ public partial class Form1
 
 		// Said only when the user is in the list AND it is their own row that changed. Anywhere else, the install
 		// has already announced itself and this would be a second announcement about something they cannot see.
-		if (selectedRowChanged && listDiscovery.Focused && listDiscovery.SelectedItem is StardewMod current)
+		if (selectedRowChanged && listDiscovery.Focused && listDiscovery.SelectedItem is GameMod current)
 			Speak(Loc.T("discovery.nowInstalled", current.Name), interrupt: false);
 	}
 

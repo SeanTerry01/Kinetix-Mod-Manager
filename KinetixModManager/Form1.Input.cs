@@ -1,4 +1,3 @@
-using StardewMod = KinetixModManager.GameMod;
 
 namespace KinetixModManager;
 
@@ -103,7 +102,7 @@ public partial class Form1
 		if (IsShortcut(e, "Login"))
 		{
 			e.SuppressKeyPress = true;
-			if (mainTabs.SelectedTab == tabInstalled && listInstalled.Focused && listInstalled.SelectedItem is StardewMod)
+			if (mainTabs.SelectedTab == tabInstalled && listInstalled.Focused && listInstalled.SelectedItem is GameMod)
 			{
 				Fire(LinkModUpdateSource(), "LinkModUpdateSource");
 			}
@@ -470,7 +469,7 @@ public partial class Form1
 			}
 			listBox = listDiscovery;
 		}
-		if (listBox.SelectedItem is StardewMod stardewMod)
+		if (listBox.SelectedItem is GameMod stardewMod)
 		{
 			if (!string.IsNullOrEmpty(stardewMod.Description))
 			{
@@ -490,10 +489,10 @@ public partial class Form1
 	/// These commands are global shortcuts, and the Installed list keeps its selection when you leave it. So on the Backups
 	/// tab, a key could open or edit whichever mod you were last on, one you could neither see nor hear.
 	/// </summary>
-	private StardewMod? ModOnThisTab() => CurrentTab() switch
+	private GameMod? ModOnThisTab() => CurrentTab() switch
 	{
-		AppTab.Installed => listInstalled.SelectedItem as StardewMod,
-		AppTab.Updates => listUpdates.SelectedItem as StardewMod,
+		AppTab.Installed => listInstalled.SelectedItem as GameMod,
+		AppTab.Updates => listUpdates.SelectedItem as GameMod,
 		_ => null
 	};
 
@@ -530,7 +529,7 @@ public partial class Form1
 			}
 			// A mod by its name and anything else by what the row says. Only mods used to be looked at, and this still claimed
 			// the key, so on Backups, Profiles and the logs letters did nothing at all, the list box's own search included.
-			static string RowText(object? row) => row is StardewMod mod
+			static string RowText(object? row) => row is GameMod mod
 				? (mod.IsGroup ? mod.GroupName : mod.Name) ?? ""
 				: row?.ToString() ?? "";
 
@@ -571,7 +570,7 @@ public partial class Form1
 			e.Handled = true;
 			e.SuppressKeyPress = true;
 		}
-		if (list.Name == "listInstalled" && list.SelectedItem is StardewMod stardewMod3)
+		if (list.Name == "listInstalled" && list.SelectedItem is GameMod stardewMod3)
 		{
 			// Enter on a group opens or closes it, whichever it is not. It used to do nothing, in silence.
 			bool enterOnGroup = stardewMod3.IsGroup && e.KeyCode == Keys.Return;
@@ -646,7 +645,7 @@ public partial class Form1
 				e.SuppressKeyPress = true;
 			}
 		}
-		if (list.Name == "listUpdates" && list.SelectedItem is StardewMod stardewMod4 && e.KeyCode == Keys.Delete)
+		if (list.Name == "listUpdates" && list.SelectedItem is GameMod stardewMod4 && e.KeyCode == Keys.Delete)
 		{
 			if (SpeakBox(Loc.T("modlist.ignoreConfirm", stardewMod4.LatestVersion ?? "", stardewMod4.Name), Loc.T("modlist.ignoreTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 			{
@@ -799,13 +798,13 @@ public partial class Form1
 			// web page whose download button they then have to find. Everything else opens its page, because
 			// for those that IS the only way in — and that is the answer for every site added later too:
 			// worst case it degrades to the page, which every site has.
-			else if (list.Name == "listDiscovery" && list.SelectedItem is StardewMod result && CanFetchDirectly(result))
+			else if (list.Name == "listDiscovery" && list.SelectedItem is GameMod result && CanFetchDirectly(result))
 			{
 				Fire(OfferMinecraftSearchResultAsync(result), "OfferMinecraftSearchResultAsync");
 			}
 			// The Fabric loader and the Minecraft version are not mods and have no page to offer, so Enter does the
 			// one thing they are for. See CheckMinecraftPlatformUpdatesAsync.
-			else if (list.Name == "listUpdates" && list.SelectedItem is StardewMod platform &&
+			else if (list.Name == "listUpdates" && list.SelectedItem is GameMod platform &&
 					 (platform.UniqueId == FabricLoaderRowId || platform.UniqueId == MinecraftVersionRowId ||
 					  platform.UniqueId == ModpackRowId))
 			{
@@ -813,7 +812,7 @@ public partial class Form1
 			}
 			// An update the manager can fetch itself asks which the user wants, rather than assuming they pressed
 			// Enter to go and read about a mod they already have.
-			else if (list.Name == "listUpdates" && list.SelectedItem is StardewMod pending && CanUpdateWithoutBrowser(pending))
+			else if (list.Name == "listUpdates" && list.SelectedItem is GameMod pending && CanUpdateWithoutBrowser(pending))
 			{
 				Fire(OfferUpdateChoiceAsync(pending), "OfferUpdateChoiceAsync");
 			}

@@ -1,4 +1,3 @@
-using StardewMod = KinetixModManager.GameMod;
 
 namespace KinetixModManager;
 
@@ -62,13 +61,13 @@ public partial class Form1
 	/// them. Discovery matters as much as the installed list — without it a mod could only be suggested after
 	/// being installed, which would mean installing something on all five games just to recommend it.
 	/// </summary>
-	private StardewMod? CuratorTargetMod()
+	private GameMod? CuratorTargetMod()
 	{
-		if (listInstalled != null && listInstalled.Focused && listInstalled.SelectedItem is StardewMod installed)
+		if (listInstalled != null && listInstalled.Focused && listInstalled.SelectedItem is GameMod installed)
 			return installed.IsGroup ? null : installed;
 
 		// A Discovery row may be the inline "Load more" sentinel rather than a mod; the type test rules it out.
-		if (listDiscovery != null && listDiscovery.Focused && listDiscovery.SelectedItem is StardewMod found)
+		if (listDiscovery != null && listDiscovery.Focused && listDiscovery.SelectedItem is GameMod found)
 			return found;
 
 		return null;
@@ -136,7 +135,7 @@ public partial class Form1
 	{
 		if (!_settings.CuratorMode) return;
 
-		StardewMod? mod = CuratorTargetMod();
+		GameMod? mod = CuratorTargetMod();
 		if (mod == null)
 		{
 			Speak(Loc.T("curator.nothingToMark"));

@@ -1,6 +1,5 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using StardewMod = KinetixModManager.GameMod;
 
 namespace KinetixModManager;
 
@@ -178,7 +177,7 @@ public partial class Form1
 		if (!Directory.Exists(modsPath))
 		{
 			_scannedGame = null;
-			_allInstalledMods = new List<StardewMod>();
+			_allInstalledMods = new List<GameMod>();
 			Invoke(delegate
 			{
 				listInstalled.Items.Clear();
@@ -188,7 +187,7 @@ public partial class Form1
 			return;
 		}
 
-		List<StardewMod> scanned;
+		List<GameMod> scanned;
 		try
 		{
 			scanned = await Task.Run(() => ScanModsFolder(modsPath, refreshingGame));
@@ -200,7 +199,7 @@ public partial class Form1
 			LogFailure("Scan", "Could not read the mods folder", ex);
 			if (Superseded()) return;
 			_scannedGame = null;
-			_allInstalledMods = new List<StardewMod>();
+			_allInstalledMods = new List<GameMod>();
 			Invoke(delegate
 			{
 				listInstalled.Items.Clear();
@@ -237,7 +236,7 @@ public partial class Form1
 		string? selectedBefore = null;
 		Invoke(delegate
 		{
-			selectedBefore = (listInstalled.SelectedItem as StardewMod)?.UniqueId;
+			selectedBefore = (listInstalled.SelectedItem as GameMod)?.UniqueId;
 			listInstalled.BeginUpdate();
 			if (doUpdateChecks)
 			{
@@ -306,7 +305,7 @@ public partial class Form1
 			listUpdates.BeginUpdate();
 			for (int i = listUpdates.Items.Count - 1; i >= 0; i--)
 			{
-				if (listUpdates.Items[i] is StardewMod updateMod)
+				if (listUpdates.Items[i] is GameMod updateMod)
 				{
 					var installedMod = _allInstalledMods.FirstOrDefault(m =>
 						(!string.IsNullOrEmpty(updateMod.UniqueId) && m.UniqueId == updateMod.UniqueId) ||
@@ -375,7 +374,7 @@ public partial class Form1
 		// could in fact be checked.
 		bool minecraft = GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true;
 
-		List<IGrouping<string, StardewMod>> list = minecraft
+		List<IGrouping<string, GameMod>> list = minecraft
 			? _allInstalledMods
 				.Where(m => !m.IsGroup && !string.IsNullOrEmpty(m.FolderPath))
 				.GroupBy(m => "Minecraft:" + m.FolderPath).ToList()
@@ -391,7 +390,7 @@ public partial class Form1
 		// want of a link. A mod Modrinth turns out not to host simply gets no answer, which is reported when
 		// the run finishes rather than guessed at before it starts.
 		_updateUnlinkedMods = minecraft
-			? new List<StardewMod>()
+			? new List<GameMod>()
 			: _allInstalledMods.Where(m => !m.IsGroup
 				&& string.IsNullOrEmpty(m.NexusID) && string.IsNullOrEmpty(m.GitHubRepo)).ToList();
 		_smapiCheckedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -431,7 +430,7 @@ public partial class Form1
 			? _nexusService.GetRecentlyUpdatedModIdsAsync("1m", _nexusService.CurrentGameDomain)
 			: null;
 		Task<Dictionary<string, string>?>? modrinthAnswers = minecraft ? LatestModrinthVersionsAsync(list.Select(g => g.First()).ToList()) : null;
-		foreach (IGrouping<string, StardewMod> item3 in list)
+		foreach (IGrouping<string, GameMod> item3 in list)
 		{
 			Fire(CheckForUpdates(item3.ToList(), updatedThisMonth, modrinthAnswers), "CheckForUpdates");
 		}
@@ -469,7 +468,7 @@ public partial class Form1
 	private string _nexusFailedStatus = "status.nexusUnreachable";
 
 	/// <summary>Everything a refresh reads from the disk. Off the interface thread, so it touches no control.</summary>
-	private List<StardewMod> ScanModsFolder(string modsPath, string game)
+	private List<GameMod> ScanModsFolder(string modsPath, string game)
 	{
 		string idMapPath = Path.Combine(AppSettings.AppDataFolder, "mod_id_map.json");
 		string legacyIdMapPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "mod_id_map.json");
@@ -479,7 +478,7 @@ public partial class Form1
 			catch (Exception ex) { DiagnosticLog.WriteException("ModIdMap", "copying the old Nexus id map into place", ex); }
 		}
 
-		List<StardewMod> scanned = ModScanner.ScanMods(modsPath, AtomicFile.ReadJsonObjectOrEmpty(idMapPath), _settings, game, LogError);
+		List<GameMod> scanned = ModScanner.ScanMods(modsPath, AtomicFile.ReadJsonObjectOrEmpty(idMapPath), _settings, game, LogError);
 
 		// Where each mod's page is, from whatever earlier check learned it. A convenience the scan itself does not need.
 		ModPageLinks.Apply(scanned, ModPageLinks.Load(AppSettings.AppDataFolder));
@@ -535,7 +534,7 @@ public partial class Form1
 	/// shipping as ten <c>mod_&lt;family&gt;_*</c> folders filled ten rows. Those group by their family instead,
 	/// which is the author's own naming rather than a guess about what belongs with what.
 	/// </summary>
-	private string InstalledGroupKey(StardewMod mod)
+	private string InstalledGroupKey(GameMod mod)
 	{
 		string topFolder = ModEnableState.InstalledGroupFolder(_settings.CurrentModsPath, mod.FolderPath);
 
@@ -575,7 +574,7 @@ public partial class Form1
 		// Status filter by combo index (language-independent): 0 All, 1 Enabled, 2 Disabled, 3 Has Note,
 		// 4 Single Mods Only, 5 Mod Groups Only. The last two are applied per folder further down, not here.
 		int status = cmbStatusFilter?.SelectedIndex ?? 0;
-		bool StatusMatch(StardewMod m) => status switch
+		bool StatusMatch(GameMod m) => status switch
 		{
 			1 => m.IsEnabled,
 			2 => !m.IsEnabled,
@@ -587,25 +586,25 @@ public partial class Form1
 		// report only the ones that happen to be visible.
 		_installedMatchCount = 0;
 		listInstalled.BeginUpdate();
-		StardewMod? stardewMod = listInstalled.SelectedItem as StardewMod;
+		GameMod? stardewMod = listInstalled.SelectedItem as GameMod;
 		string? restoreId = preferUniqueId ?? stardewMod?.UniqueId;
 		// Read before the list is emptied. Compared afterwards, it was always -1, so every rescan counted as moving the user
 		// even when they were put back on the same row, which started the swallow that destroys whatever was just said:
 		// "Foo is now dis...", then the row again.
 		int indexBefore = listInstalled.SelectedIndex;
 		listInstalled.Items.Clear();
-		foreach (IGrouping<string, StardewMod> item2 in from g in _allInstalledMods.Where((StardewMod m) => !m.IsGroup).GroupBy(InstalledGroupKey)
+		foreach (IGrouping<string, GameMod> item2 in from g in _allInstalledMods.Where((GameMod m) => !m.IsGroup).GroupBy(InstalledGroupKey)
 			orderby g.Key
 			select g)
 		{
-			List<StardewMod> list = item2.ToList();
+			List<GameMod> list = item2.ToList();
 			// Status 4 and 5 filter by shape, not by state, so they are decided here: whether something is a mod
 			// group is a property of the folder it lives in and not of any one mod, which is all StatusMatch can
 			// see. "Single mods only" keeps folders holding exactly one mod; "Mod groups only" keeps the rest.
 			if (status == 4 && list.Count > 1) continue;
 			if (status == 5 && list.Count == 1) continue;
 
-			List<StardewMod> list2 = list.Where((StardewMod m) => (string.IsNullOrEmpty(query) || m.Name.ToLower().Contains(query) || m.Author.ToLower().Contains(query) || m.Note.ToLower().Contains(query)) && (category == "All Categories" || m.Category == category) && StatusMatch(m)).ToList();
+			List<GameMod> list2 = list.Where((GameMod m) => (string.IsNullOrEmpty(query) || m.Name.ToLower().Contains(query) || m.Author.ToLower().Contains(query) || m.Note.ToLower().Contains(query)) && (category == "All Categories" || m.Category == category) && StatusMatch(m)).ToList();
 			_installedMatchCount += list2.Count;
 			if (list2.Count == 0)
 			{
@@ -617,7 +616,7 @@ public partial class Form1
 			// all, the same rule an unfiltered list of one follows.
 			if (list2.Count == 1)
 			{
-				foreach (StardewMod item3 in list2)
+				foreach (GameMod item3 in list2)
 				{
 					item3.IsSubMod = false;
 					item3.IsGroup = false;
@@ -629,7 +628,7 @@ public partial class Form1
 			// a filter reads as "Contains 2 mods", meaning two that matched — the same bargain the unfiltered list
 			// already makes, and the reason the count above is not taken from the visible rows.
 			bool flag2 = _expandedGroups.Contains(item2.Key);
-			StardewMod item = new StardewMod
+			GameMod item = new GameMod
 			{
 				IsGroup = true,
 				GroupName = item2.Key,
@@ -645,7 +644,7 @@ public partial class Form1
 			{
 				continue;
 			}
-			foreach (StardewMod item4 in list2)
+			foreach (GameMod item4 in list2)
 			{
 				item4.IsSubMod = true;
 				item4.IsGroup = false;
@@ -656,7 +655,7 @@ public partial class Form1
 		{
 			for (int num = 0; num < listInstalled.Items.Count; num++)
 			{
-				if (listInstalled.Items[num] is StardewMod stardewMod2 && stardewMod2.UniqueId == restoreId)
+				if (listInstalled.Items[num] is GameMod stardewMod2 && stardewMod2.UniqueId == restoreId)
 				{
 					// Putting the user back after a rescan is a move they did not make, so the row has to name
 					// itself — otherwise a refresh finishing under them reads out a position and nothing else.
@@ -708,11 +707,11 @@ public partial class Form1
 	private void ReselectMod(string? uniqueId, bool announce = true)
 	{
 		if (string.IsNullOrEmpty(uniqueId)) return;
-		if ((listInstalled.SelectedItem as StardewMod)?.UniqueId == uniqueId) return;
+		if ((listInstalled.SelectedItem as GameMod)?.UniqueId == uniqueId) return;
 
 		for (int i = 0; i < listInstalled.Items.Count; i++)
 		{
-			if (listInstalled.Items[i] is StardewMod candidate && candidate.UniqueId == uniqueId)
+			if (listInstalled.Items[i] is GameMod candidate && candidate.UniqueId == uniqueId)
 			{
 				// Say which mod, not just where it sits: nothing else will, because the user did not move here.
 				_announceRowNameOnNextChange = announce;
@@ -757,7 +756,7 @@ public partial class Form1
 	/// Opens an editor for <paramref name="mod"/> and guarantees the installed list is back on that mod by the
 	/// time the user is back in it, however the editor was left and whatever it did to the list on its way out.
 	/// </summary>
-	private void EditModKeepingPlace(StardewMod mod, Action openEditor)
+	private void EditModKeepingPlace(GameMod mod, Action openEditor)
 	{
 		string editingId = mod.UniqueId;
 		_restoreInstalledSelectionTo = editingId;
@@ -849,7 +848,7 @@ public partial class Form1
 	/// </param>
 	/// <summary>The file the manager records a mod's metadata in — the author's own manifest for Stardew Valley,
 	/// the manager's sidecar for every other game.</summary>
-	private string ManifestPathFor(StardewMod mod) => Path.Combine(mod.FolderPath,
+	private string ManifestPathFor(GameMod mod) => Path.Combine(mod.FolderPath,
 		GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley) ? "manifest.json" : ".manager_manifest.json");
 
 	/// <summary>
@@ -864,7 +863,7 @@ public partial class Form1
 	/// the mod is already up to date — so a mod linked by hand would never report an update again, which is
 	/// exactly the opposite of why anyone links a mod in the first place.
 	/// </summary>
-	private async Task EnrichLinkedModFromNexusAsync(StardewMod mod, string nexusId)
+	private async Task EnrichLinkedModFromNexusAsync(GameMod mod, string nexusId)
 	{
 		if (string.IsNullOrEmpty(nexusId)) return;
 
@@ -906,9 +905,9 @@ public partial class Form1
 		}
 	}
 
-	private async Task LinkModUpdateSource(StardewMod? target = null)
+	private async Task LinkModUpdateSource(GameMod? target = null)
 	{
-		if ((target ?? ModOnThisTab()) is StardewMod stardewMod3)
+		if ((target ?? ModOnThisTab()) is GameMod stardewMod3)
 		{
 			if (stardewMod3.IsGroup)
 			{

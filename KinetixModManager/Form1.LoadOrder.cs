@@ -1,5 +1,4 @@
 using Newtonsoft.Json;
-using StardewMod = KinetixModManager.GameMod;
 
 namespace KinetixModManager;
 
@@ -32,7 +31,7 @@ public partial class Form1
 	/// The stable identity of a Skyrim/Fallout mod for priority purposes: its folder name without the
 	/// leading dot that marks a disabled folder, so enabling/disabling never changes its priority slot.
 	/// </summary>
-	private static string PriorityKey(StardewMod m)
+	private static string PriorityKey(GameMod m)
 	{
 		string folder = Path.GetFileName(m.FolderPath.TrimEnd(Path.DirectorySeparatorChar));
 		return folder.StartsWith(".") ? folder.Substring(1) : folder;
@@ -56,7 +55,7 @@ public partial class Form1
 		// The entry above is still made, because callers read it straight after this. But with no true picture of what
 		// is installed, nothing here may decide that a mod has gone: this is what used to empty a saved load order.
 		// Read before the check, because a game switch empties the list after it withdraws the trust.
-		List<StardewMod> mods = _allInstalledMods;
+		List<GameMod> mods = _allInstalledMods;
 		if (!ModListIsTrustworthy) return;
 
 		var present = mods
@@ -118,7 +117,7 @@ public partial class Form1
 			.ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 		foreach (string name in _settings.ModPriority[_settings.ActiveGame])
 		{
-			if (byKey.TryGetValue(name, out StardewMod? mod))
+			if (byKey.TryGetValue(name, out GameMod? mod))
 				result.Add((name, mod.FolderPath));
 		}
 		return result;
@@ -471,7 +470,7 @@ public partial class Form1
 		listModPriority.Items.Clear();
 		foreach (string name in _settings.ModPriority[_settings.ActiveGame])
 		{
-			byKey.TryGetValue(name, out StardewMod? mod);
+			byKey.TryGetValue(name, out GameMod? mod);
 			var entry = new PriorityEntry
 			{
 				Key = name,
@@ -577,7 +576,7 @@ public partial class Form1
 	private void SyncBethesdaPluginsHoldingLock()
 	{
 		// Read before the check, because a game switch empties the list after it withdraws the trust.
-		List<StardewMod> mods = _allInstalledMods;
+		List<GameMod> mods = _allInstalledMods;
 		string game = _settings.ActiveGame;
 		string gameRoot = _settings.CurrentGamePath;
 		if (!IsBethesdaGame || !ModListIsTrustworthy) return;
@@ -588,7 +587,7 @@ public partial class Form1
 
 		// Plugins supplied by installed mods. Only enabled mods contribute active plugins; the full set
 		// (enabled + disabled) is tracked so a disabled mod's plugin is not re-adopted as "external".
-		foreach (StardewMod mod in mods.Where(m => !m.IsGroup))
+		foreach (GameMod mod in mods.Where(m => !m.IsGroup))
 		{
 			if (!Directory.Exists(mod.FolderPath)) continue;
 			foreach (string file in Directory.GetFiles(mod.FolderPath, "*.*", SearchOption.AllDirectories))

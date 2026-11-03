@@ -1,7 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
-using StardewMod = KinetixModManager.GameMod;
 
 namespace KinetixModManager;
 
@@ -15,7 +14,7 @@ public partial class Form1
 	/// <summary>Fetches and shows the selected mod's changelog (newest version first).</summary>
 	private async void ViewModChangelog()
 	{
-		StardewMod? mod = SelectedNexusMod();
+		GameMod? mod = SelectedNexusMod();
 		if (mod == null || string.IsNullOrEmpty(mod.NexusID)) { Speak(Loc.T("modinfo.noNexusMod")); return; }
 		if (string.IsNullOrEmpty(_settings.ApiKey)) { Speak(Loc.T("modinfo.needLogin")); return; }
 
@@ -43,7 +42,7 @@ public partial class Form1
 	/// <summary>Fetches and shows the selected mod's full description from its Nexus page (BBCode stripped).</summary>
 	private async void ViewModDescription()
 	{
-		StardewMod? mod = SelectedNexusMod();
+		GameMod? mod = SelectedNexusMod();
 		if (mod == null || string.IsNullOrEmpty(mod.NexusID)) { Speak(Loc.T("modinfo.noNexusMod")); return; }
 		if (string.IsNullOrEmpty(_settings.ApiKey)) { Speak(Loc.T("modinfo.needLogin")); return; }
 

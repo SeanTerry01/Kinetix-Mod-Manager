@@ -2,7 +2,6 @@ using System.ComponentModel;
 using System.IO.Pipes;
 using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Win32;
-using StardewMod = KinetixModManager.GameMod;
 
 namespace KinetixModManager;
 
@@ -280,7 +279,7 @@ public partial class Form1 : Form, IMessageFilter
 
 	private bool _isSettingsOpen;
 
-	private List<StardewMod> _allInstalledMods = new List<StardewMod>();
+	private List<GameMod> _allInstalledMods = new List<GameMod>();
 
 	/// <summary>
 	/// Which game <see cref="_allInstalledMods"/> is a true picture of. Null while it is not one: before the first scan,

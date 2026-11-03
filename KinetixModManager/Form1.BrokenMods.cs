@@ -1,4 +1,3 @@
-using StardewMod = KinetixModManager.GameMod;
 
 namespace KinetixModManager;
 
@@ -61,7 +60,7 @@ public partial class Form1
 			Dictionary<string, SmapiCompatibility.Result> compat =
 				await SmapiCompatibility.CheckAsync(mods.Select(m => m.UniqueId), LogError);
 
-			foreach (StardewMod mod in mods)
+			foreach (GameMod mod in mods)
 			{
 				if (!compat.TryGetValue(mod.UniqueId, out SmapiCompatibility.Result? r) || !r.IsProblem) continue;
 				string summary = RichTextToPlain(r.Summary);
@@ -90,7 +89,7 @@ public partial class Form1
 			var enabled = _allInstalledMods.Where(m => !m.IsGroup && m.IsEnabled).ToList();
 			// Every plugin this load order actually ships, and the subset that's active (loads in game).
 			var installedPlugins = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-			foreach (StardewMod m in enabled)
+			foreach (GameMod m in enabled)
 				foreach (string p in ModPluginFiles(m))
 					installedPlugins.Add(Path.GetFileName(p));
 			var activePlugins = new HashSet<string>(
@@ -98,7 +97,7 @@ public partial class Form1
 
 			// Map a plugin back to the mod that ships it, for friendlier report lines.
 			var ownerByPlugin = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-			foreach (StardewMod m in enabled)
+			foreach (GameMod m in enabled)
 				foreach (string p in ModPluginFiles(m))
 					ownerByPlugin[Path.GetFileName(p)] = m.Name;
 			string Owner(string plugin) => ownerByPlugin.TryGetValue(plugin, out string? n) ? n : plugin;
@@ -150,7 +149,7 @@ public partial class Form1
 	/// by recognized asset extensions (textures, meshes, materials, audio, scripts, interface); plugins and packed
 	/// BA2 archives don't count, so a plugin-only or fully-packed mod is not flagged. Best-effort; errors mean false.
 	/// </summary>
-	private static bool ModHasLooseFiles(StardewMod m)
+	private static bool ModHasLooseFiles(GameMod m)
 	{
 		try
 		{
