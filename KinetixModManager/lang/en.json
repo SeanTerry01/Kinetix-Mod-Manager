@@ -1168,7 +1168,6 @@
   "updates.autoMatchStart": "Starting auto-matching process for installed mods.",
   "updates.noUnmatched": "No unmatched mods found.",
   "updates.matchingStatus": "Matching {0}/{1}: {2}...",
-  "updates.searchingFor": "Searching for {0}",
   "updates.matchedWith": "Matched with {0}.",
   "updates.smapiLinked": "Linked {0} mods exactly from the SMAPI mod database.",
   "updates.smapiLinkedOne": "Linked 1 mod exactly from the SMAPI mod database.",

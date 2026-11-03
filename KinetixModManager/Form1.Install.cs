@@ -670,18 +670,19 @@ public partial class Form1
 		};
 		if (openFileDialog.ShowDialog() == DialogResult.OK)
 		{
+			string picked = openFileDialog.FileName;
 			// A modpack is a whole setup, not a mod: it gets its own folder and leaves the player's mods alone.
 			if (minecraft &&
 				openFileDialog.FileName.EndsWith(MinecraftModpacks.FileExtension, StringComparison.OrdinalIgnoreCase))
 			{
-				Fire(InstallModpackFromFileAsync(openFileDialog.FileName), "InstallModpackFromFileAsync");
+				Fire(AfterForeignWindow(() => InstallModpackFromFileAsync(picked)), "InstallModpackFromFileAsync");
 				return;
 			}
 
 			if (minecraft &&
 				openFileDialog.FileName.EndsWith(MinecraftLayout.ModExtension, StringComparison.OrdinalIgnoreCase))
 			{
-				Fire(InstallMinecraftJarAsync(openFileDialog.FileName), "InstallMinecraftJarAsync");
+				Fire(AfterForeignWindow(() => InstallMinecraftJarAsync(picked)), "InstallMinecraftJarAsync");
 				return;
 			}
 
@@ -690,8 +691,8 @@ public partial class Form1
 			// against Nexus to guess it back. Installing by hand used to throw it away, so a mod installed this
 			// way could not be checked for updates until the user ran Auto-match. Read straight from the name,
 			// it also records which release is installed, so the mod compares against what it actually has.
-			Fire(InstallFromZip(openFileDialog.FileName,
-				ModManifest.NexusIdFromDownloadName(openFileDialog.FileName), confirmReinstall: true), "InstallFromZip");
+			Fire(AfterForeignWindow(() => InstallFromZip(picked,
+				ModManifest.NexusIdFromDownloadName(picked), confirmReinstall: true)), "InstallFromZip");
 		}
 	}
 

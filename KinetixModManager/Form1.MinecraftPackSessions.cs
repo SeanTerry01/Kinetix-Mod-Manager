@@ -362,7 +362,10 @@ public partial class Form1
 			Filter = Loc.T("mc.pack.fileFilter")
 		};
 		if (dialog.ShowDialog() == DialogResult.OK)
-			Fire(InstallModpackFromFileAsync(dialog.FileName), "InstallModpackFromFileAsync");
+		{
+			string picked = dialog.FileName;
+			Fire(AfterForeignWindow(() => InstallModpackFromFileAsync(picked)), "InstallModpackFromFileAsync");
+		}
 	}
 
 	// -------------------------------------------------------------------------

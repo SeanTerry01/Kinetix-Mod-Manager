@@ -543,6 +543,33 @@ public partial class Form1
 		Speak(result + " " + RowThenPosition(list.SelectedItem, PositionTextFor(list)));
 	}
 
+	/// <summary>
+	/// Runs work that speaks, once the reader has finished describing the window a file picker has just uncovered. Started
+	/// straight away, its first words were lost to the window's caption, and a question could lose all but its "Yes".
+	/// </summary>
+	private async Task AfterForeignWindow(Func<Task> work)
+	{
+		await SettleAfterForeignWindowAsync();
+		await work();
+	}
+
+	/// <summary>When <see cref="SpeakIfReaderIsFree"/> last spoke, for a reader that cannot say whether it still is.</summary>
+	private long _lastBackgroundSpeechTicks = long.MinValue / 2;
+
+	/// <summary>
+	/// Says a running commentary line, unless the reader is still on the last one. For work that reports as it goes, where
+	/// each line would otherwise queue behind the rest and be heard long after it stopped being true. A reader that
+	/// cannot say gets a gap of at least two seconds instead.
+	/// </summary>
+	private void SpeakIfReaderIsFree(string text)
+	{
+		long now = Environment.TickCount64;
+		if (_announcer.IsSpeakingForCertain ?? now - _lastBackgroundSpeechTicks < 2000) return;
+
+		_lastBackgroundSpeechTicks = now;
+		Speak(text);
+	}
+
 	/// <summary>Stops whatever the screen reader is currently saying, if one is listening.</summary>
 	private void SilenceSpeech() => _announcer.Silence();
 

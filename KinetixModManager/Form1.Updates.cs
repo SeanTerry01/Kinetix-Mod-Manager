@@ -1158,8 +1158,9 @@ public partial class Form1
 			foreach (var mod in targetMods)
 			{
 				current++;
-				SetStatus(Loc.T("updates.matchingStatus", current, targetMods.Count, mod.Name));
-				Speak(Loc.T("updates.searchingFor", mod.Name));
+				// Three sentences a mod, queued, put this minutes behind what it was really doing on a large list. The title keeps
+				// count, and what it found is said only when the reader has finished with the last one.
+				SetStatus(Loc.T("updates.matchingStatus", current, targetMods.Count, mod.Name), speak: false);
 
 				// A mod goes by more than one name: what the mod itself declares, the folder it was installed
 				// into, and (for a BepInEx plugin) the parts of its GUID. Any of them can be the one its Nexus
@@ -1208,16 +1209,16 @@ public partial class Form1
 						await EnrichLinkedModFromNexusAsync(mod, bestMatch.NexusID!);
 
 						matchCount++;
-						Speak(Loc.T("updates.matchedWith", bestMatch.Name));
+						SpeakIfReaderIsFree(Loc.T("updates.matchedWith", bestMatch.Name));
 					}
 					else
 					{
-						Speak(Loc.T("updates.noConfidentMatch"));
+						SpeakIfReaderIsFree(Loc.T("updates.noConfidentMatch"));
 					}
 				}
 				else
 				{
-					Speak(Loc.T("updates.noResults"));
+					SpeakIfReaderIsFree(Loc.T("updates.noResults"));
 				}
 
 				await Task.Delay(500);
@@ -1230,11 +1231,12 @@ public partial class Form1
 			int detailed = await FillInMissingNexusDetailsAsync();
 
 			_isLoading = false;
+			// The rescan first, so the list reloading cannot cut off the one sentence that matters.
+			await RefreshModList(checkUpdates: false);
 			_soundEngine.Play("load_complete");
 			Speak(Loc.T("updates.autoMatchComplete", matchCount, totalMods));
 			if (detailed > 0)
 				Speak(Loc.T(detailed == 1 ? "updates.detailsFilledOne" : "updates.detailsFilled", detailed));
-			await RefreshModList(checkUpdates: false);
 		}
 		catch (Exception ex)
 		{

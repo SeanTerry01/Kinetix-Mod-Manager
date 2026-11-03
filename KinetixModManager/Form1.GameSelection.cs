@@ -594,7 +594,7 @@ public partial class Form1
 		}
 
 		RecordGameFolder(game, chosen);
-		Speak(Loc.T("session.locatedSpeak", targetName));
+		SpeakAfterForeignWindow(Loc.T("session.locatedSpeak", targetName));
 		return true;
 	}
 
