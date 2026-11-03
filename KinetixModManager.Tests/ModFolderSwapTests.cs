@@ -443,6 +443,30 @@ public sealed class InstallOrderGuardTests
 		Assert.Contains("!ModListIsTrustworthy", source.Substring(at, 700));
 	}
 
+	[Theory]
+	[InlineData("Form1.Install.cs", "private async Task<bool> InstallFromZip(")]
+	[InlineData("Form1.Install.cs", "private async Task RestoreBackupAsync(")]
+	[InlineData("Form1.Updates.cs", "private async Task DownloadAndInstallUpdate(")]
+	[InlineData("Form1.Minecraft.cs", "private async Task<bool> MoveToMinecraftVersionAsync(")]
+	[InlineData("Form1.Minecraft.cs", "private async Task InstallMinecraftJarAsync(")]
+	[InlineData("Form1.Collections.cs", "private async Task InstallCollectionAsync(")]
+	[InlineData("Form1.Dependencies.cs", "private async Task ResolveDependenciesAsync(")]
+	public void AnOperationChangingModsHoldsOffAGameSwitch(string file, string signature)
+	{
+		string source = App(file);
+		int at = source.IndexOf(signature, StringComparison.Ordinal);
+		Assert.True(at >= 0, signature);
+		Assert.Contains("BeginModOperation()", source.Substring(at, 900));
+	}
+
+	[Fact]
+	public void SwitchingGameIsRefusedWhileModsAreBeingChanged()
+	{
+		string source = App("Form1.GameSession.cs");
+		int at = source.IndexOf("private void SwitchActiveGame(", StringComparison.Ordinal);
+		Assert.Contains("ModOperationRunning", source.Substring(at, 500));
+	}
+
 	[Fact]
 	public void TheMultiPartAnswerReachesAnInstallForEveryLayout()
 	{

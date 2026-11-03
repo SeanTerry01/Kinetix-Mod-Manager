@@ -180,6 +180,13 @@ public partial class Form1
 	private void SwitchActiveGame(string game)
 	{
 		if (_settings.ActiveGame == game) return;
+		// Every caller checks ActiveGame afterwards, because this already refuses a game that is not installed. See
+		// BeginModOperation for what switching underneath a running install used to do.
+		if (ModOperationRunning)
+		{
+			Speak(Loc.T("session.busy"));
+			return;
+		}
 		// Refuse to load a session for a game that is not installed. Without this guard
 		// CurrentModsPath falls back to the Stardew Mods path, so the session would silently
 		// load with another game's mods. EnsureGameInstalledOrOfferPurchase announces the

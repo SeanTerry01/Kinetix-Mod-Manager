@@ -36,6 +36,8 @@ public partial class Form1
 	/// </summary>
 	private async Task InstallModpackFromFileAsync(string mrpackPath)
 	{
+		using IDisposable busy = BeginModOperation();
+
 		string fileName = Path.GetFileName(mrpackPath);
 
 		MrpackIndex index;

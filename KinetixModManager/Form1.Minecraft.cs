@@ -756,6 +756,8 @@ public partial class Form1
 	/// </summary>
 	private async Task<bool> MoveToMinecraftVersionAsync(string newVersion, bool silent)
 	{
+		using IDisposable busy = BeginModOperation();
+
 		string root = MinecraftRootFolder();
 		if (root.Length == 0 || newVersion.Length == 0) return false;
 
@@ -1264,6 +1266,8 @@ public partial class Form1
 	/// </summary>
 	private async Task InstallMinecraftJarAsync(string jarPath)
 	{
+		using IDisposable busy = BeginModOperation();
+
 		string modsFolder = MinecraftLayout.ModsFolderFor(MinecraftGameFolder());
 
 		try

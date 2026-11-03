@@ -456,7 +456,9 @@ public static class ModrinthService
 		string path = Path.Combine(destinationFolder, file.FileName);
 
 		byte[] bytes = await KinetixHttp.Downloads.GetByteArrayAsync(file.Url);
-		File.WriteAllBytes(path, bytes);
+		string partial = path + ModArchive.PartialDownloadSuffix;
+		File.WriteAllBytes(partial, bytes);
+		File.Move(partial, path, overwrite: true);
 
 		return path;
 	}

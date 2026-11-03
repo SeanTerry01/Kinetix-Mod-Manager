@@ -26,6 +26,8 @@ public partial class Form1
 	/// </summary>
 	private async void ImportFromMO2()
 	{
+		using IDisposable busy = BeginModOperation();
+
 		if (!IsBethesdaGame)
 		{
 			Speak(Loc.T("mo2.notApplicable"));

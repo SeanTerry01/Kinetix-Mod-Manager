@@ -56,6 +56,11 @@ as before.
 *   **Installing a Minecraft mod puts the new copy in before removing the old**, and says so if it fails. A locked file
     used to be able to remove the mod with no message, and a copy that could not be removed is now reported rather than
     leaving a game that refuses to start.
+*   **You can no longer switch games in the middle of an install.** During Update All, the next mod could be looked up on
+    the other game's page, and a different mod installed into that game. It now says to wait. Closing the manager during
+    an install asks first, too.
+*   **A part-finished download can no longer pass for a whole one.** Closing part way through used to leave a short file
+    under its real name, which then failed when you tried to install it.
 *   **Refreshing no longer deletes mods.** On Skyrim and Fallout 4, any refresh deleted all but the newest of any mods
     sharing a Nexus page or a name, so a patch could vanish along with its main file's older sibling.
 *   **A second file from one Nexus page no longer replaces the first without asking.** You are asked whether it is a

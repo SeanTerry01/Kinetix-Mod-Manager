@@ -146,6 +146,8 @@ public partial class Form1
 	/// </summary>
 	private async Task ResolveDependenciesAsync()
 	{
+		using IDisposable busy = BeginModOperation();
+
 		if (listInstalled.SelectedItem is not StardewMod mod || mod.IsGroup)
 		{
 			Speak(Loc.T("deps.selectMod"));

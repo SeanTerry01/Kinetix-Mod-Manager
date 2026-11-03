@@ -192,6 +192,8 @@ public partial class Form1
 	/// </summary>
 	private async Task UpdateModpackAsync(MinecraftPack pack, ModpackVersion update)
 	{
+		using IDisposable busy = BeginModOperation();
+
 		string root = MinecraftRootFolder();
 		string key = MinecraftModpacks.InstallKeyFor(pack);
 

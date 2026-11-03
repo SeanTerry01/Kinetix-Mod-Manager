@@ -393,6 +393,7 @@ public partial class Form1
 		btnInstall.Click += async delegate
 		{
 			if (isInstalling) return;
+			using IDisposable busy = BeginModOperation();
 			isInstalling = true;
 			btnInstall.Enabled = false;
 			btnInstall.Text = Loc.T("suite.installing");
@@ -761,6 +762,8 @@ public partial class Form1
 	/// </summary>
 	private async Task<bool> InstallSmapiAsync(string gameFolder)
 	{
+		using IDisposable busy = BeginModOperation();
+
 		// SMAPI can only install into a real Stardew Valley folder; bail to the manual flow otherwise.
 		if (string.IsNullOrEmpty(gameFolder) || !File.Exists(Path.Combine(gameFolder, "Stardew Valley.exe")))
 		{

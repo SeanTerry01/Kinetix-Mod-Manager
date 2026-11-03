@@ -278,3 +278,141 @@ public sealed class DamagedManifestTests : IDisposable
 		JObject.Parse(File.ReadAllText(manifest));
 	}
 }
+
+/// <summary>What a crash leaves behind is cleared up, and nothing else is.</summary>
+public sealed class LeftoverSweepTests : IDisposable
+{
+	private readonly string _dir = Path.Combine(Path.GetTempPath(), "kmm-sweep-" + Guid.NewGuid().ToString("N"));
+
+	public LeftoverSweepTests() => Directory.CreateDirectory(_dir);
+
+	public void Dispose()
+	{
+		try { ModOnDisk.DeleteDirectory(_dir); } catch (IOException) { }
+	}
+
+	private string Folder(string name, int daysOld)
+	{
+		string path = Path.Combine(_dir, name);
+		Directory.CreateDirectory(path);
+		Directory.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddDays(-daysOld));
+		return path;
+	}
+
+	private string FileIn(string name, int daysOld)
+	{
+		string path = Path.Combine(_dir, name);
+		File.WriteAllText(path, "x");
+		File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddDays(-daysOld));
+		return path;
+	}
+
+	[Theory]
+	[InlineData("Extract_abc")]
+	[InlineData("New_abc")]
+	[InlineData("Old_abc")]
+	public void AnOldWorkFolderIsRemoved(string name)
+	{
+		string folder = Folder(name, daysOld: 3);
+
+		Assert.Equal(1, ModArchive.SweepOldWorkFolders(_dir, TimeSpan.FromDays(1)));
+		Assert.False(Directory.Exists(folder));
+	}
+
+	[Fact]
+	public void ARecentWorkFolderIsLeftAlone()
+	{
+		// It may belong to an install running in another copy of the manager, or one that only just crashed.
+		string folder = Folder("Extract_abc", daysOld: 0);
+
+		Assert.Equal(0, ModArchive.SweepOldWorkFolders(_dir, TimeSpan.FromDays(1)));
+		Assert.True(Directory.Exists(folder));
+	}
+
+	[Fact]
+	public void AFolderTheManagerDidNotNameIsLeftAlone()
+	{
+		string folder = Folder("Someone Elses Things", daysOld: 300);
+
+		ModArchive.SweepOldWorkFolders(_dir, TimeSpan.FromDays(1));
+
+		Assert.True(Directory.Exists(folder));
+	}
+
+	[Fact]
+	public void AnOldPartialDownloadIsRemovedAndAFinishedOneIsNot()
+	{
+		string partial = FileIn("mod.zip" + ModArchive.PartialDownloadSuffix, daysOld: 3);
+		string finished = FileIn("mod.zip", daysOld: 300);
+
+		Assert.Equal(1, ModArchive.SweepOldPartialDownloads(_dir, TimeSpan.FromDays(1)));
+		Assert.False(File.Exists(partial));
+		Assert.True(File.Exists(finished));
+	}
+
+	[Fact]
+	public void ARecentPartialDownloadIsLeftAlone()
+	{
+		string partial = FileIn("mod.zip" + ModArchive.PartialDownloadSuffix, daysOld: 0);
+
+		ModArchive.SweepOldPartialDownloads(_dir, TimeSpan.FromDays(1));
+
+		Assert.True(File.Exists(partial));
+	}
+
+	[Fact]
+	public void MissingFoldersAreNotAnError()
+	{
+		string missing = Path.Combine(_dir, "nope");
+
+		Assert.Equal(0, ModArchive.SweepOldWorkFolders(missing, TimeSpan.FromDays(1)));
+		Assert.Equal(0, ModArchive.SweepOldPartialDownloads(missing, TimeSpan.FromDays(1)));
+	}
+}
+
+/// <summary>Whether something is changing mods right now, which is what stops a game switch under it.</summary>
+public sealed class OperationGateTests
+{
+	[Fact]
+	public void FreeUntilSomethingStarts()
+	{
+		Assert.False(new OperationGate().IsBusy);
+	}
+
+	[Fact]
+	public void BusyUntilItFinishes()
+	{
+		var gate = new OperationGate();
+
+		using (gate.Begin()) Assert.True(gate.IsBusy);
+
+		Assert.False(gate.IsBusy);
+	}
+
+	[Fact]
+	public void BusyUntilTheLastOfSeveralFinishes()
+	{
+		var gate = new OperationGate();
+		IDisposable first = gate.Begin();
+		IDisposable second = gate.Begin();
+
+		first.Dispose();
+		Assert.True(gate.IsBusy);
+
+		second.Dispose();
+		Assert.False(gate.IsBusy);
+	}
+
+	[Fact]
+	public void FinishingTwiceDoesNotFreeItEarly()
+	{
+		var gate = new OperationGate();
+		IDisposable first = gate.Begin();
+		using IDisposable second = gate.Begin();
+
+		first.Dispose();
+		first.Dispose();
+
+		Assert.True(gate.IsBusy);
+	}
+}

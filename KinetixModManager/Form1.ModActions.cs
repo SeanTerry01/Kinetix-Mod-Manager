@@ -499,6 +499,12 @@ public partial class Form1
 		{
 			return;
 		}
+		// Renaming a folder that is being zipped or replaced is how a mod ends up half of each.
+		if (ModOperationRunning)
+		{
+			Speak(Loc.T("session.busy"));
+			return;
+		}
 		// A group row's folder is the whole mods folder, so switching one "off" renamed that, and every mod in the game
 		// vanished from the list with no way back from inside the manager.
 		if (stardewMod.IsGroup)
@@ -545,6 +551,12 @@ public partial class Form1
 	private async void DeleteSelectedMod()
 	{
 		if (listInstalled.SelectedItem is not StardewMod stardewMod || stardewMod.IsGroup) return;
+		// Pressed again during the backup, this used to ask again and delete twice.
+		if (ModOperationRunning)
+		{
+			Speak(Loc.T("session.busy"));
+			return;
+		}
 
 		// Warn if other installed mods declare a required dependency on this one — deleting it would break them.
 		// The check is offline (manifest UniqueIDs on Stardew, plugin masters on Skyrim/Fallout 4).
@@ -557,6 +569,7 @@ public partial class Form1
 		if (SpeakBox(confirm, Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation) != DialogResult.Yes)
 			return;
 
+		using IDisposable busy = BeginModOperation();
 		try
 		{
 			// Deleting keeps a backup first, and zipping a large mod is not instant. Say what is happening and

@@ -159,6 +159,8 @@ public partial class Form1
 	/// </summary>
 	private async Task InstallCollectionAsync()
 	{
+		using IDisposable busy = BeginModOperation();
+
 		if (_settings.ActiveGame == "None") { Speak(Loc.T("collection.noGame")); return; }
 		if (string.IsNullOrEmpty(_settings.ApiKey)) { Speak(Loc.T("collection.noLogin")); return; }
 

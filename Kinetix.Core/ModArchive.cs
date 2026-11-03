@@ -389,6 +389,52 @@ public static class ModArchive
 	private static string CanonicalRoot(string dir) =>
 		Path.GetFullPath(dir).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
 
+	/// <summary>The suffix on a download until it has fully arrived, so a partial one can never pass for the real thing.</summary>
+	public const string PartialDownloadSuffix = ".part";
+
+	/// <summary>
+	/// Removes unpacked folders left in <paramref name="tempRoot"/> by a crash or a forced close. Only the folders the
+	/// manager names itself, and only ones untouched for <paramref name="olderThan"/>. What was replaced is in a backup
+	/// by the time it is here, so nothing is lost with them.
+	/// </summary>
+	public static int SweepOldWorkFolders(string tempRoot, TimeSpan olderThan)
+	{
+		if (!Directory.Exists(tempRoot)) return 0;
+		int removed = 0;
+		foreach (string dir in Directory.GetDirectories(tempRoot))
+		{
+			string name = Path.GetFileName(dir);
+			bool ours = name.StartsWith("Extract_", StringComparison.Ordinal) || name.StartsWith("New_", StringComparison.Ordinal) || name.StartsWith("Old_", StringComparison.Ordinal);
+			if (!ours) continue;
+			try
+			{
+				if (DateTime.UtcNow - Directory.GetLastWriteTimeUtc(dir) < olderThan) continue;
+				ModOnDisk.DeleteDirectory(dir);
+				removed++;
+			}
+			catch (Exception ex) { DiagnosticLog.WriteException("Install", $"clearing the old temporary folder {dir}", ex); }
+		}
+		return removed;
+	}
+
+	/// <summary>Removes part-finished downloads left by a crash or a forced close, once they are old enough.</summary>
+	public static int SweepOldPartialDownloads(string downloadsFolder, TimeSpan olderThan)
+	{
+		if (!Directory.Exists(downloadsFolder)) return 0;
+		int removed = 0;
+		foreach (string file in Directory.GetFiles(downloadsFolder, "*" + PartialDownloadSuffix))
+		{
+			try
+			{
+				if (DateTime.UtcNow - File.GetLastWriteTimeUtc(file) < olderThan) continue;
+				File.Delete(file);
+				removed++;
+			}
+			catch (Exception ex) { DiagnosticLog.WriteException("Install", $"clearing the old partial download {file}", ex); }
+		}
+		return removed;
+	}
+
 	/// <summary>
 	/// Where an archive entry lands, having proved it lands inside <paramref name="canonicalRoot"/>.
 	///

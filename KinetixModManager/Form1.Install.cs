@@ -101,6 +101,7 @@ public partial class Form1
 			{
 				return;
 			}
+			using IDisposable busy = BeginModOperation();
 			isUpdatingAll = true;
 			_updatesLeftDisabled.Clear();
 			_updatesThatFailed.Clear();
@@ -251,24 +252,6 @@ public partial class Form1
 
 		try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
 		catch (Exception ex) { LogFailure(stardewMod.Name, "Failed to open the mod page", ex); }
-	}
-
-	/// <summary>
-	/// Creates a timestamped .zip backup of a mod folder under the backups directory,
-	/// then calls <see cref="PruneBackupsForMod"/> to enforce the per-mod backup limit.
-	/// </summary>
-	private void BackupMod(string folderPath, string modName)
-	{
-		try
-		{
-			BackupStore.CreateBackup(folderPath, modName, backupsPath);
-			BackupStore.PruneBackups(modName, backupsPath, _settings.MaxBackupsPerMod);
-			RefreshBackupsList();
-		}
-		catch (Exception ex)
-		{
-			LogFailure(modName, "Backup Error", ex);
-		}
 	}
 
 	/// <summary>
@@ -718,11 +701,45 @@ public partial class Form1
 	/// the UI thread since the install pipeline may call it from a background continuation.
 	/// </summary>
 	/// <summary>
+	/// Clears what a crash or a forced close left behind: unpacked folders nothing will ever clean up, and part-finished
+	/// downloads. Only ones at least a day old, so nothing another run might still be using is touched.
+	/// </summary>
+	private void SweepLeftoversInBackground()
+	{
+		string[] modsFolders = _settings.GameModsPaths.Values.Where(p => !string.IsNullOrEmpty(p) && Directory.Exists(p)).ToArray();
+		string downloads = downloadsPath;
+		Fire(Task.Run(() =>
+		{
+			foreach (string root in modsFolders.Select(ModArchive.TempRootFor).Distinct(StringComparer.OrdinalIgnoreCase))
+				ModArchive.SweepOldWorkFolders(root, TimeSpan.FromDays(1));
+			ModArchive.SweepOldPartialDownloads(downloads, TimeSpan.FromDays(1));
+		}), "SweepLeftovers");
+	}
+
+	/// <summary>What is changing mods on disk right now. See <see cref="BeginModOperation"/>.</summary>
+	private readonly OperationGate _modOperations = new();
+
+	/// <summary>True while something is changing mods on disk.</summary>
+	private bool ModOperationRunning => _modOperations.IsBusy;
+
+	/// <summary>
+	/// Marks an operation that changes mods on disk as running, for as long as the returned object lives.
+	///
+	/// ⚠️ These read the active game's folder, Nexus domain and downloads path as they go, a step at a time. Nothing
+	/// stopped a game switch in the middle, so the next mod in Update All had its id looked up on the other game's page
+	/// and a different mod was installed into that game, reported as a success. While one runs, a switch is refused and
+	/// closing the window asks first.
+	/// </summary>
+	private IDisposable BeginModOperation() => _modOperations.Begin();
+
+	/// <summary>
 	/// Puts a backup back in place of the mod it came from. The copy being replaced is backed up first, so a restore
 	/// can itself be undone, and a failure leaves things as they were. See <see cref="BackupRestore"/>.
 	/// </summary>
 	private async Task RestoreBackupAsync(BackupItem backup)
 	{
+		using IDisposable busy = BeginModOperation();
+
 		string name = BackupRestore.ModNameOf(backup.FullPath);
 		string modsPath = _settings.CurrentModsPath;
 		string tempRoot = ModArchive.TempRootFor(modsPath);
@@ -923,6 +940,8 @@ public partial class Form1
 		bool confirmReinstall = false, bool partOfMultiPartMod = false, string? displayName = null,
 		string? gitHubRepo = null, GameMod? updating = null)
 	{
+		using IDisposable busy = BeginModOperation();
+
 		// Never the raw file name: a Nexus download is called "Skyrim Access-181131-1-2-3-1723456789.7z", and the
 		// mod id, version and timestamp on the end of that are not part of what the mod is called. See ModDisplayName.
 		string spokenName = !string.IsNullOrWhiteSpace(displayName)

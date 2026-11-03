@@ -659,6 +659,7 @@ public partial class Form1 : Form, IMessageFilter
 			_settings.Save();
 		}
 		DetectModsPath();
+		SweepLeftoversInBackground();
 		// Touching IsAvailable is what opens the bridge; the implementation handles loading it and logging a
 		// failure. The welcome / shortcut-hint announcement is spoken from the Shown handler (below) so we can
 		// wait for it to finish before the startup loading speaks over it.
@@ -746,6 +747,15 @@ public partial class Form1 : Form, IMessageFilter
 
 			// Already saying goodbye: swallow the repeat rather than cutting the message off half-spoken.
 			if (form._shuttingDown) { e.Cancel = true; return; }
+
+			// Closing used to cut an install or download off with no warning. Answered before anything awaits, because
+			// e.Cancel only counts if it is set before this handler first yields.
+			if (form.ModOperationRunning && form.SpeakBox(Loc.T("session.closeBusy"), Loc.T("session.closeBusyTitle"),
+					MessageBoxButtons.YesNo) != DialogResult.Yes)
+			{
+				e.Cancel = true;
+				return;
+			}
 
 			// Keep the window — and with it the message loop — alive while we speak and play the cue.
 			//

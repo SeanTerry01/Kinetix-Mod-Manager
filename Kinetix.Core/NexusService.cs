@@ -783,7 +783,9 @@ public class NexusService
 
 			long? totalBytes = response.Content.Headers.ContentLength;
 			using var contentStream = await response.Content.ReadAsStreamAsync();
-			using var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+			// Under another name until it has all arrived. A forced close part way through left a shorter file under the
+			// real name, listed in the downloads history like any other and failing when someone tried to install it.
+			using var fileStream = new FileStream(destinationPath + ModArchive.PartialDownloadSuffix, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
 
 			var buffer = new byte[8192];
 			long totalRead = 0;
@@ -813,11 +815,14 @@ public class NexusService
 					progress.Report(pct);
 				}
 			}
+
+			await fileStream.DisposeAsync();
+			File.Move(destinationPath + ModArchive.PartialDownloadSuffix, destinationPath, overwrite: true);
 		}
 		catch
 		{
 			// Don't leave a half-written file behind for a later install to pick up as if it were complete.
-			try { if (File.Exists(destinationPath)) File.Delete(destinationPath); }
+			try { File.Delete(destinationPath + ModArchive.PartialDownloadSuffix); }
 			catch (Exception ex) { DiagnosticLog.WriteException("Nexus", $"removing the partial download {destinationPath}", ex); }
 			throw;
 		}
@@ -867,13 +872,14 @@ public class NexusService
 
 		// 3. Download and save using streams
 		string tempPath = Path.Combine(downloadsPath, fileName);
+		string partialPath = tempPath + ModArchive.PartialDownloadSuffix;
 		// The CDN address Nexus hands back is pre-signed; it carries no key, and it is the large transfer.
 		using (var response = await KinetixHttp.Downloads.GetAsync(finalUri, HttpCompletionOption.ResponseHeadersRead))
 		{
 			response.EnsureSuccessStatusCode();
 			long? totalBytes = response.Content.Headers.ContentLength;
 			using var contentStream = await response.Content.ReadAsStreamAsync();
-			using var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+			using var fileStream = new FileStream(partialPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
 
 			var buffer = new byte[8192];
 			long totalRead = 0;
@@ -902,6 +908,9 @@ public class NexusService
 				}
 			}
 		}
+
+		// The stream has closed, so it can take its real name now that it has all arrived.
+		File.Move(partialPath, tempPath, overwrite: true);
 		return tempPath;
 	}
 

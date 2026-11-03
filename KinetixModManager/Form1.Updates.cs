@@ -555,6 +555,14 @@ public partial class Form1
 	/// </summary>
     private async Task DownloadAndInstallUpdate(StardewMod mod, bool silent = false)
     {
+        // Enter on a row during Update All downloaded the same file twice at once, and one of them failed.
+        if (!silent && ModOperationRunning)
+        {
+            Speak(Loc.T("session.busy"));
+            return;
+        }
+        using IDisposable busy = BeginModOperation();
+
         void NoteFailure() { if (silent) _updatesThatFailed.Add(mod.Name); }
 
         // Updates install the mod enabled; remember if it was disabled so we can turn it back off afterward.
