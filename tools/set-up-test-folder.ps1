@@ -73,6 +73,13 @@ function Copy-Tree([string]$From, [string]$To, [string[]]$SkipFolders = @()) {
     if ($LASTEXITCODE -ge 8) { throw "Copying $From failed, robocopy code $LASTEXITCODE." }
 }
 
+# Read before unpacking, because the zip carries its own copy of this file.
+$previousMode = $null
+$previousModeFile = Join-Path $manager "test-mode.json"
+if (Test-Path $previousModeFile) {
+    try { $previousMode = Get-Content $previousModeFile -Raw | ConvertFrom-Json } catch { $previousMode = $null }
+}
+
 Write-Host "Unpacking $($zip.Name)..."
 $unpacked = Join-Path $env:TEMP ("kmm-test-" + [guid]::NewGuid().ToString("N"))
 Expand-Archive -Path $zip.FullName -DestinationPath $unpacked
@@ -121,7 +128,14 @@ foreach ($game in $Games) {
 
 # Written fresh, keeping any game given earlier and the free-account switch.
 $modeFile = Join-Path $manager "test-mode.json"
-$mode = @{ Root = $fullRoot; Games = $gameFolders; PretendFreeNexus = $false }
+$pretendFree = $false
+if ($previousMode) {
+    foreach ($given in $previousMode.Games.PSObject.Properties) {
+        if (-not $gameFolders.ContainsKey($given.Name)) { $gameFolders[$given.Name] = $given.Value }
+    }
+    $pretendFree = [bool]$previousMode.PretendFreeNexus
+}
+$mode = @{ Root = $fullRoot; Games = $gameFolders; PretendFreeNexus = $pretendFree }
 [IO.File]::WriteAllText($modeFile, ($mode | ConvertTo-Json -Depth 3), (New-Object Text.UTF8Encoding($false)))
 
 # Only what the test copy needs of the real settings. Never the folders, which would point it at the real games.

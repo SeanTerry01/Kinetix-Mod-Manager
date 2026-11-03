@@ -391,8 +391,14 @@ public partial class Form1 : Form, IMessageFilter
 	/// reader's own caption and row announcements escape and queue up behind the welcome. One stray ambient line
 	/// was enough to scramble the whole opening.
 	/// </para>
+	///
+	/// <para>
+	/// ⚠️ True from the start, not from Shown. A list holding focus gets it as the window activates, which can be before
+	/// Shown runs, so a flag raised there came too late: the list had already passed the check and was waiting out its
+	/// 100ms. Starting with no game, the first thing heard was "1 of 6".
+	/// </para>
 	/// </summary>
-	private bool _startupSpeechInProgress;
+	private bool _startupSpeechInProgress = true;
 	// Results-per-load selector on the Discovery tab. Seeded from the saved
 	// DiscoverySearchPageSize but its own changes are session-only (not persisted); only the
 	// matching combo in Settings persists. See AppSettings.DiscoverySearchPageSize.
@@ -779,9 +785,8 @@ public partial class Form1 : Form, IMessageFilter
 			// announces its position within about 100ms, and that one line used to arrive first AND cancel the
 			// swallow keeping the screen reader quiet -- so the reader's caption and row announcements escaped and
 			// queued behind the welcome, leaving the whole opening out of order. Where the user is gets said
-			// deliberately, at the end, once there is something true to say about it.
-			form._startupSpeechInProgress = true;
-
+			// deliberately, at the end, once there is something true to say about it. See _startupSpeechInProgress,
+			// which is already true by the time this runs.
 			if (form._settings!.SpeakStartupMessage)
 			{
 				// The screen reader reads the new window's caption -- "The Witcher 3: Wild Hunt Kinetix Mod
