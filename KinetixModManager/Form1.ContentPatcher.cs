@@ -175,12 +175,75 @@ public partial class Form1
 	/// chooser opens — the moment it is actually wanted, and it keeps the settings list itself short enough to
 	/// arrow through comfortably.
 	/// </summary>
-	private string? ChooseAllowedValue(CpRow row) => ShowChoiceList(
+	private string? ChooseAllowedValue(CpRow row) => row.Option.AllowMultiple ? ChooseSeveralValues(row) : ShowChoiceList(
 		Loc.T("cpconfig.chooseTitle", row.Option.Name),
 		Loc.T("cpconfig.chooseListName", row.Option.Name),
 		row.Option.AllowedValues,
 		row.Value,
 		Loc.T("cpconfig.chooseHint", DescriptionSentence(row.Option), row.Value));
+
+	/// <summary>
+	/// The chooser for a setting that takes several values at once. Enter switches the selected one on or off, and Done saves.
+	/// With only the one-value chooser, picking anything replaced all the others.
+	/// </summary>
+	private string? ChooseSeveralValues(CpRow row)
+	{
+		CpConfigOption option = row.Option;
+		var on = new HashSet<string>(ContentPatcherConfig.SplitValues(row.Value), StringComparer.OrdinalIgnoreCase);
+		string RowText(string value) => Loc.T(on.Contains(value) ? "cpconfig.valueOn" : "cpconfig.valueOff", value);
+		string? result = null;
+
+		ShowInlineView(Loc.T("cpconfig.chooseTitle", option.Name), (container, closeView) =>
+		{
+			var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
+			layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+			var list = new ListBox
+			{
+				Dock = DockStyle.Fill,
+				Font = new Font("Segoe UI", 12f),
+				AccessibleName = Loc.T("cpconfig.chooseListName", option.Name),
+				IntegralHeight = false,
+				HorizontalScrollbar = true
+			};
+			foreach (string value in option.AllowedValues) list.Items.Add(RowText(value));
+			if (list.Items.Count > 0) list.SelectedIndex = 0;
+
+			var done = new Button { Text = Loc.T("cpconfig.doneButton"), AutoSize = true };
+			layout.Controls.Add(list, 0, 0);
+			layout.Controls.Add(done, 0, 1);
+			container.Controls.Add(layout);
+			WireAccessibleDialogList(list);
+
+			list.KeyDown += delegate (object? s, KeyEventArgs e)
+			{
+				if (e.KeyCode != Keys.Enter || list.SelectedIndex < 0) return;
+				e.Handled = e.SuppressKeyPress = true;
+
+				string value = option.AllowedValues[list.SelectedIndex];
+				if (!on.Remove(value)) on.Add(value);
+				list.Items[list.SelectedIndex] = RowText(value);
+				Speak(RowText(value));
+			};
+
+			done.Click += delegate
+			{
+				if (on.Count == 0 && !option.AllowBlank)
+				{
+					Speak(Loc.T("cpconfig.needOne"));
+					return;
+				}
+				result = ContentPatcherConfig.JoinValues(option.AllowedValues, on);
+				closeView();
+			};
+
+			return list;
+		},
+		hint: Loc.T("cpconfig.severalHint", DescriptionSentence(option)));
+
+		return result;
+	}
 
 	/// <summary>
 	/// The author's description of a setting, ended with a full stop so the reader pauses before whatever

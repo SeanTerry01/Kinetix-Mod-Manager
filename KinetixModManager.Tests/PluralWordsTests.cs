@@ -40,4 +40,20 @@ public class PluralWordsTests
 	{
 		Assert.Equal("a | b {0}", Loc.ChoosePluralWords("a | b {0}", new object[] { 1 }));
 	}
+
+	[Theory]
+	[InlineData("a, b,c", new[] { "a", "b", "c" })]
+	[InlineData("", new string[0])]
+	[InlineData(null, new string[0])]
+	public void ASettingsValuesAreSplit(string? value, string[] expected)
+	{
+		Assert.Equal(expected, ContentPatcherConfig.SplitValues(value));
+	}
+
+	[Fact]
+	public void ValuesGoBackInTheAuthorsOrderAndSpelling()
+	{
+		var chosen = new HashSet<string>(new[] { "garden", "VANILLA" }, StringComparer.OrdinalIgnoreCase);
+		Assert.Equal("vanilla, garden", ContentPatcherConfig.JoinValues(new[] { "vanilla", "glass", "garden" }, chosen));
+	}
 }

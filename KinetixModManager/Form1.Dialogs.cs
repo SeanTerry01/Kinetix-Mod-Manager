@@ -94,7 +94,8 @@ public partial class Form1
 		if (lb.Items.Count > 0) lb.SelectedIndex = 0;
 		ApplyScreenReaderPauses(container);
 		return lb;
-		});
+		},
+		hint: Loc.T("soundDemo.hint"));
 	}
 
 	/// <summary>Opens the audio theme manager dialog for creating, renaming, and switching sound themes.</summary>

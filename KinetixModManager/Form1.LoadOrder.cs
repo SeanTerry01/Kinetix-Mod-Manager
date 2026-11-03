@@ -98,6 +98,10 @@ public partial class Form1
 			return;
 		}
 
+		// Another pass is on its way, and it is the one that counts. Pressing Space during a slow pass made that pass find its
+		// files held, and "could not be changed" was said over a problem that was gone a moment later.
+		if (Volatile.Read(ref _refreshInFlight) > 1) return;
+
 		if (failures > 0 && failures != _deploymentFailuresReported) Speak(Loc.T("loadorder.deployFailed", failures));
 		_deploymentFailuresReported = failures;
 	}

@@ -87,6 +87,9 @@ public partial class Form1
 		Control focusFirst = build(content, Close);
 		SilenceUnnamedContainers(view);
 
+		// Shift+F1 works in every view. A view with help of its own attached it above, and that one takes the key first.
+		AttachViewHelp(view, () => SpeakLong(string.IsNullOrEmpty(hint) ? Loc.T("view.defaultHelp") : hint, interrupt: true));
+
 		// A view that moves focus itself — the drill-downs bounce it through the window to force the reader to
 		// re-read a rebuilt list — leaves focus on the form for an instant, and the reader announces the form by
 		// name when that happens. Unnamed, it would fall back to the window's caption, so drilling in would say

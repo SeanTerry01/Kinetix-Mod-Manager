@@ -505,7 +505,13 @@ public partial class Form1
 
 		Speak(text, interrupt: true);
 		Speak(Text);
-		AnnounceFocusRestored();
+
+		// The reader's own reading of the row was swallowed with the rest of its reaction, so the row is said here too.
+		// A position alone left "12 of 149" with nothing saying which mod that is.
+		if (Control.FromHandle(GetFocus()) is ListBox list && list.Items.Count > 0 && list.SelectedItem != null)
+			Speak(RowThenPosition(list.SelectedItem, PositionTextFor(list)));
+		else
+			AnnounceFocusRestored();
 	}
 
 	/// <summary>Which announcement is the current one. See <see cref="SpeakListPosition"/>.</summary>

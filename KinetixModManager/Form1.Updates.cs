@@ -222,7 +222,9 @@ public partial class Form1
 				if (thorough) RememberNexusCheck(game, group[0].NexusID!, latestVersion);
 			}
 
-			if (_settings.IgnoredVersions.TryGetValue(group[0].UniqueId, out string? ignored) && ignored == latestVersion)
+			// Any of them, because the row stands for the download through whichever mod represents it, and Delete records the
+			// ignore against that one. Asking only the first in the group never found it, so the row came back on the next check.
+			if (group.Any(m => _settings.IgnoredVersions.TryGetValue(m.UniqueId, out string? ignored) && ignored == latestVersion))
 				return;
 
 			foreach (StardewMod mod in group) RecordLatestVersion(mod, latestVersion);

@@ -56,6 +56,14 @@ public static class ContentPatcherConfig
 	/// <summary>
 	/// The pack's <c>content.json</c>, or <c>null</c> when this mod folder isn't a Content Patcher pack.
 	/// </summary>
+	/// <summary>The values held by a setting that takes several, written comma-separated.</summary>
+	public static IReadOnlyList<string> SplitValues(string? value) =>
+		(value ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+	/// <summary>Writes those values back, in the author's own order, and in the author's spelling.</summary>
+	public static string JoinValues(IEnumerable<string> allowedInOrder, IReadOnlySet<string> chosen) =>
+		string.Join(", ", allowedInOrder.Where(chosen.Contains));
+
 	public static string? FindContentJson(string modFolder)
 	{
 		try
