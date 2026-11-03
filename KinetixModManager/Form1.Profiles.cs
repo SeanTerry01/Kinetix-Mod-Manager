@@ -62,7 +62,7 @@ public partial class Form1
 
 		if (listProfiles.Items.Count > 0)
 		{
-			int newIndex = 0;
+			int newIndex = -1;
 			if (!string.IsNullOrEmpty(oldName))
 			{
 				for (int i = 0; i < listProfiles.Items.Count; i++)

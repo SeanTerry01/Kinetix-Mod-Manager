@@ -1769,6 +1769,7 @@ public partial class Form1
 				onSaveSuccess?.Invoke();
 				saved = true;
 				LetSpeechFinish();
+				LetRefreshFinish();
 				closeView();
 			}
 			catch (Exception ex)

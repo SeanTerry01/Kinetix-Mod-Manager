@@ -52,6 +52,25 @@ public static class ModOnDisk
 		}
 	}
 
+	/// <summary>
+	/// Renames a folder, retrying a transient lock. An antivirus or the indexer often holds a folder just written.
+	/// </summary>
+	/// <param name="from">The folder to move.</param>
+	/// <param name="to">Where it goes.</param>
+	/// <param name="beforeRetry">Told each time a move is about to be tried again. For a test to end the lock it is holding.</param>
+	public static void MoveDirectory(string from, string to, Action? beforeRetry = null)
+	{
+		for (int attempt = 1; ; attempt++)
+		{
+			try { Directory.Move(from, to); return; }
+			catch (Exception) when (attempt < Attempts && Directory.Exists(from))
+			{
+				beforeRetry?.Invoke();
+				Thread.Sleep(RetryDelayMs);
+			}
+		}
+	}
+
 	/// <summary>Clears the read-only flag on a folder and everything under it. A failure is logged: the delete that follows reports it.</summary>
 	private static void ClearReadOnly(string path)
 	{

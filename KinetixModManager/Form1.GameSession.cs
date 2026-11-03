@@ -323,13 +323,32 @@ public partial class Form1
 		_userMovedSinceLoadBegan = false;
 		_landOnFirstTabWhenReady = true;
 		_landShouldSpeak = false;   // focus moves onto the strip here, and the reader announces that itself
+		ForgetPreviousGamesMods();
 		RefreshAllData(checkUpdates: _settings.CheckForUpdatesAtStartup);
 
 		// A BepInEx game with no BepInEx installed loads none of its mods and says nothing about it in-game, so
-		// the session says so here instead. Checked once per loaded session, after the data refresh so the mod
-		// list is already on screen.
+		// the session says so here instead. Checked once per loaded session, and it waits for the data refresh so
+		// the mod list is already on screen.
 		_bepInExCheckedThisSession = false;
 		Fire(CheckBepInExForSessionAsync(), "CheckBepInExForSessionAsync");
+	}
+
+	/// <summary>
+	/// Takes the game just left off the screen, before anything can yield.
+	///
+	/// ⚠️ The rescan runs away from the interface thread now, so without this the old game's rows stay live until it ends,
+	/// which is seconds. Space on one of them moved a Stardew mod using the new game's rules, and Delete filed its backup
+	/// under the new game. Trust goes first: a deployment pass on another thread reads the list and then checks.
+	/// </summary>
+	private void ForgetPreviousGamesMods()
+	{
+		_scannedGame = null;
+		_allInstalledMods = new List<GameMod>();
+		listInstalled.Items.Clear();
+		listUpdates.Items.Clear();
+		listModPriority.Items.Clear();
+		listPluginOrder.Items.Clear();
+		listCreations.Items.Clear();
 	}
 
 	private void CloseGameSession()

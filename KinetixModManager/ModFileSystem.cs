@@ -1422,7 +1422,7 @@ public static class ModFileSystem
 
 		// Everything that could fail for the new copy has now had its chance, with the old one untouched.
 		string finalFolder = Path.Combine(modsPath, targetFolderName);
-		GameMod? existing = updating ?? InstallTarget.Find(installedMods, nexusId, targetFolderName, matchExistingByNexusId).Mod;
+		GameMod? existing = InstallTarget.ForUpdate(updating, installedMods) ?? InstallTarget.Find(installedMods, nexusId, targetFolderName, matchExistingByNexusId).Mod;
 		var replacing = new List<string>();
 		if (existing != null && Directory.Exists(existing.FolderPath)) replacing.Add(existing.FolderPath);
 		if (Directory.Exists(finalFolder) && !replacing.Contains(finalFolder, StringComparer.OrdinalIgnoreCase)) replacing.Add(finalFolder);
@@ -2206,7 +2206,7 @@ public static class ModFileSystem
 
 		// Whatever is already installed is replaced, whether the manager knows it as this mod (matched by Nexus id)
 		// or simply as a folder of the same name. A disabled copy counts too: it is the same mod.
-		GameMod? existing = updating ?? InstallTarget.Find(installedMods, nexusId, targetFolderName, matchExistingByNexusId).Mod;
+		GameMod? existing = InstallTarget.ForUpdate(updating, installedMods) ?? InstallTarget.Find(installedMods, nexusId, targetFolderName, matchExistingByNexusId).Mod;
 		var replacing = new List<string>();
 		if (existing != null && Directory.Exists(existing.FolderPath)) replacing.Add(existing.FolderPath);
 		if (Directory.Exists(finalFolder) && !replacing.Contains(finalFolder, StringComparer.OrdinalIgnoreCase)) replacing.Add(finalFolder);

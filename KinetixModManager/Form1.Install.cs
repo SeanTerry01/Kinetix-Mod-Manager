@@ -929,6 +929,9 @@ public partial class Form1
 			string gamePath = _settings.CurrentGamePath;
 			string backups = backupsPath;
 			int maxBackups = _settings.MaxBackupsPerMod;
+			// The list says what this replaces and what to back up, so it has to be current. A download arriving just after a
+			// game switch would otherwise see nothing installed, and one just after a Space a folder that has since moved.
+			while (Volatile.Read(ref _refreshInFlight) > 0) await Task.Delay(25);
 			List<StardewMod> installed = _allInstalledMods.ToList();
 			Func<string, string, SamePageChoice>? askSamePage = confirmReinstall ? ConfirmSamePage : null;
 			string name = await Task.Run(() => ModFileSystem.ExtractModAsync(

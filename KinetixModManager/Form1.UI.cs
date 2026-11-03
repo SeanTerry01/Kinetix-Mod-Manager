@@ -17,9 +17,6 @@ public partial class Form1
 		base.Size = new Size(1000, 700);
 		base.KeyPreview = true;
 		base.KeyDown += Form1_KeyDown;
-		// What makes a repeat tellable from a real second press: a repeat cannot have a release in between.
-		// Key preview delivers KeyUp to the form before the focused control, so this is seen whatever has focus.
-		base.KeyUp += delegate { _keyRepeat.Released(); };
 		// Alt+Tab away mid-press and the release lands in another window, so the key would still look held when
 		// the user came back and pressed it again.
 		base.Deactivate += delegate { _keyRepeat.FocusLost(); };

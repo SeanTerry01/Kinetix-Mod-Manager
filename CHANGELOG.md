@@ -45,6 +45,11 @@
 *   **Installs do too.** The backing up and copying after "Installing... 100 percent" froze it the same way.
 *   **Moving your mods folder** no longer freezes it for minutes, and says it is still going.
 *   **Update All rescans less**, once per mod rather than several times.
+*   **Pressing F5 just after changing a mod** on Skyrim or Fallout 4 now waits for the game folder to be ready, and says so
+    if that takes more than a second, rather than starting the game without the change.
+*   **With Nexus unreachable, you hear so once.** Pressing Space no longer waits ten seconds and repeats the whole failure
+    each time. Refresh Everything tries again.
+*   **Mods on another drive through a junction or mounted folder** can be installed and updated.
 ## ✨ With NVDA 2026.3 or newer, the manager waits until a sentence has actually finished
 
 NVDA 2026.3 added a way for a program to ask whether it is still speaking, and the manager now asks. Until now, the

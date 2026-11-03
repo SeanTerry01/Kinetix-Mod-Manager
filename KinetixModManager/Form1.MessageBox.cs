@@ -107,6 +107,34 @@ public partial class Form1
 		}
 	}
 
+	/// <summary>
+	/// Keeps a view open until the rescan it started has finished, so the list is settled before focus goes back to it. A
+	/// rescan runs on another thread, and one ending after the arrival moved the row and said a second position over it.
+	/// Keys are held as in <see cref="LetSpeechFinish"/>, and one ends the wait.
+	/// </summary>
+	private void LetRefreshFinish(int maxMs = 30000)
+	{
+		if (InvokeRequired) return;
+
+		bool alreadyHolding = _holdingForSpeech;
+		if (!alreadyHolding) _speechHoldSkipped = false;
+		_holdingForSpeech = true;
+		try
+		{
+			long giveUpAt = Environment.TickCount64 + maxMs;
+			while (Volatile.Read(ref _refreshInFlight) > 0 && Environment.TickCount64 < giveUpAt)
+			{
+				if (_shuttingDown || IsDisposed || _speechHoldSkipped) return;
+				Application.DoEvents();
+				System.Threading.Thread.Sleep(15);
+			}
+		}
+		finally
+		{
+			_holdingForSpeech = alreadyHolding;
+		}
+	}
+
 	/// <summary>True while <see cref="LetSpeechFinish"/> is waiting, so a key press can end the wait.</summary>
 	private bool _holdingForSpeech;
 

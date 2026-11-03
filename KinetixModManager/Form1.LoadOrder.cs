@@ -55,9 +55,11 @@ public partial class Form1
 
 		// The entry above is still made, because callers read it straight after this. But with no true picture of what
 		// is installed, nothing here may decide that a mod has gone: this is what used to empty a saved load order.
+		// Read before the check, because a game switch empties the list after it withdraws the trust.
+		List<StardewMod> mods = _allInstalledMods;
 		if (!ModListIsTrustworthy) return;
 
-		var present = _allInstalledMods
+		var present = mods
 			.Where(m => !m.IsGroup)
 			.Select(PriorityKey)
 			.Distinct(StringComparer.OrdinalIgnoreCase)
@@ -149,6 +151,9 @@ public partial class Form1
 		if (string.IsNullOrEmpty(gameRoot) || !Directory.Exists(gameRoot)) return _lastConflicts;
 
 		var ordered = GetOrderedEnabledMods();
+		// Asked again, because a game switch while that ran leaves it an empty answer, and to the sync below an empty
+		// answer means every deployed file should go.
+		if (!ModListIsTrustworthy) return _lastConflicts;
 		var manifest = DeploymentManifest.Load(game);
 		_settings.FileWinnerOverrides.TryGetValue(game, out Dictionary<string, string>? overrides);
 		_lastConflicts = ModFileSystem.SyncDeployment(gameRoot, ordered, manifest, LogError, forceRelink, overrides);
@@ -515,9 +520,11 @@ public partial class Form1
 
 	private void SyncBethesdaPluginsHoldingLock()
 	{
-		if (!IsBethesdaGame || !ModListIsTrustworthy) return;
+		// Read before the check, because a game switch empties the list after it withdraws the trust.
+		List<StardewMod> mods = _allInstalledMods;
 		string game = _settings.ActiveGame;
 		string gameRoot = _settings.CurrentGamePath;
+		if (!IsBethesdaGame || !ModListIsTrustworthy) return;
 
 		var cls = new Dictionary<string, (bool Master, bool Light)>(StringComparer.OrdinalIgnoreCase);
 		var paths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -525,7 +532,7 @@ public partial class Form1
 
 		// Plugins supplied by installed mods. Only enabled mods contribute active plugins; the full set
 		// (enabled + disabled) is tracked so a disabled mod's plugin is not re-adopted as "external".
-		foreach (StardewMod mod in _allInstalledMods.Where(m => !m.IsGroup))
+		foreach (StardewMod mod in mods.Where(m => !m.IsGroup))
 		{
 			if (!Directory.Exists(mod.FolderPath)) continue;
 			foreach (string file in Directory.GetFiles(mod.FolderPath, "*.*", SearchOption.AllDirectories))

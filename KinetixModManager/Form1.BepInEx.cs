@@ -96,6 +96,10 @@ public partial class Form1
 	/// </summary>
 	private async Task CheckBepInExForSessionAsync()
 	{
+		// After the list and the landing on the first tab. Asked sooner, the prompt opened over a refresh still running, the
+		// landing stood aside for it, and closing it left focus on the game list that had already gone.
+		while (Volatile.Read(ref _refreshInFlight) > 0) await Task.Delay(50);
+
 		if (!IsBepInExGame || _bepInExCheckedThisSession) return;
 		_bepInExCheckedThisSession = true;
 

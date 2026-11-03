@@ -841,6 +841,36 @@ public partial class Form1
 	}
 
 	/// <summary>Locates and launches the active game's executable or mod loader.</summary>
+	/// <summary>True while a launch is waiting for a refresh, so pressing the key again does not start the game twice.</summary>
+	private bool _launchWaiting;
+
+	/// <summary>Launches once the deployment has finished. Usually a moment, which is not worth a word; a big setup is.</summary>
+	private async Task LaunchOnceSettledAsync(string game)
+	{
+		_launchWaiting = true;
+		try
+		{
+			long sayAt = Environment.TickCount64 + 1000;
+			while (Volatile.Read(ref _refreshInFlight) > 0)
+			{
+				if (sayAt != 0 && Environment.TickCount64 >= sayAt)
+				{
+					Speak(Loc.T("launch.waitingForDeployment"));
+					sayAt = 0;
+				}
+				await Task.Delay(25);
+			}
+		}
+		finally
+		{
+			_launchWaiting = false;
+		}
+
+		if (_settings.ActiveGame != game || _shuttingDown) return;
+		if (OverlayIsOpen) { Speak(Loc.T("launch.cancelled")); return; }
+		LaunchGame();
+	}
+
 	private void LaunchGame()
 	{
 		try
@@ -854,6 +884,14 @@ public partial class Form1
 			// Fired rather than awaited: the game's own files are fetched first when any are missing, and this
 			// path is not async. See FetchMissingLibrariesAsync.
 			if (GameProfiles.IsGame(game, GameProfiles.Minecraft)) { Fire(LaunchMinecraftAsync(), "LaunchMinecraftAsync"); return; }
+
+			// The refresh after a Space is still putting the mod's files into the game, on another thread, and started now
+			// the game would run without them while plugins.txt was rewritten beneath it.
+			if (IsBethesdaGame && Volatile.Read(ref _refreshInFlight) > 0)
+			{
+				if (!_launchWaiting) Fire(LaunchOnceSettledAsync(game), "LaunchOnceSettledAsync");
+				return;
+			}
 
 			// A game that would die while loading is warned about first. See LaunchMemoryCheck.
 			if (!ConfirmEnoughMemoryToLaunch(game, GameDisplayName())) return;

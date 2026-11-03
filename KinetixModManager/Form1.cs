@@ -236,6 +236,11 @@ public partial class Form1 : Form, IMessageFilter
 			// which is all the cue below needs.
 			Hide();
 
+			// A deployment pass ended partway leaves files linked that its manifest has not recorded, and next time one of
+			// the mod's files is taken for the game's own. Out of sight, so nobody is waiting on a window that looks stuck.
+			long giveUpAt = Environment.TickCount64 + 60000;
+			while (Volatile.Read(ref _refreshInFlight) > 0 && Environment.TickCount64 < giveUpAt) await Task.Delay(25);
+
 			// Only when a session is still open: closing one (Ctrl+Shift+C) already plays this, so exiting
 			// afterwards would sound the disconnect for a session that was torn down some time ago.
 			if (_settings.ActiveGame != GameProfiles.NoGame)
@@ -280,7 +285,9 @@ public partial class Form1 : Form, IMessageFilter
 
 	/// <summary>
 	/// Which game <see cref="_allInstalledMods"/> is a true picture of. Null while it is not one: before the first scan,
-	/// during a rescan and after one that failed.
+	/// from a game switch until the new game's scan is in, and after a scan that failed. A rescan of the same game leaves it
+	/// alone: the list it replaces is at worst a moment old, and refusing meanwhile lost an install's forced relink and let
+	/// Rebuild Mod Deployment say "rebuilt" having done nothing.
 	///
 	/// ⚠️ An empty list and "no mods" are not the same thing, and deployment cannot tell them apart. With no scan done,
 	/// a sync saw nothing enabled, removed every deployed file and emptied the saved load order. Anything that changes
@@ -941,6 +948,12 @@ public partial class Form1 : Form, IMessageFilter
     public bool PreFilterMessage(ref Message m)
     {
         const int WM_KEYDOWN = 0x0100, WM_SYSKEYDOWN = 0x0104, RepeatFlag = 0x40000000;
+        const int WM_KEYUP = 0x0101, WM_SYSKEYUP = 0x0105;
+
+        // What makes a repeat tellable from a real second press: a repeat cannot have a release in between. Seen here
+        // because the window's own KeyUp stops while a prompt is open: let go of Delete on a prompt, and the next
+        // Delete on the list counted as the key still being held and did nothing.
+        if (m.Msg is WM_KEYUP or WM_SYSKEYUP) _keyRepeat.Released();
 
         // A key pressed while LetSpeechFinish is waiting ends the wait and goes no further. The key that started
         // the wait may still be held and auto-repeating; that is not a decision to skip anything, but it is kept

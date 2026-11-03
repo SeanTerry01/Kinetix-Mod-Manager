@@ -86,6 +86,13 @@ public partial class Form1
 		bool Superseded() => Volatile.Read(ref _refreshGeneration) != generation || _settings.ActiveGame != refreshingGame;
 
 		bool launchedChecks = false;
+		bool openedSettings = false;
+		bool counted = true;
+		void NoLongerRefreshing()
+		{
+			if (counted) Interlocked.Decrement(ref _refreshInFlight);
+			counted = false;
+		}
 		Interlocked.Increment(ref _refreshInFlight);
 		try
 		{
@@ -119,6 +126,12 @@ public partial class Form1
 		{
 			// Said above. There is nothing to connect with, and the mods are on disk either way.
 		}
+		else if (!_nexusService.IsValidated && !checkUpdates && _nexusFailedForKey == _settings.ApiKey)
+		{
+			// Already tried and already said. Every Space and Delete rescans, and each of them used to wait up to ten
+			// seconds and repeat the whole failure before the list changed. Asking for an update check tries again.
+			SetStatus(Loc.T(_nexusFailedStatus), speak: false);
+		}
 		else if (!_nexusService.IsValidated)
 		{
 			SetStatus(Loc.T("status.connecting"));
@@ -129,6 +142,7 @@ public partial class Form1
 
 			if (connection == NexusConnection.Connected)
 			{
+				_nexusFailedForKey = null;
 				SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser));
 				_soundEngine.Play("connect");
 			}
@@ -136,7 +150,9 @@ public partial class Form1
 			{
 				// ⚠️ This used to return, leaving an empty list. Everything below reads the disk and needs no network, so
 				// being offline cost someone every mod they had, and the message blamed their key.
-				SetStatus(Loc.T(connection == NexusConnection.KeyRejected ? "status.authFailed" : "status.nexusUnreachable"));
+				_nexusFailedForKey = _settings.ApiKey;
+				_nexusFailedStatus = connection == NexusConnection.KeyRejected ? "status.authFailed" : "status.nexusUnreachable";
+				SetStatus(Loc.T(_nexusFailedStatus));
 				_soundEngine.Play("error");
 				if (doUpdateChecks)
 				{
@@ -152,11 +168,16 @@ public partial class Form1
 		// ⚠️ Off the interface thread from here until the list is rebuilt. Measured on a generated Skyrim setup: 1,000 mods
 		// of 20 files each is 2.2 seconds a refresh, and 200 files each is 23 seconds, nearly all of it the deployment check.
 		// Every Space and Delete runs one, and on this thread the screen reader goes quiet and keys appear dead, which to
-		// someone who cannot see the screen reads as a crash. The old list stays up until the new one is ready.
-		_scannedGame = null;
+		// someone who cannot see the screen reads as a crash. The old list stays up until the new one is ready, which is
+		// safe because a game switch has already taken the other game's off the screen. See ForgetPreviousGamesMods.
+		//
+		// Asked here too, for a slow Minecraft sign-in: this pass carrying on after a newer one finished made that one's
+		// list look untrustworthy, and deployment stopped until the next refresh.
+		if (Superseded()) return;
 		string modsPath = _settings.CurrentModsPath;
 		if (!Directory.Exists(modsPath))
 		{
+			_scannedGame = null;
 			_allInstalledMods = new List<StardewMod>();
 			Invoke(delegate
 			{
@@ -177,6 +198,8 @@ public partial class Form1
 			// One unreadable folder used to end the refresh here with the lists empty and suspended, and the only
 			// record of why in a log. To the user the manager opened with no mods and said nothing.
 			LogFailure("Scan", "Could not read the mods folder", ex);
+			if (Superseded()) return;
+			_scannedGame = null;
 			_allInstalledMods = new List<StardewMod>();
 			Invoke(delegate
 			{
@@ -333,8 +356,14 @@ public partial class Form1
 			}
 		});
 
-		// After the list, so the mods are there behind the question rather than waiting on the answer to it.
-		if (askForNexusKey) ShowSettings();
+		// After the list, so the mods are there behind the question rather than waiting on the answer to it. No longer
+		// counted as refreshing, because Settings stays open for as long as the player wants it. Not over another prompt.
+		if (askForNexusKey && !OverlayIsOpen)
+		{
+			openedSettings = true;
+			NoLongerRefreshing();
+			ShowSettings();
+		}
 
 		if (!doUpdateChecks)
 		{
@@ -405,14 +434,35 @@ public partial class Form1
 		}
 		finally
 		{
-			Interlocked.Decrement(ref _refreshInFlight);
+			NoLongerRefreshing();
+			// The question was never put, so a later pass may still put it.
+			if (askForNexusKey && !openedSettings) _askedForNexusKey = false;
 			// Release the guard unless the async checks took ownership of it; once launched they
 			// release it on completion (see CheckForUpdates). This also frees it on any early
 			// return or exception above, so a failed scan can't block all future update checks.
 			if (doUpdateChecks && !launchedChecks)
+			{
 				Interlocked.Exchange(ref _updateCheckRunning, 0);
+
+				// ⚠️ A check that was asked for must not vanish because a rescan overtook this pass. The scan takes seconds
+				// now, so pressing Space during Refresh Everything used to lose the check with nothing said, and a game switch
+				// during the startup scan left the new game's check refused and nothing to run it.
+				bool overtaken = Volatile.Read(ref _refreshGeneration) != generation && _settings.ActiveGame == refreshingGame;
+				bool anotherWasRefused = _checkAgainWhenFree;
+				if ((overtaken || anotherWasRefused) && !_shuttingDown)
+				{
+					_checkAgainWhenFree = false;
+					BeginInvoke(() => Fire(RefreshModList(checkUpdates: true), "RefreshModList"));
+				}
+			}
 		}
 	}
+
+	/// <summary>The key Nexus last failed for this run, so that failure is said once rather than on every rescan.</summary>
+	private string? _nexusFailedForKey;
+
+	/// <summary>What that failure was, as a phrase key, for the window title.</summary>
+	private string _nexusFailedStatus = "status.nexusUnreachable";
 
 	/// <summary>Everything a refresh reads from the disk. Off the interface thread, so it touches no control.</summary>
 	private List<StardewMod> ScanModsFolder(string modsPath, string game)
@@ -459,8 +509,9 @@ public partial class Form1
 
 		if (everything)
 		{
-			// Announced up front: the update check that follows has plenty to say for itself when it finishes.
-			Speak(Loc.T("modlist.refreshingAll"));
+			// Announced up front: the update check that follows has plenty to say for itself when it finishes. With no key
+			// there is no check to follow, and nothing else would say why.
+			Speak(Loc.T(_nexusService.UsesNexus && string.IsNullOrEmpty(_settings.ApiKey) ? "modlist.refreshingNoKey" : "modlist.refreshingAll"));
 			RefreshAllData(checkUpdates: true);
 			return;
 		}
@@ -740,7 +791,7 @@ public partial class Form1
 
 		if (listBackups.Items.Count > 0)
 		{
-			int newIndex = 0;
+			int newIndex = -1;
 			if (!string.IsNullOrEmpty(oldName))
 			{
 				for (int i = 0; i < listBackups.Items.Count; i++)
@@ -974,6 +1025,10 @@ public partial class Form1
 					SpeakBox(Loc.T("link.saveFailedBox", FriendlyError(ex)), Loc.T("common.error"));
 				}
 			}
+		}
+		else
+		{
+			Speak(Loc.T("common.noModSelected"));
 		}
 	}
 }

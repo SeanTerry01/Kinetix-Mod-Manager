@@ -20,6 +20,10 @@ Deliberately not done, because none is a bug and each needs a decision or a list
 - [ ] **Sean's listening checks, after this review:** the end of "X is now disabled" after Space; "Settings saved"; the tab
   name twice on F6; and whether a browser talks over the manual-download box (`modparts.manualSpeak`, `suggested.manualSpeak`,
   `suite.smapiNotFoundSpeak`). If it does, open the browser after OK and reword the box.
+- [ ] **Space during a slow deployment** can say "files could not be changed" once, because the pass is holding them. It clears
+  on the next pass, so it is left until someone hears it.
+- [ ] **`Form1.Minecraft.cs`, `SuiteDialog`, `SafetyBackup`, `FabricInstaller`, the GTK head and the wording of the `en.json`
+  changes** were not covered by the regression review of this work, only its placeholders. Worth a pass of their own.
 - [ ] **`SpeakAfterPrompt` and plain `Speak` after a Yes or No** do the same job in about 50 places, and the code cannot say
   which is right. Speech history on the two twin actions (`Form1.Input.cs` ignore and `Form1.Updates.cs` mark) would settle it.
 - [ ] **The 169 decompiler names** (`text5`, `button3`) and the `StardewMod` alias, in their own mechanical commits.

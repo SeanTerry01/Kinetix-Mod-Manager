@@ -89,11 +89,20 @@ public static class ModFolderSwap
 		// is going to fill up, this is where it should happen.
 		string incoming = Path.GetFullPath(newFolder);
 		string? crossDriveCopy = null;
-		if (!SameDrive(incoming, destination))
+		if (!RenameWorksBetween(Path.GetDirectoryName(incoming), parent))
 		{
 			crossDriveCopy = destination + ".kinetix-new";
 			Discard(crossDriveCopy, logError);
-			CopyTree(incoming, crossDriveCopy);
+			try
+			{
+				CopyTree(incoming, crossDriveCopy);
+			}
+			catch
+			{
+				// It sits in the mods folder, where a part copy would be listed as a mod.
+				Discard(crossDriveCopy, logError);
+				throw;
+			}
 			incoming = crossDriveCopy;
 		}
 
@@ -114,17 +123,17 @@ public static class ModFolderSwap
 				string to = ParkingPlaceFor(old, tempRoot);
 				string? toParent = Path.GetDirectoryName(to);
 				if (!string.IsNullOrEmpty(toParent)) Directory.CreateDirectory(toParent);
-				Directory.Move(old, to);
+				ModOnDisk.MoveDirectory(old, to);
 				parked.Add((old, to));
 			}
 
-			Directory.Move(incoming, destination);
+			ModOnDisk.MoveDirectory(incoming, destination);
 		}
 		catch
 		{
 			foreach ((string from, string to) in Enumerable.Reverse(parked))
 			{
-				try { Directory.Move(to, from); }
+				try { ModOnDisk.MoveDirectory(to, from); }
 				catch (Exception ex) { logError(from, $"Could not put the old copy back from {to}: {ex.Message}"); }
 			}
 			if (crossDriveCopy != null) Discard(crossDriveCopy, logError);
@@ -146,13 +155,51 @@ public static class ModFolderSwap
 	private static string ParkingPlaceFor(string folder, string tempRoot)
 	{
 		string name = "Old_" + Path.GetRandomFileName();
-		return SameDrive(folder, tempRoot)
-			? Path.Combine(Path.GetFullPath(tempRoot), name)
-			: Path.Combine(Path.GetDirectoryName(folder) ?? tempRoot, ".kinetix-" + name);
+		string beside = Path.GetDirectoryName(folder) ?? tempRoot;
+		return RenameWorksBetween(tempRoot, beside) ? Path.Combine(Path.GetFullPath(tempRoot), name) : Path.Combine(beside, ".kinetix-" + name);
 	}
 
-	private static bool SameDrive(string a, string b) =>
-		string.Equals(Path.GetPathRoot(Path.GetFullPath(a)), Path.GetPathRoot(Path.GetFullPath(b)), StringComparison.OrdinalIgnoreCase);
+	/// <summary>
+	/// Whether a folder can be renamed from one of these places to the other, found out by doing it with an empty one.
+	///
+	/// ⚠️ Neither a path nor the error will tell you. A junction or a mounted folder puts <c>C:\Games</c> on another disk,
+	/// and on Linux every path starts at <c>/</c>, so comparing how they begin says "same drive". Windows then reports the
+	/// failed rename as access denied, exactly as it reports a locked file, so it cannot be recognised afterwards either.
+	/// Measured through a real junction to a second drive. An empty folder made a moment ago has nothing to be locked.
+	/// </summary>
+	private static bool RenameWorksBetween(string? from, string? to)
+	{
+		if (string.IsNullOrEmpty(from) || string.IsNullOrEmpty(to)) return false;
+		if (!string.Equals(Path.GetPathRoot(Path.GetFullPath(from)), Path.GetPathRoot(Path.GetFullPath(to)), StringComparison.OrdinalIgnoreCase))
+			return false;
+		// Nowhere to try it yet. The moves that follow report that properly.
+		if (!Directory.Exists(from) || !Directory.Exists(to)) return true;
+
+		string probe = ".kinetix-probe-" + Path.GetRandomFileName();
+		string start = Path.Combine(from, probe);
+		string end = Path.Combine(to, probe);
+		try
+		{
+			Directory.CreateDirectory(start);
+			Directory.Move(start, end);
+			return true;
+		}
+		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+		{
+			return false;
+		}
+		finally
+		{
+			foreach (string left in new[] { start, end })
+			{
+				try { if (Directory.Exists(left)) Directory.Delete(left); }
+				catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+				{
+					DiagnosticLog.WriteException("Files", $"clearing up {left}", ex);
+				}
+			}
+		}
+	}
 
 	private static void Discard(string folder, Action<string, string> logError)
 	{
@@ -190,6 +237,21 @@ public enum InstallMatch
 /// <summary>Works out which installed mod, if any, a download would replace.</summary>
 public static class InstallTarget
 {
+	/// <summary>
+	/// The installed copy an update replaces, given the row it was started from, or null with no row or no such mod.
+	///
+	/// A row on the Updates list comes from the scan that ran the check and outlives later ones, so it can name a folder
+	/// that has moved: switch the mod off and its folder is now <c>.Foo</c>. Trusting the row left <c>.Foo</c> behind, and
+	/// the mod was then installed twice.
+	/// </summary>
+	public static GameMod? ForUpdate(GameMod? updating, IEnumerable<GameMod> installed)
+	{
+		if (updating == null) return null;
+		if (Directory.Exists(updating.FolderPath)) return updating;
+		return installed.FirstOrDefault(m => !m.IsGroup && !string.IsNullOrEmpty(m.UniqueId) &&
+			m.UniqueId.Equals(updating.UniqueId, StringComparison.OrdinalIgnoreCase));
+	}
+
 	/// <summary>
 	/// The installed mod an archive would replace.
 	///
