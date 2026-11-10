@@ -24,6 +24,45 @@ public partial class Form1
 	[System.Runtime.InteropServices.DllImport("user32.dll")]
 	private static extern bool WaitMessage();
 
+	[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+	private struct NativeMsg
+	{
+		public IntPtr hwnd;
+		public uint message;
+		public IntPtr wParam;
+		public IntPtr lParam;
+		public uint time;
+		public int ptX;
+		public int ptY;
+	}
+
+	[System.Runtime.InteropServices.DllImport("user32.dll")]
+	private static extern bool PeekMessage(out NativeMsg msg, IntPtr hWnd, uint filterMin, uint filterMax, uint remove);
+
+	private const uint WM_CHAR = 0x0102;
+	private const uint WM_SYSCHAR = 0x0106;
+	private const uint PM_REMOVE = 0x0001;
+
+	/// <summary>
+	/// Throws away the character of the key that is opening this prompt or view, before anything pumps messages.
+	///
+	/// ⚠️ A shortcut is acted on in its KeyDown, and by then Windows has already queued the character the key makes.
+	/// <c>SuppressKeyPress</c> removes that character only once KeyDown RETURNS, and a prompt or view does not return
+	/// until it closes: its own pumping (the reader wait, then the overlay's loop) delivers the character first, to
+	/// the control that had focus. On the mod list that is the list's type-to-find, so Ctrl+P for Settings moved the
+	/// selection to the next mod starting with P, and Escape came back to Peehell's Big Cellar instead of the mod
+	/// the user was on. Measured with NVDA 2026-11-10: row 1 came back as row 21, then 22; F1, with no letter, came
+	/// back to row 1.
+	///
+	/// Only characters already queued are removed. A key pressed after this has not been translated yet, so typing
+	/// into the view that opens is untouched.
+	/// </summary>
+	private static void DropCharacterOfOpeningKey()
+	{
+		while (PeekMessage(out _, IntPtr.Zero, WM_CHAR, WM_CHAR, PM_REMOVE)) { }
+		while (PeekMessage(out _, IntPtr.Zero, WM_SYSCHAR, WM_SYSCHAR, PM_REMOVE)) { }
+	}
+
 	/// <summary>One choice on a prompt: the label (with its &amp; access key) and what it answers.</summary>
 	private readonly record struct PromptChoice(string Label, DialogResult Result);
 
@@ -101,6 +140,7 @@ public partial class Form1
 		// Before the prompt exists at all. See WaitOutReaderReaction: once the buttons are on screen and one of
 		// them has focus, the reader is already talking about it, and no amount of delaying our own sentence puts
 		// it back in front.
+		DropCharacterOfOpeningKey();
 		WaitOutReaderReaction();
 
 		PromptChoice[] choices = ChoicesFor(buttons);

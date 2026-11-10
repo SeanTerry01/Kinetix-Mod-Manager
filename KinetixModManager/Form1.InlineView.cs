@@ -44,6 +44,10 @@ public partial class Form1
 	{
 		// Before the view is built, for the same reason a prompt waits before its buttons appear: once focus has
 		// landed inside the view the reader is already describing what it landed on.
+		//
+		// The opening key's character goes first of all, before the wait pumps it to the control behind. See
+		// DropCharacterOfOpeningKey: Ctrl+P typed a P into the mod list.
+		DropCharacterOfOpeningKey();
 		WaitOutReaderReaction();
 
 		Form host = this;
