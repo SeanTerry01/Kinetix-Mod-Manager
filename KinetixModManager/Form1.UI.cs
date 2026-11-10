@@ -13,7 +13,7 @@ public partial class Form1
 	{
 		// Startup title: the active game with its detected Skyrim/Fallout edition + build (see GameDisplayName).
 		string gameName = _settings.ActiveGame == GameProfiles.NoGame ? "" : GameDisplayName();
-		Text = string.IsNullOrEmpty(gameName) ? Loc.T("ui.appTitle") : Loc.T("ui.appTitleGame", gameName);
+		Text = WindowTitle(string.IsNullOrEmpty(gameName) ? Loc.T("ui.appTitle") : Loc.T("ui.appTitleGame", gameName));
 		base.Size = new Size(1000, 700);
 		base.KeyPreview = true;
 		base.KeyDown += Form1_KeyDown;

@@ -781,6 +781,16 @@ public partial class Form1
 	/// <summary>Returns the title bar to the resting status after a transient operation, without speaking it.</summary>
 	private void ResetStatus() => SetStatus(RestingStatus(), speak: false);
 
+	/// <summary>
+	/// What the title bar is to say, with "Test Mode:" in front when this is a test copy. Every write of the window's
+	/// title goes through here.
+	///
+	/// ⚠️ Only the status line used to add it. The startup title and a game being switched did not, so a test copy with
+	/// no game loaded said plain "Kinetix Mod Manager" for as long as it was open, and every copy said so for the first
+	/// announcement of the window, which is the one moment the title is read without being asked for.
+	/// </summary>
+	private static string WindowTitle(string title) => TestMode.IsOn ? Loc.T("test.titlePrefix", title) : title;
+
 	private void SetStatus(string text, bool speak = true)
 	{
 		if (base.InvokeRequired)
@@ -792,8 +802,7 @@ public partial class Form1
 		}
 		else
 		{
-			string windowTitle = Loc.T("status.titleFormat", GameDisplayName(), text);
-			Text = TestMode.IsOn ? Loc.T("test.titlePrefix", windowTitle) : windowTitle;
+			Text = WindowTitle(Loc.T("status.titleFormat", GameDisplayName(), text));
 			if (speak)
 			{
 				Speak(text);
