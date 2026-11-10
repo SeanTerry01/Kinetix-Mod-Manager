@@ -9,7 +9,8 @@
     the sound theme and shortcut screens and for lists that close themselves when empty. This needs NVDA 2026.3 or newer. On
     other screen readers the message still comes after, because they can't say when they have finished speaking.
 *   **Lists no longer say "list" twice.** "Installed Mods List list" is now "Installed Mods list", and the same for every list.
-*   **Starting with no game loaded** no longer opens on a stray "1 of 6", ahead of the welcome.
+*   **Starting with no game loaded** no longer opens on a stray "1 of 6", ahead of the welcome. And arrowing through the games
+    while the welcome is still being read now says where you are, "Minecraft, 2 of 6", instead of the game alone.
 *   **Opening Settings with Ctrl+P no longer moves you in the mod list.** The P reached the list, so closing Settings came back
     on the next mod starting with P instead of the one you were on. The same went for every shortcut with a letter that opens a
     screen or a question.

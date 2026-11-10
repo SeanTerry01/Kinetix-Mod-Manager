@@ -23,6 +23,29 @@ public class StartupSpeechGuardTests
 		Assert.Contains("private bool _startupSpeechInProgress = true;", Form1());
 	}
 
+	/// <summary>
+	/// The hold is for the position a list says by itself. An arrow pressed while the welcome was still being said, which
+	/// takes about 8 seconds, gave "Minecraft" with no "2 of 6".
+	/// </summary>
+	[Fact]
+	public void ListsSpeakForAUserWhoHasStartedMoving()
+	{
+		DirectoryInfo? dir = new DirectoryInfo(AppContext.BaseDirectory);
+		while (dir != null && !File.Exists(Path.Combine(dir.FullName, "KinetixModManager.slnx"))) dir = dir.Parent;
+		string helpers = File.ReadAllText(Path.Combine(dir!.FullName, "KinetixModManager", "Form1.Helpers.cs")).ReplaceLineEndings("\n");
+
+		Assert.Contains("private bool StartupHoldsTheLists => _startupSpeechInProgress && !_userMovedSinceLoadBegan;", helpers);
+		foreach (string handler in new[] { "private async void List_Enter(", "private async void List_SelectedIndexChanged(" })
+		{
+			int start = helpers.IndexOf(handler, StringComparison.Ordinal);
+			Assert.True(start > 0, handler + " not found");
+			int gate = helpers.IndexOf("if (StartupHoldsTheLists) return;", start, StringComparison.Ordinal);
+			int nextMethod = helpers.IndexOf("\n\tprivate ", start + handler.Length, StringComparison.Ordinal);
+			Assert.True(gate > start && gate < nextMethod, handler + " must check StartupHoldsTheLists.");
+		}
+		Assert.DoesNotContain("if (_startupSpeechInProgress) return;", helpers);
+	}
+
 	[Fact]
 	public void TheOpeningEndsOnlyOnceItHasBeenSaid()
 	{
