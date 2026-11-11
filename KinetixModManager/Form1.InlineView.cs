@@ -179,8 +179,14 @@ public partial class Form1
 	/// focus goes back (see ShowInlineView's sayOnClosing). A plain Speak after the box returned talked over the reader's
 	/// reading of the row, and dropped its position.
 	/// </param>
+	/// <param name="problemWith">
+	/// Why an answer won't do, or null when it will. One that won't is said with the box still open and focus left where it
+	/// is, so the user corrects it there. Closing the box and opening it again cut the explanation off: NVDA's reading of the
+	/// box coming back started 50 milliseconds after it (measured 2026-11-11, typing "5 sideways" into a priority move).
+	/// </param>
 	private string? ShowTextPrompt(string title, string prompt, string initial, bool secret = false,
-		Func<string, ResultBeforeReturning?>? actOnAnswer = null, string? sayOnCancel = null)
+		Func<string, ResultBeforeReturning?>? actOnAnswer = null, string? sayOnCancel = null,
+		Func<string, string?>? problemWith = null)
 	{
 		string? answer = null;
 
@@ -220,6 +226,11 @@ public partial class Form1
 
 			void Accept()
 			{
+				if (problemWith?.Invoke(input.Text) is { } problem)
+				{
+					Speak(problem);
+					return;
+				}
 				answer = input.Text;
 				closeView();
 			}

@@ -7,14 +7,39 @@ public partial class Form1
 	/// Prompts for a profile name, then saves the current enabled/disabled state of every mod
 	/// as a new <see cref="ModProfile"/> JSON file.
 	/// </summary>
+	/// <summary>
+	/// Saves the current setup as a profile, said the way every result on a return to a list is: "Profile saved." while the
+	/// box is still up, then the row. It used to refresh the list first, and the new row was read before the result
+	/// (measured 2026-11-11: "Ear check. 1 of 1. Profile saved. Mod Profiles list, Ear check, 1 of 1").
+	/// </summary>
 	private void CreateProfileFromCurrent()
 	{
-		string? text = ShowTextPrompt(Loc.T("profiles.saveTitle"), Loc.T("profiles.savePrompt"), "", sayOnCancel: Loc.T("common.changesCancelled"));
-		if (text == null) return;
+		ModProfile? asked = null;
+		bool alreadyThere = false;
+		ShowTextPrompt(Loc.T("profiles.saveTitle"), Loc.T("profiles.savePrompt"), "", sayOnCancel: Loc.T("common.changesCancelled"),
+			problemWith: t => t.Trim().Length == 0 ? Loc.T("profiles.nameEmpty") : null,
+			actOnAnswer: t =>
+			{
+				asked = CaptureProfile(t.Trim());
+				// Asked, not overwritten without a word. A profile is somebody's setup, and the name is all that says which.
+				// Asked once the box has gone, rather than as one question on top of another.
+				string existingPath = ProfileStore.PathFor(profilesPath, asked.Name);
+				if (existingPath.Length > 0 && File.Exists(existingPath))
+				{
+					alreadyThere = true;
+					return null;
+				}
+				return SaveCapturedProfile(asked);
+			});
 
-		text = text.Trim();
-		if (text.Length == 0) { Speak(Loc.T("profiles.nameEmpty")); return; }
+		if (asked is not { } profile || !alreadyThere) return;
+		SpeakBox(Loc.T("profiles.overwriteConfirm", profile.Name), Loc.T("profiles.saveTitle"), MessageBoxButtons.YesNo,
+			answer => answer == DialogResult.Yes ? SaveCapturedProfile(profile) : new ResultBeforeReturning(Loc.T("common.changesCancelled")));
+	}
 
+	/// <summary>The current setup, as a profile called <paramref name="name"/>.</summary>
+	private ModProfile CaptureProfile(string name)
+	{
 		// The Skyrim/Fallout 4 load order is captured too, so applying the profile restores both. Null for
 		// the other games, which is what leaves their order alone rather than clearing it.
 		List<string>? priority = null;
@@ -27,28 +52,17 @@ public partial class Form1
 				plugins = new List<string>(saved);
 		}
 
-		ModProfile modProfile = ProfileStore.Capture(text, _allInstalledMods, _settings.CurrentTheme, priority, plugins);
+		ModProfile modProfile = ProfileStore.Capture(name, _allInstalledMods, _settings.CurrentTheme, priority, plugins);
 		modProfile.Game = _settings.ActiveGame;
+		return modProfile;
+	}
 
-		// Asked, not overwritten without a word. A profile is somebody's setup, and the name is all that says which.
-		string existingPath = ProfileStore.PathFor(profilesPath, text);
-		if (existingPath.Length > 0 && File.Exists(existingPath) &&
-			SpeakBox(Loc.T("profiles.overwriteConfirm", text), Loc.T("profiles.saveTitle"), MessageBoxButtons.YesNo) != DialogResult.Yes)
-		{
-			Speak(Loc.T("common.changesCancelled"));
-			return;
-		}
-
-		if (ProfileStore.Save(profilesPath, modProfile).Length == 0)
-		{
-			// The name survived the length check but nothing usable was left of it once the characters a
-			// file name cannot hold were removed.
-			Speak(Loc.T("profiles.nameEmpty"));
-			return;
-		}
-
-		RefreshProfilesList();
-		Speak(Loc.T("profiles.saved"));
+	private ResultBeforeReturning SaveCapturedProfile(ModProfile profile)
+	{
+		// The name survived the length check but nothing usable was left of it once the characters a file name cannot
+		// hold were removed.
+		if (ProfileStore.Save(profilesPath, profile).Length == 0) return new ResultBeforeReturning(Loc.T("profiles.nameEmpty"));
+		return new ResultBeforeReturning(Loc.T("profiles.saved"), RefreshProfilesList);
 	}
 
 	/// <summary>
@@ -180,7 +194,9 @@ public partial class Form1
 				if (profile.ModPriority != null || profile.PluginOrder != null)
 					_settings.Save();
 			}
-			if (!string.IsNullOrEmpty(profile.ThemeOverride) && _themeFolders.Exists(profile.ThemeOverride))
+			// Only when it changes: "Theme switched to: Skyrim" was said on every apply, with Skyrim already the theme.
+			if (!string.IsNullOrEmpty(profile.ThemeOverride) && _themeFolders.Exists(profile.ThemeOverride) &&
+				!string.Equals(_settings.CurrentTheme, profile.ThemeOverride, StringComparison.OrdinalIgnoreCase))
 			{
 				_settings.CurrentTheme = profile.ThemeOverride;
 				_settings.Save();

@@ -645,7 +645,11 @@ public static class ModScanner
 
 			string id = parts[1].Trim();
 			if (id.Contains('@')) id = id.Split('@')[0].Trim();
-			if (long.TryParse(id, out _)) return id;
+			// A real page only. Authors write "Nexus:-1" for a part with no page of its own, such as Ridgeside Village's
+			// SMAPI component, and every update check asked Nexus about mod -1, got no answer, and said a mod site had
+			// failed to answer (found by ear, 2026-11-11).
+			if (long.TryParse(id, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out long number) && number > 0)
+				return id;
 		}
 		return null;
 	}

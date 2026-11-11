@@ -147,22 +147,10 @@ public partial class Form1
 				FormatNumber(control.Min), FormatNumber(control.Max))
 			: Loc.T("mcm.prompt", control.Label, control.Help);
 
-		while (true)
-		{
-			// Checked before it is saved, as the box closes. A number that won't do is said once the box has gone, and the
-			// box opens again with it in.
-			string? problem = null;
-			string? typed = ShowTextPrompt(Loc.T("mcm.chooseTitle", control.Label), prompt, current, actOnAnswer: t =>
-			{
-				problem = NumberProblem(control, t);
-				return problem == null ? apply(t) : null;
-			});
-			if (typed == null) return null;
-			if (problem == null) return typed;
-
-			Speak(problem);
-			current = typed;
-		}
+		// Checked before it is saved. A number that won't do is said with the box still open, to be corrected there. It used to
+		// be said as the box closed and opened again, which cut it off. See ShowTextPrompt's problemWith.
+		return ShowTextPrompt(Loc.T("mcm.chooseTitle", control.Label), prompt, current,
+			problemWith: t => NumberProblem(control, t), actOnAnswer: apply);
 	}
 
 	/// <summary>Why <paramref name="typed"/> won't do for a number setting, or null when it will, or the setting isn't a number.</summary>

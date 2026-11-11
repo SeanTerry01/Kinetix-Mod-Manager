@@ -486,14 +486,18 @@ public sealed class InstallOrderGuardTests
 	{
 		string source = App("Form1.Updates.cs");
 		Assert.Contains("someUnanswered ? \"updates.checkFoundNoneSoFar\" : \"updates.checkCompleteNone\"", source);
-		Assert.Contains("if (latestVersion == null) Interlocked.Increment(ref _updateChecksUnanswered);", source);
+		// A lookup that got nothing is counted. One Nexus answered with "removed" or "hidden" is not: asking again changes
+		// nothing, and counting it said a mod site had failed to answer when it had (found by ear, 2026-11-11).
+		Assert.Contains("if (asked.Answer is NexusVersionAnswer.NoAnswer or NexusVersionAnswer.KeyRefused)\n\t\t\t\t\t\tInterlocked.Increment(ref _updateChecksUnanswered);",
+			source.ReplaceLineEndings("\n"));
+		Assert.DoesNotContain("if (latestVersion == null) Interlocked.Increment(ref _updateChecksUnanswered);", source);
 	}
 
 	[Fact]
 	public void AnUpdateCheckCannotLandOnTheWrongGame()
 	{
 		string source = App("Form1.Updates.cs");
-		Assert.Contains("GetLatestVersionAsync(group[0].NexusID ?? \"\", domain)", source);
+		Assert.Contains("AskLatestVersionAsync(group[0].NexusID ?? \"\", domain)", source);
 		Assert.Contains("if (latestVersion == null || _settings.ActiveGame != game) return;", source);
 		Assert.Contains("if (_updateCheckGame != _settings.ActiveGame)", source);
 	}

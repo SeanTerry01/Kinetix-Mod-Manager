@@ -189,6 +189,14 @@ A review of the whole manager before 1.6.0 found these. All are fixed.
 ## 💬 Smaller things you may hear
 
 *   **"1 mods" and "1 files" are gone everywhere**, not only in the messages heard most.
+*   **A value that won't do is explained with the box still open**, so you hear all of it and correct it there. The box
+    used to close and open again, which cut the explanation off after a word or two. This is in moving a mod by places,
+    MCM and BepInEx number settings, and Stardew settings.
+*   **"Profile saved." is said before the new profile is read**, not after it, and the profile is no longer read twice.
+*   **Applying a profile no longer says "Theme switched to" when the theme was already that one.**
+*   **"A mod site did not answer" now means one didn't.** A mod Nexus has removed or hides, or a mod whose page is given as
+    "Nexus:-1" (a part with no page of its own, such as Ridgeside Village's SMAPI component), was counted as no answer,
+    so an update check said this every time. Each one is now written to the log, so which mod it was can be found.
 *   **Sentences that name a key use your key**, if you changed it, and a key you cleared is no longer read as "Press Unmapped".
 *   **Typing in the installed search** reads the count once, after you pause.
 *   **After a file picker closes**, you hear which mod you are on as well as its position.
@@ -1048,7 +1056,7 @@ brings across the ones you already have in the Modrinth App.
 
 ## ✅ Tests
 
-*   **2,203 passing**, and all of them now pass off Windows too, where sixteen used to fail.
+*   **2,215 passing**, and all of them now pass off Windows too, where sixteen used to fail.
 *   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 *   Twenty-six of them cover unpacking a downloaded mod, including one that extracts a **real .7z** rather than a stand-in — the only way to know that reading one without `7za.exe` actually works.

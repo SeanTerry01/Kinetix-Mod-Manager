@@ -185,13 +185,27 @@ public partial class Form1
 				latestVersion = await RememberedNexusVersion(game, group[0].NexusID!, updatedThisMonth);
 				remembered = latestVersion != null;
 				Interlocked.Increment(ref remembered ? ref _nexusRemembered : ref _nexusAsked);
-				latestVersion ??= await _nexusService.GetLatestVersionAsync(group[0].NexusID ?? "", domain);
-				if (latestVersion == null) Interlocked.Increment(ref _updateChecksUnanswered);
+				if (latestVersion == null)
+				{
+					NexusLatestVersion asked = await _nexusService.AskLatestVersionAsync(group[0].NexusID ?? "", domain);
+					latestVersion = asked.Version;
+					// Only no answer counts as "a mod site did not answer". A page Nexus has removed, or won't show, is an
+					// answer, and asking again changes nothing: counted, it told a player with one removed mod that Nexus was
+					// failing them. Each is logged, so which mod it was can be found.
+					if (asked.Answer != NexusVersionAnswer.Answered)
+						DiagnosticLog.Write("Nexus", $"update check: mod {group[0].NexusID} ({group[0].Name}): {asked.Answer}");
+					if (asked.Answer is NexusVersionAnswer.NoAnswer or NexusVersionAnswer.KeyRefused)
+						Interlocked.Increment(ref _updateChecksUnanswered);
+				}
 			}
 			else if (!string.IsNullOrEmpty(group[0].GitHubRepo))
 			{
 				latestVersion = await GetGitHubLatestReleaseVersionAsync(group[0].GitHubRepo ?? "");
-				if (latestVersion == null) Interlocked.Increment(ref _updateChecksUnanswered);
+				if (latestVersion == null)
+				{
+					DiagnosticLog.Write("GitHub", $"update check: {group[0].GitHubRepo} ({group[0].Name}): no version");
+					Interlocked.Increment(ref _updateChecksUnanswered);
+				}
 			}
 
 			if (latestVersion == null || _settings.ActiveGame != game) return;

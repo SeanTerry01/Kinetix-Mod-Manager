@@ -123,17 +123,10 @@ public partial class Form1
 			? Loc.T("sdvconfig.promptNumber", setting.Label, setting.Description)
 			: Loc.T("sdvconfig.prompt", setting.Label, setting.Description);
 
-		string current = setting.Value;
-		while (true)
-		{
-			// Checked as the box closes; one that won't do is said once it has gone, and the box opens again with it in.
-			string? typed = ShowTextPrompt(Loc.T("sdvconfig.chooseTitle", setting.Label), prompt, current,
-				actOnAnswer: t => StardewModConfig.IsValid(setting, t) ? apply(t) : null);
-			if (typed == null) return null;
-			if (StardewModConfig.IsValid(setting, typed)) return typed;
-
-			Speak(Loc.T("sdvconfig.invalidNumber"));
-			current = typed;
-		}
+		// One that won't do is said with the box still open, to be corrected there. It used to be said as the box closed and
+		// opened again, which cut it off. See ShowTextPrompt's problemWith.
+		return ShowTextPrompt(Loc.T("sdvconfig.chooseTitle", setting.Label), prompt, setting.Value,
+			problemWith: t => StardewModConfig.IsValid(setting, t) ? null : Loc.T("sdvconfig.invalidNumber"),
+			actOnAnswer: apply);
 	}
 }

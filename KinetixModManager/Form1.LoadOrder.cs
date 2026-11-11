@@ -703,35 +703,23 @@ public partial class Form1
 
 	/// <summary>
 	/// Asks where to move <paramref name="name"/>, now at <paramref name="from"/> of <paramref name="count"/>, and hands
-	/// a move that makes sense to <paramref name="apply"/> while the box is still up. One that doesn't is said once the box
-	/// has gone, and the box opens again with what was typed still in it, as a number setting's does.
+	/// a move that makes sense to <paramref name="apply"/> while the box is still up. One that doesn't is said with the box
+	/// still open, for the user to correct there. See ShowTextPrompt's problemWith.
 	/// </summary>
 	private void AskForMove(string name, int from, int count, Func<PlacesToMove.Move, ResultBeforeReturning?> apply)
 	{
-		string typed = "";
-		while (true)
-		{
-			string? problem = null;
-			string? answer = ShowTextPrompt(Loc.T("moveBy.title", name), Loc.T("moveBy.prompt", name, from + 1, count), typed,
-				actOnAnswer: t =>
-				{
-					if (PlacesToMove.Read(t, from, count, MoveWords, out PlacesToMove.Problem why) is not { } move)
-					{
-						problem = why == PlacesToMove.Problem.NoSuchPosition
-							? Loc.T("moveBy.noSuchPosition", count)
-							: Loc.T("moveBy.notUnderstood");
-						return null;
-					}
-					return move.Target == from
-						? new ResultBeforeReturning(Loc.T("moveBy.alreadyThere", from + 1))
-						: apply(move);
-				},
-				sayOnCancel: Loc.T("common.changesCancelled"));
-			if (answer == null || problem == null) return;
-
-			Speak(problem);
-			typed = answer;
-		}
+		ShowTextPrompt(Loc.T("moveBy.title", name), Loc.T("moveBy.prompt", name, from + 1, count), "",
+			problemWith: t => PlacesToMove.Read(t, from, count, MoveWords, out PlacesToMove.Problem why) != null ? null
+				: why == PlacesToMove.Problem.NoSuchPosition ? Loc.T("moveBy.noSuchPosition", count)
+				: Loc.T("moveBy.notUnderstood"),
+			actOnAnswer: t =>
+			{
+				if (PlacesToMove.Read(t, from, count, MoveWords, out _) is not { } move) return null;
+				return move.Target == from
+					? new ResultBeforeReturning(Loc.T("moveBy.alreadyThere", from + 1))
+					: apply(move);
+			},
+			sayOnCancel: Loc.T("common.changesCancelled"));
 	}
 
 	/// <summary>"Moved up 23 places." or, at either end, "Moved to the top."</summary>

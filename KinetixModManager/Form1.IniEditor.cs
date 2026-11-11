@@ -131,21 +131,11 @@ public partial class Form1
             ? Loc.T("bepcfg.promptRange", setting.Key, described, setting.RangeFrom, setting.RangeTo)
             : Loc.T("bepcfg.prompt", setting.Key, described);
 
-        while (true)
-        {
-            // Checked as the box closes; one that won't do is said once it has gone, and the box opens again with it in.
-            string? typed = ShowTextPrompt(Loc.T("bepcfg.chooseTitle", setting.Key), prompt, current,
-                actOnAnswer: t => BepInExConfigSchema.IsValid(setting, t, out _) ? apply(t) : null);
-            if (typed == null) return null;
-
-            if (BepInExConfigSchema.IsValid(setting, typed, out BepInExConfigSchema.Problem problem))
-                return typed;
-
-            // Said, then asked again with what they typed still in the box, so a near-miss is corrected rather
-            // than retyped from scratch.
-            Speak(ProblemText(setting, problem));
-            current = typed;
-        }
+        // One that won't do is said with the box still open, so a near-miss is corrected there rather than retyped. It used
+        // to be said as the box closed and opened again, which cut it off. See ShowTextPrompt's problemWith.
+        return ShowTextPrompt(Loc.T("bepcfg.chooseTitle", setting.Key), prompt, current,
+            problemWith: t => BepInExConfigSchema.IsValid(setting, t, out BepInExConfigSchema.Problem problem) ? null : ProblemText(setting, problem),
+            actOnAnswer: apply);
     }
 
     /// <summary>Why a typed value was refused, in words.</summary>
