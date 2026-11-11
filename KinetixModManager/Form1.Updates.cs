@@ -154,6 +154,9 @@ public partial class Form1
 		return versions.Aggregate((best, v) => IsNewerVersion(best, v) ? v : best);
 	}
 
+	/// <summary>Nexus mods this update check answered from the record, and those it asked about. Logged at the end.</summary>
+	private int _nexusRemembered, _nexusAsked;
+
 	private async Task CheckForUpdates(List<GameMod> group, Task<HashSet<int>?>? updatedThisMonth, Task<Dictionary<string, string>?>? modrinthAnswers)
 	{
 		// Read now, while this is the game the check is for. A queued request reading it later asked the other game's
@@ -184,6 +187,7 @@ public partial class Form1
 			{
 				latestVersion = await RememberedNexusVersion(game, group[0].NexusID!, updatedThisMonth);
 				remembered = latestVersion != null;
+				Interlocked.Increment(ref remembered ? ref _nexusRemembered : ref _nexusAsked);
 				latestVersion ??= await _nexusService.GetLatestVersionAsync(group[0].NexusID ?? "", domain);
 				if (latestVersion == null) Interlocked.Increment(ref _updateChecksUnanswered);
 			}
@@ -341,6 +345,8 @@ public partial class Form1
 			var pendingMinecraft = _pendingMinecraftUpdate;
 			_pendingMinecraftUpdate = null;
 			int unchecked_ = UncheckedModCount();
+			// How much the record saved, for the log: the only way to tell a working record from one that is never used.
+			DiagnosticLog.Write("Nexus", $"update check: {Interlocked.Exchange(ref _nexusRemembered, 0)} mods known from the record, {Interlocked.Exchange(ref _nexusAsked, 0)} asked");
 			// Written once at the end, so a check of 1,000 mods doesn't rewrite the settings 1,000 times.
 			_settings.Save();
 			bool toldToSlowDown = _nexusService.Pause.IsActive(DateTime.UtcNow) || _gitHubPause.IsActive(DateTime.UtcNow);

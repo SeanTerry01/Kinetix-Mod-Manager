@@ -1106,13 +1106,24 @@ public class NexusService
 			var resp = await HttpClient.SendAsync(req);
 			CaptureRateLimit(resp);
 			var set = new HashSet<int>();
-			if (!resp.IsSuccessStatusCode) return null;
+			// ⚠️ Said in the log. Without this list every mod is asked about in full, which costs nearly all the requests the
+			// list exists to save, and nothing anywhere said so: two checks in a row spent 56 and 55. Measured 2026-11-10.
+			if (!resp.IsSuccessStatusCode)
+			{
+				DiagnosticLog.Write("Nexus", $"the list of mods updated in {period} was refused: {(int)resp.StatusCode} {resp.ReasonPhrase}");
+				return null;
+			}
 
 			foreach (JToken u in JArray.Parse(await resp.Content.ReadAsStringAsync()))
 				if ((int?)u["mod_id"] is int id) set.Add(id);
+			DiagnosticLog.Write("Nexus", $"the list of mods updated in {period} names {set.Count}");
 			return set;
 		}
-		catch { return null; }
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Nexus", $"reading the list of mods updated in {period}", ex);
+			return null;
+		}
 		finally { _apiSemaphore.Release(); }
 	}
 
