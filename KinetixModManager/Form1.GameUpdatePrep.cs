@@ -80,7 +80,9 @@ public partial class Form1
 		ResetStatus();
 
 		_soundEngine.Play("load_complete");
-		Speak(Loc.T("prep.restoreDone", forceAll.Count, conflicts));
+		Speak(conflicts == 0
+			? Loc.T("prep.restoreDoneNoConflicts", forceAll.Count)
+			: Loc.T("prep.restoreDone", forceAll.Count, conflicts));
 
 		// The exe version very likely changed during the update; let the guardian warn about SKSE/F4SE if so.
 		CheckGameUpdateGuardian();

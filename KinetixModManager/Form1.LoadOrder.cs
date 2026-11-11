@@ -211,7 +211,10 @@ public partial class Form1
 		RefreshPluginOrderList();
 
 		_soundEngine.Play("load_complete");
-		Speak(Loc.T("loadorder.rebuilt", forceAll.Count, conflicts.Count));
+		// "0 file conflicts resolved" was said after every rebuild with nothing to resolve.
+		Speak(conflicts.Count == 0
+			? Loc.T("loadorder.rebuiltNoConflicts", forceAll.Count)
+			: Loc.T("loadorder.rebuilt", forceAll.Count, conflicts.Count));
 		// Don't leave "Rebuilding mod deployment" sitting in the title after it's finished.
 		ResetStatus();
 	}
