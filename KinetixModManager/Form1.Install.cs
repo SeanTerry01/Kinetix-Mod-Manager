@@ -69,7 +69,8 @@ public partial class Form1
 			// When some updates are bundled, the download count is lower than the mod count. Say both so "1 download"
 			// never looks like it is skipping the other mods it actually updates.
 			string confirmMsg = mods.Count == totalMods
-				? Loc.T(totalMods == 1 ? "updateAll.confirmOne" : "updateAll.confirm", totalMods)
+				// One mod is named: "Update this mod?" did not say which.
+				? (totalMods == 1 ? Loc.T("updateAll.confirmOne", mods[0].Name) : Loc.T("updateAll.confirm", totalMods))
 				: Loc.T("updateAll.confirmGrouped", totalMods, mods.Count);
 			// Said before the confirmation rather than after the run: somebody deciding whether to start needs to know
 			// that some of what they are looking at is not included.

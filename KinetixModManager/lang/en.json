@@ -817,7 +817,7 @@
   "updateAll.premiumTitle": "Premium Feature Required",
   "updateAll.skippingPremium": "{0} {0|mod|mods} come from Nexus Mods and will be skipped, because updating those automatically needs a Premium account.",
   "updateAll.skippingPremiumOne": "1 mod comes from Nexus Mods and will be skipped, because updating that automatically needs a Premium account.",
-  "updateAll.confirmOne": "Update this mod?",
+  "updateAll.confirmOne": "Update {0}?",
   "updateAll.confirm": "Update all {0} {0|mod|mods}?",
   "updateAll.confirmGrouped": "Update all {0} {0|mod|mods}? Some are bundled together in shared downloads, so this runs as {1} {1|download|downloads}, and each bundle updates every mod inside it.",
   "updateAll.updatingStatus": "Updating ({0}/{1}): {2}",

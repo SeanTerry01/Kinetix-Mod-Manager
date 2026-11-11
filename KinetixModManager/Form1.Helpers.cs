@@ -349,9 +349,16 @@ public partial class Form1
 	{
 		if (!ReferenceEquals(_arrivalPendingFor, list) || !list.Focused) return false;
 		_resultForArrival = _resultForArrival is { } before && ReferenceEquals(before.List, list)
-			? (list, before.Text + " " + text, before.NamesRow && namesRow)
+			? (list, EndSentence(before.Text) + " " + text, before.NamesRow && namesRow)
 			: (list, text, namesRow);
 		return true;
+	}
+
+	/// <summary>Text with closing punctuation, so what is said after it does not run into it.</summary>
+	private static string EndSentence(string text)
+	{
+		string said = text.TrimEnd();
+		return said.Length > 0 && !".!?…".Contains(said[^1]) ? said + "." : said;
 	}
 
 	/// <summary>
@@ -1506,7 +1513,8 @@ public partial class Form1
 		if (_resultForArrival is { } waiting)
 		{
 			_resultForArrival = null;
-			text = waiting.Text + " " + text;
+			// Ended first, or the two run together: "Updating (1/1): VoiceOverFrameworkMod Download cancelled."
+			text = EndSentence(waiting.Text) + " " + text;
 		}
 
 		// Saying something deliberately ends any window in which the reader is being silenced.
