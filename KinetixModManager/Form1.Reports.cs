@@ -318,7 +318,7 @@ public partial class Form1
 			}
 		}
 
-		string header = Loc.T("reports.verifyHeader", mod.Name, inPlace, missing, overridden) + HeldOffNote();
+		string header = WithHeldOffNote(Loc.T("reports.verifyHeader", mod.Name, inPlace, missing, overridden));
 		if (!mod.IsEnabled)
 			problems.Insert(0, new ReportRow { Text = Loc.T("reports.verifyDisabledNote") });
 		ShowReportDialog(Loc.T("reports.verifyTitle"), header, Loc.T("reports.verifyAllInPlace"), problems, null);

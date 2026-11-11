@@ -238,11 +238,17 @@ public static class ModScanner
 						// true and what stops a mod page at 1.0 looking older than what is installed.
 						bool placeholder = IsPlaceholderManifest(manifest);
 
+						// Named from the folder without the mark that switches it off: ".Kinetix Test Mod is now enabled"
+						// was heard, the dot read out as part of the name. Measured 2026-11-10.
+						string bareFolder = disabledPrefix.Length > 0 && folderName.StartsWith(disabledPrefix, StringComparison.Ordinal)
+							? folderName.Substring(disabledPrefix.Length)
+							: folderName;
+
 						mod = new GameMod
 						{
 							Name        = placeholder
-								? LocalModDisplayName(folderName, activeGame)
-								: ManifestString(manifest, "Name") ?? LocalModDisplayName(folderName, activeGame),
+								? LocalModDisplayName(bareFolder, activeGame)
+								: ManifestString(manifest, "Name") ?? LocalModDisplayName(bareFolder, activeGame),
 							Version     = placeholder ? "" : ManifestString(manifest, "Version") ?? "",
 							Author      = placeholder ? "" : ManifestString(manifest, "Author")  ?? "",
 							UniqueId    = uid,

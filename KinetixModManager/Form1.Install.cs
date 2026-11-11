@@ -1000,7 +1000,7 @@ public partial class Form1
 			// end-of-run "All updates finished" cover it; a per-mod box would force a click on every mod.
 			// The folder a mod landed in is not necessarily what it is called: Stardew names its folder from the
 			// mod's own manifest (already the real name), while the Bethesda games name it from the download.
-			if (!silent) SpeakBox(Loc.T("install.installed", ModDisplayName.ForSpeech(name, nexusId, spokenName)) + HeldOffNote());
+			if (!silent) SpeakBox(WithHeldOffNote(Loc.T("install.installed", ModDisplayName.ForSpeech(name, nexusId, spokenName))));
 			return true;
 		}
 		catch (OperationCanceledException)

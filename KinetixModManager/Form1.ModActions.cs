@@ -498,7 +498,7 @@ public partial class Form1
 			// Asset deployment and plugins.txt are reconciled inside RefreshModList, which re-scans the
 			// toggled enabled set and rewrites both for Skyrim/Fallout 4.
 			await SayAndRefreshModList(
-				Loc.T("modactions.toggleStatus", selectedMod.Name, selectedMod.IsEnabled ? Loc.T("modactions.enabled") : Loc.T("modactions.disabled")) + HeldOffNote(),
+				WithHeldOffNote(Loc.T("modactions.toggleStatus", selectedMod.Name, selectedMod.IsEnabled ? Loc.T("modactions.enabled") : Loc.T("modactions.disabled"))),
 				selectedMod);
 			ResetStatus();
 		}

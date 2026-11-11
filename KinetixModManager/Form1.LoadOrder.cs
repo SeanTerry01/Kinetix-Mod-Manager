@@ -143,8 +143,17 @@ public partial class Form1
 	/// <summary>
 	/// A sentence to add to anything that would otherwise sound as though a mod reached the game while it is being held out.
 	/// </summary>
-	private string HeldOffNote() =>
-		_settings.DeploymentHeldOff.Contains(_settings.ActiveGame) ? " " + Loc.T("loadorder.heldNote") : "";
+	/// <summary>
+	/// <paramref name="said"/>, then, while deployment is held off, the reminder that mods stay out of the game. The text
+	/// before it gets its full stop: "Kinetix Test Mod is now disabled Your mods stay out..." ran the two together.
+	/// </summary>
+	private string WithHeldOffNote(string said)
+	{
+		if (!_settings.DeploymentHeldOff.Contains(_settings.ActiveGame)) return said;
+		string before = said.TrimEnd();
+		if (before.Length > 0 && !".!?".Contains(before[^1])) before += ".";
+		return before + " " + Loc.T("loadorder.heldNote");
+	}
 
 	/// <summary>Held by whichever pass is changing the game folder, because a refresh and an install can both want to.</summary>
 	private readonly object _deploymentLock = new();
