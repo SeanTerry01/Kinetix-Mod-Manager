@@ -26,10 +26,23 @@ public class OpeningKeyCharacterGuardTests
 		int start = source.IndexOf(method, StringComparison.Ordinal);
 		Assert.True(start > 0, $"{method} not found in {file}");
 
-		int drop = source.IndexOf("DropCharacterOfOpeningKey();", start, StringComparison.Ordinal);
+		int drop = source.IndexOf("BeginOpeningOverlay();", start, StringComparison.Ordinal);
 		int wait = source.IndexOf("WaitOutReaderReaction();", start, StringComparison.Ordinal);
 		int overlay = source.IndexOf("RunOverlay(", start, StringComparison.Ordinal);
 		Assert.True(drop > start && wait > drop && overlay > wait,
-			$"{method} must call DropCharacterOfOpeningKey before WaitOutReaderReaction and RunOverlay.");
+			$"{method} must call BeginOpeningOverlay before WaitOutReaderReaction and RunOverlay.");
+	}
+
+	[Fact]
+	public void OpeningAnOverlayDropsTheCharacterAndCountsItself()
+	{
+		string source = Source("Form1.InlinePrompt.cs");
+		int start = source.IndexOf("private void BeginOpeningOverlay()", StringComparison.Ordinal);
+		Assert.True(start > 0);
+		int end = source.IndexOf("\n\t}", start, StringComparison.Ordinal);
+		string body = source.Substring(start, end - start);
+		Assert.Contains("_overlaysStarted++;", body);
+		Assert.Contains("DropCharacterOfOpeningKey();", body);
+		Assert.DoesNotContain("BeginOpeningOverlay();", body);
 	}
 }

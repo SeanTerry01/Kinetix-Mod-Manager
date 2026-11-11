@@ -47,7 +47,7 @@ public partial class Form1
 		//
 		// The opening key's character goes first of all, before the wait pumps it to the control behind. See
 		// DropCharacterOfOpeningKey: Ctrl+P typed a P into the mod list.
-		DropCharacterOfOpeningKey();
+		BeginOpeningOverlay();
 		WaitOutReaderReaction();
 
 		Form host = this;

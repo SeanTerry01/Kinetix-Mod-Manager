@@ -65,7 +65,9 @@ public partial class Form1
 				// Focus can have moved on during the wait, and speaking then would describe a list the user has
 				// already left — the same guard the shared list handlers use.
 				if (!lb.Focused) return;
-				Speak(Loc.T("soundDemo.announce", Loc.T("sound." + key), lb.SelectedIndex + 1, lb.Items.Count));
+				// The descriptions are sentences and end in a full stop, and the wording adds its own: it read
+				// "…in Minecraft.. 1 of 7".
+				Speak(Loc.T("soundDemo.announce", Loc.T("sound." + key).TrimEnd().TrimEnd('.'), lb.SelectedIndex + 1, lb.Items.Count));
 			}
 		};
 		lb.SelectedIndexChanged += async delegate

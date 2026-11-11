@@ -30,10 +30,26 @@ public partial class Form1
 		// menu strip, which takes Windows out of menu mode and fires MenuDeactivate one last time — by which
 		// point the window has no handle left to post to, and BeginInvoke throws. That crashed the manager on
 		// exit, and the only record of it was a crash log nothing in the app ever opened.
+		//
+		// ⚠️ Only when the menu changed nothing. Choosing an item that opens a view or a prompt runs that screen's
+		// own message loop, and the posted re-announcement ran INSIDE it: Sound Demo, opened from the Help menu,
+		// read its first row's position a second time, "1 of 7", because focus was by then on the view's list.
+		// Measured with NVDA 2026-11-10. So it is skipped once focus has moved, or once a view or prompt has begun
+		// to open, which a prompt does before it is on screen, while focus is still on the list behind it.
+		menuStrip.MenuActivate += (s, e) =>
+		{
+			_focusWhenMenuOpened = Control.FromHandle(GetFocus());
+			_overlaysStartedWhenMenuOpened = _overlaysStarted;
+		};
 		menuStrip.MenuDeactivate += (s, e) =>
 		{
 			if (IsDisposed || Disposing || !IsHandleCreated) return;
-			BeginInvoke(new Action(AnnounceFocusRestored));
+			BeginInvoke(new Action(() =>
+			{
+				if (_overlaysStarted != _overlaysStartedWhenMenuOpened) return;
+				if (!ReferenceEquals(Control.FromHandle(GetFocus()), _focusWhenMenuOpened)) return;
+				AnnounceFocusRestored();
+			}));
 		};
 		_menuFile = new ToolStripMenuItem(Loc.T("menu.file")) { Name = "menuFile" };
 		_menuFile.DropDownItems.Add(ShortcutLabel("menu.refreshAll", "RefreshAll"), null, delegate

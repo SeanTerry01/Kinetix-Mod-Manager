@@ -57,6 +57,26 @@ public partial class Form1
 	/// Only characters already queued are removed. A key pressed after this has not been translated yet, so typing
 	/// into the view that opens is untouched.
 	/// </summary>
+	/// <summary>
+	/// How many prompts and views have begun to open, counted before anything pumps. The menu bar reads this to tell
+	/// a menu closed with nothing chosen from one whose choice opened a screen. See the MenuDeactivate handler.
+	/// </summary>
+	private int _overlaysStarted;
+
+	/// <summary>Where focus was, and how many overlays had started, when the menu bar was entered.</summary>
+	private Control? _focusWhenMenuOpened;
+	private int _overlaysStartedWhenMenuOpened;
+
+	/// <summary>
+	/// The first thing a prompt or view does, before it pumps a single message: counts itself as started, and drops
+	/// the character of the key that opened it. See <see cref="DropCharacterOfOpeningKey"/>.
+	/// </summary>
+	private void BeginOpeningOverlay()
+	{
+		_overlaysStarted++;
+		DropCharacterOfOpeningKey();
+	}
+
 	private static void DropCharacterOfOpeningKey()
 	{
 		while (PeekMessage(out _, IntPtr.Zero, WM_CHAR, WM_CHAR, PM_REMOVE)) { }
@@ -140,13 +160,16 @@ public partial class Form1
 		// Before the prompt exists at all. See WaitOutReaderReaction: once the buttons are on screen and one of
 		// them has focus, the reader is already talking about it, and no amount of delaying our own sentence puts
 		// it back in front.
-		DropCharacterOfOpeningKey();
+		BeginOpeningOverlay();
 		WaitOutReaderReaction();
 
 		PromptChoice[] choices = ChoicesFor(buttons);
 		DialogResult? answer = null;
 
 		Panel overlay = BuildPromptPanel(text, caption, choices, result => answer = result, out Button firstButton);
+		// Its layout panels have no names of their own, and Windows lent them one from the window: the buttons of
+		// "Confirm Delete" sat in a pane called "Search:". Measured with NVDA 2026-11-10. A view did this already.
+		SilenceUnnamedContainers(overlay);
 
 		RunOverlay(host, overlay, firstButton,
 			finished: () => answer != null,
