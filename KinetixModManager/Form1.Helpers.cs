@@ -1190,16 +1190,22 @@ public partial class Form1
 			string hiddenByLanguage = "";
 			if (!loadMore && !string.IsNullOrEmpty(language))
 			{
-				int unfiltered = await _nexusService.GetUnfilteredModCountAsync();
+				// A name search is compared with the same search unfiltered. Against the whole catalogue it said "27 of this
+				// game's 35416 mods", as though the filter hid 35,000 matches.
+				bool named = searchType == "Search" && searchTerm.Length > 0;
+				int unfiltered = await _nexusService.GetUnfilteredModCountAsync(named ? searchTerm : null);
 				if (search != _discoverySearch || _settings.ActiveGame != searchGame) return;
 				if (unfiltered > total)
-					hiddenByLanguage = " " + Loc.T("discovery.languageHiding", total, unfiltered, language);
+					hiddenByLanguage = " " + Loc.T(named ? "discovery.languageHidingSearch" : "discovery.languageHiding", total, unfiltered, language);
 			}
 
 			if (results.Count > 0)
 			{
-				Speak((loadMore ? Loc.T("discovery.added", results.Count) : Loc.T(results.Count == 1 ? "discovery.foundOne" : "discovery.found", results.Count))
-					+ hiddenByLanguage);
+				// How many matched, not how many fit on the page: "Found 20 mods" was said for 27.
+				string found = loadMore ? Loc.T("discovery.added", results.Count)
+					: total > results.Count ? Loc.T("discovery.foundListed", total, results.Count)
+					: Loc.T(results.Count == 1 ? "discovery.foundOne" : "discovery.found", results.Count);
+				Speak(found + hiddenByLanguage);
 				// Fresh search lands on the first result; Load more lands on the first new result.
 				listDiscovery.SelectedIndex = loadMore ? firstNewIndex : 0;
 			}

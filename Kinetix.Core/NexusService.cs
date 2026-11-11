@@ -513,13 +513,22 @@ public class NexusService
 		if (searchType == "Search")
 		{
 			filter["name"] = new[] { new { value = searchTerm, op = "WILDCARD" } };
-			gqlQuery = @"query SearchMods($filter: ModsFilter, $count: Int, $offset: Int) {
-				mods(filter: $filter, count: $count, offset: $offset) {
+			// ⚠️ Sorted, by downloads. With no sort Nexus returns the newest pages first, so searching "Stardew Valley Expanded"
+			// listed 20 add-ons and translations and left Stardew Valley Expanded itself, with 22 million downloads, on the
+			// second page. Its "relevance" sort is no better: page-number order. Measured 2026-11-10.
+			gqlQuery = @"query SearchMods($filter: ModsFilter, $sort: [ModsSort!], $count: Int, $offset: Int) {
+				mods(filter: $filter, sort: $sort, count: $count, offset: $offset) {
 					nodes { modId name summary author version endorsements downloads updatedAt }
 					totalCount
 				}
 			}";
-			variables = new { filter, count = pageSize, offset };
+			variables = new
+			{
+				filter,
+				sort   = new[] { new Dictionary<string, object> { { "downloads", new { direction = "DESC" } } } },
+				count  = pageSize,
+				offset
+			};
 		}
 		else
 		{
@@ -607,7 +616,9 @@ public class NexusService
 	/// the unfiltered total lets the manager say "showing 5 of 80" instead of leaving the user to conclude the
 	/// mods they are looking for aren't on Nexus.
 	/// </summary>
-	public async Task<int> GetUnfilteredModCountAsync()
+	/// <param name="nameTerm">A name search to count as well, so the comparison is the same search without the language, not
+	/// the whole catalogue: "27 of this game's 35416 mods" read as 35,000 matches hidden.</param>
+	public async Task<int> GetUnfilteredModCountAsync(string? nameTerm = null)
 	{
 		try
 		{
@@ -621,6 +632,8 @@ public class NexusService
 					["gameId"] = new[] { new { value = CurrentGameId, op = "EQUALS" } }
 				}
 			};
+			if (!string.IsNullOrWhiteSpace(nameTerm))
+				variables.filter["name"] = new[] { new { value = nameTerm, op = "WILDCARD" } };
 
 			using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.nexusmods.com/v2/graphql");
 			req.Headers.Add("apikey", _settings.ApiKey);
