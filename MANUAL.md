@@ -129,7 +129,7 @@ Some mod sites want an API key before they will answer. From the **File** menu, 
 *   **"Open the site to get a key"** takes you straight to the page where that site issues them.
 *   **Arrowing down the list never reads your keys out loud.** Each row says the site's name and whether a key is saved, and nothing else. A key is only spoken when you press **Show key** on the one you opened, because a credential read out in passing is read out in whatever room you happen to be in.
 *   **Keys are stored encrypted on your computer**, the same way your Nexus key and your AI provider key already were, and they are never sent anywhere except to the site they belong to.
-*   **Sites that need nothing are not listed at all.** Modrinth and GitHub need no account to search or download, so there is nothing for you to do about them.
+*   **GitHub needs nothing, so it is not listed.** Modrinth is listed as optional: searching and downloading work without a key, and a key only adds the mods and packs you follow there (see "A Modrinth key (optional)" below).
 
 **What about a site with a login rather than a key?** A login ends in a key too — that is what it is for. Nexus can sign you in on its own website and hand the manager a key without you ever typing one, which is better: the manager never sees your password, and you can cancel that key later without changing it. That is built and waiting on Nexus approving the manager as an application, and until then the screen tells you so rather than offering you a button that cannot work.
 
@@ -146,7 +146,7 @@ GitHub is not one of the sources in the dropdown above, and that is on purpose: 
 *   **Enable UI Sounds** — This is the **first** control on the tab and acts as a master switch for the manager's sound effects (the connect, enable, disable, error sounds, and the startup logo). **Uncheck it to turn all of those sounds off.** When it is unchecked, the rest of the audio options (volume, sound theme, and the logo selector) are **hidden**, since they no longer apply — leaving only the download and install feedback option, which is controlled separately and still works even with UI sounds off.
 *   **Sound Volume** — A dropdown from 0 to 100 for the overall loudness of those sound effects.
 *   **Set theme manually / Current Audio Theme** — By default the sound theme follows the game you're managing, so a Skyrim session and a Stardew session sound different from the moment you load them; check **Set theme manually** to choose a specific theme from the dropdown instead. A theme the manager hasn't got a particular sound for falls back to the Default theme for that one sound, so a part-finished theme is never silent.
-*   **The connect and disconnect sounds mean something different in Minecraft.** For every other game they tell you the manager has signed in to Nexus Mods, or lost that connection. Minecraft's mods come from Modrinth, which has no accounts at all, so for Minecraft they follow the connection you actually care about: **connect plays when you join a multiplayer server or a Realm, and disconnect when you leave it** — including when you're dropped, kicked or timed out, and when you quit the game while still on a server. Playing on your own worlds produces neither, because a singleplayer world isn't a connection to anything.
+*   **The connect and disconnect sounds mean more in Minecraft.** For every other game they tell you the manager has signed in to Nexus Mods, or lost that connection. In Minecraft, **connect plays when your Microsoft sign-in is confirmed and when you join a multiplayer server or a Realm. Disconnect plays when you leave a server, switch to offline play, or sign out.** Leaving a server includes being dropped, kicked or timed out, and quitting the game while still on one. A Modrinth key that checks out plays connect too. See "Signing in, and online or offline play" below for the sign-in.
 *   **Random Logo at Startup / Select Specific Logo** — These appear only when **Show Splash Screen** (on the Startup tab) is enabled, and let you pick which startup logo sound plays.
 *   **Download and install feedback** — Choose how long downloads and installs report progress: **Tones**, **Speech**, **Both**, or **Off**. This is independent of the **Enable UI Sounds** switch above, so you can keep progress feedback even with the other sounds turned off (or vice versa).
 
@@ -251,6 +251,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Ctrl + F** (inside the F1, F2 or F3 viewer): Search the whole document for a phrase; **F3** / **Shift + F3** then step through the results. See "Searching a Document" below.
 *   **F5**: Launch the active game through its mod loader (SMAPI for Stardew Valley, SKSE for Skyrim Special Edition, F4SE for Fallout 4, BepInEx for Moonlight Peaks, and directly for The Witcher 3 and Minecraft).
 *   **F6**: **Cycle Focus** - Jump between the tab headers and the primary list in each tab (and the web view in the Wiki tab). While your mods are still loading, just after the manager starts or a game is switched, it says "Your mods are still loading." and stays on the tabs.
+*   **Ctrl + Shift + S**: **Cancel Downloads** - Stops whatever is downloading, from any tab and from inside any screen, and stops Update All if it is running. Mods already updated stay updated. A mod already being installed finishes first, and you are told so; nothing after it is updated.
 *   **F9**: **Diagnose Log with AI** - Send the current SMAPI or game log to your chosen AI provider for a plain-language explanation and fixes (opt-in; see "AI Log Diagnosis" below).
 *   **Alt**: Access the Menu Bar.
 *   **Ctrl + P**: Open the **Settings Dashboard**.
@@ -294,7 +295,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Ctrl + K**: Manually assign a Nexus ID.
 *   **Ctrl + I**: Install a mod from an archive file. **`.zip`, `.7z`, and `.rar`** archives are all supported.
 *   **Ctrl + R**: **Read Description** - Speaks the full summary of the mod.
-*   **Ctrl + E**: **Change the Mod's Settings** - Where the mod's author has described its settings, they are offered as a **list to arrow through**, with each setting's explanation and the values it accepts. See "The Mods Menu" above for how this differs from the two below.
+*   **Ctrl + E**: **Change the Mod's Settings** - Where the mod's author has described its settings, they are offered as a **list to arrow through**, with each setting's explanation and the values it accepts. See "How the Mods Menu Is Organized" below for how this differs from the two after it.
 *   **Ctrl + Shift + M**: **Edit the Config File Directly** - Opens the mod's `config.json` as text in the JSON editor, for a setting the author never described or a value outside the ones they listed. Most mods only write a config file the first time the game runs with the mod enabled.
 *   **Ctrl + M**: **Edit the Manifest** - Opens the mod's manifest, which holds its identity — name, version and update links — rather than its settings.
 *   **Apps Key**: View mod details.
@@ -312,7 +313,6 @@ Each row says the mod, when it was backed up and its size: "Chat Commands, backe
 *   **Enter**: **Restore Backup** - Puts that version back in place of the installed copy, which is backed up first, into Replaced Copies.
 *   **Delete**: Permanently remove the backup zip file. You hear "Backup deleted.", then the row you land on.
 *   **Ctrl + Shift + D**: **Delete Old Backups** - Deletes all but the most recent archives based on your settings.
-*   **Ctrl + Shift + S**: **Cancel Downloads** - Stops whatever is downloading, and stops Update All if it is running. Mods already updated stay updated. A mod already being installed finishes first, and you are told so; nothing after it is updated.
 
 ### SMAPI Log Tab Shortcuts (Stardew Valley only)
 *The SMAPI Log tab appears only when Stardew Valley is the active game, since SMAPI is its mod loader.*
@@ -697,7 +697,7 @@ The Witcher 3 needs no mod loader — no SMAPI, no script extender, no BepInEx. 
 *   **No version is invented.** Where a mod says nothing about its version, the list says **"version unknown"** rather than making one up. A made-up 1.0.0 looks like something you can act on, and it would make every such mod appear older than any release on Nexus.
 *   **A framework that ships as a dozen folders is shown as one.** Many Witcher mods install shared-utility folders alongside themselves — Random Encounters Reworked brings ten. Folders sharing a `mod_family_*` name are collapsed into a single group you can expand with Right Arrow, so they take one row in the list instead of ten.
 *   **Mods that install files elsewhere in the game** — a `dlc` folder, or the menu XMLs under `bin` — have those parts put where they belong and **remembered**, so uninstalling the mod takes them with it instead of leaving them behind.
-*   **Mods that ship as an installer program.** Some mods, the accessibility mod among them, install themselves by running a setup program, because what they install goes to several places at once that no file copy would get right. The manager downloads and unpacks the archive, finds the installer, **asks you before running anything**, and waits while you go through it. When the installer closes, the manager picks up again and adds the mod to your list like any other. Use **Mods → Install Mod From File** with the release archive.
+*   **Mods that ship as an installer program.** Some mods, the accessibility mod among them, install themselves by running a setup program, because what they install goes to several places at once that no file copy would get right. The manager downloads and unpacks the archive, finds the installer, **asks you before running anything**, and waits while you go through it. When the installer closes, the manager picks up again and adds the mod to your list like any other. Use **Mods → Install from File** (**Ctrl + I**) with the release archive.
     *   **The manager records what the installer did**, by comparing the game folder before and after, so it knows which files outside the mod folder belong to that mod.
     *   **Deleting the mod offers to run its own uninstaller** if it registered one — that uninstaller holds the installer's list of every file it wrote, which is more than the manager could work out for itself. Saying no still removes the mod folder.
     *   **Disabling the mod moves those outside files out of the game** into a holding folder called `_KinetixDisabledMods`, and enabling puts them back unchanged. This matters: a plugin sitting beside the game's executable is loaded by the game whatever the mod folder is called, so renaming the folder alone would leave a "disabled" mod still running.
@@ -1010,7 +1010,7 @@ and "open now" on the one this session is.
 *   **Delete** deletes a pack. Its folder goes to the Recycle Bin, and the question names the worlds inside it,
     because a pack's worlds live in the pack.
 *   The buttons above the list: **Install Modpack from File**, **Search for Modpacks**, **Import from Modrinth
-    App**, and **Check Packs for Updates**.
+    App**, **Check Packs for Updates**, and **Remove Unused Versions**.
 
 #### Finding and installing a pack
 
@@ -1215,7 +1215,7 @@ You see both together, and where the two describe the same mod, **yours wins**. 
 
 Everything above is about reading a list. To *build* one, turn on **Curation Mode** with **Ctrl + Shift + F7**. The manager says which way you have just switched it, and it stays switched between sessions.
 
-Curation Mode is off to begin with, and while it is off the Suggested Mods submenu holds only the two commands that make sense — reading the list and importing one. Turn it on and three more appear.
+Curation Mode is off to begin with, and while it is off the Suggested Mods submenu holds only the commands anyone can use: reading the list, importing a list, exporting your own, and the Curation Mode switch itself. Turn it on and three more appear.
 
 With Curation Mode on:
 
@@ -1323,6 +1323,8 @@ can go back to the version you had from the Backups tab.
 Where both sources have an answer and they disagree, the manager takes the **newer** of the two. A Nexus page's version field is typed in by the author and often lags the files actually on the page, so the mod database is frequently ahead of it. A mod is only ever listed in the Updates tab when the version it would fetch really is newer than the one you have.
 
 When that lookup identifies a mod, the manager also **remembers its Nexus page**, so a mod that arrived with no link becomes fully actionable — you can download its update and open its page like any other. This happens quietly during a normal update check; nothing in the mod's own files is edited.
+
+**A mod page's version number is maintained by hand.** Authors upload a new file and sometimes forget to change the version shown on the page, so the page can read older than the release it is offering. When the page claims there is nothing new, the manager also reads the page's **Files** tab and compares the newest **main** download against what you have installed — so a forgotten version number no longer hides an update from you. Files filed as optional, old version or archived are ignored, since those are not what the page is offering. This costs an extra look-up, so it is taken only when the first answer was "up to date", and it is skipped when your Nexus API allowance is running low.
 
 ### When a mod is offered the same update forever
 
@@ -1504,8 +1506,6 @@ The reports in the **Mods menu → Health and Reports** submenu help you spot pr
 
 ### Check My Setup (Setup Health Check) (Ctrl + Shift + K)
 
-**A mod page's version number is maintained by hand.** Authors upload a new file and sometimes forget to change the version shown on the page, so the page can read older than the release it is offering. When the page claims there is nothing new, the manager now also reads the page's **Files** tab and compares the newest **main** download against what you have installed — so a forgotten version number no longer hides an update from you. Files filed as optional, old version or archived are ignored, since those are not what the page is offering. This costs an extra look-up, so it is taken only when the first answer was "up to date", and it is skipped when your Nexus API allowance is running low.
-
 If you'd rather run everything at once than open each report separately, choose **Check My Setup** (or press **Ctrl + Shift + K**). It runs all the individual checks in one pass — the **Windows runtime** (see below), **missing requirements** (missing masters, script extender, and Nexus requirements), the **plugin limit**, **incomplete mods** (a mod that needs two downloads and only got one, such as SSE Engine Fixes without its preloader — press **Enter** on that line to fetch the missing part), **files no longer used** (a part of a mod your game version has outgrown, such as the Engine Fixes preloader on Skyrim 1.7.99 and newer — **Enter** offers to send it to the Recycle Bin), **known-broken or incompatible mods**, and **file conflicts** — and gives you a **single spoken summary** broken down by category, for example *"Setup health check found 3 problems: 1 missing requirement, 2 broken or incompatible mods."* If everything's fine it says *"No problems found. Your setup looks healthy."*
 
 The findings then appear as one combined list, most serious first. Each row keeps the same actions it has in its own report: press **Enter** to search for or open a missing mod, **Delete** to hide a requirement warning that doesn't apply to you, or **F9** to ask the AI about that finding (if AI is set up). You stay in the list after fetching a missing part or removing a leftover one, and that line disappears once it's fixed. Only searching for a missing mod takes you out of the list, because the search happens on the Search for Mods tab. This is the quickest way to check a setup is sound — for example after installing several mods, or before launching.
@@ -1567,7 +1567,7 @@ Every change is written back immediately, and all your comments and other settin
 
 ### Editing a Mod's Settings (Stardew Valley)
 
-Choose **Edit Mod Config** for the selected mod to change its settings from inside the manager. What you get depends on the mod.
+Choose **Change Selected Mod's Settings** (**Ctrl + E**, in **Mods → Selected Mod**) to change its settings from inside the manager. What you get depends on the mod.
 
 **Content Patcher packs** — most Stardew content mods — get a proper **settings list**. Content Patcher mods let their author declare exactly which values each setting accepts, and the manager reads that, so you get a list of the mod's settings, each read as **"setting name: current value"**:
 
@@ -1580,7 +1580,7 @@ Why this matters: the file a Content Patcher mod leaves you to edit contains onl
 
 A mod that has **never been run** still works here: it has no settings file yet, so every setting shows the author's default, and the file is created the moment you change one.
 
-**Every other mod** gets the plain JSON editor as before — the mod's `config.json` in a text box, with **Ctrl + S** to save and a syntax check before it's written.
+**Other Stardew mods** get a settings list too, built from the mod's own `config.json`, whenever that file holds settings the manager can read. A yes-or-no setting is offered as two choices. A key binding is offered as a list of key names, with **Something else** at the end for typing a combination. A number is typed and checked to be a number. Anything else is typed. Only a mod with nothing the manager can offer this way, such as one that has no settings file yet, opens in the plain JSON editor, with **Ctrl + S** to save and a syntax check before it's written. **Ctrl + Shift + M** always opens the file itself as text.
 
 ### Editing a Mod's Settings (The Witcher 3)
 
@@ -1687,7 +1687,7 @@ A few things to know:
 
 *   **Premium** Nexus accounts download every mod automatically. **Free** accounts can't (a Nexus rule), so their mods are listed in the report for you to fetch by hand with the Mod Manager Download button — each one still installs through the manager when you click it.
 *   The Collection must be for the **game you currently have loaded**; the manager checks and tells you if it's for a different game.
-*   If a mod has a **FOMOD** option wizard, it opens during the install so you can choose your options; after you select **OK**, the next mod continues automatically.
+*   If a mod has a **FOMOD** option wizard, it opens during the install so you can choose your options; after you select **Install** on its last step, the next mod continues automatically.
 
 ---
 
@@ -1726,7 +1726,7 @@ Moonlight Peaks loads its mods through **BepInEx**, a mod loader for Unity games
 ### BepInEx itself
 
 *   **There is nothing separate to launch.** BepInEx hooks into the game through a file called `winhttp.dll` that sits next to the game program. That means pressing **F5** starts Moonlight Peaks normally, and that *is* the modded launch — there's no "launch with mods" versus "launch without". Because there's no loader to run, the manager asks **Steam** to start the game, which avoids the game restarting itself and loading your mods twice.
-*   **The manager installs BepInEx for you.** When you load a Moonlight Peaks session and BepInEx isn't there, the manager says so out loud and offers to download and install it. This matters more here than for other games: without BepInEx the game starts perfectly happily with **none** of your mods running, and nothing in the game tells you why. You can also install it any time from **Mods → Install Accessibility Suite**, where it's listed as "BepInEx (Mod Loader)".
+*   **The manager installs BepInEx for you.** When you load a Moonlight Peaks session and BepInEx isn't there, the manager says so out loud and offers to download and install it. This matters more here than for other games: without BepInEx the game starts perfectly happily with **none** of your mods running, and nothing in the game tells you why. You can also install it any time from **Mods → Game and Maintenance → Install Moonlight Peaks Accessibility Suite**, where it's listed as "BepInEx (Mod Loader)".
 *   **The version is pinned deliberately.** The manager installs **BepInEx 5.4.23.5**, because Moonlight Peaks mods are built against BepInEx 5 and will not load under BepInEx 6. If you already have a different version installed, the manager mentions it once and otherwise leaves it alone.
 *   If you press **F5** with BepInEx missing, the manager warns you before the game starts, so you don't spend ten minutes wondering where your mods went.
 
@@ -1744,7 +1744,7 @@ Moonlight Peaks mods don't ship a manifest file the way Stardew mods do. Instead
 
 Most Moonlight Peaks mods keep their settings in a configuration file that BepInEx writes for them, and those files contain the author's own explanation of what every setting does. Two features use this:
 
-*   **Mods → Edit Mod Settings (Config Files)** lists every installed mod that has settings, by name. Choose one to edit it in the same accessible editor used for the Skyrim and Fallout INI files.
+*   **Mods → Game and Maintenance → Edit Mod Settings (Config Files)** lists every installed mod that has settings, by name. Choose one to edit it in the same accessible editor used for the Skyrim and Fallout INI files.
 *   **F3 (Mod Documentation)** builds a settings reference for every installed mod, straight from those same files — so each mod's settings are listed with the author's description, the current value, the default, and the accepted values. Because it's read from what's installed, it always matches the version you actually have. If nothing appears, run the game once so the mods can write their settings files.
 
 ### The game's own key bindings
@@ -1798,8 +1798,8 @@ The manager uses audio cues to provide feedback. Demo these under **Help -> Soun
 
 The sounds are kept short on purpose. They play while your screen reader is talking, so the sound tells you what happened without interrupting the sentence.
 
-1.  **Connect**: Played when you connect to where the game's mods come from, such as logging in to Nexus Mods. **For Minecraft** it plays when you join a multiplayer server instead, since Modrinth has no account to log in to. The manager reads this from the game's own log.
-2.  **Disconnect**: Played when the API key is invalid, you are logged out, or the program closes. **For Minecraft** it plays when you leave a multiplayer server.
+1.  **Connect**: Played when you connect to where the game's mods come from, such as logging in to Nexus Mods or adding a Modrinth key that works. **In Minecraft** it also plays when your Microsoft sign-in is confirmed, and when you join a multiplayer server or a Realm. The manager learns about servers from the game's own log.
+2.  **Disconnect**: Played when the API key is invalid, you are logged out, or the program closes. **In Minecraft** it also plays when you leave a server, switch to offline play, or sign out.
 3.  **Enable**: Played when one or more mods are enabled.
 4.  **Disable**: Played when one or more mods are disabled or deleted.
 5.  **Error**: Played when something fails: a download, an install, or a check.

@@ -56,7 +56,8 @@ internal static class Program
 			: "The error has been logged and the application will try to continue.";
 		MessageBox.Show("An unexpected error occurred:" + Environment.NewLine + Environment.NewLine
 			+ ex.Message + Environment.NewLine + Environment.NewLine + note + Environment.NewLine + Environment.NewLine
-			+ "It has been written to the log. Press Control plus Shift plus L in the manager to open the log, "
+			// The menu, not a key: the key can be changed, and this box can come up before the settings are read.
+			+ "It has been written to the log. Choose Open Error Log on the manager's View menu to open the log, "
 			+ "or find it at:" + Environment.NewLine + DiagnosticLog.Path,
 			"Unexpected Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 	}

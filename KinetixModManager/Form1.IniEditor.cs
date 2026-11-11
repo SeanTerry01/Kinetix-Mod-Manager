@@ -241,7 +241,7 @@ public partial class Form1
                 if (result == current) return null;
                 doc.SetValue(row.Entry.Section, row.Entry.Key, result);
                 if (!SaveDoc()) return null;
-                return new ResultBeforeReturning(Loc.T("ini.setTo", row.Entry.Key, result), () => Reload(index), NamesRow: true);
+                return new ResultBeforeReturning(Loc.T("ini.setTo", row.Entry.Key, result.Length > 0 ? result : Loc.T("ini.valueEmpty")), () => Reload(index), NamesRow: true);
             }
 
             BepInExSetting? declared = BepInExConfigSchema.Find(schema, row.Entry.Section, row.Entry.Key);

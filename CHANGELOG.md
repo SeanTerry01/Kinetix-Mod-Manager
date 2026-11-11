@@ -1,4 +1,4 @@
-﻿# Unreleased
+﻿# Version 1.6.0
 
 ## 🐛 What the manager says comes in the right order, and all of it
 
@@ -910,10 +910,10 @@ brings across the ones you already have in the Modrinth App.
 
 ## ✨ One place for your mod site keys
 
-*   **File → "Mod source API keys..."** lists every site that asks for one and whether you have given it. Press **Enter** on a site: if it has no key, you are asked to type one; if it has, the key is shown in a **read-only box** so you can check it against what you meant to type. **Edit key** asks for a new one either way — which is the point, because a key typed wrongly months ago cannot be fixed by a screen that only shows it back to you. **Delete** forgets one, after asking.
-*   **Arrowing down the list never reads your keys out loud.** A row says the site's name and whether a key is saved, nothing more. The key itself is only spoken on the one row you open — a credential read out in passing is read out in whatever room you are sitting in.
+*   **File → "Mod source API keys..."** lists every site that asks for one and whether you have given it. Press **Enter** on a site: if it has no key, you are asked to type one; if it has, the key is in a **read-only, protected box**, with **Show key** after it, so you can check it against what you meant to type. **Edit key** asks for a new one either way — which is the point, because a key typed wrongly months ago cannot be fixed by a screen that only shows it back to you. **Delete** forgets one, after asking.
+*   **Arrowing down the list never reads your keys out loud.** A row says the site's name and whether a key is saved, nothing more. The key itself is only spoken when you press **Show key** on the one you opened — a credential read out in passing is read out in whatever room you are sitting in.
 *   There is also a button that **opens the site's page for getting a key**, so you are not left to find it.
-*   **Sites that need nothing are not listed.** Modrinth and GitHub need no account at all, so three rows saying "nothing to do here" would only be in the way.
+*   **Sites that need nothing are not listed.** GitHub needs no account at all. Modrinth is listed as optional (see "Modrinth: an optional key, for what you follow" above).
 *   **Keys are stored encrypted**, the same way your Nexus key and your AI provider key already were.
 *   **Sites with a login rather than a key end up with a key too** — that is what a login is for. Nexus can sign you in on its own website and hand the manager a key without you typing one, which is better because the manager never sees your password and you can cancel the key without changing it. That is built and waiting on Nexus approving the manager as an application; until then the screen says so plainly rather than offering a button that cannot work.
 
@@ -990,15 +990,11 @@ brings across the ones you already have in the Modrinth App.
 
 ## ✅ Tests
 
-*   **1,398 passing**, up from 1,009 — and all of them now pass off Windows too, where sixteen used to fail.
+*   **2,164 passing**, and all of them now pass off Windows too, where sixteen used to fail.
 *   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 *   Twenty-six of them cover unpacking a downloaded mod, including one that extracts a **real .7z** rather than a stand-in — the only way to know that reading one without `7za.exe` actually works.
 *   A new guard fails the build if a game asks for a sound theme that is not there, or if a theme is missing a folder — the kind of gap that plays the Default sounds and is never noticed.
-
----
-
-# Version 1.6.0
 
 ## ✨ New: Minecraft (Java Edition) is the sixth supported game
 

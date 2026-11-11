@@ -7,7 +7,7 @@ A fully keyboard-driven, screen-reader-compatible mod manager for **Stardew Vall
 ## Features
 
 - **Installed Mods** — browse, enable/disable, delete, and search your mod list with real-time audio feedback
-- **Update Checking** — detects available updates via the Nexus Mods API, via Modrinth for Minecraft, and for Stardew Valley via SMAPI's own mod database, which also covers mods hosted on ModDrop and CurseForge; one-click "Update All" for Premium members
+- **Update Checking** — detects available updates via the Nexus Mods API, via Modrinth for Minecraft, and for Stardew Valley via SMAPI's own mod database, which also covers mods hosted on ModDrop and CurseForge; one-click "Update All" (Ctrl+U): Modrinth, GitHub and Minecraft updates for any account, and Nexus updates for Nexus Premium members
 - **Mod Discovery** — search for mods without leaving the app, and **choose where they are searched for**: every source at once, one source, or a preferred source with the rest a keypress away. Minecraft searches Modrinth and needs no account at all
 - **Install from GitHub** — name a repository (or paste its address) and the newest release is downloaded and installed, for the many mods published there and nowhere else
 - **Mod Source API Keys** — one screen listing every site that wants a key, and whether you have given it one; stored encrypted. Every key box, here and in Settings, is a protected box with a **Show key** button straight after it, so a key is only ever read out when you ask for it
@@ -78,6 +78,7 @@ Press **F1** at any time to open the full User Manual, or **Shift + F1** for con
 | Search the other mod sources too (Discovery list) | Alt + O |
 | Search installed mods | Ctrl + F |
 | Update all mods | Ctrl + U |
+| Cancel downloads / stop Update All | Ctrl + Shift + S |
 | Save profile | Ctrl + S |
 | View dependencies | Ctrl + Y |
 | Quick-fix missing dep | Ctrl + Q |

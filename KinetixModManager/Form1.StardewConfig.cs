@@ -55,7 +55,7 @@ public partial class Form1
 					if (chosen == setting.Value) return null;
 					if (!StardewModConfig.Write(modFolder, setting, chosen, configFile))
 						return new ResultBeforeReturning(Loc.T("sdvconfig.saveFailed", setting.Label));
-					return new ResultBeforeReturning(Loc.T("sdvconfig.setTo", setting.Label, chosen), () => Reload(index), NamesRow: true);
+					return new ResultBeforeReturning(Loc.T("sdvconfig.setTo", setting.Label, chosen.Length > 0 ? chosen : Loc.T("sdvconfig.valueEmpty")), () => Reload(index), NamesRow: true);
 				}
 
 				EditStardewSetting(setting, Act);

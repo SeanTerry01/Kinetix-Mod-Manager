@@ -48,7 +48,7 @@ public partial class Form1
 			Font = new Font("Segoe UI", 12f),
 			AccessibleName = Loc.T("soundDemo.soundList")
 		};
-		foreach (string soundName in SoundEngine.SoundDescriptions.Keys)
+		foreach (string soundName in SoundEngine.SoundNames)
 		{
 			lb.Items.Add(soundName);
 		}
@@ -109,7 +109,10 @@ public partial class Form1
 	{
 		LogFailure("Themes", $"Could not change the themes folder {folder}", ex);
 		_soundEngine.Play("error");
-		SpeakBox(Loc.T("themeMgr.folderRefused", folder));
+		// Your own themes are in the data folder, where copying the manager elsewhere or running it as an administrator
+		// changes nothing, so that advice is only for the folder beside the program.
+		bool besideProgram = Path.GetFullPath(folder).StartsWith(Path.GetFullPath(_themeFolders.Shipped), StringComparison.OrdinalIgnoreCase);
+		SpeakBox(Loc.T(besideProgram ? "themeMgr.folderRefused" : "themeMgr.userFolderRefused", folder));
 	}
 
 	/// <summary>Opens the audio theme manager dialog for creating, renaming, and switching sound themes.</summary>
@@ -174,7 +177,7 @@ public partial class Form1
 			try
 			{
 				Directory.CreateDirectory(themeFolder);
-				foreach (string key in SoundEngine.SoundDescriptions.Keys)
+				foreach (string key in SoundEngine.SoundNames)
 				{
 					Directory.CreateDirectory(Path.Combine(themeFolder, key));
 				}
@@ -204,7 +207,7 @@ public partial class Form1
 			string[] directories = Directory.Exists(_themeFolders.User) ? Directory.GetDirectories(_themeFolders.User) : Array.Empty<string>();
 			foreach (string themeFolder in directories)
 			{
-				foreach (string soundName in SoundEngine.SoundDescriptions.Keys)
+				foreach (string soundName in SoundEngine.SoundNames)
 				{
 					string soundFolder = Path.Combine(themeFolder, soundName);
 					if (!Directory.Exists(soundFolder))

@@ -20,19 +20,12 @@ namespace KinetixModManager;
 public class SoundEngine : ISoundEngine
 {
 	/// <summary>
-	/// Human-readable descriptions for every named sound event, used in the Sound Demo dialog.
+	/// Every named sound event, in the order the Sound Demo lists them. What each one means is said from the
+	/// phrase file ("sound.&lt;name&gt;"), so it can be translated. This used to carry its own English descriptions too,
+	/// which nothing read and which had drifted from what the sounds do.
 	/// </summary>
-	public static readonly IReadOnlyDictionary<string, string> SoundDescriptions =
-		new Dictionary<string, string>
-		{
-			{ "connect",            "Played when successfully connected to Nexus Mods. For Minecraft, whose mods come from Modrinth and need no account, it plays when your Microsoft sign-in is confirmed for online play, and when you join a multiplayer server." },
-			{ "disconnect",         "Played when you are disconnected, need to enter an API key, when the session is closed, or when the program closes. For Minecraft, when you leave a server, switch to offline play or sign out." },
-			{ "enable",             "Played when one or more mods are enabled." },
-			{ "disable",            "Played when one or more mods are disabled or deleted." },
-			{ "error",              "Played when an error occurs, such as a failed download." },
-			{ "loading_indicator",  "A pulsing sound that plays while the manager is checking for updates in the background." },
-			{ "load_complete",      "Played when an operation finishes, such as installing a mod, updating, importing, or checking for updates." }
-		};
+	public static readonly IReadOnlyList<string> SoundNames =
+		new[] { "connect", "disconnect", "enable", "disable", "error", "loading_indicator", "load_complete" };
 
 	private readonly SoundThemeFolders _themes;
 	private readonly AppSettings _settings;

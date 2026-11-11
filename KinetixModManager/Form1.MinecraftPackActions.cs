@@ -814,7 +814,7 @@ public partial class Form1
 	/// Whether a world was last played in a newer Minecraft than the pack runs, or null when that cannot be told.
 	///
 	/// <para>
-	/// ⚠️ Not only the launcher's cached list. <c>versionsersion_manifest_v2.json</c> is the official launcher's, which a
+	/// ⚠️ Not only the launcher's cached list. <c>versions\version_manifest_v2.json</c> is the official launcher's, which a
 	/// Minecraft installed by the manager never has, so the warning could never fire there; and a stale copy lacks newer
 	/// versions. Mojang's list is fetched (a few seconds at most, once a session), and the cached one is tried when that
 	/// fails or does not know the version.

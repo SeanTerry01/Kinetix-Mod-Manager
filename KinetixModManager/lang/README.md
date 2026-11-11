@@ -55,7 +55,7 @@ Some lines contain numbered placeholders in curly braces. The program replaces t
 runtime with real values (a mod name, a number, a keyboard shortcut, etc.).
 
 ```json
-  "themeMgr.activeChanged": "Active theme changed to {0}. Press Save to confirm.",
+  "themeMgr.activeChanged": "Active theme changed to {0}. Choose Save and Close to keep it.",
 ```
 
 Here `{0}` becomes the theme's name. Rules:
@@ -67,8 +67,8 @@ Here `{0}` becomes the theme's name. Rules:
 - **Do not invent new placeholders** and do not drop any that were in the English line.
   If the English text has `{0}` and `{1}`, your translation must also use `{0}` and `{1}`.
 
-A few placeholders include a format like `{1:F0}` (a percentage). Keep the `:F0` part
-exactly as-is — just keep the whole `{1:F0}` token intact.
+One placeholder carries a number format: `{0:0.#}` in `backups.megabytes` (a size rounded
+to one decimal place). Keep the whole token, `:0.#` included, exactly as it is.
 
 ---
 
@@ -109,7 +109,7 @@ Translate the *meaning*, but keep these unchanged when they appear inside a line
   language will expect to hear.
 
 You do **not** need to translate anything that isn't in `en.json`. Some on-screen lists
-(category filters, the log filter, wiki categories) are deliberately kept in English
+(the category filter's All Categories, and the wiki's Select Category) are deliberately kept in English
 because the program matches them internally — they aren't in this file, so there's
 nothing to do.
 

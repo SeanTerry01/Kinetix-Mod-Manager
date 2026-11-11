@@ -304,6 +304,8 @@ From `reference-build-publish-release`. The publish output was verified complete
     `AppVersion` in `KinetixModManager/setup.iss`. Both currently read **1.4.5**. Suggested: **1.5.0** — two new
     games (Moonlight Peaks, The Witcher 3), per-copy game installs, and the windows-to-panels conversion is well
     past a patch release.
+    **In the same step, rename `# Unreleased` in `CHANGELOG.md` to `# Version X.Y.Z`.** If that version already
+    has a section, merge the two under one heading, so F2 shows one entry for it. Refresh any test count it gives.
 2.  **Re-publish after the bump and check the exe's FileVersion.** A Debug build does not pick up a version
     change, so this is the step that catches a bump that did not take:
     `dotnet publish KinetixModManager/KinetixModManager.csproj -c Release -r win-x64 --self-contained true`

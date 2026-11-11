@@ -54,9 +54,17 @@ public partial class Form1
 	private readonly Dictionary<string, (string Key, string Action)> _shortcutLabels = new();
 
 	/// <summary>A menu or button label that names its shortcut, remembered so a remap can correct it.</summary>
+	/// <remarks>
+	/// A command with no key gets its label without the key: "Refresh All", not "Refresh All (Unmapped)", which three
+	/// menu items read by default. The phrase is filled with a marker that is then cut out with its brackets, so no
+	/// second phrase is needed per label and a translation that puts the key somewhere else still works.
+	/// </remarks>
 	private string ShortcutLabel(string key, string action)
 	{
-		string text = Loc.T(key, GetShortcutString(action));
+		const string noKey = "\u0001";
+		string text = ShortcutIsSet(action)
+			? Loc.T(key, GetShortcutString(action))
+			: System.Text.RegularExpressions.Regex.Replace(Loc.T(key, noKey), @"\s*[\(\[]\u0001[\)\]]", "").Replace(noKey, "").Trim();
 		_shortcutLabels[text] = (key, action);
 		return text;
 	}
@@ -1300,7 +1308,7 @@ public partial class Form1
 			{
 				// How many matched, not how many fit on the page: "Found 20 mods" was said for 27.
 				// And packs are called packs: a modpack search said "Found 48 mods".
-				string found = loadMore ? Loc.T("discovery.added", results.Count)
+				string found = loadMore ? Loc.T(SearchingForModpacks ? "discovery.addedPacks" : "discovery.added", results.Count)
 					: SearchingForModpacks ? Loc.T(total > results.Count ? "discovery.foundPacksListed" : "discovery.foundPacks", total, results.Count)
 					: total > results.Count ? Loc.T("discovery.foundListed", total, results.Count)
 					: Loc.T(results.Count == 1 ? "discovery.foundOne" : "discovery.found", results.Count);
@@ -1312,7 +1320,8 @@ public partial class Form1
 			{
 				Speak(_nexusService.LastSearchFailed
 					? Loc.T("discovery.noAnswer")
-					: (loadMore ? Loc.T("discovery.noMore") : Loc.T("discovery.none")) + hiddenByLanguage);
+					: (loadMore ? Loc.T(SearchingForModpacks ? "discovery.noMorePacks" : "discovery.noMore")
+						: Loc.T(SearchingForModpacks ? "discovery.nonePacks" : "discovery.none")) + hiddenByLanguage);
 			}
 		}
 		catch (Exception ex)

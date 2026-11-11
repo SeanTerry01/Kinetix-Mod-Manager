@@ -136,6 +136,8 @@ public partial class Form1
 		grpSelected.DropDownItems.Add(ShortcutLabel("menu.viewChangelog", "ViewChangelog"), null, delegate { ViewModChangelog(); });
 		grpSelected.DropDownItems.Add(ShortcutLabel("menu.viewDescription", "ViewDescription"), null, delegate { ViewModDescription(); });
 		grpSelected.DropDownItems.Add(ShortcutLabel("menu.endorse", "Endorse"), null, delegate { EndorseSelectedMod(); });
+		// Two messages send the player here by name, and it was in no menu, only on its key.
+		grpSelected.DropDownItems.Add(ShortcutLabel("menu.manualId", "ManualID"), null, delegate { Fire(LinkModUpdateSource(), "LinkModUpdateSource"); });
 		grpSelected.DropDownItems.Add(Loc.T("menu.verifyDeployment"), null, delegate { VerifyModDeployment(); }).Name = "menuVerifyDeployment";
 		menuMods.DropDownItems.Add(grpSelected);
 

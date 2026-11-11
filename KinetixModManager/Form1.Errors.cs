@@ -67,6 +67,8 @@ public partial class Form1
 	private void SpeakError(string what, Exception ex)
 	{
 		_soundEngine.Play("error");
-		Speak(Loc.T("err.actionFailed", what, FriendlyError(ex)));
+		// A reason can already be a whole sentence (.NET's own messages, or "The download was cancelled."), so the stop is
+		// added only where it is missing: it was said twice. And the full stop on "what" would land before the colon.
+		Speak(Loc.T("err.actionFailed", what.TrimEnd().TrimEnd('.'), EndSentence(FriendlyError(ex))));
 	}
 }
