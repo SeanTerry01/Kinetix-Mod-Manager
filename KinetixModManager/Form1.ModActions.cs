@@ -730,7 +730,7 @@ public partial class Form1
 	/// <summary>Permanently deletes the selected backup archive after user confirmation.</summary>
 	private void DeleteSelectedBackup()
 	{
-		if (listBackups.SelectedItem is BackupItem backupItem && SpeakBox(Loc.T("modactions.deleteBackupConfirm", backupItem.Name), Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo) == DialogResult.Yes)
+		if (listBackups.SelectedItem is BackupItem backupItem && SpeakBox(Loc.T("modactions.deleteBackupConfirm", backupItem.ToString()), Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 		{
 			try
 			{

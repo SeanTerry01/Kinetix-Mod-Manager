@@ -834,7 +834,8 @@ public partial class Form1
 			return;
 		}
 		int oldIndex = listBackups.SelectedIndex;
-		string? oldName = (listBackups.SelectedItem as BackupItem)?.Name;
+		// By file: two backups of one mod share a name.
+		string? oldName = (listBackups.SelectedItem as BackupItem)?.FullPath;
 
 		listBackups.BeginUpdate();
 		listBackups.Items.Clear();
@@ -849,7 +850,7 @@ public partial class Form1
 			{
 				for (int i = 0; i < listBackups.Items.Count; i++)
 				{
-					if ((listBackups.Items[i] as BackupItem)?.Name == oldName)
+					if (string.Equals((listBackups.Items[i] as BackupItem)?.FullPath, oldName, StringComparison.OrdinalIgnoreCase))
 					{
 						newIndex = i;
 						break;

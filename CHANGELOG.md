@@ -11,6 +11,8 @@
 *   **Lists no longer say "list" twice.** "Installed Mods List list" is now "Installed Mods list", and the same for every list.
 *   **Starting with no game loaded** no longer opens on a stray "1 of 6", ahead of the welcome. And arrowing through the games
     while the welcome is still being read now says where you are, "Minecraft, 2 of 6", instead of the game alone.
+*   **Backups say when they were taken.** "Chat Commands, 3 minutes ago, 40 kilobytes" instead of "Chat Commands" and
+    "Chat Commands_Delete", so two backups of one mod can be told apart.
 *   **Changing a mod setting says where you are.** Choosing a value in the Content Patcher, MCM, INI or Stardew settings
     lists now says "FriendableZuzuNPCs set to Stella. 4 of 12" in one sentence. The position was lost.
 *   **Closing a screen no longer reads the window first.** The title bar, or a bare "window" from inside another screen, was
