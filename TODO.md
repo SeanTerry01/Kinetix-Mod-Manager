@@ -21,8 +21,8 @@ Done or decided everything else on the list. What is here needs a person, or is 
   (needs a second copy of a game), a download's tones, Cody's Linux checks, and the release checksum on the next release.
   Everything else in his "what to check" document passed on 2026-11-10.
 - [ ] **Signing the manager's installer: decided against for now** (2026-11-10), because of the cost. The checksum check stays.
-- [ ] **What to say when a result has to come first** on a return to a list (`SayOnReturnTo`, `SayAfterPrompt`, Space). These still
-  cut NVDA off, which leaves a line in its speech history. Question put to Sean on 2026-11-10; see `LetReaderReadTheRowAsync`.
+- [ ] **Results on a return to a list are said first ("way 2", 2026-11-11).** Not yet heard: ignoring or recording an update,
+  deleting a save, a download or a profile, and the MCM screen. See `ActBeforeReturning`.
 - [ ] **A stray "unavailable" before a question** opened from Settings or a list: NVDA sees the control behind being switched off
   before it has caught up with focus moving into the question. Explained to Sean, not fixed.
 - [ ] **Source guards read only the app project,** not `Kinetix.Core` or `Kinetix.Gtk`. `AppSettings.cs:875` and `GameLogFiles.cs:42` would need
