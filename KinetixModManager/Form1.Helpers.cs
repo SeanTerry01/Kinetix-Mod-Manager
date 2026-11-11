@@ -597,8 +597,8 @@ public partial class Form1
 	/// ⚠️ But the caption is not <em>wrong</em>, only badly timed — unlike the list case, where what the reader
 	/// said was about a row the user was never on. Swallowing it and stopping there answered "what did that do?"
 	/// and lost "and where am I now?", which is the question the caption and the focused control exist to answer.
-	/// So all three are said here, in the order they are wanted: the result first, then the window, then whatever
-	/// focus came back to. Tolk queues, so they are simply spoken one after another.
+	/// So the result is said first, then whatever focus came back to. (The window's caption was said between them
+	/// until 2026-11-10 — see <see cref="SpeakWithBearings"/>.)
 	/// </para>
 	/// </summary>
 	private async void SpeakAfterForeignWindow(string text)
@@ -656,18 +656,20 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Says a result and then where the user now is: the window's caption, and whatever focus came back to.
+	/// Says a result and then where the user now is: whatever focus came back to.
 	///
-	/// The orientation is the half a plain swallow throws away. The caption after a foreign window closes is not
-	/// wrong, only badly timed, so it is put back behind the result rather than destroyed. Tolk queues, so the
-	/// three simply follow one another.
+	/// The orientation is the half a plain swallow throws away. Tolk queues, so the two simply follow one another.
+	///
+	/// The window's caption used to be said between them, on the grounds that the reader's own reading of it was
+	/// only badly timed. Sean asked for it to go (2026-11-10): coming back from a file picker to the window you
+	/// opened it from, the full title is a long sentence telling you nothing you did not know, standing between
+	/// the result and the row you are on.
 	/// </summary>
 	private void SpeakWithBearings(string text)
 	{
 		if (_shuttingDown || string.IsNullOrWhiteSpace(text)) return;
 
 		Speak(text, interrupt: true);
-		Speak(Text);
 
 		// The reader's own reading of the row was swallowed with the rest of its reaction, so the row is said here too.
 		// A position alone left "12 of 149" with nothing saying which mod that is.
