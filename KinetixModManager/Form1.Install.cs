@@ -808,6 +808,8 @@ public partial class Form1
 			SetStatus(Loc.T("backups.restoring", name), speak: !startSaid);
 			BackupRestore.RestoreResult restored = await Task.Run(() =>
 				BackupRestore.RestoreWithResult(backup.FullPath, modsFolder, backupsFolder, installed, profile, LogError));
+			// A BepInEx mod deleted since its patchers have been removed with it carries them in its backup. Back they go.
+			BepInExPatcherFiles.RestoreStash(restored.Destination, _settings.ActiveGame, LogError);
 
 			await RefreshModList(checkUpdates: false);
 			if (IsBethesdaGame)

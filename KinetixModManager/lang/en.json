@@ -1134,7 +1134,7 @@
   "saves.detailsNoMissing": "All plugins this save needs are still active.",
   "saves.detailsMissing": "{0} {0|plugin|plugins} this save needs {0|is|are} no longer active: {1}. Loading this save may crash or lose content.",
   "saves.detailsPluginsUnknown": "The plugin list could not be read for this save, so missing-mod warnings are unavailable.",
-  "saves.deleteConfirm": "Delete save \"{0}\"? It and any script-extender co-save will be sent to the Recycle Bin.",
+  "saves.deleteConfirm": "Delete the save {0}? It and any script-extender co-save will be sent to the Recycle Bin.",
   "saves.deleteTitle": "Delete Save",
   "saves.deleted": "Save deleted. {0} remaining.",
   "saves.deletedLast": "Save deleted. No saves remain.",

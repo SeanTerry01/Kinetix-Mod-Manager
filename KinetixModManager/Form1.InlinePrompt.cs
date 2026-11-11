@@ -286,6 +286,18 @@ public partial class Form1
 	/// </summary>
 	private bool _nextOverlayReturnsQuietly;
 
+	/// <summary>
+	/// Set by an answer acted on before its question closes (see <see cref="ActBeforeReturning"/>), when what it starts will say
+	/// where the user lands once it is done. That question then puts focus back without announcing the row.
+	///
+	/// <para>
+	/// Deleting a mod said "Deleting… Backing it up first", then held the arrival on the list until that had been heard, by
+	/// which time the delete had finished: "Deleted PatcherTest. Installed Mods list, PatcherTest… Enabled", the mod just
+	/// deleted read as there (heard 2026-11-11). The rescan after it says where the user is.
+	/// </para>
+	/// </summary>
+	private bool _returnQuietlyFromThisAnswer;
+
 	/// <summary>The list such a question has just put focus back on, whose arrival List_Enter leaves unsaid. Used up by it.</summary>
 	private ListBox? _arrivingQuietly;
 
@@ -343,6 +355,10 @@ public partial class Form1
 			// currently has focus makes the screen reader announce it as "unavailable" — heard as a stray word
 			// in front of whatever the overlay was opened to say. Moving focus out of the way first means the
 			// control being switched off is not the one being spoken about.
+			// ⚠️ NVDA can still say "unavailable" for the control just left: it speaks a state change on what it still takes for
+			// the focus before it has handled the focus move, and switching things off below is such a change. Traced 2026-11-11
+			// on Delete Old Backups' button: its stateChange reached NVDA before the move did. A 120 ms pause here, pumped, did
+			// not stop it, and was taken out.
 			if (!focusFirst.IsDisposed && focusFirst.CanFocus) focusFirst.Focus();
 
 			// Disable what is already there rather than hiding it, so nothing behind the overlay can be reached
@@ -402,10 +418,13 @@ public partial class Form1
 						// whichever of the list's handlers speaks first, and only ever by a list.
 						// Quietly: a question asked over another screen that closes straight after, which says where the user
 						// lands. Announced here as well, the row of that screen was read on the way past.
-						ListBox? returningTo = returnQuietly ? null : focusBefore as ListBox;
+						// Or set by the answer, while this overlay was the one up. See _returnQuietlyFromThisAnswer.
+						bool quiet = returnQuietly || _returnQuietlyFromThisAnswer;
+						_returnQuietlyFromThisAnswer = false;
+						ListBox? returningTo = quiet ? null : focusBefore as ListBox;
 						// And the position its GotFocus would say: "Changes cancelled. 1 of 1", the 1 of 1 being the list of
 						// worlds that was closing (heard 2026-11-11).
-						if (returnQuietly && focusBefore is ListBox quietList) _arrivingQuietly = quietList;
+						if (quiet && focusBefore is ListBox quietList) _arrivingQuietly = quietList;
 						if (returningTo != null)
 						{
 							// The list must already be on the right mod before anything looks at it. A view that

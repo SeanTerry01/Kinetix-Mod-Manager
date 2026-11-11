@@ -257,6 +257,8 @@ public partial class Form1
 		}
 		catch (MinecraftAuthException ex)
 		{
+			// Microsoft may have rotated the token before a later step failed. Saved, or the next try is refused.
+			if (ex.StoredSignInChanged) _settings.Save();
 			LogFailure("Minecraft", "Could not check the online sign-in", ex);
 
 			_minecraftOnlineWorking = false;
@@ -517,6 +519,8 @@ public partial class Form1
 			}
 			catch (MinecraftAuthException ex)
 			{
+				// Microsoft may have rotated the token before a later step failed. Saved, or the next try is refused.
+				if (ex.StoredSignInChanged) _settings.Save();
 				LogFailure("Minecraft", "Could not start an online session", ex);
 				_minecraftOnlineWorking = false;
 				ResetStatus();

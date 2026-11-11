@@ -596,8 +596,16 @@ public partial class Form1
 
 		// "Deleting…" is said before the question closes, so focus coming back doesn't cut it, nor it the reader's reading
 		// of the row. See ActBeforeReturning.
+		// Back on the list quietly after Yes: the rescan that follows the delete says where the user lands. Announced as focus
+		// came back, the deleted mod's row was read after "Deleted". See _returnQuietlyFromThisAnswer. Only for the way-2 order;
+		// otherwise the answer is acted on after the question has closed, and the flag would fall to the next one.
 		if (SpeakBox(confirm, Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo,
-				answer => answer == DialogResult.Yes ? new ResultBeforeReturning(Loc.T("modactions.deletingStatus", selectedMod.Name)) : null)
+				answer =>
+				{
+					if (answer != DialogResult.Yes) return null;
+					if (_announcer.IsSpeakingForCertain is not null) _returnQuietlyFromThisAnswer = true;
+					return new ResultBeforeReturning(Loc.T("modactions.deletingStatus", selectedMod.Name));
+				})
 			!= DialogResult.Yes)
 			return;
 
@@ -608,7 +616,13 @@ public partial class Form1
 			// report progress the way downloads and installs do, so a long pause is never mistaken for a hang.
 			// Already said by the question, so only shown here.
 			SetStatus(Loc.T("modactions.deletingStatus", selectedMod.Name), speak: false);
-			if (!await BackupModWithProgressAsync(selectedMod.FolderPath, selectedMod.Name + "_Delete", selectedMod.Name))
+			// A BepInEx mod's patchers are removed with it now, so its backup carries a copy, for a restore to put back. Taken
+			// out again straight after: BepInEx scans the mod's folder for DLLs. See BepInExPatcherFiles.
+			BepInExPatcherFiles.StashInto(selectedMod.FolderPath, _settings.ActiveGame, LogError);
+			bool backedUp;
+			try { backedUp = await BackupModWithProgressAsync(selectedMod.FolderPath, selectedMod.Name + "_Delete", selectedMod.Name); }
+			finally { BepInExPatcherFiles.ClearStash(selectedMod.FolderPath); }
+			if (!backedUp)
 			{
 				// The whole point of backing up first is that the mod can be got back. If that did not work,
 				// deleting it destroys something with no copy anywhere — so it stops here and says so, rather
@@ -633,8 +647,11 @@ public partial class Form1
 				?Witcher3ModFiles.GameFolderFor(Path.GetDirectoryName(selectedMod.FolderPath.TrimEnd(Path.DirectorySeparatorChar)) ?? "",
 					_settings.CurrentGamePath)
 				: "";
+			// A BepInEx mod's patchers likewise: they load from BepInEx\patchers, and the record of them is in this folder.
 			IReadOnlyList<string> leftInGame = Witcher3ModFiles.RemoveExtras(
-				selectedMod.FolderPath, _settings.ActiveGame, witcherGame, LogError);
+					selectedMod.FolderPath, _settings.ActiveGame, witcherGame, LogError)
+				.Concat(BepInExPatcherFiles.Remove(selectedMod.FolderPath, _settings.ActiveGame, LogError))
+				.ToList();
 			if (leftInGame.Count > 0)
 			{
 				// ⚠️ The folder stays. Its record is then the only list of files still loading in the game, and deleting it

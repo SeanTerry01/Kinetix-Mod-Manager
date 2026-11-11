@@ -71,12 +71,18 @@ public partial class Form1
 		return rows;
 	}
 
-	/// <summary>The one-line spoken/displayed summary for a save row.</summary>
-	private static string BuildSaveSummary(SaveGame save, List<string> missing)
+	/// <summary>A save as a person knows it: "Prisoner, level 1, Skyrim, 6/16/2026 7:15 PM".</summary>
+	private static string DescribeSave(SaveGame save)
 	{
 		string name = string.IsNullOrWhiteSpace(save.CharacterName) ? Loc.T("saves.unnamed") : save.CharacterName;
 		string loc = string.IsNullOrWhiteSpace(save.Location) ? Loc.T("saves.unknownLocation") : save.Location;
-		string text = Loc.T("saves.row", name, save.Level, loc, save.SaveTime.ToString("g"));
+		return Loc.T("saves.row", name, save.Level, loc, save.SaveTime.ToString("g"));
+	}
+
+	/// <summary>The one-line spoken/displayed summary for a save row.</summary>
+	private static string BuildSaveSummary(SaveGame save, List<string> missing)
+	{
+		string text = DescribeSave(save);
 		if (!save.PluginsRead) text += Loc.T("saves.rowPluginsUnknown");
 		else if (missing.Count > 0) text += Loc.T("saves.rowMissing", missing.Count);
 		return text;
@@ -181,7 +187,9 @@ public partial class Form1
 	/// <summary>Sends a save (and any co-save) to the Recycle Bin after confirmation, and drops it from the list.</summary>
 	private void DeleteSave(Action closeView, ListBox list, SaveRow row)
 	{
-		string label = Path.GetFileNameWithoutExtension(row.Save.FilePath);
+		// The save as its row names it. The file name read out as "Save1_51A0FBEE_0_507269736F6E6572_Tamriel_000004_…"
+		// (heard 2026-11-11), which says nothing to anyone listening.
+		string label = DescribeSave(row.Save);
 		// Said before the question closes, and the row goes once that has been heard. See ActBeforeReturning.
 		SpeakBox(Loc.T("saves.deleteConfirm", label), Loc.T("saves.deleteTitle"), MessageBoxButtons.YesNo, answer =>
 		{

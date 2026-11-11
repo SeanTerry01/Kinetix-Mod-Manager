@@ -186,6 +186,20 @@ A review of the whole manager before 1.6.0 found these. All are fixed.
 *   **Restoring a backup, updating and deleting** now do what they say, and failures are said rather than reported as success.
     A switch of game no longer leaves another game's rows live. This has been compiled, but not yet run.
 
+## 🐛 A switched-off or deleted BepInEx mod no longer leaves its patchers running
+
+*   **A mod's preloader patchers now follow the mod.** Mods made to be extracted over the game folder can put files in
+    BepInEx's patchers folder as well as plugins. Those were copied and forgotten: switching the mod off or deleting it left them
+    loading with the game. Now the manager records them when it installs the mod, moves them out of the way when you switch it
+    off and back when you switch it on, removes them when you delete it, and puts them back if you restore it from Backups.
+    Mods installed before this version have no such record; reinstall one to have its patchers followed.
+
+## 🐛 Minecraft keeps you signed in through a dropped connection
+
+*   **A connection failing halfway through renewing your Minecraft sign-in no longer signs you out later.** Microsoft hands out
+    a new sign-in token as the first step, and the old one stops working. If a later step failed, the new one was lost, and the
+    next try was refused. It is now kept the moment Microsoft gives it. Being offline altogether never signed you out.
+
 ## ✨ Undo an ignored update
 
 *   **Ignored Updates, in the Mods menu under Health and Reports, lists the updates you told the manager to ignore**, for
@@ -216,6 +230,11 @@ A review of the whole manager before 1.6.0 found these. All are fixed.
 *   **Cancelling a choice says "Changes cancelled." once**, before you land back on the list, rather than after it with the
     row read twice.
 *   **Modrinth results say "followers"**, Modrinth's own word, not "endorsements". "1 downloads" and "1 endorsements" are gone too.
+*   **Deleting a mod no longer reads it as still there.** After "Deleted", the deleted mod's row was read, as though it were still
+    installed, before the list moved on.
+*   **Deleting a save names it the way the list does**, "Prisoner, level 1, Skyrim", rather than reading its file name.
+*   **A Witcher 3 mod installed into a mods folder you chose yourself is now added to the game's own mod list** as it is
+    installed, as switching mods on and off already did.
 *   **Sentences that name a key use your key**, if you changed it, and a key you cleared is no longer read as "Press Unmapped".
 *   **Typing in the installed search** reads the count once, after you pause.
 *   **After a file picker closes**, you hear which mod you are on as well as its position.
@@ -1075,7 +1094,7 @@ brings across the ones you already have in the Modrinth App.
 
 ## ✅ Tests
 
-*   **2,221 passing**, and all of them now pass off Windows too, where sixteen used to fail.
+*   **2,234 passing**, and all of them now pass off Windows too, where sixteen used to fail.
 *   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 *   Twenty-six of them cover unpacking a downloaded mod, including one that extracts a **real .7z** rather than a stand-in — the only way to know that reading one without `7za.exe` actually works.

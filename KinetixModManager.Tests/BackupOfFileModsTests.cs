@@ -128,14 +128,24 @@ public class BackupOfFileModsTests : IDisposable
 		string jar = Jar("sodium.jar");
 		const int all = 12;
 
+		// Threads of their own, not the pool's: twelve pool tasks waiting on a barrier need twelve pool threads free at once,
+		// and with the rest of the suite running beside it there weren't, so it failed for want of threads (2026-11-11).
 		using var start = new System.Threading.Barrier(all);
-		var threads = Enumerable.Range(0, all).Select(_ => System.Threading.Tasks.Task.Run(() =>
+		var errors = new System.Collections.Concurrent.ConcurrentBag<Exception>();
+		var threads = Enumerable.Range(0, all).Select(_ => new System.Threading.Thread(() =>
 		{
-			start.SignalAndWait();
-			BackupStore.CreateBackup(jar, "Sodium", _backups);
+			try
+			{
+				start.SignalAndWait();
+				BackupStore.CreateBackup(jar, "Sodium", _backups);
+			}
+			catch (Exception ex) { errors.Add(ex); }
 		})).ToArray();
 
-		await System.Threading.Tasks.Task.WhenAll(threads);
+		foreach (var t in threads) t.Start();
+		foreach (var t in threads) t.Join();
+		await System.Threading.Tasks.Task.CompletedTask;
+		Assert.Empty(errors);
 
 		Assert.Equal(all, Directory.GetFiles(_backups, "Sodium_*.zip").Length);
 	}

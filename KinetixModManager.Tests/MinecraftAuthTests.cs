@@ -333,6 +333,39 @@ public sealed class MinecraftAuthTests : IDisposable
 	}
 
 	[Fact]
+	public async Task ARotatedRefreshTokenIsKeptWhenALaterStepFails()
+	{
+		// Microsoft gave a new refresh token and Xbox Live then failed. The new one used to go with the error, while the old one
+		// stored had been retired, so the next try was refused and the player had to sign in again.
+		var settings = new AppSettings();
+		MinecraftAccounts.Remember(settings, Session(MsRefresh, expires: _now.AddMinutes(10)));
+		_fake.On("/token", HttpStatusCode.OK, MicrosoftTokenBody(MsRefreshRotated));
+		_fake.On("/user/authenticate", HttpStatusCode.ServiceUnavailable, new JObject());
+
+		var ex = await Assert.ThrowsAsync<MinecraftAuthException>(() => MinecraftAccounts.OnlineAsync(settings));
+
+		Assert.True(ex.StoredSignInChanged);
+		Assert.Equal(MarkingSecretStore.Mark + MsRefreshRotated, settings.MinecraftAccount!.RefreshTokenEncrypted);
+		AssertNoSecretIn(ex.ToString());
+	}
+
+	[Fact]
+	public async Task NoNetworkAtAllLeavesTheStoredSignInAsItWas()
+	{
+		// The question left open by the 1.6.0 review: offline, nothing is refused and nothing is forgotten.
+		var settings = new AppSettings();
+		MinecraftAccounts.Remember(settings, Session(MsRefresh, expires: _now.AddMinutes(10)));
+		_fake.Throw = new HttpRequestException("No such host is known.");
+
+		var ex = await Assert.ThrowsAsync<MinecraftAuthException>(() => MinecraftAccounts.OnlineAsync(settings));
+
+		Assert.Equal(MinecraftAuthFailure.NetworkFailed, ex.Failure);
+		Assert.False(ex.StoredSignInChanged);
+		Assert.NotNull(settings.MinecraftAccount);
+		Assert.Equal(MarkingSecretStore.Mark + MsRefresh, settings.MinecraftAccount!.RefreshTokenEncrypted);
+	}
+
+	[Fact]
 	public async Task ConnectingPutsEvenAFreshStoredTokenToMinecraft()
 	{
 		var settings = new AppSettings();

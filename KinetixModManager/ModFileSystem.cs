@@ -109,8 +109,12 @@ public static class ModFileSystem
 	/// Mirrors a Witcher 3 mod's on/off state into the game's own <c>mods.settings</c>, so the in-game mod menu
 	/// says the same thing the manager does. A no-op for every other game. See <see cref="Witcher3ModFiles.SyncSettings"/>.
 	/// </summary>
-	private static void SyncWitcherModSettings(string modFolderPath, bool enable, string activeGame) =>
-		Witcher3ModFiles.SyncSettings(modFolderPath, enable, activeGame, WitcherGameFolderOf(modFolderPath, activeGame),
+	/// <param name="locatedGameFolder">
+	/// The game's folder as the user located it. Without it, a mods folder typed in somewhere other than <c>game\mods</c> left the
+	/// game's own list unwritten on install, as switching on, off and deleting already knew to avoid.
+	/// </param>
+	private static void SyncWitcherModSettings(string modFolderPath, bool enable, string activeGame, string? locatedGameFolder = null) =>
+		Witcher3ModFiles.SyncSettings(modFolderPath, enable, activeGame, WitcherGameFolderOf(modFolderPath, activeGame, locatedGameFolder),
 			(where, why) => DiagnosticLog.Write("Witcher3", $"{where}: {why}"));
 
 	/// <summary>A declared master that won't satisfy a plugin: missing entirely, or present but not active.</summary>
@@ -1630,7 +1634,7 @@ public static class ModFileSystem
 		AtomicFile.WriteAllText(Path.Combine(destModFolder, ".manager_manifest.json"), manifest.ToString(Formatting.Indented));
 
 		// Tell the game's own mod list the new mod is on, so its in-game menu agrees with the manager's.
-		SyncWitcherModSettings(destModFolder, true, activeGame);
+		SyncWitcherModSettings(destModFolder, true, activeGame, currentGamePath);
 
 		return primaryFolderName;
 	}
@@ -1707,7 +1711,7 @@ public static class ModFileSystem
 			logError(destModFolder, "Could not record what the installer installed: " + ex.Message);
 		}
 
-		SyncWitcherModSettings(destModFolder, true, activeGame);
+		SyncWitcherModSettings(destModFolder, true, activeGame, gameFolder);
 		return modFolderName;
 	}
 
@@ -1914,6 +1918,8 @@ public static class ModFileSystem
 		string? packagedBepInEx = Directory.GetDirectories(tempDir, "BepInEx", SearchOption.AllDirectories).FirstOrDefault();
 
 		string modSource;
+		// The patchers copied, recorded in the mod's manifest below so switching it off or deleting it takes them too.
+		List<string> patchers = new();
 		if (packagedBepInEx != null)
 		{
 			string packagedPlugins = Path.Combine(packagedBepInEx, "plugins");
@@ -1921,7 +1927,7 @@ public static class ModFileSystem
 			// Preloader patchers load before the game does and cannot live under plugins\, so they go to their own
 			// folder. A default config is copied only when the user has none, so reinstalling never overwrites
 			// settings the user has already changed.
-			CopyBepInExSideFolder(Path.Combine(packagedBepInEx, "patchers"), Path.Combine(bepInExRoot, "patchers"), overwrite: true, logError);
+			patchers = BepInExPatcherFiles.Install(Path.Combine(packagedBepInEx, BepInExPatcherFiles.PatchersFolderName), bepInExRoot, logError);
 			CopyBepInExSideFolder(Path.Combine(packagedBepInEx, "config"), Path.Combine(bepInExRoot, "config"), overwrite: false, logError);
 
 			modSource = Directory.Exists(packagedPlugins) ? ResolveBepInExModRoot(packagedPlugins) : StripWrapperFolders(tempDir);
@@ -1981,6 +1987,7 @@ public static class ModFileSystem
 			["NexusID"]     = nexusId,
 			["GitHubRepo"]  = gitHubRepo
 		};
+		BepInExPatcherFiles.WriteRecord(manifest, patchers);
 		AtomicFile.WriteAllText(Path.Combine(destModFolder, ".manager_manifest.json"), manifest.ToString(Formatting.Indented));
 
 		// Whatever is already installed is replaced, whether the manager knows it as this mod (matched by Nexus id)
@@ -1989,6 +1996,11 @@ public static class ModFileSystem
 		var replacing = new List<string>();
 		if (existing != null && Directory.Exists(existing.FolderPath)) replacing.Add(existing.FolderPath);
 		if (Directory.Exists(finalFolder) && !replacing.Contains(finalFolder, StringComparer.OrdinalIgnoreCase)) replacing.Add(finalFolder);
+
+		// Read from the copies being replaced, before they go: patchers they put in that this one doesn't ship, and their own
+		// switched-off copies, since this one's go in switched on.
+		foreach (string old in replacing)
+			BepInExPatcherFiles.RemoveLeftovers(old, patchers, logError);
 
 		foreach (string old in replacing)
 		{

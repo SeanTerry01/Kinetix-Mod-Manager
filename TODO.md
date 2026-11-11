@@ -30,33 +30,30 @@ Done or decided everything else on the list. What is here needs a person, or is 
 - [ ] **Small leftovers:** `SyncPluginsFile`'s `isDeploy` is always false; `Shortcut.Describe` stays because it is the only thing asking for
   `shortcut.unbound`; the portable zip creates empty `profiles`, `downloads` and `backups` folders the manager doesn't use; the INI editor
   doesn't share the settings-view builder, because it differs in font and buttons.
-- [ ] **Left from the 1.6.0 review (2026-11-11).** Every confirmed finding but one is fixed, none of it ear-tested yet.
-  - **BepInEx patchers are copied untracked.** `FinalizeBepInExModAsync` copies a mod's `BepInEx\patchers` into the game's, and nothing
-    records it, so switching the mod off or deleting it leaves its patchers running. Needs a record like Witcher's outside files.
-  - **Unconfirmed:** whether `MinecraftAuth` drops the saved refresh token when a refresh fails for a reason other than the token
-    being refused (offline, say), which would sign the player out. Microsoft rotates the token, so check before changing anything.
+- [x] **Left from the 1.6.0 review — done 2026-11-11.** BepInEx patchers are recorded (`BepInExPatcherFiles`) and follow the mod: off,
+  on, delete, and restore from a delete backup, heard on a made-up Moonlight Peaks in the test copy. Minecraft: offline leaves the sign-in
+  alone (it was never dropped); a refresh token Microsoft rotates before a later step fails is now kept (`StoredSignInChanged`).
+  ⚠️ Mods installed before this have no record: reinstall one to have its patchers followed.
 - [ ] **Left from the NVDA runs of 2026-11-11.** Fixed and heard: "list unavailable" for the Stardew key chooser, the newer-world
-  question and the Modrinth App import (asked over the first screen, `_nextOverlayReturnsQuietly`); cancels said once; Modrinth
-  "followers"; Ignored Updates screen; the MCM screen, on a made-up MCM Helper mod (`Kinetix MCM Test` in the test Skyrim).
-  - **The same "unavailable" family may live elsewhere.** A question opened straight after another screen closes. Fixed where
-    heard; Share Suggestions (scope, then name, then author) chains three, and saving a profile chains two without the noise, so
-    it isn't every chain. Listen for it.
-  - **Apply Profile's window title after its box:** did not happen again once the needless theme switch was gone. Not proven
-    that was the cause; listen for it when a profile really changes the theme.
-  - **The packs list once read "Your own Minecraft… 2 of 2"** on tabbing in just after a game switch, likely a refresh finishing
-    at that moment. Seen once.
+  question and the Modrinth App import; cancels said once; Modrinth "followers"; Ignored Updates; the MCM screen (made-up
+  `Kinetix MCM Test` in the test Skyrim); Ctrl+T at the masters line (made-up `KinetixTestA/B.esp`); deleting a save (a copy of an
+  old test backup); deleting a mod no longer reads its row after "Deleted".
+  - **One-word "unavailable" before some questions.** Traced: NVDA speaks the state change of the control it still takes for the
+    focus (a button, a tab) when the overlay disables the window behind, before it has handled the focus move. Heard on Delete Old
+    Backups' button and between Install from File's overwrite question and its "installed" box. A 120 ms pause did not stop it.
+    Fixing it means not disabling the control that had focus, which needs another way to keep Tab out of the window behind.
+  - **Apply Profile's window title after its box:** not heard again once the needless theme switch was gone. Listen for it when a
+    profile really changes the theme.
   - **SkyrimAccess's own menu can't be shown in the manager:** it is built in Papyrus (`SkyrimAccess_MCM.psc`), not an MCM
     Helper `config.json`, so there is nothing on disk to read.
-  - **Not reachable on the test copy:** deleting a save (the test Skyrim's saves are Sean's real ones), Ctrl+T stopping at the
-    masters line (the test Skyrim's plugins are all masters), the Stardew bundle update with a parked part, and a download for
-    another game arriving while Settings is open (needs the browser).
+  - **Not reachable on the test copy:** the Stardew bundle update with a parked part (needs a real update of a bundle), and a
+    download for another game arriving while Settings is open (needs the browser).
 - [ ] **The GTK head has been compiled, never run.** See its section below. Only an ear test on Linux can settle it.
 - [ ] **GTK gaps found while fixing it:** GitHub-hosted mods such as United Minecraft are never checked for updates on Linux, yet count as
   checked. `mods.settings` looks wrong under Proton (`UserDataDirectoryFor` ignores `IGameLocator.UserDocumentsFolder`). A Linux user may have
   no way to enter a Nexus key: `gtk.updatesNeedKey` names a File menu entry this head doesn't appear to have.
-- [ ] **Witcher 3 with a typed mods folder on Windows:** switching on or off and deleting now ask `Witcher3ModFiles.GameFolderFor` with the located
-  game folder. What is left is the install path's `SyncWitcherModSettings`, which passes none. Only a mods folder outside `game\mods` is
-  affected, and the game only loads mods from there.
+- [x] **Witcher 3 with a typed mods folder on Windows:** the install path's `SyncWitcherModSettings` now gets the located game folder too
+  (2026-11-11). Built and tested, not heard: there is no Witcher 3 in the test copy.
 
 ---
 

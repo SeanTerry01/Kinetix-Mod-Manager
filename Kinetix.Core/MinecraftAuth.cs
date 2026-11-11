@@ -88,6 +88,12 @@ public sealed class MinecraftAuthException : Exception
 {
 	public MinecraftAuthFailure Failure { get; }
 
+	/// <summary>
+	/// Microsoft handed out a new refresh token before a later step failed, and the stored sign-in now holds it. The caller must
+	/// save the settings even though this failed. See <see cref="MinecraftAccounts.OnlineAsync"/>.
+	/// </summary>
+	public bool StoredSignInChanged { get; set; }
+
 	public MinecraftAuthException(MinecraftAuthFailure failure, string message, Exception? inner = null)
 		: base(message, inner)
 	{
@@ -230,7 +236,13 @@ public static class MinecraftAuth
 	/// Gets a fresh session from a stored refresh token, with no player involvement. The session returned
 	/// carries a NEW refresh token that must replace the stored one.
 	/// </summary>
-	public static async Task<MinecraftSession> RefreshAsync(string refreshToken, CancellationToken cancel = default)
+	/// <param name="onRotated">
+	/// Given the new refresh token as soon as Microsoft hands it out, before Xbox Live, XSTS and Minecraft are asked. One of
+	/// those can still fail, offline for a moment say, and the new token used to be lost with the error while Microsoft had
+	/// already retired the one stored, so the next try was refused and the player had to sign in again.
+	/// </param>
+	public static async Task<MinecraftSession> RefreshAsync(string refreshToken, CancellationToken cancel = default,
+		Action<string>? onRotated = null)
 	{
 		if (string.IsNullOrEmpty(refreshToken))
 			throw new MinecraftAuthException(MinecraftAuthFailure.SignInAgain, "There is no stored sign-in to refresh.");
@@ -255,7 +267,9 @@ public static class MinecraftAuth
 			throw Unexpected("refreshing the Microsoft sign-in", status, body);
 		}
 
-		return await CompleteAsync(MicrosoftTokens(body, "refreshing the Microsoft sign-in"), cancel).ConfigureAwait(false);
+		(string Access, string Refresh) tokens = MicrosoftTokens(body, "refreshing the Microsoft sign-in");
+		onRotated?.Invoke(tokens.Refresh);
+		return await CompleteAsync(tokens, cancel).ConfigureAwait(false);
 	}
 
 	/// <summary>

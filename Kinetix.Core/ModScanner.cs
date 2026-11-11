@@ -550,16 +550,19 @@ public static class ModScanner
 	{
 		try
 		{
-			var manifest = new JObject
-			{
-				["Name"]        = mod.Name,
-				["Version"]     = mod.Version,
-				["Author"]      = mod.Author,
-				["UniqueID"]    = mod.UniqueId,
-				["Description"] = mod.Description,
-				["NexusID"]     = mod.NexusID,
-				["GitHubRepo"]  = mod.GitHubRepo
-			};
+			// Built on what is there, so what the scan doesn't know about stays. A fresh object here threw away the record of the
+			// mod's patchers on the first scan after it was installed, and they were left behind again (found 2026-11-11). See
+			// BepInExPatcherFiles.
+			JObject manifest;
+			try { manifest = File.Exists(manifestPath) ? JObject.Parse(File.ReadAllText(manifestPath)) : new JObject(); }
+			catch (Newtonsoft.Json.JsonException) { manifest = new JObject(); }
+			manifest["Name"]        = mod.Name;
+			manifest["Version"]     = mod.Version;
+			manifest["Author"]      = mod.Author;
+			manifest["UniqueID"]    = mod.UniqueId;
+			manifest["Description"] = mod.Description;
+			manifest["NexusID"]     = mod.NexusID;
+			manifest["GitHubRepo"]  = mod.GitHubRepo;
 			string updated = manifest.ToString(Formatting.Indented);
 
 			if (File.Exists(manifestPath) && File.ReadAllText(manifestPath) == updated) return;

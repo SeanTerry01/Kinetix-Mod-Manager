@@ -117,7 +117,22 @@ public static class MinecraftAccounts
 		// Windows account, say. Microsoft then refuses that as a refresh token with invalid_grant, which
 		// RefreshAsync reports as a sign-in to redo. That is the right answer, reached the long way round.
 		string refresh = account.RefreshTokenEncrypted.Length > 0 ? Secrets.Unprotect(account.RefreshTokenEncrypted) : "";
-		MinecraftSession session = await MinecraftAuth.RefreshAsync(refresh, cancel).ConfigureAwait(false);
+		// The new refresh token is kept the moment Microsoft gives it, so a later step failing doesn't lose it. See RefreshAsync.
+		bool rotated = false;
+		MinecraftSession session;
+		try
+		{
+			session = await MinecraftAuth.RefreshAsync(refresh, cancel, newRefresh =>
+			{
+				account.RefreshTokenEncrypted = Secrets.Protect(newRefresh);
+				rotated = true;
+			}).ConfigureAwait(false);
+		}
+		catch (MinecraftAuthException ex) when (rotated)
+		{
+			ex.StoredSignInChanged = true;
+			throw;
+		}
 
 		Remember(settings, session);
 		return (Identity(session.Username, session.Uuid, session.AccessToken), true);

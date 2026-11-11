@@ -98,6 +98,8 @@ public static class ModOnDisk
 
 		// Before the folder moves, while the record of these files is still at this path.
 		Witcher3ModFiles.SetExtrasEnabled(modPath, enable, gameId, gameFolder, logError, stuckFiles);
+		// A BepInEx mod's preloader patchers, likewise outside its folder. See BepInExPatcherFiles.
+		BepInExPatcherFiles.SetEnabled(modPath, enable, gameId, logError, stuckFiles);
 
 		if (moving)
 		{
@@ -118,6 +120,8 @@ public static class ModOnDisk
 					stuckFiles?.Clear();
 					Witcher3ModFiles.SetExtrasEnabled(modPath, !enable, gameId, gameFolder, logError, stuckFiles);
 				}
+				// Its patchers go back too, or a plugin left on would have lost them, or one left off still be patching.
+				BepInExPatcherFiles.SetEnabled(modPath, !enable, gameId, logError, stuckFiles);
 				throw;
 			}
 		}

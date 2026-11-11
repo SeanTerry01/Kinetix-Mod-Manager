@@ -116,12 +116,20 @@ public sealed partial class MainWindow
 			// Backed up before anything is removed, and awaited rather than started — a backup that is still
 			// being written when the original is deleted is not a backup. Zipping a large mod takes long
 			// enough to be worth doing off the interface's thread.
-			await Task.Run(() => BackupStore.CreateBackup(row.Path, row.Name, backups));
+			// A BepInEx mod's patchers are removed with it, so its backup carries a copy, taken out again once it is made.
+				await Task.Run(() =>
+				{
+					BepInExPatcherFiles.StashInto(row.Path, gameId, log);
+					try { BackupStore.CreateBackup(row.Path, row.Name, backups); }
+					finally { BepInExPatcherFiles.ClearStash(row.Path); }
+				});
 			IReadOnlyList<string> stuck = await Task.Run(() =>
 			{
 				// A Witcher 3 mod's dlc and bin parts live in the game folder, and the record of them is inside the folder
 				// about to go, so they go first. Without this it said "deleted" with those parts still loading.
-				IReadOnlyList<string> notRemoved = Witcher3ModFiles.RemoveExtras(row.Path, gameId, gameFolder, log);
+				// A BepInEx mod's patchers likewise.
+					IReadOnlyList<string> notRemoved = Witcher3ModFiles.RemoveExtras(row.Path, gameId, gameFolder, log)
+						.Concat(BepInExPatcherFiles.Remove(row.Path, gameId, log)).ToList();
 
 				// ⚠️ The folder stays while any of them does, because its manifest is the only record of where they are.
 				if (notRemoved.Count > 0) return notRemoved;
