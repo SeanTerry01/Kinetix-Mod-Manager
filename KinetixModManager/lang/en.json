@@ -1156,7 +1156,7 @@
   "mc.launch.librariesFailedTitle": "Minecraft Files Missing",
   "updates.enableAfterUpdate": "{0} was switched off before this update, and version {1} is now installed. Switch it on?",
   "updates.enableAfterUpdateTitle": "Switch this mod on?",
-  "updates.leftEnabled": "{0} is switched on.",
+  "updates.leftEnabled": "{0} updated, and switched on.",
   "updates.leftDisabled": "{0} updated, and left switched off as it was.",
   "updateAll.finishedSomeDisabled": "All updates finished. {0} {0|was|were} switched off before and {0|has|have} been left that way: {1}.",
   "updateAll.finishedFailed": "Update All finished, but {0|this|these} could not be updated: {1}. {0|It is|They are} still on the Updates tab, and the reasons are in the error log.",

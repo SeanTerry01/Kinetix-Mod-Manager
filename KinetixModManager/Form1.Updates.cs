@@ -242,11 +242,8 @@ public partial class Form1
 			Invoke(delegate
 			{
 				listUpdates.BeginUpdate();
-				if (!listUpdates.Items.Contains(representative))
-				{
-					representative.IsUpdateResult = true;
-					listUpdates.Items.Add(representative);
-				}
+				if (!listUpdates.Items.OfType<GameMod>().Any(representative.IsSameModAs))
+					listUpdates.Items.Add(representative.AsUpdateRow());
 				listUpdates.EndUpdate();
 			});
 		}
@@ -491,11 +488,8 @@ public partial class Form1
 				Invoke(delegate
 				{
 					listUpdates.BeginUpdate();
-					if (_settings.ActiveGame == game && !listUpdates.Items.Contains(mod))
-					{
-						mod.IsUpdateResult = true;
-						listUpdates.Items.Add(mod);
-					}
+					if (_settings.ActiveGame == game && !listUpdates.Items.OfType<GameMod>().Any(mod.IsSameModAs))
+						listUpdates.Items.Add(mod.AsUpdateRow());
 					listUpdates.EndUpdate();
 				});
 			}
@@ -599,6 +593,15 @@ public partial class Form1
 
         void NoteFailure() { if (silent) _updatesThatFailed.Add(mod.Name); }
 
+        // The row is a copy taken when the check ran (see GameMod.AsUpdateRow), and the mod may have moved since: switching
+        // a Minecraft mod off renames its jar, so the update looked for a file that had gone and said no build existed for
+        // the Minecraft version in use. Where it is now and whether it is on come from the installed list. Measured 2026-11-10.
+        if (!mod.IsGroup && _allInstalledMods.FirstOrDefault(m => !m.IsGroup && m.UniqueId == mod.UniqueId) is { } installed)
+        {
+            mod.FolderPath = installed.FolderPath;
+            mod.IsEnabled = installed.IsEnabled;
+        }
+
         // Updates install the mod enabled; remember if it was disabled so we can turn it back off afterward.
         bool wasDisabled = !mod.IsEnabled;
 
@@ -657,12 +660,12 @@ public partial class Form1
 
                 RemoveUpdateRowsFor(mod);
                 await RefreshModList(checkUpdates: false);
-                await ReapplyDisabledIfNeeded(mod, wasDisabled, silent);
+                bool saidMinecraft = await ReapplyDisabledIfNeeded(mod, wasDisabled, silent);
 
                 if (!silent)
                 {
                     _soundEngine.Play("load_complete");
-                    Speak(Loc.T("updates.success", mod.Name));
+                    if (!saidMinecraft) Speak(Loc.T("updates.success", mod.Name));
                     ResetStatus();
                     AnnounceUpdatesListEmptyIfFocused();
                 }
@@ -737,7 +740,7 @@ public partial class Form1
                     Invoke(delegate { RefreshModPriorityList(); });
                 }
 
-                await ReapplyDisabledIfNeeded(mod, wasDisabled, silent);
+                bool saidGitHub = await ReapplyDisabledIfNeeded(mod, wasDisabled, silent);
                 // Remember which release is now on disk, so the next check compares against what was installed
 
                 // rather than whatever version numbers the mods inside the download happen to declare.
@@ -749,7 +752,7 @@ public partial class Form1
                 if (!silent)
                 {
                     _soundEngine.Play("load_complete");
-                    Speak(Loc.T("updates.githubSuccess", mod.Name));
+                    if (!saidGitHub) Speak(Loc.T("updates.githubSuccess", mod.Name));
                     // ResetStatus, not SetStatus: the title only needs to stop showing "Installing...", and SetStatus speaks by
                     // default, so this said "Connected as ..." straight after the update was announced. ResetStatus also asks
                     // RestingStatus what the title should be, which answers "Ready" when there is no known user -- the hardcoded
@@ -812,7 +815,7 @@ public partial class Form1
                 listUpdates.EndUpdate();
             });
             // No rescan here: InstallFromZip has just done one, and each costs seconds on a large setup.
-            await ReapplyDisabledIfNeeded(mod, wasDisabled, silent);
+            bool saidNexus = await ReapplyDisabledIfNeeded(mod, wasDisabled, silent);
             // Remember which release is now on disk, so the next check compares against what was installed
 
             // rather than whatever version numbers the mods inside the download happen to declare.
@@ -823,7 +826,7 @@ public partial class Form1
             if (!silent)
             {
                 _soundEngine.Play("load_complete");
-                Speak(Loc.T("updates.success", mod.Name));
+                if (!saidNexus) Speak(Loc.T("updates.success", mod.Name));
                 // ResetStatus, not SetStatus: the title only needs to stop showing "Installing...", and SetStatus speaks by
                 // default, so this said "Connected as ..." straight after the update was announced. ResetStatus also asks
                 // RestingStatus what the title should be, which answers "Ready" when there is no known user -- the hardcoded
@@ -981,12 +984,16 @@ public partial class Form1
 	/// back switched on.
 	/// </para>
 	/// </summary>
-	private async Task ReapplyDisabledIfNeeded(GameMod original, bool wasDisabled, bool silent = false)
+	/// <returns>
+	/// True when it has said the result itself, which names the update: the caller then says nothing more. "Disrobe Sounds
+	/// updated, and left switched off as it was. Disrobe Sounds updated successfully." was heard. Measured 2026-11-10.
+	/// </returns>
+	private async Task<bool> ReapplyDisabledIfNeeded(GameMod original, bool wasDisabled, bool silent = false)
 	{
-		if (!wasDisabled) return;
+		if (!wasDisabled) return false;
 
 		GameMod? updated = _allInstalledMods.FirstOrDefault(m => !m.IsGroup && m.IsEnabled && ModHealth.IsSameMod(original, m));
-		if (updated == null || !updated.IsEnabled) return;
+		if (updated == null || !updated.IsEnabled) return false;
 
 		// In a batch nothing is asked: the run is unattended by design, and the state the user chose is kept. The
 		// end of the run says which mods that happened to.
@@ -995,7 +1002,7 @@ public partial class Form1
 		{
 			_soundEngine.Play("enable");
 			Speak(Loc.T("updates.leftEnabled", updated.Name));
-			return;
+			return true;
 		}
 
 		try
@@ -1008,12 +1015,17 @@ public partial class Form1
 				_updatesLeftDisabled.Add(updated.Name);
 				await RefreshModList(checkUpdates: false);
 			}
-			else await SayAndRefreshModList(Loc.T("updates.leftDisabled", updated.Name), updated);
+			else
+			{
+				await SayAndRefreshModList(Loc.T("updates.leftDisabled", updated.Name), updated);
+				return true;
+			}
 		}
 		catch (Exception ex)
 		{
 			LogFailure(original.Name, "Could not re-disable after update", ex);
 		}
+		return false;
 	}
 
 	private async Task<string?> GetGitHubLatestReleaseVersionAsync(string repo)

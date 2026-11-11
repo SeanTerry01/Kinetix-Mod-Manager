@@ -307,6 +307,11 @@ public partial class Form1
 			{
 				if (listUpdates.Items[i] is GameMod updateMod)
 				{
+					// The Fabric loader, the Minecraft version and a modpack are not mods, so there is no installed mod to
+					// match them to, and every rescan dropped them: switching any mod off took the loader's update away.
+					// Measured 2026-11-10. They stay until the next check says otherwise.
+					if (updateMod.UniqueId is FabricLoaderRowId or MinecraftVersionRowId or ModpackRowId) continue;
+
 					var installedMod = _allInstalledMods.FirstOrDefault(m =>
 						(!string.IsNullOrEmpty(updateMod.UniqueId) && m.UniqueId == updateMod.UniqueId) ||
 						(!string.IsNullOrEmpty(updateMod.Name) && m.Name.Equals(updateMod.Name, StringComparison.OrdinalIgnoreCase))

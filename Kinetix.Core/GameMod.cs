@@ -177,6 +177,24 @@ public class GameMod
 	public bool IsUpdateResult { get; set; }
 
 	/// <summary>
+	/// This mod as a row of the Updates tab: a copy, so the installed list's row is left as it was.
+	///
+	/// ⚠️ Not the mod itself. Flagging the installed list's own object made its row there read as an update, "Disrobe Sounds by
+	/// ZipeStudio. Current: 1.0.1. Latest: 1.0.2.", and lose whether the mod was on or off. Measured 2026-11-10.
+	/// </summary>
+	public GameMod AsUpdateRow()
+	{
+		var row = (GameMod)MemberwiseClone();
+		row.IsUpdateResult = true;
+		return row;
+	}
+
+	/// <summary>Whether <paramref name="other"/> stands for the same installed mod, copy or not.</summary>
+	public bool IsSameModAs(GameMod? other) =>
+		other != null && string.Equals(UniqueId, other.UniqueId, StringComparison.OrdinalIgnoreCase)
+		&& string.Equals(FolderPath, other.FolderPath, StringComparison.OrdinalIgnoreCase);
+
+	/// <summary>
 	/// True when the mod's manifest declares update keys but they are all blank or malformed (e.g.
 	/// <c>"UpdateKeys": [""]</c> or <c>["Nexus: "]</c> with no id). The mod can't be version-checked, but the
 	/// cause is an author's typo rather than a missing field — the Update Coverage report says which.
