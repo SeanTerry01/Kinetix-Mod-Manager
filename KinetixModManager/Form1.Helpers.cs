@@ -338,11 +338,27 @@ public partial class Form1
 	/// <param name="namesRow">The result already names the row, so the row's own text is left out.</param>
 	private void SayOnReturnTo(ListBox list, string result, bool namesRow = true)
 	{
-		if (ReferenceEquals(_arrivalPendingFor, list) && list.Focused)
-			_resultForArrival = (list, result, namesRow);
-		else
-			Speak(result);
+		if (!HandToArrival(list, result, namesRow)) Speak(result);
 	}
+
+	/// <summary>
+	/// Gives <paramref name="text"/> to the return announcement under way on <paramref name="list"/>, after anything already
+	/// given to it. False when there is none, and the caller says it itself.
+	/// </summary>
+	private bool HandToArrival(ListBox list, string text, bool namesRow)
+	{
+		if (!ReferenceEquals(_arrivalPendingFor, list) || !list.Focused) return false;
+		_resultForArrival = _resultForArrival is { } before && ReferenceEquals(before.List, list)
+			? (list, before.Text + " " + text, before.NamesRow && namesRow)
+			: (list, text, namesRow);
+		return true;
+	}
+
+	/// <summary>
+	/// The list a prompt has just closed back onto, from its closing until the next message is handled. See
+	/// <see cref="Speak(string, bool)"/>.
+	/// </summary>
+	private ListBox? _promptClosedOnto;
 
 	[System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
 	private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
@@ -528,11 +544,19 @@ public partial class Form1
 		// What happened, then where that leaves you, in one sentence. The position is taken now, after whatever the
 		// result's caller did to the list, and a result that names the row stands in for the row's own text.
 		if (TakeResultForArrival(list) is { } result)
-		{
-			string where = result.NamesRow ? PositionTextFor(list) : text;
-			text = where.Length == 0 ? result.Text : result.Text + " " + where;
-		}
+			text = WithWhereYouAre(list, result.Text, result.NamesRow);
 		Speak(text, interrupt: true);
+	}
+
+	/// <summary>
+	/// A result, then the row the list is on now and its position. Worked out at the time it is said, after whatever the
+	/// result did to the list: an update row settled by a prompt has gone, and the row it was on is no longer the one.
+	/// </summary>
+	private string WithWhereYouAre(ListBox list, string result, bool namesRow)
+	{
+		string position = PositionTextFor(list);
+		string where = !namesRow && list.SelectedItem != null ? RowThenPosition(list.SelectedItem, position) : position;
+		return where.Length == 0 ? result : result + " " + where;
 	}
 
 	/// <summary>
@@ -1456,6 +1480,21 @@ public partial class Form1
 	/// </summary>
 	private void Speak(string text, bool interrupt)
 	{
+		// Straight after a prompt closes onto a list, what is said is the answer's result, and it rides on the list's own
+		// return announcement rather than claiming the floor from it. Claiming it stopped the swallow, so the reader's
+		// reading of the row came through after ours and the row was heard twice, or ours named a row that the answer
+		// had just removed. Measured with NVDA 2026-11-10 on Delete and Ctrl+Shift+Y in Updates. See SayOnReturnTo.
+		if (_promptClosedOnto is { } onto && HandToArrival(onto, text, namesRow: false)) return;
+
+		// Anything handed over and still waiting was said before this, so it goes first. Left to the announcement it was
+		// given to, it came out after: deleting a mod finished before the swallow did, and "Deleted Chat Commands" was heard
+		// ahead of "Deleting Chat Commands. Backing it up first". Measured 2026-11-10.
+		if (_resultForArrival is { } waiting)
+		{
+			_resultForArrival = null;
+			text = waiting.Text + " " + text;
+		}
+
 		// Saying something deliberately ends any window in which the reader is being silenced.
 		//
 		// SpeakListPosition swallows the reader across ~300ms when the program has moved focus, and Tolk.Silence()

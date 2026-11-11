@@ -135,7 +135,8 @@ public partial class Form1
 		// re-reading the window, which flushes anything said in that instant. This is the same treatment the
 		// search-history and backup-trim confirmations get.
 		if (RemoveSettledUpdateRow(mod) is { } landed)
-			SpeakAfterPrompt(Loc.T("updates.markedPos", mod.Name, version, landed.Row, landed.Index, landed.Count));
+			SayAfterPrompt(Loc.T("updates.marked", mod.Name, version),
+				Loc.T("updates.markedPos", mod.Name, version, landed.Row, landed.Index, landed.Count));
 		else
 			SpeakAfterPrompt(Loc.T("updates.markedEmpty", mod.Name, version));
 	}

@@ -184,6 +184,14 @@ public partial class Form1
 				RestoreChoiceNames(overlay, choices);
 			});
 
+		// What the caller says next is the answer's result. Held open until the next message, which covers the code that
+		// runs straight on from this return. See Speak.
+		if (Control.FromHandle(GetFocus()) is ListBox onto && ReferenceEquals(_arrivalPendingFor, onto) && !IsDisposed)
+		{
+			_promptClosedOnto = onto;
+			BeginInvoke(new Action(() => { if (ReferenceEquals(_promptClosedOnto, onto)) _promptClosedOnto = null; }));
+		}
+
 		return answer ?? EscapeResult(choices);
 	}
 

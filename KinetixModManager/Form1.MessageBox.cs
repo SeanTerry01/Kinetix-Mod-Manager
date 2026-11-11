@@ -174,8 +174,22 @@ public partial class Form1
 	/// is flushed by that. This waits for that announcement to begin, and then interrupts it, because what just happened
 	/// matters more. The wait is the reader reacting rather than speaking, so isSpeaking cannot replace it.
 	/// </summary>
+	/// <summary>
+	/// A prompt's result that says where it leaves the user. Onto a list, <paramref name="result"/> rides on the list's return
+	/// announcement, which adds the row and position it lands on; otherwise <paramref name="withWhereYouAre"/> is said whole.
+	/// </summary>
+	private void SayAfterPrompt(string result, string withWhereYouAre)
+	{
+		if (_promptClosedOnto is { } onto && HandToArrival(onto, result, namesRow: false)) return;
+		SpeakAfterPrompt(withWhereYouAre);
+	}
+
 	private void SpeakAfterPrompt(string text)
 	{
+		// Onto a list, the result rides on the list's return announcement, which the prompt's closing has already set off.
+		// See Speak. The wait below is only for anywhere else.
+		if (_promptClosedOnto is { } onto && HandToArrival(onto, text, namesRow: false)) return;
+
 		var timer = new System.Windows.Forms.Timer { Interval = 400 };
 		timer.Tick += (s, e) =>
 		{

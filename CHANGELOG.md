@@ -11,6 +11,9 @@
 *   **Lists no longer say "list" twice.** "Installed Mods List list" is now "Installed Mods list", and the same for every list.
 *   **Starting with no game loaded** no longer opens on a stray "1 of 6", ahead of the welcome. And arrowing through the games
     while the welcome is still being read now says where you are, "Minecraft, 2 of 6", instead of the game alone.
+*   **Answering a question on a list says what happened and where you are, once.** Ignoring an update with Delete said the
+    next row twice, and recording a version with Ctrl+Shift+Y first read out the row that had just gone. Both now say
+    "Update ignored. Canon-Friendly Dialogue Expansion… 2 of 9", and the same goes for every Yes or No asked from a list.
 *   **Backups say when they were taken.** "Chat Commands, 3 minutes ago, 40 kilobytes" instead of "Chat Commands" and
     "Chat Commands_Delete", so two backups of one mod can be told apart.
 *   **Changing a mod setting says where you are.** Choosing a value in the Content Patcher, MCM, INI or Stardew settings

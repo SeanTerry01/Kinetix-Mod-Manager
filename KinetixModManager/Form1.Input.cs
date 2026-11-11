@@ -655,7 +655,7 @@ public partial class Form1
 				_settings.IgnoredVersions[modWithUpdate.UniqueId] = modWithUpdate.LatestVersion ?? "";
 				_settings.Save();
 				if (RemoveSettledUpdateRow(modWithUpdate) is { } landed)
-					Speak(Loc.T("modlist.updateIgnoredPos", landed.Row, landed.Index, landed.Count));
+					SayAfterPrompt(Loc.T("modlist.updateIgnored"), Loc.T("modlist.updateIgnoredPos", landed.Row, landed.Index, landed.Count));
 				else
 					Speak(Loc.T("modlist.updateIgnoredEmpty"));
 			}
