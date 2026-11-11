@@ -446,11 +446,8 @@ public partial class Form1
             if (message == "cyclefocus")
             {
                 // Leaving the WebView always lands on the tab headers (list -> view -> headers cycle).
-                BeginInvoke(new Action(() =>
-                {
-                    mainTabs.Focus();
-                    Speak(Loc.T("common.tabSuffix", mainTabs.SelectedTab?.Text ?? ""));
-                }));
+                // Focus moves out of the web view, so the reader announces the tab itself. See HandleCycleFocus.
+                BeginInvoke(new Action(() => mainTabs.Focus()));
             }
             else if (message == "focusresults")
             {

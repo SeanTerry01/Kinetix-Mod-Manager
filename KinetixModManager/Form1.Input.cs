@@ -398,9 +398,9 @@ public partial class Form1
 				}
 				else
 				{
-					// Otherwise (likely in WebView or search boxes), move to headers
+					// Otherwise (likely in WebView or search boxes), move to headers. The reader announces the tab
+					// as focus arrives; see the last branch.
 					mainTabs.Focus();
-					Speak(Loc.T("common.tabSuffix", mainTabs.SelectedTab?.Text ?? ""));
 				}
 			}
 			else if (CurrentTab() == AppTab.Walkthroughs)
@@ -414,14 +414,17 @@ public partial class Form1
 				else
 				{
 					mainTabs.Focus();
-					Speak(Loc.T("common.tabSuffix", mainTabs.SelectedTab?.Text ?? ""));
 				}
 			}
 			else
 			{
-				// In other tabs, just jump back to the Tab headers
+				// In other tabs, just jump back to the Tab headers.
+				//
+				// ⚠️ Nothing said here. Focus really moves, so the reader announces the tab itself, and saying it as
+				// well was heard as "Installed Mods Tab, Installed Mods tab selected" on every F6 back to the strip.
+				// Measured with NVDA 2026-11-10. The tab is said by the app only where focus does NOT move, such as
+				// leaving a menu (AnnounceFocusRestored) or startup's landing.
 				mainTabs.Focus();
-				Speak(Loc.T("common.tabSuffix", mainTabs.SelectedTab?.Text ?? ""));
 			}
 		}
 		else
