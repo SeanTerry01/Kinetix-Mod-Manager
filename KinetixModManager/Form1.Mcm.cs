@@ -92,7 +92,7 @@ public partial class Form1
 				values.Set(control, chosen);
 				int index = list.SelectedIndex;
 				Reload(index);
-				Speak(Loc.T("mcm.setTo", control.Label, (list.SelectedItem as McmRow)?.ToString() ?? chosen));
+				SayOnReturnTo(list, Loc.T("mcm.setTo", control.Label, (list.SelectedItem as McmRow)?.ToString() ?? chosen));
 			}
 
 			btnClose.Click += delegate { closeView(); };

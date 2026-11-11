@@ -99,7 +99,7 @@ public partial class Form1
 
 				int index = list.SelectedIndex;
 				Reload(index);
-				Speak(Loc.T("cpconfig.setTo", row.Option.Name, chosen.Length > 0 ? chosen : Loc.T("cpconfig.valueEmpty")));
+				SayOnReturnTo(list, Loc.T("cpconfig.setTo", row.Option.Name, chosen.Length > 0 ? chosen : Loc.T("cpconfig.valueEmpty")));
 			}
 
 			// Delete puts a setting back to what the author intended, which is the one edit that is hard to make

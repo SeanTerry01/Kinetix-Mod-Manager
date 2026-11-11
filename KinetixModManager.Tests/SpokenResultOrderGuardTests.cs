@@ -76,7 +76,12 @@ public class SpokenResultOrderGuardTests
 		string helpers = App("Form1.Helpers.cs");
 		Assert.Contains("replaceReader: announceRowName, carrying: carrying", helpers);
 		// Giving way to newer speech must still say it, and the short repeat check must not drop it.
-		Assert.Contains("if (carrying != null && !_shuttingDown) Speak(carrying);", helpers);
+		int giveWay = helpers.IndexOf("void GiveWay()", StringComparison.Ordinal);
+		Assert.True(giveWay > 0, "GiveWay not found");
+		string giveWayBody = helpers.Substring(giveWay, helpers.IndexOf("\n\t\t}", giveWay, StringComparison.Ordinal) - giveWay);
+		Assert.Contains("if (carrying != null) Speak(carrying);", giveWayBody);
+		// A result handed over by SayOnReturnTo is said too.
+		Assert.Contains("if (result is { } r) Speak(r.Text);", giveWayBody);
 		Assert.Contains("if (carrying == null && ReferenceEquals(_lastPosList, list)", helpers);
 
 		// The row did not move, or none is left: nothing took it, so it is said at the end.

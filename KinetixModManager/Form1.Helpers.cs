@@ -307,6 +307,43 @@ public partial class Form1
 		SpeakListPosition(listBox, text, replaceReader: announceRowName);
 	}
 
+	/// <summary>
+	/// The list whose reader-replacing announcement is under way: set while <see cref="SpeakListPosition"/> swallows the
+	/// reader, cleared when it speaks or gives way.
+	/// </summary>
+	private ListBox? _arrivalPendingFor;
+	/// <summary>A result for that announcement to open with. See <see cref="SayOnReturnTo"/>.</summary>
+	private (ListBox List, string Text, bool NamesRow)? _resultForArrival;
+
+	private (string Text, bool NamesRow)? TakeResultForArrival(ListBox list)
+	{
+		if (ReferenceEquals(_arrivalPendingFor, list)) _arrivalPendingFor = null;
+		if (_resultForArrival is not { } waiting || !ReferenceEquals(waiting.List, list)) return null;
+		_resultForArrival = null;
+		return (waiting.Text, waiting.NamesRow);
+	}
+
+	/// <summary>
+	/// Says the result of a choice made in a view that has just closed back onto <paramref name="list"/>.
+	///
+	/// ⚠️ Not with a plain Speak. The view's closing hands focus back to the list, which sets off the list's own return
+	/// announcement: the reader's reading swallowed, then the row and its position. A Speak made after the view returns
+	/// claims the floor from that, so the swallow stopped and the position was never said, and the reader's version came
+	/// through instead. Changing a Content Patcher setting was heard as "FriendableZuzuNPCs set to Stella, Kennedy.
+	/// window, list, FriendableZuzuNPCs: Stella, Kennedy", with no "4 of 12". Measured with NVDA 2026-11-10.
+	///
+	/// So the result rides on that announcement, first: "FriendableZuzuNPCs set to Stella, Kennedy. 4 of 12". When no
+	/// announcement is under way it is said at once, and one that gives way or finds nothing to say still says it.
+	/// </summary>
+	/// <param name="namesRow">The result already names the row, so the row's own text is left out.</param>
+	private void SayOnReturnTo(ListBox list, string result, bool namesRow = true)
+	{
+		if (ReferenceEquals(_arrivalPendingFor, list) && list.Focused)
+			_resultForArrival = (list, result, namesRow);
+		else
+			Speak(result);
+	}
+
 	[System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
 	private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
@@ -460,9 +497,16 @@ public partial class Form1
 		// started meant hearing the first syllable of it ("insta…") before the cut. Silencing repeatedly across a
 		// short window catches it whenever it begins, and each pass lands too soon after the last for a recognisable
 		// sound to escape. Then the truth is said once, and it is the only thing heard.
+		// Open to a result for as long as the swallow runs. See SayOnReturnTo: a view closing back onto this list sets
+		// this off synchronously, and the view's caller has its result to say only once that has returned.
+		_arrivalPendingFor = list;
+
 		void GiveWay()
 		{
-			if (carrying != null && !_shuttingDown) Speak(carrying);
+			(string Text, bool NamesRow)? result = TakeResultForArrival(list);
+			if (_shuttingDown) return;
+			if (carrying != null) Speak(carrying);
+			if (result is { } r) Speak(r.Text);
 		}
 
 		for (int i = 0; i < 12; i++)
@@ -479,6 +523,14 @@ public partial class Form1
 		{
 			GiveWay();
 			return;
+		}
+
+		// What happened, then where that leaves you, in one sentence. The position is taken now, after whatever the
+		// result's caller did to the list, and a result that names the row stands in for the row's own text.
+		if (TakeResultForArrival(list) is { } result)
+		{
+			string where = result.NamesRow ? PositionTextFor(list) : text;
+			text = where.Length == 0 ? result.Text : result.Text + " " + where;
 		}
 		Speak(text, interrupt: true);
 	}

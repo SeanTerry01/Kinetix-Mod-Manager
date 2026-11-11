@@ -240,7 +240,7 @@ public partial class Form1
             doc.SetValue(row.Entry.Section, row.Entry.Key, result);
             if (!SaveDoc()) return;
             Reload(list.SelectedIndex);
-            Speak(Loc.T("ini.setTo", row.Entry.Key, result));
+            SayOnReturnTo(list, Loc.T("ini.setTo", row.Entry.Key, result));
         }
 
         void DeleteSelected()

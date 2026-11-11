@@ -57,7 +57,7 @@ public partial class Form1
 
 				int index = list.SelectedIndex;
 				Reload(index);
-				Speak(Loc.T("sdvconfig.setTo", setting.Label, chosen));
+				SayOnReturnTo(list, Loc.T("sdvconfig.setTo", setting.Label, chosen));
 			}
 
 			btnClose.Click += delegate { closeView(); };
