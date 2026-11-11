@@ -289,7 +289,6 @@ public partial class Form1
 				content.Controls.Add(box);
 			}
 
-			btnBack.Enabled = history.Count > 0;
 			UpdateNav();
 
 			content.ResumeLayout();
@@ -309,6 +308,9 @@ public partial class Form1
 				SilenceUnnamedContainers(content);
 			}
 			FocusFirstOption(content, btnNext);
+			// Last, once focus has moved on: Back to the first step disabled Back while it had the focus, and the reader said
+			// "unavailable" and followed focus to Next before the step was announced.
+			btnBack.Enabled = history.Count > 0;
 		}
 
 		bool ValidateStep(int index, out string error)

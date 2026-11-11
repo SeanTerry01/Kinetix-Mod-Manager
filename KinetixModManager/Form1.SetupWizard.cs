@@ -48,6 +48,9 @@ public partial class Form1
 		Rebuild(0);
 
 		WireAccessibleDialogList(list);
+		// Rebuilt before focus comes back from Settings, not after: the reader read the stale "not done yet" row and the
+		// manager then said the new one over it, with no position. See RefreshBeforeFocusReturns.
+		RefreshBeforeFocusReturns(list, () => { Rebuild(list.SelectedIndex); return true; });
 		// Escape is handled by the view itself (see Form1.InlineView).
 		list.KeyDown += (_, e) =>
 		{
@@ -68,10 +71,8 @@ public partial class Form1
 				return;
 			}
 			// Steps 1 (API key) and 2 (game folder) are both configured in Settings.
+			// The list is put right as Settings closes (see above), and the reader reads the row with its new state.
 			ShowSettings();
-			Rebuild(step);
-			Speak(Loc.T("wizard.row", Loc.T(step == 1 ? "wizard.stepKey" : "wizard.stepFolder"),
-				Loc.T((step == 1 ? HasApiKey : HasGameFolder) ? "wizard.done" : "wizard.todo")));
 		};
 
 		return list;

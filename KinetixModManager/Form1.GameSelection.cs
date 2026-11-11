@@ -838,8 +838,10 @@ public partial class Form1
 
 			try
 			{
-				Process.Start(new ProcessStartInfo(link.Url) { UseShellExecute = true });
+				// Said and heard out first: the browser taking the window, and focus going back, both cut it off.
 				Speak(Loc.T("store.openingPage", gameName, link.StoreName));
+				LetSpeechFinish();
+				Process.Start(new ProcessStartInfo(link.Url) { UseShellExecute = true });
 			}
 			catch (Exception ex)
 			{

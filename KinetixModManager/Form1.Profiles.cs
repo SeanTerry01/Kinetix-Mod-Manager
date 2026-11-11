@@ -9,8 +9,8 @@ public partial class Form1
 	/// </summary>
 	private void CreateProfileFromCurrent()
 	{
-		string? text = ShowTextPrompt(Loc.T("profiles.saveTitle"), Loc.T("profiles.savePrompt"), "");
-		if (text == null) { Speak(Loc.T("common.changesCancelled")); return; }
+		string? text = ShowTextPrompt(Loc.T("profiles.saveTitle"), Loc.T("profiles.savePrompt"), "", sayOnCancel: Loc.T("common.changesCancelled"));
+		if (text == null) return;
 
 		text = text.Trim();
 		if (text.Length == 0) { Speak(Loc.T("profiles.nameEmpty")); return; }

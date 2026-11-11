@@ -70,12 +70,18 @@ public partial class Form1
 
 				// The buttons follow the row, so a row with no key does not offer to remove one.
 				bool hasKey = list.SelectedItem is ModSourceKeyRow { HasKey: true };
+				// Never the button that has the focus: removing a key from the Remove button disabled it under the user, who
+				// heard "unavailable" and was moved on to another button. They go back to the row instead.
+				if (!hasKey && btnRemove.ContainsFocus) list.Focus();
 				btnEdit.Enabled = list.SelectedItem != null;
 				btnRemove.Enabled = hasKey;
 				btnGetKey.Enabled = list.SelectedItem is ModSourceKeyRow selectedRow && selectedRow.Source.ApiKeyUrl.Length > 0;
 			}
 
 			Reload();
+			// Put right before focus comes back from asking for a key, so the reader reads "Key saved" on the row and not the
+			// "no key yet" it had before. See RefreshBeforeFocusReturns.
+			RefreshBeforeFocusReturns(list, () => { Reload((list.SelectedItem as ModSourceKeyRow)?.Source.Id); return true; });
 
 			list.GotFocus += List_Enter;
 			KeepLeftAndRightOffTheSelection(list);
@@ -232,7 +238,8 @@ public partial class Form1
 		_settings.SetModSourceApiKey(row.Source.Id, "");
 		_settings.Save();
 		if (row.Source.Id == ModSources.Modrinth) { _modrinthUser = null; _modrinthFollowed = null; }
-		Speak(Loc.T("sourcekeys.removed", row.Source.DisplayName));
+		// The list first, which may move focus off the Remove button (see Reload), then what happened.
 		reload(row.Source.Id);
+		Speak(Loc.T("sourcekeys.removed", row.Source.DisplayName));
 	}
 }

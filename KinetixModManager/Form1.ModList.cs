@@ -936,8 +936,8 @@ public partial class Form1
 	private void PromptForApiKey()
 	{
 		// Protected, like every key box: filled with the saved key and selected, a plain box read it out in full.
-		string? text = ShowTextPrompt(Loc.T("login.title"), Loc.T("login.pasteApiKey"), _settings.ApiKey, secret: true);
-		if (text == null) { Speak(Loc.T("common.changesCancelled")); return; }
+		string? text = ShowTextPrompt(Loc.T("login.title"), Loc.T("login.pasteApiKey"), _settings.ApiKey, secret: true, sayOnCancel: Loc.T("common.changesCancelled"));
+		if (text == null) return;
 
 		text = text.Trim();
 		if (text.Length == 0) { Speak(Loc.T("login.keyEmpty")); return; }
@@ -1029,9 +1029,9 @@ public partial class Form1
 			string? typed = ShowTextPrompt(
 				Loc.T("link.title"),
 				Loc.T("link.prompt", linkedMod.Name),
-				currentId);
+				currentId, sayOnCancel: Loc.T("common.changesCancelled"));
 
-			if (typed == null) { Speak(Loc.T("common.changesCancelled")); return; }
+			if (typed == null) return;
 
 			string input = typed.Trim();
 			// An emptied box leaves the link alone; "0" is what clears it, as the prompt says. Kept that way on

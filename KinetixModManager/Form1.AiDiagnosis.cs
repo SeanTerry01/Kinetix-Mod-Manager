@@ -41,8 +41,8 @@ public partial class Form1
 	{
 		if (!EnsureAiReady()) return;
 
-		string? q = ShowTextPrompt(Loc.T("ai.askTitle"), Loc.T("ai.askPrompt"), "");
-		if (q == null) { Speak(Loc.T("common.changesCancelled")); return; }
+		string? q = ShowTextPrompt(Loc.T("ai.askTitle"), Loc.T("ai.askPrompt"), "", sayOnCancel: Loc.T("common.changesCancelled"));
+		if (q == null) return;
 
 		q = q.Trim();
 		if (q.Length == 0) { Speak(Loc.T("ai.askEmpty")); return; }

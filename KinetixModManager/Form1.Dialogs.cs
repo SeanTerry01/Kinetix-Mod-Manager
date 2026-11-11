@@ -159,8 +159,8 @@ public partial class Form1
 		};
 		btnCreateTheme.Click += delegate
 		{
-			string? themeName = ShowTextPrompt(Loc.T("themeMgr.createTitle"), Loc.T("themeMgr.createPrompt"), "");
-			if (themeName == null) { Speak(Loc.T("common.changesCancelled")); return; }
+			string? themeName = ShowTextPrompt(Loc.T("themeMgr.createTitle"), Loc.T("themeMgr.createPrompt"), "", sayOnCancel: Loc.T("common.changesCancelled"));
+			if (themeName == null) return;
 
 			themeName = themeName.Trim();
 			if (themeName.Length == 0) { Speak(Loc.T("themeMgr.nameEmpty")); return; }

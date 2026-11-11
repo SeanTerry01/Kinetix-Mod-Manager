@@ -19,33 +19,40 @@ public partial class Form1
 			return;
 		}
 
+		// Said while the box is still open, and the row changed once that has been heard, so the reader reads the new
+		// category as focus comes back (see ActBeforeReturning). Said after it, the result raced the reader's reading of
+		// the old row and the position was lost.
+		bool changed = false;
 		string? text = ShowTextPrompt(
 			Loc.T("modactions.changeCategoryTitle"),
 			Loc.T("modactions.changeCategoryPrompt", selectedMod.Name),
-			selectedMod.Category);
-
-		if (text == null) { Speak(Loc.T("common.changesCancelled")); return; }
-
-		text = text.Trim();
-
-		// An emptied box now means something, and the obvious thing: put the mod back where it was before a
-		// category was ever assigned. The old input box could not tell that from a cancel, so it had to treat both
-		// as "do nothing" and there was no way to undo a category at all.
-		if (text.Length == 0)
-		{
-			if (!_settings.ModCategories.Remove(selectedMod.UniqueId))
+			selectedMod.Category,
+			actOnAnswer: typed =>
 			{
-				Speak(Loc.T("common.changesCancelled"));
-				return;
-			}
-			_settings.Save();
-			Fire(SayAndRefreshModList(Loc.T("modactions.categoryCleared", selectedMod.Name), selectedMod), "RefreshModList");
-			return;
-		}
+				string chosen = typed.Trim();
+				// An emptied box now means something, and the obvious thing: put the mod back where it was before a
+				// category was ever assigned. The old input box could not tell that from a cancel.
+				if (chosen.Length == 0)
+				{
+					if (!_settings.ModCategories.Remove(selectedMod.UniqueId))
+						return new ResultBeforeReturning(Loc.T("common.changesCancelled"));
+					_settings.Save();
+					changed = true;
+					return new ResultBeforeReturning(Loc.T("modactions.categoryCleared", selectedMod.Name));
+				}
+				_settings.ModCategories[selectedMod.UniqueId] = chosen;
+				_settings.Save();
+				changed = true;
+				return new ResultBeforeReturning(Loc.T("modactions.categorySet", selectedMod.Name, chosen), () =>
+				{
+					selectedMod.Category = chosen;
+					RebuildInstalledListBox(selectedMod.UniqueId);
+				});
+			},
+			sayOnCancel: Loc.T("common.changesCancelled"));
 
-		_settings.ModCategories[selectedMod.UniqueId] = text;
-		_settings.Save();
-		Fire(SayAndRefreshModList(Loc.T("modactions.categorySet", selectedMod.Name, text), selectedMod), "RefreshModList");
+		// From disk as well, quietly: a cleared category falls back to one only the scan can work out.
+		if (text != null && changed) Fire(RefreshModList(checkUpdates: false), "RefreshModList");
 	}
 
 	/// <summary>
@@ -68,10 +75,25 @@ public partial class Form1
 		}
 
 		string existing = _settings.ModNotes.TryGetValue(mod.UniqueId, out string? current) ? current : "";
-		string? typed = ShowTextPrompt(Loc.T("modactions.noteTitle"), Loc.T("modactions.notePrompt", mod.Name), existing);
+		// A note typed is said while the box is still open and the row changed after, like a category. Clearing one asks
+		// first, so that question comes once the box has gone. Escape is said by the box as it closes.
+		string? typed = ShowTextPrompt(Loc.T("modactions.noteTitle"), Loc.T("modactions.notePrompt", mod.Name), existing,
+			actOnAnswer: t =>
+			{
+				string note = t.Trim();
+				if (note.Length == 0) return null;
+				_settings.ModNotes[mod.UniqueId] = note;
+				_settings.Save();
+				return new ResultBeforeReturning(Loc.T("modactions.noteSet", mod.Name), () =>
+				{
+					mod.Note = note;
+					RebuildInstalledListBox(mod.UniqueId);
+				});
+			},
+			sayOnCancel: Loc.T("common.changesCancelled"));
 
 		// Escape is now distinguishable from an emptied box, which is what the old input box could never manage.
-		if (typed == null) { Speak(Loc.T("common.changesCancelled")); return; }
+		if (typed == null) return;
 
 		string text = typed.Trim();
 
@@ -92,10 +114,7 @@ public partial class Form1
 			}
 			return;
 		}
-
-		_settings.ModNotes[mod.UniqueId] = text;
-		_settings.Save();
-		Fire(SayAndRefreshModList(Loc.T("modactions.noteSet", mod.Name), mod), "RefreshModList");
+		// Already saved and said by the box. See above.
 	}
 
 	/// <summary>

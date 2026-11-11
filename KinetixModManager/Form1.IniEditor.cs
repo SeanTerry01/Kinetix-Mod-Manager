@@ -274,20 +274,20 @@ public partial class Form1
         {
             string defaultSection = (list.SelectedItem as IniRow)?.Entry.Section ?? "";
 
-            string? typedSection = ShowTextPrompt(Loc.T("ini.addTitle"), Loc.T("ini.addSectionPrompt"), defaultSection);
-            if (typedSection == null) { Speak(Loc.T("common.changesCancelled")); return; }
+            string? typedSection = ShowTextPrompt(Loc.T("ini.addTitle"), Loc.T("ini.addSectionPrompt"), defaultSection, sayOnCancel: Loc.T("common.changesCancelled"));
+            if (typedSection == null) return;
             string section = typedSection.Trim();
             if (section.Length == 0) { Speak(Loc.T("ini.addNeedSection")); return; }
 
-            string? typedKey = ShowTextPrompt(Loc.T("ini.addTitle"), Loc.T("ini.addKeyPrompt"), "");
-            if (typedKey == null) { Speak(Loc.T("common.changesCancelled")); return; }
+            string? typedKey = ShowTextPrompt(Loc.T("ini.addTitle"), Loc.T("ini.addKeyPrompt"), "", sayOnCancel: Loc.T("common.changesCancelled"));
+            if (typedKey == null) return;
             string key = typedKey.Trim();
             if (key.Length == 0) { Speak(Loc.T("ini.addNeedKey")); return; }
 
             // A value may legitimately be empty — plenty of INI settings are switched off by having nothing after
             // the equals sign — so only Escape backs out here.
-            string? value = ShowTextPrompt(Loc.T("ini.addTitle"), Loc.T("ini.addValuePrompt", key), "");
-            if (value == null) { Speak(Loc.T("common.changesCancelled")); return; }
+            string? value = ShowTextPrompt(Loc.T("ini.addTitle"), Loc.T("ini.addValuePrompt", key), "", sayOnCancel: Loc.T("common.changesCancelled"));
+            if (value == null) return;
 
             doc.SetValue(section, key, value);
             if (!SaveDoc()) return;

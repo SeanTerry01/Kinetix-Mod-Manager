@@ -144,6 +144,16 @@ public partial class Form1
 
 		onClosed?.Invoke();
 		if (actBeforeReturning != null && !acted) ActAfterReturning(actBeforeReturning);
+
+		// As a prompt does: what is said straight after this returns, onto a list, rides on the list's return announcement
+		// rather than talking over the reader and losing the position. A fallback, for results not yet said before
+		// returning; those that are (sayOnClosing, actBeforeReturning) leave nothing for it. See Speak and ShowPrompt.
+		if (Control.FromHandle(GetFocus()) is ListBox onto && ReferenceEquals(_arrivalPendingFor, onto) && !IsDisposed)
+		{
+			_promptClosedOnto = onto;
+			BeginInvoke(new Action(() => { if (ReferenceEquals(_promptClosedOnto, onto)) _promptClosedOnto = null; }));
+		}
+
 		if (!saidOnClosing && sayOnClosing?.Invoke() is { } after) Speak(after);
 	}
 
@@ -164,8 +174,13 @@ public partial class Form1
 	/// <see cref="WithShowHideButton"/>.
 	/// </param>
 	/// <param name="actOnAnswer">As for <see cref="ShowChoiceList"/>: applies what was typed and says what to say.</param>
+	/// <param name="sayOnCancel">
+	/// What to say when the box is left with Escape or Cancel — usually "Changes cancelled." Said the way a result is, before
+	/// focus goes back (see ShowInlineView's sayOnClosing). A plain Speak after the box returned talked over the reader's
+	/// reading of the row, and dropped its position.
+	/// </param>
 	private string? ShowTextPrompt(string title, string prompt, string initial, bool secret = false,
-		Func<string, ResultBeforeReturning?>? actOnAnswer = null)
+		Func<string, ResultBeforeReturning?>? actOnAnswer = null, string? sayOnCancel = null)
 	{
 		string? answer = null;
 
@@ -224,6 +239,7 @@ public partial class Form1
 			input.SelectAll();
 			return input;
 		},
+		sayOnClosing: sayOnCancel == null ? null : () => answer == null ? sayOnCancel : null,
 		actBeforeReturning: actOnAnswer == null ? null : () => answer == null ? null : actOnAnswer(answer));
 
 		return answer;
@@ -299,8 +315,9 @@ public partial class Form1
 	/// For a choice that changes the list the screen was opened from: applies it and says what to say. See
 	/// <see cref="ActBeforeReturning"/>. Not called when nothing was chosen.
 	/// </param>
+	/// <param name="sayOnCancel">As for <see cref="ShowTextPrompt"/>: said, before focus goes back, when nothing was chosen.</param>
 	private string? ShowChoiceList(string title, string listName, IReadOnlyList<string> values, string current, string hint,
-		Func<string, ResultBeforeReturning?>? actOnChoice = null)
+		Func<string, ResultBeforeReturning?>? actOnChoice = null, string? sayOnCancel = null)
 	{
 		string? chosen = null;
 
@@ -337,6 +354,7 @@ public partial class Form1
 			return list;
 		},
 		hint: hint,
+		sayOnClosing: sayOnCancel == null ? null : () => chosen == null ? sayOnCancel : null,
 		actBeforeReturning: actOnChoice == null ? null : () => chosen == null ? null : actOnChoice(chosen));
 
 		return chosen;

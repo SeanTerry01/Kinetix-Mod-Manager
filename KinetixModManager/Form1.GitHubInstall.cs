@@ -24,8 +24,8 @@ public partial class Form1
 	{
 		if (RefusedWhileModsAreChanging()) return;
 		string? typed = ShowTextPrompt(
-			Loc.T("github.installTitle"), Loc.T("github.installPrompt"), "");
-		if (typed == null) { Speak(Loc.T("common.changesCancelled")); return; }
+			Loc.T("github.installTitle"), Loc.T("github.installPrompt"), "", sayOnCancel: Loc.T("common.changesCancelled"));
+		if (typed == null) return;
 
 		string? repo = GitHubReleases.ParseRepo(typed);
 		if (repo == null)

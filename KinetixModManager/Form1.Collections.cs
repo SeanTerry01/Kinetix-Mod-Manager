@@ -100,9 +100,9 @@ public partial class Form1
 		string? name = ShowTextPrompt(
 			Loc.T("collection.nameTitle"),
 			Loc.T("collection.namePrompt"),
-			Loc.T("collection.nameDefault"));
+			Loc.T("collection.nameDefault"), sayOnCancel: Loc.T("common.changesCancelled"));
 
-		if (name == null) { Speak(Loc.T("common.changesCancelled")); return; }
+		if (name == null) return;
 
 		name = name.Trim();
 		if (name.Length == 0) { Speak(Loc.T("collection.nameEmpty")); return; }
