@@ -79,9 +79,15 @@ public partial class Form1
 			Speak(Loc.T("downloads.noneRunning"));
 			return;
 		}
+		// ⚠️ Said as it is. Pressed during Update All after the file had arrived, this said "Download cancelled." while the
+		// mod went on installing and was updated seven seconds later. Measured on the test copy 2026-11-10. An install is
+		// not stopped halfway, which would leave the mod half replaced; what stops is everything after it.
+		bool downloading = _nexusService.AnyDownloadRunning;
 		_stopUpdateAll = isUpdatingAll;
 		_nexusService.CancelDownloads();
-		Speak(Loc.T("downloads.cancelled"));
+		Speak(Loc.T(!downloading ? "downloads.stopAfterInstall"
+			: isUpdatingAll ? "downloads.cancelledUpdateAll"
+			: "downloads.cancelled"));
 	}
 
 	private bool _stopUpdateAll;

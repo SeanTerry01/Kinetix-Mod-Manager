@@ -10,10 +10,22 @@ public partial class Form1
 	/// Downloads and installs every mod currently listed in the Updates tab, one at a time.
 	/// Guarded by a flag to prevent concurrent runs.
 	/// </summary>
+	private void SayNothingToUpdate() =>
+		Speak(ShortcutIsSet("RefreshAll")
+			? Loc.T("updateAll.nothing", GetShortcutString("RefreshAll"))
+			: Loc.T("updateAll.nothingNoKey"));
+
 	private async Task UpdateAllMods()
 	{
-		if (isUpdatingAll || listUpdates.Items.Count == 0)
+		// Said, not silent: Ctrl+U with nothing to update said nothing at all. Measured 2026-11-10.
+		if (isUpdatingAll)
 		{
+			Speak(Loc.T("updateAll.running"));
+			return;
+		}
+		if (listUpdates.Items.Count == 0)
+		{
+			SayNothingToUpdate();
 			return;
 		}
 		// Premium is a Nexus arrangement and only ever mattered for a Nexus download. Asking it of the whole command
@@ -24,7 +36,11 @@ public partial class Form1
 		// leaves behind any mod without a build for it. It stays in the list, to be chosen deliberately.
 		List<GameMod> rows = listUpdates.Items.Cast<GameMod>()
 			.Where(m => m.UniqueId != MinecraftVersionRowId && m.UniqueId != ModpackRowId).ToList();
-		if (rows.Count == 0) return;
+		if (rows.Count == 0)
+		{
+			SayNothingToUpdate();
+			return;
+		}
 		// A modpack's own mods are a set its maker tested together, so in a pack's session they are asked about as a
 		// group before anything else — with "only the ones you added" first, because that is the safe answer and
 		// the pack's own update will bring its mods up to date as a tested set. See CameWithPack.
