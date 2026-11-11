@@ -117,7 +117,7 @@ public sealed class RefreshOffThreadTests
 	public void SettingsStayingOpenIsNotARefreshStillRunning()
 	{
 		// Launching, installing and leaving all wait on this count, and Settings stays open as long as the player likes.
-		InOrder(Body("Form1.ModList.cs", "private async Task RefreshModList(", 16000),
+		InOrder(Body("Form1.ModList.cs", "private async Task RefreshModList(", 30000),
 			"NoLongerRefreshing();", "ShowSettings();");
 	}
 
@@ -134,6 +134,23 @@ public sealed class RefreshOffThreadTests
 	{
 		InOrder(Body("Form1.ModList.cs", "private async Task RefreshModList(", 12000),
 			"_nexusFailedForKey == _settings.ApiKey", "speak: false", "CheckConnectionAsync()", "_nexusFailedForKey = _settings.ApiKey");
+	}
+
+	[Fact]
+	public void TheModsDoNotWaitForNexus()
+	{
+		// In an outage where Nexus took the connection and never answered, the list stayed empty for the ten seconds the
+		// check took to give up, and Mod Priority and Plugin Order with it. Measured 2026-11-11. The check is started, the disk
+		// read while it runs, and the list goes up after a short grace whether or not it has answered.
+		string body = Body("Form1.ModList.cs", "private async Task RefreshModList(", 30000);
+		Assert.DoesNotContain("await _nexusService.CheckConnectionAsync()", body);
+		InOrder(body,
+			"connecting = _nexusService.CheckConnectionAsync();",
+			"ScanModsFolder(",
+			"Task.WhenAny(connecting, Task.Delay(ConnectionGrace))",
+			"RebuildInstalledListBox(",
+			"await connecting;",
+			"SettleConnection(late);");
 	}
 
 	[Fact]

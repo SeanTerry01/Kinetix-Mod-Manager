@@ -279,6 +279,13 @@ as before.
 *   **Your mods are listed even when Nexus cannot be reached.** Being offline, rate limited or caught by an outage used
     to leave an empty list and "Authentication Failed - Check API Key", about a key that was fine. Now you are told Nexus
     did not answer, and only a key Nexus actually refuses is called a bad key. With no key at all, your mods are listed too.
+    That covers everything the manager already has: the mod list, Mod Priority, Plugin Order, Creations, profiles, backups,
+    switching mods on and off, and starting the game.
+*   **Your mods no longer wait for Nexus to answer.** In an outage where Nexus takes the connection and never replies, the
+    list stayed empty for the ten seconds the manager waited, and so did Mod Priority and Plugin Order. Now the mods are read
+    while it waits, and are up within a few seconds; you hear that Nexus did not answer when it gives up. With Nexus working,
+    you still hear "Connected as" first. Installing a zip from your own disk waits at most ten seconds for Nexus to name
+    the mod in an outage, not thirty.
 *   **"All mods are up-to-date" now means it.** With Nexus down or your requests used up, every lookup failed and this was
     said anyway. You are now told that some mods could not be checked.
 *   **"No mods found" and "You aren't tracking any mods" now mean that, too**, rather than Nexus not answering.
@@ -1041,7 +1048,7 @@ brings across the ones you already have in the Modrinth App.
 
 ## ✅ Tests
 
-*   **2,202 passing**, and all of them now pass off Windows too, where sixteen used to fail.
+*   **2,203 passing**, and all of them now pass off Windows too, where sixteen used to fail.
 *   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 *   Twenty-six of them cover unpacking a downloaded mod, including one that extracts a **real .7z** rather than a stand-in — the only way to know that reading one without `7za.exe` actually works.

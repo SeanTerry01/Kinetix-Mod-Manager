@@ -1066,10 +1066,14 @@ public class NexusService
 		{
 			using var req = BuildRequest(HttpMethod.Get,
 				$"https://api.nexusmods.com/v1/games/{(string.IsNullOrEmpty(gameDomain) ? CurrentGameDomain : gameDomain)}/mods/{nexusId}.json");
-			var resp = await HttpClient.SendAsync(req);
+			// Shorter than the client's own thirty seconds, as the connection check's is. Installing a zip from the disk asks this
+			// for the mod's name and author when the file name carries its Nexus number, and in an outage where Nexus takes the
+			// connection and never answers, the install sat for the whole thirty. A mod page is a few kilobytes.
+			using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+			var resp = await HttpClient.SendAsync(req, timeout.Token);
 			CaptureRateLimit(resp);
 			if (!resp.IsSuccessStatusCode) return null;
-			return JObject.Parse(await resp.Content.ReadAsStringAsync());
+			return JObject.Parse(await resp.Content.ReadAsStringAsync(timeout.Token));
 		}
 		catch { return null; }
 		finally { _apiSemaphore.Release(); }

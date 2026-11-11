@@ -86,6 +86,7 @@ public partial class Form1
 
 		bool launchedChecks = false;
 		bool openedSettings = false;
+		Task<NexusConnection>? connecting = null;
 		bool counted = true;
 		void NoLongerRefreshing()
 		{
@@ -133,36 +134,36 @@ public partial class Form1
 		}
 		else if (!_nexusService.IsValidated)
 		{
+			// Asked now and answered later, while the disk is read. See ConnectionGrace.
 			SetStatus(Loc.T("status.connecting"));
-			NexusConnection connection = await _nexusService.CheckConnectionAsync();
+			connecting = _nexusService.CheckConnectionAsync();
+		}
+		else
+		{
+			SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser), speak: false);
+		}
 
-			// A switch during that wait makes this pass the wrong one, and the newer pass is on its way.
-			if (Superseded()) return;
-
+		// Says how the connection went, and calls off the update check when there is none.
+		void SettleConnection(NexusConnection connection)
+		{
 			if (connection == NexusConnection.Connected)
 			{
 				_nexusFailedForKey = null;
 				SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser));
 				_soundEngine.Play("connect");
+				return;
 			}
-			else
+			// ⚠️ This used to return, leaving an empty list. Everything below reads the disk and needs no network, so
+			// being offline cost someone every mod they had, and the message blamed their key.
+			_nexusFailedForKey = _settings.ApiKey;
+			_nexusFailedStatus = connection == NexusConnection.KeyRejected ? "status.authFailed" : "status.nexusUnreachable";
+			SetStatus(Loc.T(_nexusFailedStatus));
+			_soundEngine.Play("error");
+			if (doUpdateChecks)
 			{
-				// ⚠️ This used to return, leaving an empty list. Everything below reads the disk and needs no network, so
-				// being offline cost someone every mod they had, and the message blamed their key.
-				_nexusFailedForKey = _settings.ApiKey;
-				_nexusFailedStatus = connection == NexusConnection.KeyRejected ? "status.authFailed" : "status.nexusUnreachable";
-				SetStatus(Loc.T(_nexusFailedStatus));
-				_soundEngine.Play("error");
-				if (doUpdateChecks)
-				{
-					Interlocked.Exchange(ref _updateCheckRunning, 0);
-					doUpdateChecks = false;
-				}
+				Interlocked.Exchange(ref _updateCheckRunning, 0);
+				doUpdateChecks = false;
 			}
-		}
-		else
-		{
-			SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser), speak: false);
 		}
 		// ⚠️ Off the interface thread from here until the list is rebuilt. Measured on a generated Skyrim setup: 1,000 mods
 		// of 20 files each is 2.2 seconds a refresh, and 200 files each is 23 seconds, nearly all of it the deployment check.
@@ -252,13 +253,29 @@ public partial class Form1
 			if (Superseded()) return;
 		}
 
+		// The connection, if it has answered by now or soon after, is said before the list lands, as it always was:
+		// "Connected as", then the tab. One that hasn't answered by then doesn't hold the mods back. See ConnectionGrace.
+		if (connecting != null)
+		{
+			await Task.WhenAny(connecting, Task.Delay(ConnectionGrace));
+			if (connecting.IsCompleted)
+			{
+				SettleConnection(await connecting);
+				connecting = null;
+			}
+			if (Superseded()) return;
+		}
+		// The Updates list is emptied for a check that is going to run. Still waiting on Nexus, that isn't known yet, and
+		// the updates found last time stay where they are.
+		bool clearUpdates = doUpdateChecks && connecting == null;
+
 		// Which mod the user was on, read now rather than before the wait, because they may have moved since.
 		string? selectedBefore = null;
 		Invoke(delegate
 		{
 			selectedBefore = (listInstalled.SelectedItem as GameMod)?.UniqueId;
 			listInstalled.BeginUpdate();
-			if (doUpdateChecks)
+			if (clearUpdates)
 			{
 				listUpdates.BeginUpdate();
 				listUpdates.Items.Clear();
@@ -365,7 +382,7 @@ public partial class Form1
 			}
 			listUpdates.EndUpdate();
 			// The one the rescan opened when it cleared the list. Left open, the list stayed suspended for the session.
-			if (doUpdateChecks) listUpdates.EndUpdate();
+			if (clearUpdates) listUpdates.EndUpdate();
 
 			// Startup only, and last: once the list is actually on screen, put the user on the first tab and say
 			// which one it is. Before this, a session opened, announced it was connected, and then went quiet with
@@ -382,6 +399,18 @@ public partial class Form1
 				LandOnFirstTab();
 			}
 		});
+
+		// Nexus slow to answer, or not answering at all, as in an outage: the mods went up without it, and how the connection
+		// went is said now.
+		if (connecting != null)
+		{
+			NexusConnection late = await connecting;
+			connecting = null;
+			if (Superseded()) return;
+			SettleConnection(late);
+			// Emptied now, as it would have been, for the check about to fill it.
+			if (doUpdateChecks) Invoke(delegate { listUpdates.Items.Clear(); });
+		}
 
 		// After the list, so the mods are there behind the question rather than waiting on the answer to it. No longer
 		// counted as refreshing, because Settings stays open for as long as the player wants it. Not over another prompt.
@@ -465,6 +494,10 @@ public partial class Form1
 		}
 		finally
 		{
+			// A pass that ended before the list, over a mods folder that is missing or can't be read, said why in a box. The
+			// connection still gets its answer, in the title only, rather than "Connecting" for the rest of the session.
+			if (connecting is { } unanswered && !Superseded())
+				Fire(NameConnectionInTitleAsync(unanswered, Superseded), "NameConnectionInTitleAsync");
 			NoLongerRefreshing();
 			// The question was never put, so a later pass may still put it.
 			if (askForNexusKey && !openedSettings) _askedForNexusKey = false;
@@ -487,6 +520,38 @@ public partial class Form1
 				}
 			}
 		}
+	}
+
+	/// <summary>
+	/// How much longer than reading the mods a refresh waits for Nexus to answer before it lists them anyway.
+	///
+	/// <para>
+	/// The list used to wait for the answer before it read the disk at all. Measured 2026-11-11 on the test Skyrim, with the
+	/// test copy's connections sent to a proxy that accepted and never answered, as in an outage: the mods came up 10
+	/// seconds after "Connecting to Nexus", when the check gave up. Refused outright, 2.2 seconds; Nexus up, half a second.
+	/// Now the check runs while the disk is read. Three seconds covers a working connection, so "Connected as" is still said
+	/// before the list lands; past that, the mods come up first and the outage is said when the check gives up.
+	/// </para>
+	/// </summary>
+	private static readonly TimeSpan ConnectionGrace = TimeSpan.FromSeconds(3);
+
+	/// <summary>
+	/// Puts a connection check's answer in the title, unspoken, for a refresh that ended before its list and so before the
+	/// answer. See the finally in <see cref="RefreshModList"/>.
+	/// </summary>
+	private async Task NameConnectionInTitleAsync(Task<NexusConnection> unanswered, Func<bool> superseded)
+	{
+		NexusConnection connection = await unanswered;
+		if (superseded() || _shuttingDown || IsDisposed) return;
+		if (connection == NexusConnection.Connected)
+		{
+			_nexusFailedForKey = null;
+			SetStatus(Loc.T("status.connectedAs", _nexusService.NexusUser), speak: false);
+			return;
+		}
+		_nexusFailedForKey = _settings.ApiKey;
+		_nexusFailedStatus = connection == NexusConnection.KeyRejected ? "status.authFailed" : "status.nexusUnreachable";
+		SetStatus(Loc.T(_nexusFailedStatus), speak: false);
 	}
 
 	/// <summary>The key Nexus last failed for this run, so that failure is said once rather than on every rescan.</summary>
