@@ -41,7 +41,7 @@ public partial class Form1
 
 			foreach (var (_, src) in SafetySourceFiles())
 				if (File.Exists(src))
-					File.Copy(src, Path.Combine(dir, Path.GetFileName(src)), overwrite: true);
+					CopyIntoSnapshot(src, Path.Combine(dir, Path.GetFileName(src)));
 
 			var meta = new SafetyBackupMeta
 			{
@@ -53,7 +53,7 @@ public partial class Form1
 				HeldOff = _settings.DeploymentHeldOff.Contains(_settings.ActiveGame),
 			};
 			if (extraFile != null && File.Exists(extraFile))
-				File.Copy(extraFile, Path.Combine(dir, SafetyExtraFileName), overwrite: true);
+				CopyIntoSnapshot(extraFile, Path.Combine(dir, SafetyExtraFileName));
 			AtomicFile.WriteAllText(Path.Combine(dir, "safety.json"), JsonConvert.SerializeObject(meta, Formatting.Indented));
 
 			PruneSafetyBackups();
@@ -73,7 +73,7 @@ public partial class Form1
 				.OrderByDescending(d => d.Name, StringComparer.Ordinal)
 				.Skip(MaxSafetyBackups);
 			foreach (DirectoryInfo d in dirs)
-				try { d.Delete(recursive: true); }
+				try { DeleteSnapshot(d.FullName); }
 				catch (Exception ex) { DiagnosticLog.WriteException("Safety", $"deleting the old snapshot {d.FullName}", ex); }
 		}
 		catch (Exception ex) { DiagnosticLog.WriteException("Safety", "pruning old safety snapshots", ex); }
@@ -135,7 +135,7 @@ public partial class Form1
 					// It asks, like every other list, and a delete that failed is not reported as done.
 					if (SpeakBox(Loc.T("safety.deleteConfirm", item.Summary), Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo) != DialogResult.Yes)
 						return;
-					try { Directory.Delete(item.Dir, recursive: true); }
+					try { DeleteSnapshot(item.Dir); }
 					catch (Exception ex)
 					{
 						LogFailure("Safety", $"Could not delete the safety backup {item.Dir}", ex);
@@ -192,6 +192,49 @@ public partial class Form1
 		return items;
 	}
 
+	/// <summary>
+	/// A file copied into a snapshot, writable. File.Copy keeps the read-only flag, so a snapshot of a protected plugins.txt
+	/// held a read-only copy, and deleting that snapshot or pruning it was refused.
+	/// </summary>
+	private static void CopyIntoSnapshot(string from, string to)
+	{
+		File.Copy(from, to, overwrite: true);
+		FileAttributes attributes = File.GetAttributes(to);
+		if ((attributes & FileAttributes.ReadOnly) != 0) File.SetAttributes(to, attributes & ~FileAttributes.ReadOnly);
+	}
+
+	/// <summary>Deletes a snapshot folder, through any read-only file an older snapshot was taken with.</summary>
+	private static void DeleteSnapshot(string dir)
+	{
+		foreach (string file in Directory.GetFiles(dir, "*", SearchOption.AllDirectories))
+		{
+			FileAttributes attributes = File.GetAttributes(file);
+			if ((attributes & FileAttributes.ReadOnly) != 0) File.SetAttributes(file, attributes & ~FileAttributes.ReadOnly);
+		}
+		Directory.Delete(dir, recursive: true);
+	}
+
+	/// <summary>
+	/// Puts a saved file back over the live one, through a read-only flag, and leaves the flag as it found it.
+	///
+	/// ⚠️ plugins.txt is made read-only when the manager protects the load order from the game, and game INI files often are
+	/// on purpose. Copying over one failed with "access was denied", so restoring the snapshot taken before a purge gave an
+	/// error and left the purge in place. Measured on the test copy 2026-11-10.
+	/// </summary>
+	private static void CopyOverKeepingReadOnly(string from, string to)
+	{
+		bool wasReadOnly = File.Exists(to) && (File.GetAttributes(to) & FileAttributes.ReadOnly) != 0;
+		if (wasReadOnly) File.SetAttributes(to, File.GetAttributes(to) & ~FileAttributes.ReadOnly);
+		try
+		{
+			File.Copy(from, to, overwrite: true);
+		}
+		finally
+		{
+			if (wasReadOnly && File.Exists(to)) File.SetAttributes(to, File.GetAttributes(to) | FileAttributes.ReadOnly);
+		}
+	}
+
 	/// <summary>Restores a snapshot: copies its files back, reinstates the saved load order, and re-deploys.</summary>
 	private async Task RestoreSafetyBackupAsync(SafetyBackupItem item)
 	{
@@ -214,7 +257,7 @@ public partial class Form1
 				if (!File.Exists(src)) continue;
 				string? destDir = Path.GetDirectoryName(dest);
 				if (destDir != null && !Directory.Exists(destDir)) Directory.CreateDirectory(destDir);
-				File.Copy(src, dest, overwrite: true);
+				CopyOverKeepingReadOnly(src, dest);
 			}
 
 			if (item.Meta.ExtraFile is { Length: > 0 } extra)
@@ -223,7 +266,7 @@ public partial class Form1
 				if (File.Exists(saved))
 				{
 					if (Path.GetDirectoryName(extra) is { Length: > 0 } extraFolder) Directory.CreateDirectory(extraFolder);
-					File.Copy(saved, extra, overwrite: true);
+					CopyOverKeepingReadOnly(saved, extra);
 				}
 				// It did not exist before the change, so it goes.
 				else if (File.Exists(extra)) File.Delete(extra);
