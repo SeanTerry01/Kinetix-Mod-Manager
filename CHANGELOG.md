@@ -12,6 +12,9 @@
 *   **API keys are hidden.** The Nexus key and the AI key in Settings, and the keys under File, Mod source API keys, are now
     protected boxes, so your screen reader no longer reads the key out when you land on one. A Show key button straight after
     each box shows it until you press it again.
+*   **Coming back to a list no longer cuts NVDA off.** With NVDA 2026.3 or newer, closing a screen or Settings lets NVDA
+    read the row itself, and the manager adds only the position after it. Before, NVDA's reading was cut off at once and the
+    manager said the row again, so NVDA's speech history showed every row twice.
 *   **After a file picker, the window title is no longer read.** You hear the result, then the row you are on.
 *   **F6 while your mods are still loading says so**, "Your mods are still loading.", and stays where you are. It went into the
     empty list and said "List is empty".

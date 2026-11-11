@@ -532,6 +532,26 @@ public partial class Form1
 			if (result is { } r) Speak(r.Text);
 		}
 
+		// With a reader that can say when it is speaking, the reader is not swallowed at all unless a result has to come
+		// first. See LetReaderReadTheRowAsync.
+		if (_announcer.IsSpeakingForCertain is not null && carrying == null)
+		{
+			// One turn of the message loop, so the caller that closed the view or prompt can hand over its result first:
+			// it runs straight after the overlay returns, inside the same message. The reader takes about 65ms to start
+			// (traced 2026-11-10), so a swallow chosen after this still catches it as it begins.
+			await Task.Yield();
+			if (_shuttingDown || list.IsDisposed || generation != _speakListGeneration)
+			{
+				GiveWay();
+				return;
+			}
+			if (_resultForArrival is not { } waiting || !ReferenceEquals(waiting.List, list))
+			{
+				await LetReaderReadTheRowAsync(list, text, generation, GiveWay);
+				return;
+			}
+		}
+
 		for (int i = 0; i < 12; i++)
 		{
 			if (_shuttingDown || list.IsDisposed || generation != _speakListGeneration)
@@ -553,6 +573,61 @@ public partial class Form1
 		if (TakeResultForArrival(list) is { } result)
 			text = WithWhereYouAre(list, result.Text, result.NamesRow);
 		Speak(text, interrupt: true);
+	}
+
+	/// <summary>
+	/// Focus has come back to a list. The reader reads the row itself, and only the position is added once it has finished.
+	///
+	/// <para>
+	/// The swallow in <see cref="SpeakListPosition"/> was built for a reader that read the WRONG row on the way back. The
+	/// cause of that turned out to be the manager's own call order (August 2026), fixed by putting the selection right
+	/// before focus returns, and the reader has read the right row since. But the swallow stayed, so every return was the
+	/// reader's row, cut off within 25ms, then the same row again from the manager. Too short to hear, but it is in the
+	/// reader's speech history as a double, and Sean asked for those to go (2026-11-10). Nothing is cut off now, so
+	/// nothing is said twice.
+	/// </para>
+	///
+	/// <para>
+	/// Only with a reader that can say when it is speaking (NVDA 2026.3 and newer). Others keep the swallow, because
+	/// without that answer there is no telling when the reader's row has finished or whether it came at all.
+	/// </para>
+	///
+	/// <para>
+	/// A reader that says nothing, because focus never really moved, is waited for only <see
+	/// cref="SpeechFinishWatch.StartGraceMs"/>, and then the whole announcement is said here as before. A result handed
+	/// over while the reader is talking follows the row, with the position.
+	/// </para>
+	/// </summary>
+	private async Task LetReaderReadTheRowAsync(ListBox list, string wholeAnnouncement, int generation, Action giveWay)
+	{
+		var watch = new SpeechFinishWatch(Environment.TickCount64, maxMs: 6000);
+		bool readerSpoke = false;
+		while (true)
+		{
+			if (_shuttingDown || list.IsDisposed || generation != _speakListGeneration)
+			{
+				giveWay();
+				return;
+			}
+			// The reader went away mid-wait. Say everything rather than guess.
+			if (_announcer.IsSpeakingForCertain is not bool speaking) break;
+			readerSpoke |= speaking;
+			if (watch.IsFinished(Environment.TickCount64, speaking)) break;
+			await Task.Delay(20);
+		}
+
+		if (_shuttingDown || list.IsDisposed || !list.Focused || generation != _speakListGeneration)
+		{
+			giveWay();
+			return;
+		}
+
+		string position = PositionTextFor(list);
+		string say = readerSpoke ? position : wholeAnnouncement;
+		if (TakeResultForArrival(list) is { } late)
+			say = readerSpoke ? (position.Length == 0 ? late.Text : EndSentence(late.Text) + " " + position)
+				: WithWhereYouAre(list, late.Text, late.NamesRow);
+		if (say.Length > 0) Speak(say);
 	}
 
 	/// <summary>
