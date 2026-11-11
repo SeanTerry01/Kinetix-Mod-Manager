@@ -113,7 +113,8 @@ public partial class Form1
     /// up front and checked before saving — BepInEx quietly falls back to the default when it loads a value it
     /// can't use, so an unchecked entry would appear to work and then revert with no explanation.
     /// </summary>
-    private string? EditDeclaredSetting(BepInExSetting setting, string current)
+    /// <param name="apply">Saves the value and says what to say, once, as the chooser or box closes. See <see cref="ActBeforeReturning"/>.</param>
+    private string? EditDeclaredSetting(BepInExSetting setting, string current, Func<string, ResultBeforeReturning?> apply)
     {
         string described = setting.Description.Length > 0 ? setting.Description : "";
 
@@ -123,7 +124,8 @@ public partial class Form1
                 Loc.T("bepcfg.chooseListName", setting.Key),
                 setting.Choices,
                 current,
-                Loc.T("bepcfg.chooseHint", described, current));
+                Loc.T("bepcfg.chooseHint", described, current),
+                apply);
 
         string prompt = setting.HasRange
             ? Loc.T("bepcfg.promptRange", setting.Key, described, setting.RangeFrom, setting.RangeTo)
@@ -131,7 +133,9 @@ public partial class Form1
 
         while (true)
         {
-            string? typed = ShowTextPrompt(Loc.T("bepcfg.chooseTitle", setting.Key), prompt, current);
+            // Checked as the box closes; one that won't do is said once it has gone, and the box opens again with it in.
+            string? typed = ShowTextPrompt(Loc.T("bepcfg.chooseTitle", setting.Key), prompt, current,
+                actOnAnswer: t => BepInExConfigSchema.IsValid(setting, t, out _) ? apply(t) : null);
             if (typed == null) return null;
 
             if (BepInExConfigSchema.IsValid(setting, typed, out BepInExConfigSchema.Problem problem))
@@ -227,35 +231,43 @@ public partial class Form1
             if (list.SelectedItem is not IniRow row) return;
             string current = row.Entry.Value;
 
+            int index = list.SelectedIndex;
+
+            // Saved and said while the chooser or box is still open, and the list reloaded once that has been heard, so
+            // the reader reads the changed row as focus comes back. See ActBeforeReturning. An empty answer is a real one
+            // and is kept, which the old pop-up box could not express.
+            ResultBeforeReturning? Act(string result)
+            {
+                if (result == current) return null;
+                doc.SetValue(row.Entry.Section, row.Entry.Key, result);
+                if (!SaveDoc()) return null;
+                return new ResultBeforeReturning(Loc.T("ini.setTo", row.Entry.Key, result), () => Reload(index), NamesRow: true);
+            }
+
             BepInExSetting? declared = BepInExConfigSchema.Find(schema, row.Entry.Section, row.Entry.Key);
-            string? result = declared != null
-                ? EditDeclaredSetting(declared, current)
-                : ShowTextPrompt(Loc.T("ini.editTitle"),
-                    Loc.T("ini.editPrompt", row.Entry.Key, row.Entry.Section), current);
-
-            // Null is "cancelled". An empty answer is a real one and is kept, which the old pop-up box could not
-            // express — it reported a cancelled box and an emptied one identically.
-            if (result == null || result == current) return;
-
-            doc.SetValue(row.Entry.Section, row.Entry.Key, result);
-            if (!SaveDoc()) return;
-            Reload(list.SelectedIndex);
-            SayOnReturnTo(list, Loc.T("ini.setTo", row.Entry.Key, result));
+            if (declared != null)
+                EditDeclaredSetting(declared, current, Act);
+            else
+                ShowTextPrompt(Loc.T("ini.editTitle"),
+                    Loc.T("ini.editPrompt", row.Entry.Key, row.Entry.Section), current, actOnAnswer: Act);
         }
 
         void DeleteSelected()
         {
             if (list.SelectedItem is not IniRow row) return;
-            if (SpeakBox(Loc.T("ini.deleteConfirm", row.Entry.Key, row.Entry.Section), Loc.T("ini.deleteTitle"),
-                    MessageBoxButtons.YesNo) != DialogResult.Yes)
-                return;
-
-            doc.RemoveKey(row.Entry.Section, row.Entry.Key);
-            if (!SaveDoc()) return;
             int idx = list.SelectedIndex;
-            Reload(idx);
-            if (list.Items.Count == 0) Speak(Loc.T("ini.deletedLast", row.Entry.Key));
-            else Speak(Loc.T("ini.deleted", row.Entry.Key));
+            // Said before the question closes, and the list reloaded once that has been heard. See ActBeforeReturning.
+            SpeakBox(Loc.T("ini.deleteConfirm", row.Entry.Key, row.Entry.Section), Loc.T("ini.deleteTitle"),
+                MessageBoxButtons.YesNo, answer =>
+                {
+                    if (answer != DialogResult.Yes) return null;
+                    doc.RemoveKey(row.Entry.Section, row.Entry.Key);
+                    if (!SaveDoc()) return null;
+                    bool last = list.Items.Count <= 1;
+                    return new ResultBeforeReturning(
+                        last ? Loc.T("ini.deletedLast", row.Entry.Key) : Loc.T("ini.deleted", row.Entry.Key),
+                        () => Reload(idx));
+                });
         }
 
         void AddSetting()

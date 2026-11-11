@@ -532,7 +532,11 @@ public partial class Form1
 			confirm += Loc.T("modactions.deleteDependentsWarning", dependents.Count,
 				string.Join("\n", dependents.Take(10)));
 
-		if (SpeakBox(confirm, Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo) != DialogResult.Yes)
+		// "Deleting…" is said before the question closes, so focus coming back doesn't cut it, nor it the reader's reading
+		// of the row. See ActBeforeReturning.
+		if (SpeakBox(confirm, Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo,
+				answer => answer == DialogResult.Yes ? new ResultBeforeReturning(Loc.T("modactions.deletingStatus", selectedMod.Name)) : null)
+			!= DialogResult.Yes)
 			return;
 
 		using IDisposable busy = BeginModOperation();
@@ -540,7 +544,8 @@ public partial class Form1
 		{
 			// Deleting keeps a backup first, and zipping a large mod is not instant. Say what is happening and
 			// report progress the way downloads and installs do, so a long pause is never mistaken for a hang.
-			SetStatus(Loc.T("modactions.deletingStatus", selectedMod.Name));
+			// Already said by the question, so only shown here.
+			SetStatus(Loc.T("modactions.deletingStatus", selectedMod.Name), speak: false);
 			if (!await BackupModWithProgressAsync(selectedMod.FolderPath, selectedMod.Name + "_Delete", selectedMod.Name))
 			{
 				// The whole point of backing up first is that the mod can be got back. If that did not work,
@@ -744,20 +749,37 @@ public partial class Form1
 	}
 
 	/// <summary>Permanently deletes the selected backup archive after user confirmation.</summary>
-	private void DeleteSelectedBackup()
+	/// <param name="list">Which of the Backups tab's two lists it was pressed in.</param>
+	private void DeleteSelectedBackup(ListBox list)
 	{
-		if (listBackups.SelectedItem is BackupItem backupItem && SpeakBox(Loc.T("modactions.deleteBackupConfirm", backupItem.ToString()), Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo) == DialogResult.Yes)
-		{
-			try
+		if (list.SelectedItem is not BackupItem backupItem) return;
+
+		// Said before the question closes, and the list refilled once that has been heard. See ActBeforeReturning. It said
+		// nothing at all before: the row just went.
+		string? failure = null;
+		SpeakBox(Loc.T("modactions.deleteBackupConfirm", backupItem.ToString()), Loc.T("common.confirmDelete"),
+			MessageBoxButtons.YesNo, answer =>
 			{
-				File.Delete(backupItem.FullPath);
+				if (answer != DialogResult.Yes) return null;
+				try { File.Delete(backupItem.FullPath); }
+				catch (Exception ex)
+				{
+					// A box, so after the question has gone rather than over it.
+					failure = Loc.T("modactions.deleteBackupFailedBox", FriendlyError(ex));
+					return null;
+				}
 				_soundEngine.Play("disable");
-				RefreshBackupsList();
-			}
-			catch (Exception ex)
-			{
-				SpeakBox(Loc.T("modactions.deleteBackupFailedBox", FriendlyError(ex)));
-			}
-		}
+				return new ResultBeforeReturning(Loc.T("modactions.backupDeleted"), () =>
+				{
+					// Behind the question the list has no focus, and a refill without it goes to the newest. Put back near
+					// where the deleted row was instead, on the one that moved up into its place.
+					int index = list.SelectedIndex;
+					RefreshBackupsList();
+					if (list.Items.Count == 0) return;
+					list.SelectedIndex = Math.Min(Math.Max(index, 0), list.Items.Count - 1);
+					AlignListCaretToSelection(list);
+				});
+			});
+		if (failure != null) SpeakBox(failure);
 	}
 }

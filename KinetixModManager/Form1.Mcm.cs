@@ -74,25 +74,29 @@ public partial class Form1
 					return;
 				}
 
-				string? chosen = EditMcmControl(control, row.Value);
-				if (chosen == null || chosen == row.Value) return;
-
-				if (!snapshotTaken)
-				{
-					CreateSafetyBackup(Loc.T("safety.reasonIni", modName), menu.UserIniPath);
-					snapshotTaken = true;
-				}
-
-				if (!McmSettings.Save(menu, control, chosen))
-				{
-					Speak(Loc.T("mcm.saveFailed", control.Label));
-					return;
-				}
-
-				values.Set(control, chosen);
 				int index = list.SelectedIndex;
-				Reload(index);
-				SayOnReturnTo(list, Loc.T("mcm.setTo", control.Label, (list.SelectedItem as McmRow)?.ToString() ?? chosen));
+
+				// Applied and said while the chooser is still open, and the list reloaded once that has been heard, so the
+				// reader reads the changed row as focus comes back. See ActBeforeReturning.
+				ResultBeforeReturning? Act(string chosen)
+				{
+					if (chosen == row.Value) return null;
+
+					if (!snapshotTaken)
+					{
+						CreateSafetyBackup(Loc.T("safety.reasonIni", modName), menu.UserIniPath);
+						snapshotTaken = true;
+					}
+
+					if (!McmSettings.Save(menu, control, chosen))
+						return new ResultBeforeReturning(Loc.T("mcm.saveFailed", control.Label));
+
+					values.Set(control, chosen);
+					// The row says the new value, so the result only says what changed.
+					return new ResultBeforeReturning(Loc.T("mcm.setTo", control.Label), () => Reload(index));
+				}
+
+				EditMcmControl(control, row.Value, Act);
 			}
 
 			btnClose.Click += delegate { closeView(); };
@@ -113,24 +117,30 @@ public partial class Form1
 	/// Changes one MCM setting, returning the new value or <c>null</c> if the user backed out. A toggle and a
 	/// list are picked from; a number is typed and checked against the author's range before it is accepted.
 	/// </summary>
-	private string? EditMcmControl(McmControl control, string current)
+	/// <param name="apply">
+	/// Saves the new value, in the form the file uses, and says what to say. Called once, as the chooser or the box closes,
+	/// and only for a value that can be saved. See <see cref="ActBeforeReturning"/>.
+	/// </param>
+	private string? EditMcmControl(McmControl control, string current, Func<string, ResultBeforeReturning?> apply)
 	{
 		if (control.Kind == McmControlKind.Toggle)
 		{
+			// Written back in the form MCM itself uses, whatever the file happened to hold before.
+			string Stored(string picked) => picked == Loc.T("mcm.on") ? "1" : "0";
+
 			string? picked = ShowChoiceList(
 				Loc.T("mcm.chooseTitle", control.Label),
 				Loc.T("mcm.chooseListName", control.Label),
 				new[] { Loc.T("mcm.on"), Loc.T("mcm.off") },
 				McmValue.McmToggleIsOn(current) ? Loc.T("mcm.on") : Loc.T("mcm.off"),
-				Loc.T("mcm.chooseHint", control.Help));
+				Loc.T("mcm.chooseHint", control.Help),
+				p => apply(Stored(p)));
 
-			// Written back in the form MCM itself uses, whatever the file happened to hold before.
-			if (picked == null) return null;
-			return picked == Loc.T("mcm.on") ? "1" : "0";
+			return picked == null ? null : Stored(picked);
 		}
 
 		if (control.Kind == McmControlKind.Choice && control.Options.Count > 0)
-			return ChooseMcmOption(control, current);
+			return ChooseMcmOption(control, current, apply);
 
 		string prompt = control.Kind == McmControlKind.Number && (control.Min != null || control.Max != null)
 			? Loc.T("mcm.promptRange", control.Label, control.Help,
@@ -139,26 +149,31 @@ public partial class Form1
 
 		while (true)
 		{
-			string? typed = ShowTextPrompt(Loc.T("mcm.chooseTitle", control.Label), prompt, current);
+			// Checked before it is saved, as the box closes. A number that won't do is said once the box has gone, and the
+			// box opens again with it in.
+			string? problem = null;
+			string? typed = ShowTextPrompt(Loc.T("mcm.chooseTitle", control.Label), prompt, current, actOnAnswer: t =>
+			{
+				problem = NumberProblem(control, t);
+				return problem == null ? apply(t) : null;
+			});
 			if (typed == null) return null;
-			if (control.Kind != McmControlKind.Number) return typed;
+			if (problem == null) return typed;
 
-			if (!double.TryParse(typed, NumberStyles.Float, CultureInfo.InvariantCulture, out double number))
-			{
-				Speak(Loc.T("mcm.invalidNumber"));
-				current = typed;
-				continue;
-			}
-
-			if ((control.Min != null && number < control.Min) || (control.Max != null && number > control.Max))
-			{
-				Speak(Loc.T("mcm.invalidRange", FormatNumber(control.Min), FormatNumber(control.Max)));
-				current = typed;
-				continue;
-			}
-
-			return typed;
+			Speak(problem);
+			current = typed;
 		}
+	}
+
+	/// <summary>Why <paramref name="typed"/> won't do for a number setting, or null when it will, or the setting isn't a number.</summary>
+	private static string? NumberProblem(McmControl control, string typed)
+	{
+		if (control.Kind != McmControlKind.Number) return null;
+		if (!double.TryParse(typed, NumberStyles.Float, CultureInfo.InvariantCulture, out double number))
+			return Loc.T("mcm.invalidNumber");
+		if ((control.Min != null && number < control.Min) || (control.Max != null && number > control.Max))
+			return Loc.T("mcm.invalidRange", FormatNumber(control.Min), FormatNumber(control.Max));
+		return null;
 	}
 
 	/// <summary>
@@ -168,7 +183,7 @@ public partial class Form1
 	/// hand may hold the text instead. Rather than guess, the answer is written back in whichever form the
 	/// current value is already in, so the manager never changes the shape of what the mod is reading.
 	/// </summary>
-	private string? ChooseMcmOption(McmControl control, string current)
+	private string? ChooseMcmOption(McmControl control, string current, Func<string, ResultBeforeReturning?> apply)
 	{
 		bool storedAsNumber = int.TryParse(current, NumberStyles.Integer, CultureInfo.InvariantCulture, out int index);
 
@@ -176,20 +191,24 @@ public partial class Form1
 			? control.Options[index]
 			: current;
 
+		string Stored(string picked)
+		{
+			// An empty current value means the setting has never been written; MCM's own form is the number.
+			if (!storedAsNumber && current.Length > 0) return picked;
+
+			int chosenIndex = control.Options.FindIndex(o => o.Equals(picked, StringComparison.OrdinalIgnoreCase));
+			return chosenIndex >= 0 ? chosenIndex.ToString(CultureInfo.InvariantCulture) : picked;
+		}
+
 		string? picked = ShowChoiceList(
 			Loc.T("mcm.chooseTitle", control.Label),
 			Loc.T("mcm.chooseListName", control.Label),
 			control.Options,
 			currentLabel,
-			Loc.T("mcm.chooseHint", control.Help));
+			Loc.T("mcm.chooseHint", control.Help),
+			p => apply(Stored(p)));
 
-		if (picked == null) return null;
-
-		// An empty current value means the setting has never been written; MCM's own form is the number.
-		if (!storedAsNumber && current.Length > 0) return picked;
-
-		int chosenIndex = control.Options.FindIndex(o => o.Equals(picked, StringComparison.OrdinalIgnoreCase));
-		return chosenIndex >= 0 ? chosenIndex.ToString(CultureInfo.InvariantCulture) : picked;
+		return picked == null ? null : Stored(picked);
 	}
 
 	/// <summary>A range bound for reading out, or "any" where the author set none.</summary>

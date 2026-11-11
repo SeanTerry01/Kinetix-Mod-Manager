@@ -738,7 +738,8 @@ public partial class Form1
 	/// copy until November 2026, which lacked two of the core's guards: an empty backup, and a mod whose folder is the
 	/// whole mods folder being taken as the place to restore into. What is left here is what only this head does.
 	/// </summary>
-	private async Task RestoreBackupAsync(BackupItem backup)
+	/// <param name="startSaid">"Restoring…" has already been said, by the question that asked. Only shown, then.</param>
+	private async Task RestoreBackupAsync(BackupItem backup, bool startSaid = false)
 	{
 		using IDisposable busy = BeginModOperation();
 
@@ -754,7 +755,8 @@ public partial class Form1
 
 		try
 		{
-			SetStatus(Loc.T("backups.restoring", name));
+			// Only shown when the question has said it.
+			SetStatus(Loc.T("backups.restoring", name), speak: !startSaid);
 			BackupRestore.RestoreResult restored = await Task.Run(() =>
 				BackupRestore.RestoreWithResult(backup.FullPath, modsFolder, backupsFolder, installed, profile, LogError));
 
@@ -774,6 +776,9 @@ public partial class Form1
 			// Restoring a mod that was deleted is the usual case, and then nothing was replaced.
 			string said = Loc.T(restored.ReplacedACopy ? "backups.restored" : "backups.restoredNew", name);
 			if (profile?.IsWitcher3 == true) said += " " + Loc.T("backups.restoredWitcherNote");
+			// After the reader has read the row focus came back to. A quick restore finished between the reader saying the
+			// list's name and the row, and was heard between them.
+			if (startSaid) await WaitForSpeechAsync(minMs: 0, maxMs: 4000);
 			Speak(said);
 		}
 		catch (Exception ex)

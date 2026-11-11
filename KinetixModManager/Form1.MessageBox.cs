@@ -174,16 +174,6 @@ public partial class Form1
 	/// is flushed by that. This waits for that announcement to begin, and then interrupts it, because what just happened
 	/// matters more. The wait is the reader reacting rather than speaking, so isSpeaking cannot replace it.
 	/// </summary>
-	/// <summary>
-	/// A prompt's result that says where it leaves the user. Onto a list, <paramref name="result"/> rides on the list's return
-	/// announcement, which adds the row and position it lands on; otherwise <paramref name="withWhereYouAre"/> is said whole.
-	/// </summary>
-	private void SayAfterPrompt(string result, string withWhereYouAre)
-	{
-		if (_promptClosedOnto is { } onto && HandToArrival(onto, result, namesRow: false)) return;
-		SpeakAfterPrompt(withWhereYouAre);
-	}
-
 	private void SpeakAfterPrompt(string text)
 	{
 		// Onto a list, the result rides on the list's return announcement, which the prompt's closing has already set off.
@@ -203,4 +193,13 @@ public partial class Form1
 	// Every prompt goes through ShowPrompt, which lays the question over the window instead of opening one of its own.
 	private DialogResult SpeakBox(string text, string? caption = null, MessageBoxButtons buttons = MessageBoxButtons.OK) =>
 		ShowPrompt(text, caption ?? Loc.T("ui.appTitle"), buttons);
+
+	/// <summary>
+	/// A question whose answer changes the list it was asked from. <paramref name="actOnAnswer"/> does what the answer asks
+	/// and says what to say, and the list change it hands back is made once that has been heard, before the user is put
+	/// back on the list. See <see cref="ActBeforeReturning"/>. Returns null to say nothing.
+	/// </summary>
+	private DialogResult SpeakBox(string text, string caption, MessageBoxButtons buttons,
+		Func<DialogResult, ResultBeforeReturning?> actOnAnswer) =>
+		ShowPrompt(text, caption, buttons, actOnAnswer);
 }

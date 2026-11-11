@@ -462,14 +462,18 @@ public partial class Form1
 		listUpdates.AccessibleName = Loc.T("ui.updatesList");
 		tabUpdates.Controls.Add(listUpdates);
 		tabBackups = new TabPage(Loc.T("tab.backups"));
+		// Two lists, as Sean asked (2026-11-11): the mods you deleted, and the copies an update, a reinstall or a restore wrote
+		// over. They answer different questions — "get back a mod I removed" and "undo what an update did" — and in one list
+		// newest first, the two were interleaved. Tab moves between them; F6 lands on the first.
 		TableLayoutPanel backupsLayout = new TableLayoutPanel
 		{
 			Dock = DockStyle.Fill,
-			RowCount = 2,
+			RowCount = 3,
 			ColumnCount = 1
 		};
 		backupsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 45f));
-		backupsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+		backupsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50f));
+		backupsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50f));
 		btnPruneBackups = new Button
 		{
 			Text = ShortcutLabel("ui.pruneBackups", "DeleteOldBackups"),
@@ -481,6 +485,14 @@ public partial class Form1
 			PruneAllBackups();
 		};
 		backupsLayout.Controls.Add(btnPruneBackups, 0, 0);
+		listDeletedBackups = new ListBox
+		{
+			Dock = DockStyle.Fill,
+			Name = "listDeletedBackups",
+			Font = new Font("Segoe UI", 12f)
+		};
+		listDeletedBackups.AccessibleName = Loc.T("ui.deletedBackupsList");
+		backupsLayout.Controls.Add(listDeletedBackups, 0, 1);
 		listBackups = new ListBox
 		{
 			Dock = DockStyle.Fill,
@@ -488,7 +500,7 @@ public partial class Form1
 			Font = new Font("Segoe UI", 12f)
 		};
 		listBackups.AccessibleName = Loc.T("ui.backupsList");
-		backupsLayout.Controls.Add(listBackups, 0, 1);
+		backupsLayout.Controls.Add(listBackups, 0, 2);
 		tabBackups.Controls.Add(backupsLayout);
 		tabDiscovery = new TabPage(Loc.T("tab.discovery"));
 		TableLayoutPanel discoveryLayout = new TableLayoutPanel
@@ -1136,12 +1148,14 @@ public partial class Form1
 		listUpdates.KeyDown += List_KeyDown;
 		listDiscovery.KeyDown += List_KeyDown;
 		listBackups.KeyDown += List_KeyDown;
+		listDeletedBackups.KeyDown += List_KeyDown;
 		listProfiles.KeyDown += List_KeyDown;
 		listLog.KeyDown += List_KeyDown;
 		listInstalled.SelectedIndexChanged += List_SelectedIndexChanged;
 		listUpdates.SelectedIndexChanged += List_SelectedIndexChanged;
 		listDiscovery.SelectedIndexChanged += List_SelectedIndexChanged;
 		listBackups.SelectedIndexChanged += List_SelectedIndexChanged;
+		listDeletedBackups.SelectedIndexChanged += List_SelectedIndexChanged;
 		listProfiles.SelectedIndexChanged += List_SelectedIndexChanged;
 		listLog.SelectedIndexChanged += List_SelectedIndexChanged;
 		// GotFocus (not Enter) so the position is re-announced whenever focus lands on the list,
@@ -1154,6 +1168,7 @@ public partial class Form1
 		listUpdates.GotFocus += List_Enter;
 		listDiscovery.GotFocus += List_Enter;
 		listBackups.GotFocus += List_Enter;
+		listDeletedBackups.GotFocus += List_Enter;
 		listProfiles.GotFocus += List_Enter;
 		listLog.GotFocus += List_Enter;
 		listModPriority.KeyDown += ListModPriority_KeyDown;

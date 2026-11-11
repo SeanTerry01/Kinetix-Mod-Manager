@@ -182,30 +182,27 @@ public partial class Form1
 	private void DeleteSave(Action closeView, ListBox list, SaveRow row)
 	{
 		string label = Path.GetFileNameWithoutExtension(row.Save.FilePath);
-		if (SpeakBox(Loc.T("saves.deleteConfirm", label), Loc.T("saves.deleteTitle"),
-				MessageBoxButtons.YesNo) != DialogResult.Yes)
-			return;
-
-		try
+		// Said before the question closes, and the row goes once that has been heard. See ActBeforeReturning.
+		SpeakBox(Loc.T("saves.deleteConfirm", label), Loc.T("saves.deleteTitle"), MessageBoxButtons.YesNo, answer =>
 		{
-			foreach (string path in SaveFileGroup(row.Save))
-				Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(path,
-					Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-					Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
-		}
-		catch (Exception ex)
-		{
-			LogFailure("Saves", $"Save delete failed", ex);
-			_soundEngine.Play("error");
-			Speak(Loc.T("saves.deleteFailed", FriendlyError(ex)));
-			return;
-		}
+			if (answer != DialogResult.Yes) return null;
+			try
+			{
+				foreach (string path in SaveFileGroup(row.Save))
+					Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(path,
+						Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+						Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+			}
+			catch (Exception ex)
+			{
+				LogFailure("Saves", $"Save delete failed", ex);
+				_soundEngine.Play("error");
+				return new ResultBeforeReturning(Loc.T("saves.deleteFailed", FriendlyError(ex)));
+			}
 
-		int idx = list.SelectedIndex;
-		list.Items.Remove(row);
-		_soundEngine.Play("disable");
-		if (list.Items.Count == 0) { Speak(Loc.T("saves.deletedLast")); LetSpeechFinish(); closeView(); return; }
-		SayResultAndLandOn(list, idx, Loc.T("saves.deleted", list.Items.Count));
+			_soundEngine.Play("disable");
+			return RowRemoved(list, row, closeView, Loc.T("saves.deleted", list.Items.Count - 1), Loc.T("saves.deletedLast"));
+		});
 	}
 
 	/// <summary>A save file plus any co-save (SKSE/F4SE) sharing its base name, limited to files that exist.</summary>

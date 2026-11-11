@@ -39,8 +39,13 @@ public partial class Form1
 	/// throws away whatever is still being said. A reader that can't say when it has finished hears it after instead, as
 	/// waiting would be a guess, and saying it first would lose it.
 	/// </param>
+	/// <param name="actBeforeReturning">
+	/// For a view whose result changes the list it was opened from: asked once the view has been closed, and its result
+	/// said and its change made before focus goes back. See <see cref="ActBeforeReturning"/>.
+	/// </param>
 	private void ShowInlineView(string title, Func<Panel, Action, Control> build, Action? onClosed = null,
-		string? hint = null, Func<string?>? whyEscapeWaits = null, Func<string?>? sayOnClosing = null)
+		string? hint = null, Func<string?>? whyEscapeWaits = null, Func<string?>? sayOnClosing = null,
+		Func<ResultBeforeReturning?>? actBeforeReturning = null)
 	{
 		// Before the view is built, for the same reason a prompt waits before its buttons appear: once focus has
 		// landed inside the view the reader is already describing what it landed on.
@@ -54,6 +59,7 @@ public partial class Form1
 		bool closed = false;
 		void Close() => closed = true;
 		bool saidOnClosing = false;
+		bool acted = false;
 
 		// The heading is PAINTED, not built as a control. See the comment on the Paint handler below for why.
 		var headingFont = new Font("Segoe UI", 14f * TextScaleFactor(), FontStyle.Bold);
@@ -129,6 +135,7 @@ public partial class Form1
 			},
 			beforeRestoring: () =>
 			{
+				if (actBeforeReturning != null) acted = ActBeforeReturning(actBeforeReturning);
 				if (_announcer.IsSpeakingForCertain is null || sayOnClosing?.Invoke() is not { } first) return;
 				saidOnClosing = true;
 				Speak(first);
@@ -136,6 +143,7 @@ public partial class Form1
 			});
 
 		onClosed?.Invoke();
+		if (actBeforeReturning != null && !acted) ActAfterReturning(actBeforeReturning);
 		if (!saidOnClosing && sayOnClosing?.Invoke() is { } after) Speak(after);
 	}
 
@@ -155,7 +163,9 @@ public partial class Form1
 	/// For keys and passwords: the box is protected, with a Show key button after it. See
 	/// <see cref="WithShowHideButton"/>.
 	/// </param>
-	private string? ShowTextPrompt(string title, string prompt, string initial, bool secret = false)
+	/// <param name="actOnAnswer">As for <see cref="ShowChoiceList"/>: applies what was typed and says what to say.</param>
+	private string? ShowTextPrompt(string title, string prompt, string initial, bool secret = false,
+		Func<string, ResultBeforeReturning?>? actOnAnswer = null)
 	{
 		string? answer = null;
 
@@ -213,7 +223,8 @@ public partial class Form1
 			// almost always wants; End then leaves the caret ready to amend instead.
 			input.SelectAll();
 			return input;
-		});
+		},
+		actBeforeReturning: actOnAnswer == null ? null : () => answer == null ? null : actOnAnswer(answer));
 
 		return answer;
 	}
@@ -284,7 +295,12 @@ public partial class Form1
 	/// Shared by every "pick a value the author allows" screen: Content Patcher settings, BepInEx settings, and
 	/// the Mod Configuration Menu.
 	/// </summary>
-	private string? ShowChoiceList(string title, string listName, IReadOnlyList<string> values, string current, string hint)
+	/// <param name="actOnChoice">
+	/// For a choice that changes the list the screen was opened from: applies it and says what to say. See
+	/// <see cref="ActBeforeReturning"/>. Not called when nothing was chosen.
+	/// </param>
+	private string? ShowChoiceList(string title, string listName, IReadOnlyList<string> values, string current, string hint,
+		Func<string, ResultBeforeReturning?>? actOnChoice = null)
 	{
 		string? chosen = null;
 
@@ -320,7 +336,8 @@ public partial class Form1
 
 			return list;
 		},
-		hint: hint);
+		hint: hint,
+		actBeforeReturning: actOnChoice == null ? null : () => chosen == null ? null : actOnChoice(chosen));
 
 		return chosen;
 	}

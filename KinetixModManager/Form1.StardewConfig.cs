@@ -46,18 +46,19 @@ public partial class Form1
 				if (list.SelectedItem is not StardewRow row) return;
 				StardewSetting setting = row.Setting;
 
-				string? chosen = EditStardewSetting(setting);
-				if (chosen == null || chosen == setting.Value) return;
+				int index = list.SelectedIndex;
 
-				if (!StardewModConfig.Write(modFolder, setting, chosen, configFile))
+				// Applied and said while the chooser is still open, and the list reloaded once that has been heard, so the
+				// reader reads the changed row as focus comes back. See ActBeforeReturning.
+				ResultBeforeReturning? Act(string chosen)
 				{
-					Speak(Loc.T("sdvconfig.saveFailed", setting.Label));
-					return;
+					if (chosen == setting.Value) return null;
+					if (!StardewModConfig.Write(modFolder, setting, chosen, configFile))
+						return new ResultBeforeReturning(Loc.T("sdvconfig.saveFailed", setting.Label));
+					return new ResultBeforeReturning(Loc.T("sdvconfig.setTo", setting.Label, chosen), () => Reload(index), NamesRow: true);
 				}
 
-				int index = list.SelectedIndex;
-				Reload(index);
-				SayOnReturnTo(list, Loc.T("sdvconfig.setTo", setting.Label, chosen));
+				EditStardewSetting(setting, Act);
 			}
 
 			btnClose.Click += delegate { closeView(); };
@@ -81,7 +82,8 @@ public partial class Form1
 	/// picked from a list; anything else is typed, and checked against the type the file already uses so a
 	/// number cannot quietly become text the mod refuses to read.
 	/// </summary>
-	private string? EditStardewSetting(StardewSetting setting)
+	/// <param name="apply">Saves the value and says what to say, once, as the chooser or box closes. See <see cref="ActBeforeReturning"/>.</param>
+	private string? EditStardewSetting(StardewSetting setting, Func<string, ResultBeforeReturning?> apply)
 	{
 		if (setting.IsBoolean)
 			return ShowChoiceList(
@@ -89,7 +91,8 @@ public partial class Form1
 				Loc.T("sdvconfig.chooseListName", setting.Label),
 				new[] { "true", "false" },
 				setting.Value,
-				Loc.T("sdvconfig.chooseHint", setting.Description, setting.Value));
+				Loc.T("sdvconfig.chooseHint", setting.Description, setting.Value),
+				apply);
 
 		// A key binding is the one free-text setting a list can be built for without the mod telling us
 		// anything, because SMAPI's key names are the same for every mod. "Type something else" stays on the
@@ -103,7 +106,8 @@ public partial class Form1
 				Loc.T("sdvconfig.chooseListName", setting.Label),
 				choices,
 				setting.Value,
-				Loc.T("sdvconfig.chooseKeyHint", setting.Description, setting.Value));
+				Loc.T("sdvconfig.chooseKeyHint", setting.Description, setting.Value),
+				p => p == Loc.T("sdvconfig.otherValue") ? null : apply(p));
 
 			if (picked == null) return null;
 			if (picked != Loc.T("sdvconfig.otherValue")) return picked;
@@ -112,7 +116,7 @@ public partial class Form1
 			return ShowTextPrompt(
 				Loc.T("sdvconfig.chooseTitle", setting.Label),
 				Loc.T("sdvconfig.prompt", setting.Label, setting.Description),
-				setting.Value);
+				setting.Value, actOnAnswer: apply);
 		}
 
 		string prompt = setting.Kind == StardewValueKind.Number
@@ -122,7 +126,9 @@ public partial class Form1
 		string current = setting.Value;
 		while (true)
 		{
-			string? typed = ShowTextPrompt(Loc.T("sdvconfig.chooseTitle", setting.Label), prompt, current);
+			// Checked as the box closes; one that won't do is said once it has gone, and the box opens again with it in.
+			string? typed = ShowTextPrompt(Loc.T("sdvconfig.chooseTitle", setting.Label), prompt, current,
+				actOnAnswer: t => StardewModConfig.IsValid(setting, t) ? apply(t) : null);
 			if (typed == null) return null;
 			if (StardewModConfig.IsValid(setting, typed)) return typed;
 

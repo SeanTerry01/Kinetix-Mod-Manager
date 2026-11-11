@@ -148,13 +148,19 @@ public partial class Form1
 	/// Falls back to a real <see cref="MessageBox"/> when there is no window to host it, or when called from a
 	/// background thread — a prompt that cannot be shown must never be a prompt that is silently skipped.
 	/// </summary>
-	private DialogResult ShowPrompt(string text, string caption, MessageBoxButtons buttons)
+	/// <param name="actOnAnswer">
+	/// For a question whose answer changes the list it was asked from. See <see cref="ActBeforeReturning"/>.
+	/// </param>
+	private DialogResult ShowPrompt(string text, string caption, MessageBoxButtons buttons,
+		Func<DialogResult, ResultBeforeReturning?>? actOnAnswer = null)
 	{
 		Form? host = PromptHost();
 		if (host == null || host.InvokeRequired)
 		{
 			SpeakPrompt(text);
-			return MessageBox.Show(text, caption, buttons);
+			DialogResult boxAnswer = MessageBox.Show(text, caption, buttons);
+			if (actOnAnswer?.Invoke(boxAnswer) is { } fromBox) { fromBox.ThenChange?.Invoke(); Speak(fromBox.Say); }
+			return boxAnswer;
 		}
 
 		// Before the prompt exists at all. See WaitOutReaderReaction: once the buttons are on screen and one of
@@ -171,6 +177,7 @@ public partial class Form1
 		// "Confirm Delete" sat in a pane called "Search:". Measured with NVDA 2026-11-10. A view did this already.
 		SilenceUnnamedContainers(overlay);
 
+		bool actedInside = false;
 		RunOverlay(host, overlay, firstButton,
 			finished: () => answer != null,
 			onEscape: () => answer = EscapeResult(choices),
@@ -182,7 +189,9 @@ public partial class Form1
 			{
 				SpeakPromptQuestion(text);
 				RestoreChoiceNames(overlay, choices);
-			});
+			},
+			beforeRestoring: actOnAnswer == null ? null : () =>
+				actedInside = ActBeforeReturning(() => actOnAnswer(answer ?? EscapeResult(choices))));
 
 		// What the caller says next is the answer's result. Held open until the next message, which covers the code that
 		// runs straight on from this return. See Speak.
@@ -192,7 +201,76 @@ public partial class Form1
 			BeginInvoke(new Action(() => { if (ReferenceEquals(_promptClosedOnto, onto)) _promptClosedOnto = null; }));
 		}
 
-		return answer ?? EscapeResult(choices);
+		DialogResult final = answer ?? EscapeResult(choices);
+		if (actOnAnswer != null && !actedInside) ActAfterReturning(() => actOnAnswer(final));
+		return final;
+	}
+
+	/// <summary>
+	/// What a question or a choice did, to be said before the user is put back on the list, and the change to that list,
+	/// to be made once it has been said.
+	/// </summary>
+	/// <param name="Say">The result: "Update ignored."</param>
+	/// <param name="ThenChange">
+	/// What moves the list: removing the settled row, reloading the settings. Made after <paramref name="Say"/> has been
+	/// heard, so nothing the list does cuts it off, and before focus goes back, so the reader reads the row the user lands on.
+	/// </param>
+	/// <param name="NamesRow">The result names the row the user lands back on, as "X set to Y" does. Used the old way only.</param>
+	private sealed record ResultBeforeReturning(string Say, Action? ThenChange = null, bool NamesRow = false);
+
+	/// <summary>
+	/// Says a result while the question or screen is still open, waits for the reader to finish it, then makes the change to
+	/// the list behind. Returns false when it did nothing, so the caller does it the old way instead.
+	///
+	/// <para>
+	/// Sean's choice for every result on a return to a list (2026-11-11), called "way 2": the result first, then the reader's
+	/// own reading of the row, then the position. Before, the manager cut the reader off and said all three in one sentence,
+	/// which was heard once but left the reader's cut line in its speech history, so every return read there as a double.
+	/// Now nothing is cut off. The cost, agreed: a result that names its row hears the name again in the row.
+	/// </para>
+	///
+	/// <para>
+	/// Only with a reader that can say when it has finished (NVDA 2026.3 and newer). With any other, the result can't be
+	/// waited for, so focus coming back would cut it off; there the old way stands (<see cref="ActAfterReturning"/>).
+	/// </para>
+	/// </summary>
+	private bool ActBeforeReturning(Func<ResultBeforeReturning?> act)
+	{
+		if (_announcer.IsSpeakingForCertain is null) return false;
+
+		ResultBeforeReturning? outcome = act();
+		if (outcome == null) return true;
+
+		if (outcome.Say.Length > 0)
+		{
+			Speak(outcome.Say);
+			LetSpeechFinish();
+		}
+		// Behind the overlay, which is still up, with the list's own announcements held back: what is read is the arrival.
+		_movingListSilently = true;
+		try { outcome.ThenChange?.Invoke(); }
+		finally { _movingListSilently = false; }
+		return true;
+	}
+
+	/// <summary>
+	/// The old way, for a reader that can't say when it has finished: the change is made after focus has gone back, and the
+	/// result rides on the list's return announcement, which swallows the reader's and says result, row and position.
+	/// </summary>
+	private void ActAfterReturning(Func<ResultBeforeReturning?> act)
+	{
+		if (act() is not { } outcome) return;
+		// The return announcement says where this leaves the user, so the move itself says nothing.
+		_movingListSilently = true;
+		try { outcome.ThenChange?.Invoke(); }
+		finally { _movingListSilently = false; }
+		if (outcome.Say.Length == 0) return;
+		ListBox? onto = _promptClosedOnto ?? Control.FromHandle(GetFocus()) as ListBox;
+		if (onto != null && HandToArrival(onto, outcome.Say, outcome.NamesRow)) return;
+		// Nothing under way to carry it, so where the user is goes with it.
+		SpeakAfterPrompt(Control.FromHandle(GetFocus()) is ListBox { SelectedItem: not null } list
+			? WithWhereYouAre(list, outcome.Say, outcome.NamesRow)
+			: outcome.Say);
 	}
 
 	/// <summary>How many overlays (prompts or in-window views) are currently up. See <see cref="RunOverlay"/>.</summary>

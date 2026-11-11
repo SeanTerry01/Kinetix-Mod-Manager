@@ -716,6 +716,18 @@ public partial class Form1
 	private async Task SayAndRefreshModList(string result, GameMod? about = null)
 	{
 		SayWaitingResult();
+
+		// Sean's "way 2" (2026-11-11), with a reader that can say when it has finished: the result is heard out first, and
+		// only then does the rescan move the list, so nothing has to be swallowed. The reader reads the row if it moved and
+		// the position follows. A key pressed meanwhile stops the reader, which ends the wait. See ActBeforeReturning.
+		if (_announcer.IsSpeakingForCertain is not null)
+		{
+			Speak(result);
+			await WaitForSpeechAsync();
+			await RefreshModList(checkUpdates: false);
+			return;
+		}
+
 		if (!listInstalled.Focused)
 		{
 			Speak(result);
@@ -830,34 +842,50 @@ public partial class Form1
 		}
 	}
 
-	/// <summary>Scans the backups directory and repopulates <c>listBackups</c> with <see cref="BackupItem"/> entries.</summary>
+	/// <summary>
+	/// Scans the backups directory and fills the Backups tab's two lists: Deleted Mods, the backups taken as a mod was
+	/// deleted, and Replaced Copies, everything else — taken before an update, a reinstall or a restore wrote over a mod.
+	/// </summary>
 	private void RefreshBackupsList()
 	{
 		if (_settings.ActiveGame == GameProfiles.NoGame) return;
-		if (listBackups == null)
+		if (listBackups == null || listDeletedBackups == null)
 		{
 			return;
 		}
-		// Your place is kept only while you are in the list; otherwise the newest, the one a new backup would be.
-		bool inList = listBackups.Focused;
-		int oldIndex = inList ? listBackups.SelectedIndex : 0;
-		// By file: two backups of one mod share a name.
-		string? oldName = inList ? (listBackups.SelectedItem as BackupItem)?.FullPath : null;
 
-		listBackups.BeginUpdate();
-		listBackups.Items.Clear();
 		// Newest first, which is what the store returns: the backup a user wants is nearly always the one
 		// taken moments ago, by the update they are now regretting.
-		foreach (BackupItem item in BackupStore.List(backupsPath)) listBackups.Items.Add(item);
+		List<BackupItem> all = BackupStore.List(backupsPath).ToList();
+		FillBackupList(listDeletedBackups, all.Where(IsDeletedModBackup));
+		FillBackupList(listBackups, all.Where(b => !IsDeletedModBackup(b)));
+	}
 
-		if (listBackups.Items.Count > 0)
+	/// <summary>Whether a backup was taken as its mod was deleted. Those carry <see cref="BackupRestore.DeleteSuffix"/> after the name.</summary>
+	private static bool IsDeletedModBackup(BackupItem backup) =>
+		BackupStore.ModNameFromFileName(backup.FullPath).EndsWith(BackupRestore.DeleteSuffix, StringComparison.Ordinal);
+
+	/// <summary>One of the Backups tab's lists, put back on the row the user was on.</summary>
+	private void FillBackupList(ListBox list, IEnumerable<BackupItem> items)
+	{
+		// Your place is kept only while you are in the list; otherwise the newest, the one a new backup would be.
+		bool inList = list.Focused;
+		int oldIndex = inList ? list.SelectedIndex : 0;
+		// By file: two backups of one mod share a name.
+		string? oldName = inList ? (list.SelectedItem as BackupItem)?.FullPath : null;
+
+		list.BeginUpdate();
+		list.Items.Clear();
+		foreach (BackupItem item in items) list.Items.Add(item);
+
+		if (list.Items.Count > 0)
 		{
 			int newIndex = -1;
 			if (!string.IsNullOrEmpty(oldName))
 			{
-				for (int i = 0; i < listBackups.Items.Count; i++)
+				for (int i = 0; i < list.Items.Count; i++)
 				{
-					if (string.Equals((listBackups.Items[i] as BackupItem)?.FullPath, oldName, StringComparison.OrdinalIgnoreCase))
+					if (string.Equals((list.Items[i] as BackupItem)?.FullPath, oldName, StringComparison.OrdinalIgnoreCase))
 					{
 						newIndex = i;
 						break;
@@ -865,13 +893,13 @@ public partial class Form1
 				}
 			}
 			// The row found, wherever it is now. Taking the larger of the two landed on a different row whenever rows above had gone.
-			listBackups.SelectedIndex = newIndex >= 0 ? newIndex : Math.Min(Math.Max(oldIndex, 0), listBackups.Items.Count - 1);
+			list.SelectedIndex = newIndex >= 0 ? newIndex : Math.Min(Math.Max(oldIndex, 0), list.Items.Count - 1);
 		}
-		else if (listBackups.Focused && oldIndex != -1)
+		else if (list.Focused && oldIndex != -1)
 		{
 			Speak(Loc.T("common.listEmpty"));
 		}
-		listBackups.EndUpdate();
+		list.EndUpdate();
 	}
 
 	/// <summary>

@@ -132,22 +132,21 @@ public partial class Form1
 				else if (e.KeyCode == Keys.Delete)
 				{
 					e.Handled = e.SuppressKeyPress = true;
-					// It asks, like every other list, and a delete that failed is not reported as done.
-					if (SpeakBox(Loc.T("safety.deleteConfirm", item.Summary), Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo) != DialogResult.Yes)
-						return;
-					try { DeleteSnapshot(item.Dir); }
-					catch (Exception ex)
+					// It asks, like every other list, and a delete that failed is not reported as done. Said before the question
+					// closes, and the row goes once that has been heard. See ActBeforeReturning.
+					SpeakBox(Loc.T("safety.deleteConfirm", item.Summary), Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo, answer =>
 					{
-						LogFailure("Safety", $"Could not delete the safety backup {item.Dir}", ex);
-						_soundEngine.Play("error");
-						Speak(Loc.T("safety.deleteFailed", FriendlyError(ex)));
-						return;
-					}
-					int idx = list.SelectedIndex;
-					list.Items.Remove(item);
-					_soundEngine.Play("disable");
-					if (list.Items.Count == 0) { Speak(Loc.T("safety.deletedLast")); LetSpeechFinish(); closeView(); return; }
-					SayResultAndLandOn(list, idx, Loc.T("safety.deleted", list.Items.Count));
+						if (answer != DialogResult.Yes) return null;
+						try { DeleteSnapshot(item.Dir); }
+						catch (Exception ex)
+						{
+							LogFailure("Safety", $"Could not delete the safety backup {item.Dir}", ex);
+							_soundEngine.Play("error");
+							return new ResultBeforeReturning(Loc.T("safety.deleteFailed", FriendlyError(ex)));
+						}
+						_soundEngine.Play("disable");
+						return RowRemoved(list, item, closeView, Loc.T("safety.deleted", list.Items.Count - 1), Loc.T("safety.deletedLast"));
+					});
 				}
 			};
 

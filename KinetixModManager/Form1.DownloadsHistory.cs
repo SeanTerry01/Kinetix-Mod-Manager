@@ -306,29 +306,27 @@ public partial class Form1
 	/// <summary>Sends a downloaded archive to the Recycle Bin after confirmation and drops it from the list.</summary>
 	private void DeleteDownload(Action closeView, ListBox list, DownloadItem item)
 	{
-		if (SpeakBox(Loc.T("downloads.deleteConfirm", Path.GetFileName(item.FullPath)), Loc.T("downloads.deleteTitle"),
-				MessageBoxButtons.YesNo) != DialogResult.Yes)
-			return;
+		// Said before the question closes, and the row goes once that has been heard. See ActBeforeReturning.
+		SpeakBox(Loc.T("downloads.deleteConfirm", Path.GetFileName(item.FullPath)), Loc.T("downloads.deleteTitle"),
+			MessageBoxButtons.YesNo, answer =>
+			{
+				if (answer != DialogResult.Yes) return null;
+				try
+				{
+					Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(item.FullPath,
+						Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+						Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+				}
+				catch (Exception ex)
+				{
+					LogFailure("Downloads", $"Deleting a download failed", ex);
+					_soundEngine.Play("error");
+					return new ResultBeforeReturning(Loc.T("downloads.deleteFailed", FriendlyError(ex)));
+				}
 
-		try
-		{
-			Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(item.FullPath,
-				Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-				Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
-		}
-		catch (Exception ex)
-		{
-			LogFailure("Downloads", $"Deleting a download failed", ex);
-			_soundEngine.Play("error");
-			Speak(Loc.T("downloads.deleteFailed", FriendlyError(ex)));
-			return;
-		}
-
-		int idx = list.SelectedIndex;
-		list.Items.Remove(item);
-		_soundEngine.Play("disable");
-		if (list.Items.Count == 0) { Speak(Loc.T("downloads.deletedLast")); LetSpeechFinish(); closeView(); return; }
-		SayResultAndLandOn(list, idx, Loc.T("downloads.deleted", list.Items.Count));
+				_soundEngine.Play("disable");
+				return RowRemoved(list, item, closeView, Loc.T("downloads.deleted", list.Items.Count - 1), Loc.T("downloads.deletedLast"));
+			});
 	}
 
 	/// <summary>Formats a byte count as a short human-readable size (e.g. "12.3 MB") for spoken/displayed rows.</summary>

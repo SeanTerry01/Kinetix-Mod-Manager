@@ -364,7 +364,11 @@ public partial class Form1 : Form, IMessageFilter
 	private ListBox listInstalled = null!;
 	private ListBox listUpdates = null!;
 	private ListBox listDiscovery = null!;
+	/// <summary>The Backups tab's Replaced Copies: copies an update, a reinstall or a restore wrote over.</summary>
 	private ListBox listBackups = null!;
+
+	/// <summary>The Backups tab's Deleted Mods: the backup taken as each mod was deleted.</summary>
+	private ListBox listDeletedBackups = null!;
 	private ListBox listProfiles = null!;
 	private ListBox listModPriority = null!;
 	private ListBox listPluginOrder = null!;

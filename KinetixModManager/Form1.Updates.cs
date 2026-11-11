@@ -118,27 +118,23 @@ public partial class Form1
 			return;
 		}
 
-		if (SpeakBox(Loc.T("updates.markConfirm", mod.LatestVersion, mod.Name), Loc.T("updates.markTitle"),
-				MessageBoxButtons.YesNo) != DialogResult.Yes)
-		{
-			SpeakAfterPrompt(Loc.T("updates.markCancelled"));
-			return;
-		}
+		// The result is said before the question closes, and the row goes once it has been heard. See ActBeforeReturning.
+		SpeakBox(Loc.T("updates.markConfirm", mod.LatestVersion, mod.Name), Loc.T("updates.markTitle"),
+			MessageBoxButtons.YesNo, answer =>
+			{
+				if (answer != DialogResult.Yes) return new ResultBeforeReturning(Loc.T("updates.markCancelled"));
 
-		string version = mod.LatestVersion!;
-		RecordInstalledDownloadVersion(DownloadKey(mod), version);
-		// The mod's own Version is left alone on purpose: it is what the manifest says, and on exactly the mods
-		// this command exists for the manifest legitimately says something else. Overwriting it here would put a
-		// number in the installed list that no file on disk agrees with, until the next rescan quietly undid it.
+				string version = mod.LatestVersion!;
+				RecordInstalledDownloadVersion(DownloadKey(mod), version);
+				// The mod's own Version is left alone on purpose: it is what the manifest says, and on exactly the mods
+				// this command exists for the manifest legitimately says something else. Overwriting it here would put a
+				// number in the installed list that no file on disk agrees with, until the next rescan quietly undid it.
 
-		// SpeakAfterPrompt, not Speak: closing the confirmation hands focus back and the screen reader answers by
-		// re-reading the window, which flushes anything said in that instant. This is the same treatment the
-		// search-history and backup-trim confirmations get.
-		if (RemoveSettledUpdateRow(mod) is { } landed)
-			SayAfterPrompt(Loc.T("updates.marked", mod.Name, version),
-				Loc.T("updates.markedPos", mod.Name, version, landed.Row, landed.Index, landed.Count));
-		else
-			SpeakAfterPrompt(Loc.T("updates.markedEmpty", mod.Name, version));
+				bool last = listUpdates.Items.Count <= 1;
+				return new ResultBeforeReturning(
+					last ? Loc.T("updates.markedEmpty", mod.Name, version) : Loc.T("updates.marked", mod.Name, version),
+					() => RemoveSettledUpdateRow(mod));
+			});
 	}
 
 	/// <summary>

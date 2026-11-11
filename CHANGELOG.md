@@ -12,6 +12,13 @@
 *   **API keys are hidden.** The Nexus key and the AI key in Settings, and the keys under File, Mod source API keys, are now
     protected boxes, so your screen reader no longer reads the key out when you land on one. A Show key button straight after
     each box shows it until you press it again.
+*   **What happened is said first, then NVDA reads the row you land on, then its position.** Choosing a setting value, answering
+    Yes to delete or ignore something, and switching a mod on or off now say the result before you are put back on the list,
+    and nothing is cut off, so NVDA's speech history no longer shows each row twice. Needs NVDA 2026.3 or newer; other screen
+    readers keep the one-sentence version.
+*   **The Backups tab has two lists:** Deleted Mods, and Replaced Copies (taken before an update, a reinstall or a restore wrote
+    over a mod). Tab moves between them. Deleting a backup now says "Backup deleted."
+*   **"tab control" is no longer said** when you come back from Settings or a screen, or arrive at the tabs.
 *   **Your own sound themes are kept in your data folder.** On an installed copy, Windows refused making, filling or deleting a
     theme beside the program. New themes go in your data folder, and the manager reads both. The themes it comes with can't be
     deleted, and it says so.

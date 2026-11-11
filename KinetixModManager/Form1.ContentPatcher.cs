@@ -68,7 +68,7 @@ public partial class Form1
 
 			Button btnClose = AddSettingsListLayout(container, list, Loc.T("cpconfig.closeBtn"), Loc.T("cpconfig.closeName"));
 
-			// Writes one answer through to the pack's config, reporting rather than failing silently.
+			// Writes one answer through to the pack's config. The caller reports a failure rather than failing silently.
 			bool Apply(CpConfigOption option, string newValue)
 			{
 				// Written first. Changing this first meant that after a failed write, which the user was told about, the next
@@ -79,27 +79,32 @@ public partial class Form1
 
 				if (had == null) values.Remove(option.Name);
 				else values[option.Name] = had;
-				Speak(Loc.T("cpconfig.saveFailed", option.Name));
 				return false;
 			}
 
 			void EditSelected()
 			{
 				if (list.SelectedItem is not CpRow row) return;
+				int index = list.SelectedIndex;
 
-				string? chosen = row.Option.HasChoices
-					? ChooseAllowedValue(row)
-					: ShowTextPrompt(
+				// Applied and said while the chooser is still open, and the list reloaded once that has been heard, so the
+				// reader reads the changed row as focus comes back. See ActBeforeReturning.
+				ResultBeforeReturning? Act(string chosen)
+				{
+					if (chosen == row.Value) return null;
+					if (!Apply(row.Option, chosen)) return new ResultBeforeReturning(Loc.T("cpconfig.saveFailed", row.Option.Name));
+					return new ResultBeforeReturning(
+						Loc.T("cpconfig.setTo", row.Option.Name, chosen.Length > 0 ? chosen : Loc.T("cpconfig.valueEmpty")),
+						() => Reload(index), NamesRow: true);
+				}
+
+				if (row.Option.HasChoices)
+					ChooseAllowedValue(row, Act);
+				else
+					ShowTextPrompt(
 						Loc.T("cpconfig.title", modName),
 						Loc.T("cpconfig.freeTextPrompt", row.Option.Name, DescriptionSentence(row.Option)),
-						row.Value);
-
-				if (chosen == null || chosen == row.Value) return;
-				if (!Apply(row.Option, chosen)) return;
-
-				int index = list.SelectedIndex;
-				Reload(index);
-				SayOnReturnTo(list, Loc.T("cpconfig.setTo", row.Option.Name, chosen.Length > 0 ? chosen : Loc.T("cpconfig.valueEmpty")));
+						row.Value, actOnAnswer: Act);
 			}
 
 			// Delete puts a setting back to what the author intended, which is the one edit that is hard to make
@@ -152,18 +157,20 @@ public partial class Form1
 	/// chooser opens — the moment it is actually wanted, and it keeps the settings list itself short enough to
 	/// arrow through comfortably.
 	/// </summary>
-	private string? ChooseAllowedValue(CpRow row) => row.Option.AllowMultiple ? ChooseSeveralValues(row) : ShowChoiceList(
-		Loc.T("cpconfig.chooseTitle", row.Option.Name),
-		Loc.T("cpconfig.chooseListName", row.Option.Name),
-		row.Option.AllowedValues,
-		row.Value,
-		Loc.T("cpconfig.chooseHint", DescriptionSentence(row.Option), row.Value));
+	private string? ChooseAllowedValue(CpRow row, Func<string, ResultBeforeReturning?> actOnChoice) =>
+		row.Option.AllowMultiple ? ChooseSeveralValues(row, actOnChoice) : ShowChoiceList(
+			Loc.T("cpconfig.chooseTitle", row.Option.Name),
+			Loc.T("cpconfig.chooseListName", row.Option.Name),
+			row.Option.AllowedValues,
+			row.Value,
+			Loc.T("cpconfig.chooseHint", DescriptionSentence(row.Option), row.Value),
+			actOnChoice);
 
 	/// <summary>
 	/// The chooser for a setting that takes several values at once. Enter switches the selected one on or off, and Done saves.
 	/// With only the one-value chooser, picking anything replaced all the others.
 	/// </summary>
-	private string? ChooseSeveralValues(CpRow row)
+	private string? ChooseSeveralValues(CpRow row, Func<string, ResultBeforeReturning?> actOnChoice)
 	{
 		CpConfigOption option = row.Option;
 		var on = new HashSet<string>(ContentPatcherConfig.SplitValues(row.Value), StringComparer.OrdinalIgnoreCase);
@@ -217,7 +224,8 @@ public partial class Form1
 
 			return list;
 		},
-		hint: Loc.T("cpconfig.severalHint", DescriptionSentence(option)));
+		hint: Loc.T("cpconfig.severalHint", DescriptionSentence(option)),
+		actBeforeReturning: () => result == null ? null : actOnChoice(result));
 
 		return result;
 	}

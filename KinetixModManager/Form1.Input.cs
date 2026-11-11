@@ -436,7 +436,7 @@ public partial class Form1
 			{
 				case AppTab.Installed:    listInstalled.Focus();   break;
 				case AppTab.Updates:      listUpdates.Focus();     break;
-				case AppTab.Backups:      listBackups.Focus();     break;
+				case AppTab.Backups:      listDeletedBackups.Focus(); break;
 				case AppTab.Discovery:    listDiscovery.Focus();   break;
 				// The results are hidden until a search has run, so focusing them did nothing, in silence.
 				case AppTab.Wiki:         if (listWikiResults.CanFocus) listWikiResults.Focus(); else txtWikiSearch.Focus(); break;
@@ -650,31 +650,40 @@ public partial class Form1
 		}
 		if (list.Name == "listUpdates" && list.SelectedItem is GameMod modWithUpdate && e.KeyCode == Keys.Delete)
 		{
-			if (SpeakBox(Loc.T("modlist.ignoreConfirm", modWithUpdate.LatestVersion ?? "", modWithUpdate.Name), Loc.T("modlist.ignoreTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
-			{
-				_settings.IgnoredVersions[modWithUpdate.UniqueId] = modWithUpdate.LatestVersion ?? "";
-				_settings.Save();
-				if (RemoveSettledUpdateRow(modWithUpdate) is { } landed)
-					SayAfterPrompt(Loc.T("modlist.updateIgnored"), Loc.T("modlist.updateIgnoredPos", landed.Row, landed.Index, landed.Count));
-				else
-					Speak(Loc.T("modlist.updateIgnoredEmpty"));
-			}
+			// The result is said before the question closes, and the row goes once it has been heard. See ActBeforeReturning.
+			SpeakBox(Loc.T("modlist.ignoreConfirm", modWithUpdate.LatestVersion ?? "", modWithUpdate.Name), Loc.T("modlist.ignoreTitle"),
+				MessageBoxButtons.YesNo, answer =>
+				{
+					if (answer != DialogResult.Yes) return null;
+					_settings.IgnoredVersions[modWithUpdate.UniqueId] = modWithUpdate.LatestVersion ?? "";
+					_settings.Save();
+					// The last row going leaves nothing to land on, which the sentence says.
+					bool last = listUpdates.Items.Count <= 1;
+					return new ResultBeforeReturning(
+						Loc.T(last ? "modlist.updateIgnoredEmpty" : "modlist.updateIgnored"),
+						() => RemoveSettledUpdateRow(modWithUpdate));
+				});
 			e.Handled = true;
 			e.SuppressKeyPress = true;
 		}
-		if (list.Name == "listBackups" && list.SelectedItem is BackupItem backupItem)
+		if (list.Name is "listBackups" or "listDeletedBackups" && list.SelectedItem is BackupItem backupItem)
 		{
 			if (e.KeyCode == Keys.Delete)
 			{
-				DeleteSelectedBackup();
+				DeleteSelectedBackup(list);
 				e.Handled = true;
 				e.SuppressKeyPress = true;
 			}
 			if (e.KeyCode == Keys.Return)
 			{
-				if (SpeakBox(Loc.T("modlist.restoreConfirm", BackupRestore.ModNameOf(backupItem.FullPath)), Loc.T("modlist.restoreTitle"), MessageBoxButtons.YesNo) == DialogResult.Yes)
+				// "Restoring…" is said before the question closes, so focus coming back doesn't cut it, nor it the reader's
+				// reading of the row. See ActBeforeReturning.
+				string name = BackupRestore.ModNameOf(backupItem.FullPath);
+				if (SpeakBox(Loc.T("modlist.restoreConfirm", name), Loc.T("modlist.restoreTitle"), MessageBoxButtons.YesNo,
+						answer => answer == DialogResult.Yes ? new ResultBeforeReturning(Loc.T("backups.restoring", name)) : null)
+					== DialogResult.Yes)
 				{
-					Fire(RestoreBackupAsync(backupItem), "RestoreBackup");
+					Fire(RestoreBackupAsync(backupItem, startSaid: true), "RestoreBackup");
 				}
 				e.Handled = true;
 			}
@@ -688,16 +697,18 @@ public partial class Form1
 			}
 			if (e.KeyCode == Keys.Delete)
 			{
-				if (SpeakBox(Loc.T("modlist.deleteProfileConfirm", modProfile.Name), Loc.T("common.confirmDelete"), MessageBoxButtons.YesNo) == DialogResult.Yes)
-				{
-					string path = ProfileStore.PathFor(profilesPath, modProfile.Name);
-					if (File.Exists(path))
+				// Said before the question closes, and the list refilled once that has been heard. See ActBeforeReturning.
+				SpeakBox(Loc.T("modlist.deleteProfileConfirm", modProfile.Name), Loc.T("common.confirmDelete"),
+					MessageBoxButtons.YesNo, answer =>
 					{
-						File.Delete(path);
-					}
-					RefreshProfilesList();
-					Speak(Loc.T("modlist.profileDeleted"));
-				}
+						if (answer != DialogResult.Yes) return null;
+						string path = ProfileStore.PathFor(profilesPath, modProfile.Name);
+						if (File.Exists(path))
+						{
+							File.Delete(path);
+						}
+						return new ResultBeforeReturning(Loc.T("modlist.profileDeleted"), RefreshProfilesList);
+					});
 				e.Handled = true;
 				e.SuppressKeyPress = true;
 			}

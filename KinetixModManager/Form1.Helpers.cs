@@ -323,23 +323,10 @@ public partial class Form1
 		return (waiting.Text, waiting.NamesRow);
 	}
 
-	/// <summary>
-	/// Says the result of a choice made in a view that has just closed back onto <paramref name="list"/>.
-	///
-	/// ⚠️ Not with a plain Speak. The view's closing hands focus back to the list, which sets off the list's own return
-	/// announcement: the reader's reading swallowed, then the row and its position. A Speak made after the view returns
-	/// claims the floor from that, so the swallow stopped and the position was never said, and the reader's version came
-	/// through instead. Changing a Content Patcher setting was heard as "FriendableZuzuNPCs set to Stella, Kennedy.
-	/// window, list, FriendableZuzuNPCs: Stella, Kennedy", with no "4 of 12". Measured with NVDA 2026-11-10.
-	///
-	/// So the result rides on that announcement, first: "FriendableZuzuNPCs set to Stella, Kennedy. 4 of 12". When no
-	/// announcement is under way it is said at once, and one that gives way or finds nothing to say still says it.
-	/// </summary>
-	/// <param name="namesRow">The result already names the row, so the row's own text is left out.</param>
-	private void SayOnReturnTo(ListBox list, string result, bool namesRow = true)
-	{
-		if (!HandToArrival(list, result, namesRow)) Speak(result);
-	}
+	// SayOnReturnTo stood here: a view's result riding on the list's return announcement, "FriendableZuzuNPCs set to Stella.
+	// 4 of 12", with the reader's own reading swallowed. With NVDA 2026.3 the result is now said before the view closes and
+	// nothing is swallowed (ActBeforeReturning); other readers still ride on the arrival, through ActAfterReturning.
+	// ⚠️ A plain Speak just after a view returns is still wrong: it claims the floor from the return announcement.
 
 	/// <summary>
 	/// Gives <paramref name="text"/> to the return announcement under way on <paramref name="list"/>, after anything already
@@ -763,6 +750,24 @@ public partial class Form1
 	/// A reader says nothing when the program moves the selection. So "Save deleted. 14 remaining." never said which save
 	/// you were now on, and with a separate position announcement, one could cut off or drop the other.
 	/// </summary>
+	/// <summary>
+	/// A row the user answered Yes to deleting, as a result for <see cref="ActBeforeReturning"/>: the sentence, and the
+	/// change it waits for, which takes the row out and lands on the one that moved up into its place. The last row going
+	/// closes the screen, with <paramref name="lastSaid"/>, because there is nothing left to land on.
+	/// </summary>
+	private ResultBeforeReturning RowRemoved(ListBox list, object row, Action closeView, string said, string lastSaid)
+	{
+		bool last = list.Items.Count <= 1;
+		return new ResultBeforeReturning(last ? lastSaid : said, () =>
+		{
+			int index = list.SelectedIndex;
+			list.Items.Remove(row);
+			if (list.Items.Count == 0) { closeView(); return; }
+			list.SelectedIndex = Math.Min(Math.Max(index, 0), list.Items.Count - 1);
+			AlignListCaretToSelection(list);
+		});
+	}
+
 	private void SayResultAndLandOn(ListBox list, int index, string result)
 	{
 		_movingListSilently = true;
