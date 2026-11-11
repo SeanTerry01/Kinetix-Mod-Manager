@@ -12,6 +12,15 @@
 *   **API keys are hidden.** The Nexus key and the AI key in Settings, and the keys under File, Mod source API keys, are now
     protected boxes, so your screen reader no longer reads the key out when you land on one. A Show key button straight after
     each box shows it until you press it again.
+*   **Your own sound themes are kept in your data folder.** On an installed copy, Windows refused making, filling or deleting a
+    theme beside the program. New themes go in your data folder, and the manager reads both. The themes it comes with can't be
+    deleted, and it says so.
+*   **The suite counts a script extender or a two-part mod that failed.** It was counted as installed in the summary.
+*   **A stuck SMAPI installer is stopped after 3 minutes,** and the SMAPI page opens so you can install it yourself. Before, the
+    suite waited for good and Escape couldn't leave.
+*   **A Witcher 3 mod whose files in the game folder can't all be removed is not deleted,** so the manager still knows they are its
+    own. Close the game and try again.
+*   **Backups say "1 kilobyte" and "1 minute ago",** not "1 kilobytes" and "1 minutes ago".
 *   **Coming back to a list no longer cuts NVDA off.** With NVDA 2026.3 or newer, closing a screen or Settings lets NVDA
     read the row itself, and the manager adds only the position after it. Before, NVDA's reading was cut off at once and the
     manager said the row again, so NVDA's speech history showed every row twice.

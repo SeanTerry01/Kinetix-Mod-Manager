@@ -17,21 +17,14 @@ Anything resolved gets deleted from here rather than ticked, so the file stays s
 
 Done or decided everything else on the list. What is here needs a person, or is a choice rather than a bug.
 
-- [ ] **Sean's checks.** The list of what to listen for and try is in his "what to check" document. None of this round has been run.
-- [ ] **`SpeakAfterPrompt` and plain `Speak` after a Yes or No** do the same job in about 50 places, and the code cannot say
-  which is right. Speech history on the two twin actions (`Form1.Input.cs` ignore and `Form1.Updates.cs` mark) would settle it.
-- [ ] **A list's own GotFocus may end a file picker's settle early,** letting the caption speak over the result
-  (`SettleAfterForeignWindowAsync`). Inferred, never measured. Not changed blind: speech history first.
-- [ ] **Real signing of the manager's installer.** The checksum check catches a file damaged or swapped in transit, but it comes
-  from the same account as the file, so it can't prove who made a release. A signature needs a certificate or a key kept
-  outside GitHub. A decision and possibly a cost, not code.
-- [ ] **Themes live beside the program,** where Windows refuses an ordinary user on an installed copy. The Theme Manager now says so.
-  The real fix is keeping user themes in the data folder and reading both.
-- [ ] **`InstallKnownModPartsAsync` returns nothing,** so the suite can't count a script extender or a two-part mod that failed. Check
-  how it reports them.
-- [ ] **SMAPI's installer is waited for with no time limit** (`WaitForExit` in `InstallSmapiAsync`), so a hung one makes Escape refuse.
-- [ ] **Duplicates left because they work:** `Form1.RestoreBackupAsync` and `BackupRestore.Restore`, and the Witcher 3 helpers in
-  `ModFileSystem` and `Witcher3ModFiles`. The app could call the core's copies.
+- [ ] **Sean's checks left:** moving Minecraft version with the internet off (needs a newer Minecraft to exist), the MO2 import
+  (needs a second copy of a game), a download's tones, Cody's Linux checks, and the release checksum on the next release.
+  Everything else in his "what to check" document passed on 2026-11-10.
+- [ ] **Signing the manager's installer: decided against for now** (2026-11-10), because of the cost. The checksum check stays.
+- [ ] **What to say when a result has to come first** on a return to a list (`SayOnReturnTo`, `SayAfterPrompt`, Space). These still
+  cut NVDA off, which leaves a line in its speech history. Question put to Sean on 2026-11-10; see `LetReaderReadTheRowAsync`.
+- [ ] **A stray "unavailable" before a question** opened from Settings or a list: NVDA sees the control behind being switched off
+  before it has caught up with focus moving into the question. Explained to Sean, not fixed.
 - [ ] **Source guards read only the app project,** not `Kinetix.Core` or `Kinetix.Gtk`. `AppSettings.cs:875` and `GameLogFiles.cs:42` would need
   a look under the install-key rule if widened.
 - [ ] **Small leftovers:** `SyncPluginsFile`'s `isDeploy` is always false; `Shortcut.Describe` stays because it is the only thing asking for
@@ -41,8 +34,9 @@ Done or decided everything else on the list. What is here needs a person, or is 
 - [ ] **GTK gaps found while fixing it:** GitHub-hosted mods such as United Minecraft are never checked for updates on Linux, yet count as
   checked. `mods.settings` looks wrong under Proton (`UserDataDirectoryFor` ignores `IGameLocator.UserDocumentsFolder`). A Linux user may have
   no way to enter a Nexus key: `gtk.updatesNeedKey` names a File menu entry this head doesn't appear to have.
-- [ ] **Witcher 3 with a typed mods folder on Windows:** `SetModEnabled`, `ForgetWitcherMod` and `SyncWitcherModSettings` derive the game folder two
-  levels up from the mod. Only a mods folder outside `game\mods` is affected, and the game only loads mods from there.
+- [ ] **Witcher 3 with a typed mods folder on Windows:** switching on or off and deleting now ask `Witcher3ModFiles.GameFolderFor` with the located
+  game folder. What is left is the install path's `SyncWitcherModSettings`, which passes none. Only a mods folder outside `game\mods` is
+  affected, and the game only loads mods from there.
 
 ---
 

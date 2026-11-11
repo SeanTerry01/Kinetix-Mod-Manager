@@ -112,7 +112,7 @@ public partial class Form1
 				// Asset deployment and plugins.txt are reconciled once by RefreshModList at the end
 				// (a profile can flip many mods at once), so only the folder enable/disable happens here.
 				change.Mod.FolderPath = ModFileSystem.SetModEnabled(
-					change.Mod.FolderPath, change.Enable, _settings.ActiveGame);
+					change.Mod.FolderPath, change.Enable, _settings.ActiveGame, locatedGameFolder: _settings.CurrentGamePath);
 				change.Mod.IsEnabled = change.Enable;
 
 				if (change.Enable) anyEnabled = true; else anyDisabled = true;
@@ -128,7 +128,7 @@ public partial class Form1
 				if (profile.ModPriority != null || profile.PluginOrder != null)
 					_settings.Save();
 			}
-			if (!string.IsNullOrEmpty(profile.ThemeOverride) && Directory.Exists(Path.Combine(themesPath, profile.ThemeOverride)))
+			if (!string.IsNullOrEmpty(profile.ThemeOverride) && _themeFolders.Exists(profile.ThemeOverride))
 			{
 				_settings.CurrentTheme = profile.ThemeOverride;
 				_settings.Save();

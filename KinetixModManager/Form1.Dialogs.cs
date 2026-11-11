@@ -29,7 +29,7 @@ public partial class Form1
 			DropDownStyle = ComboBoxStyle.DropDownList,
 			Font = new Font("Segoe UI", 12f)
 		};
-		cmbTheme.Items.AddRange(SoundThemes.Installed(themesPath).Cast<object>().ToArray());
+		cmbTheme.Items.AddRange(SoundThemes.Installed(_themeFolders.All).Cast<object>().ToArray());
 		cmbTheme.SelectedItem = previewTheme;
 		cmbTheme.SelectedIndexChanged += delegate
 		{
@@ -101,14 +101,15 @@ public partial class Form1
 	}
 
 	/// <summary>
-	/// Themes live beside the program, and on an installed copy Windows refuses an ordinary user there. It reached the
-	/// generic "unexpected error" box, which said nothing about themes.
+	/// Windows refused a change to a themes folder. It reached the generic "unexpected error" box, which said nothing
+	/// about themes. Rare now that the user's own themes are made in their data folder (<see cref="SoundThemeFolders"/>);
+	/// what is left is deleting a theme an older version made beside the program, on a copy that can't write there.
 	/// </summary>
-	private void SayThemeFolderRefused(Exception ex)
+	private void SayThemeFolderRefused(Exception ex, string folder)
 	{
-		LogFailure("Themes", "Could not change the themes folder", ex);
+		LogFailure("Themes", $"Could not change the themes folder {folder}", ex);
 		_soundEngine.Play("error");
-		SpeakBox(Loc.T("themeMgr.folderRefused", themesPath));
+		SpeakBox(Loc.T("themeMgr.folderRefused", folder));
 	}
 
 	/// <summary>Opens the audio theme manager dialog for creating, renaming, and switching sound themes.</summary>
@@ -164,10 +165,11 @@ public partial class Form1
 			themeName = themeName.Trim();
 			if (themeName.Length == 0) { Speak(Loc.T("themeMgr.nameEmpty")); return; }
 
-			string themeFolder = Path.Combine(themesPath, themeName);
+			// In the user's own folder, which they can always write to.
+			string themeFolder = Path.Combine(_themeFolders.User, themeName);
 			// Said rather than passed over in silence: a name that already exists used to leave the button looking
-			// like it had done nothing, with no way to tell that from a failure.
-			if (Directory.Exists(themeFolder)) { Speak(Loc.T("themeMgr.nameTaken", themeName)); return; }
+			// like it had done nothing, with no way to tell that from a failure. Either folder counts.
+			if (_themeFolders.Exists(themeName)) { Speak(Loc.T("themeMgr.nameTaken", themeName)); return; }
 
 			try
 			{
@@ -180,7 +182,7 @@ public partial class Form1
 			}
 			catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
 			{
-				SayThemeFolderRefused(ex);
+				SayThemeFolderRefused(ex, _themeFolders.User);
 				return;
 			}
 			Speak(Loc.T("themeMgr.created"));
@@ -197,7 +199,9 @@ public partial class Form1
 		btnAddMissingFolders.Click += delegate
 		{
 			int foldersAdded = 0;
-			string[] directories = Directory.GetDirectories(themesPath);
+			// The user's own themes only. The ones beside the program come complete (SoundThemesTests holds them to it),
+			// and on an installed copy could not be written to anyway.
+			string[] directories = Directory.Exists(_themeFolders.User) ? Directory.GetDirectories(_themeFolders.User) : Array.Empty<string>();
 			foreach (string themeFolder in directories)
 			{
 				foreach (string soundName in SoundEngine.SoundDescriptions.Keys)
@@ -208,7 +212,7 @@ public partial class Form1
 						try { Directory.CreateDirectory(soundFolder); }
 						catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
 						{
-							SayThemeFolderRefused(ex);
+							SayThemeFolderRefused(ex, themeFolder);
 							return;
 						}
 						foldersAdded++;
@@ -228,18 +232,29 @@ public partial class Form1
 			if (lb.SelectedItem != null)
 			{
 				string themeName = lb.SelectedItem.ToString() ?? "";
-				if (themeName == "Default")
+				// The user's own copy of a theme is theirs to delete, whatever it is called. Otherwise one the manager comes
+				// with is not: it would be back on the next update, and on an installed copy the delete is refused anyway.
+				string? userCopy = Directory.Exists(Path.Combine(_themeFolders.User, themeName))
+					? Path.Combine(_themeFolders.User, themeName) : null;
+				string? toDelete = userCopy ?? (SoundThemeFolders.ComesWithTheManager(themeName) ? null : _themeFolders.FolderOf(themeName));
+				if (themeName == "Default" && userCopy == null)
 				{
 					SpeakBox(Loc.T("themeMgr.cannotDeleteDefault"));
 				}
+				else if (toDelete == null)
+				{
+					SpeakBox(Loc.T("themeMgr.cannotDeleteShipped", themeName));
+				}
 				else if (SpeakBox(Loc.T("themeMgr.confirmDelete", themeName), Loc.T("common.confirm"), MessageBoxButtons.YesNo) == DialogResult.Yes)
 				{
-					try { Directory.Delete(Path.Combine(themesPath, themeName), recursive: true); }
+					try { Directory.Delete(toDelete, recursive: true); }
 					catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
 					{
-						SayThemeFolderRefused(ex);
+						SayThemeFolderRefused(ex, toDelete);
 						return;
 					}
+					// A user's copy of a theme the manager also has leaves that one in place, so it stays the active choice.
+					if (_themeFolders.Exists(themeName)) { RefreshList(); Speak(Loc.T("themeMgr.deleted")); return; }
 					if (tempActiveTheme == themeName)
 					{
 						tempActiveTheme = "Default";
@@ -297,7 +312,7 @@ public partial class Form1
 		void RefreshList()
 		{
 			lb.Items.Clear();
-			lb.Items.AddRange(SoundThemes.Installed(themesPath).Cast<object>().ToArray());
+			lb.Items.AddRange(SoundThemes.Installed(_themeFolders.All).Cast<object>().ToArray());
 			lb.SelectedItem = tempActiveTheme;
 		}
 	}

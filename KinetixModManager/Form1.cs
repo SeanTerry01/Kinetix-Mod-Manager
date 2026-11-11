@@ -176,7 +176,11 @@ public partial class Form1 : Form, IMessageFilter
 
 	private string profilesPath = Path.Combine(dataBasePath, "profiles");
 
-	private string themesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sounds");
+	/// <summary>
+	/// Where sound themes are: the user's own in the data folder, then the ones beside the program. See
+	/// <see cref="SoundThemeFolders"/> for why there are two.
+	/// </summary>
+	private readonly SoundThemeFolders _themeFolders = SoundThemeFolders.ForProgramIn(AppDomain.CurrentDomain.BaseDirectory);
 
 	private bool isUpdatingAll;
 
@@ -672,7 +676,7 @@ public partial class Form1 : Form, IMessageFilter
 		{
 			_settings.CurrentTheme = AppSettings.ThemeForGame(_settings.ActiveGame);
 		}
-		_soundEngine    = new SoundEngine(themesPath, _settings);
+		_soundEngine    = new SoundEngine(_themeFolders, _settings);
 		_nexusService   = new NexusService(_settings);
 		_aiService      = new AiService(_settings);
 		// Ordered as ModSources lists them, so Settings and the search offer agree about what comes first.
@@ -752,10 +756,9 @@ public partial class Form1 : Form, IMessageFilter
 		{
 			Directory.CreateDirectory(profilesPath);
 		}
-		if (!Directory.Exists(themesPath))
-		{
-			Directory.CreateDirectory(themesPath);
-		}
+		// The user's themes folder, not the one beside the program: creating that one on an installed copy is refused.
+		try { Directory.CreateDirectory(_themeFolders.User); }
+		catch (Exception ex) { DiagnosticLog.WriteException("Startup", $"creating the folder {_themeFolders.User}", ex); }
 		RegisterNxmProtocol();
 		Fire(StartNamedPipeServer(_pipeCts.Token), "StartNamedPipeServer");
 		base.FormClosing += async (object? _, FormClosingEventArgs e) =>

@@ -34,18 +34,18 @@ public class SoundEngine : ISoundEngine
 			{ "load_complete",      "Played when an operation finishes, such as installing a mod, updating, importing, or checking for updates." }
 		};
 
-	private readonly string _themesPath;
+	private readonly SoundThemeFolders _themes;
 	private readonly AppSettings _settings;
 
 	/// <summary>
 	/// Initialises the sound engine.
 	/// </summary>
-	/// <param name="themesPath">Absolute path to the root sounds/themes directory.</param>
+	/// <param name="themes">Where the themes are: the user's own, then the ones beside the program.</param>
 	/// <param name="settings">Live application settings (read for <c>CurrentTheme</c> and <c>SoundVolume</c>).</param>
-	public SoundEngine(string themesPath, AppSettings settings)
+	public SoundEngine(SoundThemeFolders themes, AppSettings settings)
 	{
-		_themesPath = themesPath;
-		_settings   = settings;
+		_themes   = themes;
+		_settings = settings;
 	}
 
 	/// <summary>
@@ -95,7 +95,7 @@ public class SoundEngine : ISoundEngine
 			try
 			{
 				string theme = themeOverride ?? _settings.CurrentTheme;
-				string? file = SoundThemes.Resolve(_themesPath, theme, name);
+				string? file = SoundThemes.Resolve(_themes.All, theme, name);
 				if (file == null)
 					return;
 
@@ -167,7 +167,7 @@ public class SoundEngine : ISoundEngine
 	/// Plays a logo sound file on a background thread.
 	/// Used to preview startup logo sounds in the Settings dialog.
 	/// </summary>
-	/// <param name="theme">Theme name (sub-folder of <c>themesPath</c>).</param>
+	/// <param name="theme">Theme name, looked for in the user's themes and then the ones beside the program.</param>
 	/// <param name="file">File name of the <c>.ogg</c> file inside the theme's <c>logo/</c> sub-folder.</param>
 	public void PlayLogoSound(string theme, string file)
 	{
@@ -183,7 +183,8 @@ public class SoundEngine : ISoundEngine
 			WaveOutEvent? output = null;
 			try
 			{
-				string path = Path.Combine(_themesPath, theme, "logo", file);
+				if (_themes.FolderOf(theme) is not { } themeFolder) return;
+				string path = Path.Combine(themeFolder, "logo", file);
 				if (!File.Exists(path))
 					return;
 

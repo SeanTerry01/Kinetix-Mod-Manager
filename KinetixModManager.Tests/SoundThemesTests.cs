@@ -102,6 +102,99 @@ public class SoundThemesTests : IDisposable
 	}
 
 	// ---------------------------------------------------------------------
+	// Two folders: the user's own, and the ones beside the program
+	// ---------------------------------------------------------------------
+
+	/// <summary>A second folder of themes, like the user's data folder beside the shipped one in <see cref="_root"/>.</summary>
+	private string UserEvent(string theme, string name, params string[] files)
+	{
+		string dir = Path.Combine(_root, "user", theme, name);
+		Directory.CreateDirectory(dir);
+		foreach (string f in files) File.WriteAllBytes(Path.Combine(dir, f), Array.Empty<byte>());
+		return dir;
+	}
+
+	private string[] BothFolders => new[] { Path.Combine(_root, "user"), Path.Combine(_root, "shipped") };
+
+	private void ShippedEvent(string theme, string name, params string[] files)
+	{
+		string dir = Path.Combine(_root, "shipped", theme, name);
+		Directory.CreateDirectory(dir);
+		foreach (string f in files) File.WriteAllBytes(Path.Combine(dir, f), Array.Empty<byte>());
+	}
+
+	[Fact]
+	public void AThemeTheUserMadeIsPlayedFromTheirFolder()
+	{
+		// The reason for the second folder: on an installed copy the user cannot write beside the program.
+		ShippedEvent("Default", "connect", "nexus_connect.ogg");
+		UserEvent("Mine", "connect", "my_connect.ogg");
+
+		Assert.Equal(Path.Combine(_root, "user", "Mine", "connect", "my_connect.ogg"),
+			SoundThemes.Resolve(BothFolders, "Mine", "connect"));
+	}
+
+	[Fact]
+	public void TheUsersThemeFallsBackToTheShippedDefault()
+	{
+		ShippedEvent("Default", "error", "oops.ogg");
+		UserEvent("Mine", "error");   // made, not filled yet
+
+		Assert.Equal(Path.Combine(_root, "shipped", "Default", "error", "oops.ogg"),
+			SoundThemes.Resolve(BothFolders, "Mine", "error"));
+	}
+
+	[Fact]
+	public void TheUsersCopyOfAThemeIsPlayedBeforeTheShippedOne()
+	{
+		ShippedEvent("Skyrim", "connect", "shipped.ogg");
+		UserEvent("Skyrim", "connect", "mine.ogg");
+
+		Assert.Equal(Path.Combine(_root, "user", "Skyrim", "connect", "mine.ogg"),
+			SoundThemes.Resolve(BothFolders, "Skyrim", "connect"));
+	}
+
+	[Fact]
+	public void BothFoldersAreListedAndEachThemeOnce()
+	{
+		ShippedEvent("Default", "connect");
+		ShippedEvent("Skyrim", "connect");
+		UserEvent("Skyrim", "connect");
+		UserEvent("Mine", "connect");
+
+		Assert.Equal(new[] { "Default", "Mine", "Skyrim" }, SoundThemes.Installed(BothFolders));
+	}
+
+	[Fact]
+	public void AMissingUserFolderIsNotAnError()
+	{
+		// A first run, before the user's folder has been made.
+		ShippedEvent("Default", "connect", "nexus_connect.ogg");
+
+		Assert.Equal(new[] { "Default" }, SoundThemes.Installed(BothFolders));
+		Assert.NotNull(SoundThemes.Resolve(BothFolders, "Default", "connect"));
+	}
+
+	[Fact]
+	public void TheFolderOfAThemeIsTheUsersFirst()
+	{
+		ShippedEvent("Skyrim", "connect");
+		UserEvent("Skyrim", "connect");
+		var folders = new SoundThemeFolders(BothFolders[0], BothFolders[1]);
+
+		Assert.Equal(Path.Combine(_root, "user", "Skyrim"), folders.FolderOf("Skyrim"));
+		Assert.Null(folders.FolderOf("Nowhere"));
+	}
+
+	[Fact]
+	public void TheThemesTheManagerComesWithAreKnown()
+	{
+		Assert.True(SoundThemeFolders.ComesWithTheManager("Default"));
+		Assert.True(SoundThemeFolders.ComesWithTheManager("Skyrim"));
+		Assert.False(SoundThemeFolders.ComesWithTheManager("Mine"));
+	}
+
+	// ---------------------------------------------------------------------
 	// Which theme
 	// ---------------------------------------------------------------------
 

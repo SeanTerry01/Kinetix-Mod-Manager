@@ -732,67 +732,47 @@ public partial class Form1
 
 	/// <summary>
 	/// Puts a backup back in place of the mod it came from. The copy being replaced is backed up first, so a restore
-	/// can itself be undone, and a failure leaves things as they were. See <see cref="BackupRestore"/>.
+	/// can itself be undone, and a failure leaves things as they were.
+	///
+	/// The disk work is <see cref="BackupRestore.RestoreWithResult"/>, the same code the Linux head uses. This held its own
+	/// copy until November 2026, which lacked two of the core's guards: an empty backup, and a mod whose folder is the
+	/// whole mods folder being taken as the place to restore into. What is left here is what only this head does.
 	/// </summary>
 	private async Task RestoreBackupAsync(BackupItem backup)
 	{
 		using IDisposable busy = BeginModOperation();
 
 		string name = BackupRestore.ModNameOf(backup.FullPath);
-		string modsPath = _settings.CurrentModsPath;
-		string tempRoot = ModArchive.TempRootFor(modsPath);
-		string extracted = Path.Combine(tempRoot, "Extract_" + Path.GetRandomFileName());
 		GameProfile? profile = GameProfiles.Find(_settings.ActiveGame);
+		// A Minecraft jar goes into the folder Fabric reads, which for a modpack is the pack's own.
+		string modsFolder = profile?.IsMinecraft == true
+			? MinecraftLayout.ModsFolderFor(MinecraftGameFolder())
+			: _settings.CurrentModsPath;
+		string backupsFolder = backupsPath;
+		// Taken here, on the window's thread, because the list is rebuilt there.
+		List<GameMod> installed = _allInstalledMods.ToList();
 
 		try
 		{
 			SetStatus(Loc.T("backups.restoring", name));
-			await Task.Run(() => ModArchive.Extract(backup.FullPath, extracted, null));
-			ModArchive.GuardAgainstEscapedEntries(extracted);
+			BackupRestore.RestoreResult restored = await Task.Run(() =>
+				BackupRestore.RestoreWithResult(backup.FullPath, modsFolder, backupsFolder, installed, profile, LogError));
 
-			GameMod? replaced;
-			bool keptTheOldCopy = false;
-			if (profile?.IsMinecraft == true)
+			await RefreshModList(checkUpdates: false);
+			if (IsBethesdaGame)
 			{
-				// A Minecraft mod is one jar, and a backup holds exactly that. InstallFile matches the mod by the id inside
-				// the jar and removes the other copy, which is what stops two copies refusing to start together.
-				string jar = Directory.GetFiles(extracted).Single();
-				string id = MinecraftLayout.ReadModInfo(jar).Id;
-				replaced = _allInstalledMods.FirstOrDefault(m => !m.IsGroup && string.Equals(m.UniqueId, id, StringComparison.OrdinalIgnoreCase));
-				if (replaced != null && File.Exists(replaced.FolderPath))
-					BackupStore.CreateBackup(replaced.FolderPath, name, backupsPath);
-				keptTheOldCopy = replaced != null && File.Exists(replaced.FolderPath);
-				await InstallJarAsync(jar, MinecraftLayout.ModsFolderFor(MinecraftGameFolder()));
-			}
-			else
-			{
-				(string destination, replaced) = BackupRestore.Plan(extracted, backup.FullPath, _allInstalledMods, modsPath,
-					useRecordedFolderName: profile?.IsBepInEx != true);
-
-				// Not pruned here, unlike an install. The limit could remove the very backup being restored.
-				keptTheOldCopy = Directory.Exists(destination);
-				if (keptTheOldCopy)
-					await Task.Run(() => BackupStore.CreateBackup(destination, name, backupsPath));
-
-				await Task.Run(() => ModFolderSwap.Replace(extracted, destination, new[] { destination }, tempRoot, LogError));
-
-				await RefreshModList(checkUpdates: false);
-				if (IsBethesdaGame)
-				{
-					// The deployed files are hard links to the copy that has just gone, so they are made again.
-					SyncBethesdaDeployment(new HashSet<string>(new[] { Path.GetFileName(destination) }, StringComparer.OrdinalIgnoreCase));
-					RefreshModPriorityList();
-				}
+				// The deployed files are hard links to the copy that has just gone, so they are made again.
+				SyncBethesdaDeployment(new HashSet<string>(new[] { Path.GetFileName(restored.Destination) }, StringComparer.OrdinalIgnoreCase));
+				RefreshModPriorityList();
 			}
 
-			if (replaced != null) ForgetInstalledDownloadVersion(DownloadKey(replaced));
-			if (profile?.IsMinecraft == true) await RefreshModList(checkUpdates: false);
+			if (restored.Replaced != null) ForgetInstalledDownloadVersion(DownloadKey(restored.Replaced));
 			RefreshBackupsList();
 
 			_soundEngine.Play("load_complete");
 			ResetStatus();
 			// Restoring a mod that was deleted is the usual case, and then nothing was replaced.
-			string said = Loc.T(keptTheOldCopy ? "backups.restored" : "backups.restoredNew", name);
+			string said = Loc.T(restored.ReplacedACopy ? "backups.restored" : "backups.restoredNew", name);
 			if (profile?.IsWitcher3 == true) said += " " + Loc.T("backups.restoredWitcherNote");
 			Speak(said);
 		}
@@ -802,11 +782,6 @@ public partial class Form1
 			ResetStatus();
 			_soundEngine.Play("error");
 			SpeakBox(Loc.T("backups.restoreFailedBox", name, FriendlyError(ex)), Loc.T("modlist.restoreTitle"));
-		}
-		finally
-		{
-			try { ModOnDisk.DeleteDirectory(extracted); }
-			catch (Exception ex) { DiagnosticLog.WriteException("Backup", $"clearing the temporary folder {extracted}", ex); }
 		}
 	}
 

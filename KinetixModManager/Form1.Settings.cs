@@ -620,7 +620,7 @@ public partial class Form1
 			DropDownStyle = ComboBoxStyle.DropDownList,
 			Width = 150
 		};
-		cTheme.Items.AddRange(SoundThemes.Installed(themesPath).Cast<object>().ToArray());
+		cTheme.Items.AddRange(SoundThemes.Installed(_themeFolders.All).Cast<object>().ToArray());
 		cTheme.SelectedItem = _settings.CurrentTheme;
 		cTheme.SelectedIndexChanged += delegate
 		{
@@ -1348,8 +1348,9 @@ public partial class Form1
 			try
 			{
 				cmbLogo.Items.Clear();
-				string path = Path.Combine(themesPath, theme, "logo");
-				if (Directory.Exists(path))
+				string? themeFolder = _themeFolders.FolderOf(theme);
+				string path = themeFolder == null ? "" : Path.Combine(themeFolder, "logo");
+				if (path.Length > 0 && Directory.Exists(path))
 				{
 					object[] items = Directory.GetFiles(path, "*.ogg").Select(Path.GetFileName).Cast<object>()
 						.ToArray();

@@ -53,10 +53,12 @@ public class SplashScreen : Form
 			string path = _settings.AllowManualTheme
 				? (_settings.CurrentTheme ?? "Default")
 				: AppSettings.ThemeForGame(_settings.ActiveGame);
-			string text = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sounds", path, "logo");
+			// The user's own themes first, then the ones beside the program. See SoundThemeFolders.
+			var themes = SoundThemeFolders.ForProgramIn(AppDomain.CurrentDomain.BaseDirectory);
+			string text = Path.Combine(themes.FolderOf(path) ?? Path.Combine(themes.Shipped, path), "logo");
 			if (!Directory.Exists(text) || Directory.GetFiles(text, "*.ogg").Length == 0)
 			{
-				text = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sounds", "Default", "logo");
+				text = Path.Combine(themes.FolderOf("Default") ?? Path.Combine(themes.Shipped, "Default"), "logo");
 			}
 			if (Directory.Exists(text))
 			{

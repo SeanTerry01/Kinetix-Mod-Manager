@@ -1007,7 +1007,8 @@ public partial class Form1
 
 		try
 		{
-			updated.FolderPath = ModFileSystem.SetModEnabled(updated.FolderPath, false, _settings.ActiveGame);
+			updated.FolderPath = ModFileSystem.SetModEnabled(updated.FolderPath, false, _settings.ActiveGame,
+				locatedGameFolder: _settings.CurrentGamePath);
 			updated.IsEnabled = false;
 			_soundEngine.Play("disable");
 			if (silent)

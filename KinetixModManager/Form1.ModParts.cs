@@ -16,19 +16,35 @@ namespace KinetixModManager;
 /// </summary>
 public partial class Form1
 {
+	/// <summary>How installing a mod's parts went, worst first, so the suite can count it in its summary.</summary>
+	private enum PartsOutcome
+	{
+		/// <summary>Every missing part is now in place, or none was missing.</summary>
+		Installed,
+		/// <summary>At least one part has to be fetched in the browser: a free account, or no single file could be picked.</summary>
+		NeedsBrowser,
+		/// <summary>At least one part was tried and did not install.</summary>
+		Failed
+	}
+
+	private static PartsOutcome Worse(PartsOutcome a, PartsOutcome b) => (PartsOutcome)Math.Max((int)a, (int)b);
+
 	/// <summary>
-	/// Installs whichever parts of <paramref name="known"/> are missing, and reports what it did.
+	/// Installs whichever parts of <paramref name="known"/> are missing, says what it did, and returns how it went.
 	///
 	/// Parts already present are skipped, so this is safe to run again after a partial install — which is the
 	/// normal case, since a free account has to fetch each part through the browser one at a time.
+	///
+	/// The result is for the suite. It used to return nothing, so a script extender or a two-part mod that failed was
+	/// counted as installed in the suite's summary.
 	/// </summary>
-	private async Task InstallKnownModPartsAsync(KnownMod known)
+	private async Task<PartsOutcome> InstallKnownModPartsAsync(KnownMod known)
 	{
 		string gameFolder = ActiveGameFolder();
 		if (string.IsNullOrEmpty(gameFolder))
 		{
 			Speak(Loc.T("modparts.noGameFolder", known.DisplayName));
-			return;
+			return PartsOutcome.Failed;
 		}
 
 		// A part the running build no longer uses is not fetched at all. Skyrim 1.7.99 took SSE Engine Fixes'
@@ -41,7 +57,7 @@ public partial class Form1
 		if (missing.Count == 0)
 		{
 			Speak(Loc.T("modparts.alreadyComplete", known.DisplayName));
-			return;
+			return PartsOutcome.Installed;
 		}
 
 		SetStatus(Loc.T("modparts.checkingFiles", known.DisplayName), speak: true);
@@ -53,10 +69,11 @@ public partial class Form1
 			// No file list means no way to name the right file, so fall back to the page itself rather than
 			// guessing — the old behaviour, kept for exactly this case.
 			OpenModFilesTab(known);
-			return;
+			return PartsOutcome.NeedsBrowser;
 		}
 
 		GamePlatform platform = ActiveGamePlatform();
+		PartsOutcome outcome = PartsOutcome.Installed;
 
 		foreach (ModPart part in missing)
 		{
@@ -65,11 +82,13 @@ public partial class Form1
 			{
 				Speak(Loc.T("modparts.noFileFound", part.Name, known.DisplayName));
 				OpenModFilesTab(known);
+				outcome = Worse(outcome, PartsOutcome.NeedsBrowser);
 				continue;
 			}
 
-			await FetchAndInstallPartAsync(known, part, file, gameFolder);
+			outcome = Worse(outcome, await FetchAndInstallPartAsync(known, part, file, gameFolder));
 		}
+		return outcome;
 	}
 
 	/// <summary>
@@ -87,7 +106,7 @@ public partial class Form1
 	/// Downloads one part and puts it where it belongs — or, for an account that cannot be handed a download
 	/// link, opens that one file's page and says what to do with it.
 	/// </summary>
-	private async Task FetchAndInstallPartAsync(KnownMod known, ModPart part, NexusFileInfo file, string gameFolder)
+	private async Task<PartsOutcome> FetchAndInstallPartAsync(KnownMod known, ModPart part, NexusFileInfo file, string gameFolder)
 	{
 		string what = Loc.T("modparts.partOf", part.Name, known.DisplayName);
 
@@ -108,7 +127,7 @@ public partial class Form1
 
 			SpeakBox(Loc.T("modparts.manualBox", what, file.Name, where),
 				Loc.T("modparts.manualTitle"), MessageBoxButtons.OK);
-			return;
+			return PartsOutcome.NeedsBrowser;
 		}
 
 		try
@@ -140,12 +159,19 @@ public partial class Form1
 				if (!await InstallFromZip(archive, known.NexusModId, partOfMultiPartMod: known.Parts.Count > 1))
 				{
 					ResetStatus();
-					return;
+					return PartsOutcome.Failed;
 				}
 			}
 
 			ResetStatus();
 			Speak(Loc.T("modparts.installed", what));
+			return PartsOutcome.Installed;
+		}
+		catch (DownloadCancelledException)
+		{
+			// Asked for, and said by whatever cancelled it. Not a failure to report in a summary.
+			ResetStatus();
+			return PartsOutcome.Failed;
 		}
 		catch (Exception ex)
 		{
@@ -153,6 +179,7 @@ public partial class Form1
 			LogFailure(known.DisplayName, $"{part.Name} failed", ex);
 			SpeakBox(Loc.T("modparts.failedBox", what, FriendlyError(ex)), Loc.T("modparts.manualTitle"),
 				MessageBoxButtons.OK);
+			return PartsOutcome.Failed;
 		}
 	}
 

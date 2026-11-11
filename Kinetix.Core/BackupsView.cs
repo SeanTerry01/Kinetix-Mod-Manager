@@ -26,9 +26,19 @@ public sealed record BackupRow(string Path, string ModName, DateTime TakenAt, lo
 		return when.ToString("d MMMM yyyy");
 	}
 
-	private static string Size(long bytes) =>
-		bytes >= 1024L * 1024 ? Loc.T("backups.megabytes", bytes / (1024.0 * 1024)) :
-		bytes > 0 ? Loc.T("backups.kilobytes", Math.Max(1, bytes / 1024)) : "";
+	/// <summary>
+	/// The size, with the unit agreeing with the number: "1 kilobyte", not "1 kilobytes". Megabytes are said to one
+	/// decimal place, so the word is chosen from the number as said, passed as a whole number because only those pick a word.
+	/// </summary>
+	private static string Size(long bytes)
+	{
+		if (bytes >= 1024L * 1024)
+		{
+			double megabytes = Math.Round(bytes / (1024.0 * 1024), 1);
+			return Loc.T("backups.megabytes", megabytes, megabytes == 1 ? 1 : 2);
+		}
+		return bytes > 0 ? Loc.T("backups.kilobytes", Math.Max(1, bytes / 1024)) : "";
+	}
 
 	public override string ToString() => Spoken;
 }

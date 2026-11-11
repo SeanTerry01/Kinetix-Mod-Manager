@@ -55,37 +55,52 @@ public static class SoundThemes
 	/// user cannot check for themselves.
 	/// </para>
 	/// </summary>
-	public static string? Resolve(string themesPath, string theme, string name)
+	public static string? Resolve(string themesPath, string theme, string name) => Resolve(new[] { themesPath }, theme, name);
+
+	/// <summary>
+	/// The same, looking through several folders of themes in order — the user's own, then the ones that came with
+	/// the manager (see <see cref="SoundThemeFolders"/>). The theme is looked for in every folder before Default is.
+	/// </summary>
+	public static string? Resolve(IReadOnlyList<string> themeFolders, string theme, string name)
 	{
-		return FirstSoundIn(themesPath, theme, name)
-			?? (string.Equals(theme, DefaultTheme, StringComparison.OrdinalIgnoreCase)
-				? null
-				: FirstSoundIn(themesPath, DefaultTheme, name));
+		foreach (string folder in themeFolders)
+			if (FirstSoundIn(folder, theme, name) is { } file) return file;
+
+		if (string.Equals(theme, DefaultTheme, StringComparison.OrdinalIgnoreCase)) return null;
+
+		foreach (string folder in themeFolders)
+			if (FirstSoundIn(folder, DefaultTheme, name) is { } file) return file;
+		return null;
 	}
 
 	/// <summary>
 	/// The themes present on disk, in the order the Settings list should show them: Default first, because it
 	/// is the one every other theme falls back to, then the rest alphabetically.
 	/// </summary>
-	public static IReadOnlyList<string> Installed(string themesPath)
-	{
-		if (!Directory.Exists(themesPath)) return Array.Empty<string>();
+	public static IReadOnlyList<string> Installed(string themesPath) => Installed(new[] { themesPath });
 
-		try
+	/// <summary>The themes in all of these folders, each named once.</summary>
+	public static IReadOnlyList<string> Installed(IReadOnlyList<string> themeFolders)
+	{
+		var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		foreach (string folder in themeFolders)
 		{
-			return Directory.EnumerateDirectories(themesPath)
-				.Select(Path.GetFileName)
-				.Where(n => !string.IsNullOrEmpty(n))
-				.Select(n => n!)
-				.OrderBy(n => string.Equals(n, DefaultTheme, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
-				.ThenBy(n => n, StringComparer.OrdinalIgnoreCase)
-				.ToList();
+			if (!Directory.Exists(folder)) continue;
+			try
+			{
+				foreach (string? name in Directory.EnumerateDirectories(folder).Select(Path.GetFileName))
+					if (!string.IsNullOrEmpty(name)) names.Add(name);
+			}
+			catch (Exception ex)
+			{
+				DiagnosticLog.WriteException("Sound", $"listing the sound themes in {folder}", ex);
+			}
 		}
-		catch (Exception ex)
-		{
-			DiagnosticLog.WriteException("Sound", $"listing the sound themes in {themesPath}", ex);
-			return Array.Empty<string>();
-		}
+
+		return names
+			.OrderBy(n => string.Equals(n, DefaultTheme, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+			.ThenBy(n => n, StringComparer.OrdinalIgnoreCase)
+			.ToList();
 	}
 
 	/// <summary>The first <c>.ogg</c> in one theme's folder for one event, or null if there is none.</summary>

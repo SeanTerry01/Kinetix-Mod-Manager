@@ -485,7 +485,12 @@ public partial class Form1
 						?? (item.Type == "Loader" ? ScriptExtenderKnownMod(game) : null);
 					if (known != null)
 					{
-						await InstallKnownModPartsAsync(known);
+						// Counted like everything else. Ignored, a script extender that failed was summed up as installed.
+						switch (await InstallKnownModPartsAsync(known))
+						{
+							case PartsOutcome.Failed: failedNames.Add(item.Name); break;
+							case PartsOutcome.NeedsBrowser: needManualDownload.Add(item.Name); break;
+						}
 						continue;
 					}
 
@@ -717,6 +722,9 @@ public partial class Form1
 		}
 	}
 
+	/// <summary>How long SMAPI's own installer is given. It takes seconds; a slow disk or antivirus scan gets plenty more.</summary>
+	private static readonly TimeSpan SmapiInstallerTimeLimit = TimeSpan.FromMinutes(3);
+
 	/// <summary>
 	/// Downloads the latest SMAPI installer from its GitHub release and runs it unattended against the
 	/// detected Stardew Valley folder, so the user never has to drive SMAPI's interactive console
@@ -787,11 +795,25 @@ public partial class Form1
 			string smapiExe = Path.Combine(gameFolder, "StardewModdingAPI.exe");
 			DateTime? writtenBefore = File.Exists(smapiExe) ? File.GetLastWriteTimeUtc(smapiExe) : null;
 
-			await Task.Run(() =>
+			// With a time limit. Waited for without one, a hung installer held the suite for good: Escape says the suite is
+			// still installing and stays, so there was no way out but closing the manager. It takes seconds when it works.
+			bool finished = await Task.Run(() =>
 			{
 				using Process? proc = Process.Start(psi);
-				proc?.WaitForExit();
+				if (proc == null || proc.WaitForExit(SmapiInstallerTimeLimit)) return true;
+				try { proc.Kill(entireProcessTree: true); }
+				catch (Exception ex) { DiagnosticLog.WriteException("SMAPI", "stopping a hung SMAPI installer", ex); }
+				return false;
 			});
+			if (!finished)
+			{
+				LogFailure("SMAPI", "SMAPI's installer was stopped",
+					new TimeoutException($"Still running after {SmapiInstallerTimeLimit.TotalMinutes:0} minutes."));
+				Speak(Loc.T("suite.smapiTimedOut", (int)SmapiInstallerTimeLimit.TotalMinutes));
+				LetSpeechFinish();
+				OpenLink("https://smapi.io");
+				return false;
+			}
 
 			bool installed = File.Exists(smapiExe) && File.GetLastWriteTimeUtc(smapiExe) != writtenBefore;
 			if (installed)

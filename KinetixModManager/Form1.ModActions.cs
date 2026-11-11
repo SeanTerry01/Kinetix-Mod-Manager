@@ -393,7 +393,8 @@ public partial class Form1
 			{
 				if (item.IsEnabled != flag)
 				{
-					item.FolderPath = ModFileSystem.SetModEnabled(item.FolderPath, flag, _settings.ActiveGame);
+					item.FolderPath = ModFileSystem.SetModEnabled(item.FolderPath, flag, _settings.ActiveGame,
+						locatedGameFolder: _settings.CurrentGamePath);
 					item.IsEnabled = flag;
 				}
 			}
@@ -480,7 +481,7 @@ public partial class Form1
 		try
 		{
 			selectedMod.FolderPath = ModFileSystem.SetModEnabled(
-				selectedMod.FolderPath, !selectedMod.IsEnabled, _settings.ActiveGame, LogError);
+				selectedMod.FolderPath, !selectedMod.IsEnabled, _settings.ActiveGame, LogError, _settings.CurrentGamePath);
 			selectedMod.IsEnabled = !selectedMod.IsEnabled;
 
 			if (selectedMod.IsEnabled)
@@ -559,14 +560,29 @@ public partial class Form1
 			await RunModUninstallerIfAnyAsync(selectedMod);
 
 			// A Witcher 3 mod's dlc and menu-config parts live in the game folder, not in the mod folder, and the
-			// record of them is inside the folder about to be deleted — so they go first.
-			ModFileSystem.RemoveWitcher3Extras(
-				selectedMod.FolderPath, _settings.ActiveGame, _settings.CurrentGamePath, LogError);
+			// record of them is inside the folder about to be deleted — so they go first. The core's, shared with the
+			// Linux head (see Witcher3ModFiles): this head had its own copy, which deleted the folder whatever was left.
+			string witcherGame = GameProfiles.Find(_settings.ActiveGame)?.IsWitcher3 == true
+				?Witcher3ModFiles.GameFolderFor(Path.GetDirectoryName(selectedMod.FolderPath.TrimEnd(Path.DirectorySeparatorChar)) ?? "",
+					_settings.CurrentGamePath)
+				: "";
+			IReadOnlyList<string> leftInGame = Witcher3ModFiles.RemoveExtras(
+				selectedMod.FolderPath, _settings.ActiveGame, witcherGame, LogError);
+			if (leftInGame.Count > 0)
+			{
+				// ⚠️ The folder stays. Its record is then the only list of files still loading in the game, and deleting it
+				// leaves them there with nothing that knows they are the mod's.
+				ResetStatus();
+				_soundEngine.Play("error");
+				SpeakBox(Loc.T("modactions.deleteLeftInGame", selectedMod.Name, string.Join(", ", leftInGame.Take(10))),
+					Loc.T("common.error"), MessageBoxButtons.OK);
+				return;
+			}
 
 			await Task.Run(() => ModFileSystem.DeleteModFolder(selectedMod.FolderPath));
 			// The Witcher 3 lists its mods in a file of its own, and an entry outliving the folder keeps a deleted
 			// mod in the game's own menu.
-			ModFileSystem.ForgetWitcherMod(selectedMod.FolderPath, _settings.ActiveGame);
+			Witcher3ModFiles.Forget(selectedMod.FolderPath, _settings.ActiveGame, witcherGame, LogError);
 			// RefreshModList below re-scans without the deleted mod and reconciles deployment and
 			// plugins.txt, pruning its files/plugins and restoring any provider it had overridden.
 			_soundEngine.Play("disable");

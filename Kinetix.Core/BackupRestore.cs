@@ -85,9 +85,22 @@ public static class BackupRestore
 	/// <param name="logError">Told about leftovers that could not be cleared up. The restore still worked.</param>
 	/// <returns>Whether a copy was replaced, so the caller says only what happened.</returns>
 	public static bool Restore(string backupFile, string modsFolder, string backupsFolder,
+		IEnumerable<GameMod> installed, GameProfile? game, Action<string, string> logError) =>
+		RestoreWithResult(backupFile, modsFolder, backupsFolder, installed, game, logError).ReplacedACopy;
+
+	/// <summary>What a restore did: whether a copy was replaced, which installed mod that was, and where the mod is now.</summary>
+	public sealed record RestoreResult(bool ReplacedACopy, GameMod? Replaced, string Destination);
+
+	/// <summary>
+	/// <see cref="Restore"/>, saying also which installed mod was replaced and where the restored one went, for a caller
+	/// with more to put right afterwards: the Windows head forgets the replaced copy's download record and re-links a
+	/// Bethesda game's deployed files. Both heads restore through here, so the disk work is written once.
+	/// </summary>
+	public static RestoreResult RestoreWithResult(string backupFile, string modsFolder, string backupsFolder,
 		IEnumerable<GameMod> installed, GameProfile? game, Action<string, string> logError)
 	{
 		string name = ModNameOf(backupFile);
+		List<GameMod> mods = installed.Where(m => !m.IsGroup).ToList();
 		string tempRoot = ModArchive.TempRootFor(modsFolder);
 		string extracted = Path.Combine(tempRoot, "Extract_" + Path.GetRandomFileName());
 
@@ -105,26 +118,30 @@ public static class BackupRestore
 				string[] jars = Directory.GetFiles(extracted);
 				if (jars.Length != 1) throw new InvalidDataException(Loc.T("gtk.backupNotOneJar", name));
 
+				// The installed mod with the same id inside its jar, whatever its file is called.
+				string id = MinecraftLayout.ReadModInfo(jars[0]).Id ?? "";
+				GameMod? replacedMod = id.Length == 0 ? null : mods.FirstOrDefault(m => Same(m.UniqueId, id));
+
 				int replaced = ModInstaller.BackUpCopiesBeingReplaced(jars[0], modsFolder, backupsFolder, maxBackupsPerMod: 0);
 
 				ModInstaller.InstallResult result = ModInstaller.InstallFile(jars[0], modsFolder);
 				if (result.CouldNotRemove.Count > 0)
 					throw new IOException(Loc.T("mc.install.oldCopyStuck", string.Join(", ", result.CouldNotRemove)));
 
-				return replaced > 0;
+				return new RestoreResult(replaced > 0, replacedMod, result.Path);
 			}
 
 			// A mod listed with the mods folder as its own folder is not somewhere to put anything: replacing it replaces
 			// every mod. See ModOnDisk.IsTheModsFolderItself.
-			(string destination, _) = Plan(extracted, backupFile,
-				installed.Where(m => !ModOnDisk.IsTheModsFolderItself(m.FolderPath, modsFolder)), modsFolder,
+			(string destination, GameMod? replacing) = Plan(extracted, backupFile,
+				mods.Where(m => !ModOnDisk.IsTheModsFolderItself(m.FolderPath, modsFolder)), modsFolder,
 				useRecordedFolderName: game?.IsBepInEx != true);
 
 			bool keptTheOldCopy = Directory.Exists(destination);
 			if (keptTheOldCopy) BackupStore.CreateBackup(destination, name, backupsFolder);
 
 			ModFolderSwap.Replace(extracted, destination, new[] { destination }, tempRoot, logError);
-			return keptTheOldCopy;
+			return new RestoreResult(keptTheOldCopy, replacing, destination);
 		}
 		finally
 		{

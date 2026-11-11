@@ -50,83 +50,35 @@ public static class ModFileSystem
 	/// ignores folder names entirely, so a Moonlight Peaks mod is moved between <c>BepInEx\plugins</c> and
 	/// <c>BepInEx\plugins-disabled</c> instead — see <see cref="BepInExDisabledFolderName"/>.
 	/// </summary>
+	/// <remarks>
+	/// The work is <see cref="ModOnDisk.SetEnabled"/>, which the Linux head uses too. This held its own copy until November
+	/// 2026, without the core's retry on a locked folder or its putting a Witcher 3 mod's outside files back when the
+	/// folder would not move.
+	/// </remarks>
+	/// <param name="locatedGameFolder">
+	/// Where the game was found, for The Witcher 3's files outside the mod. The game folder was taken to be two levels up
+	/// from the mod, which is wrong for a mods folder the user typed somewhere else. See <see cref="Witcher3ModFiles.GameFolderFor"/>.
+	/// </param>
 	public static string SetModEnabled(string modFolderPath, bool enable, string activeGame,
-		Action<string, string>? logError = null)
+		Action<string, string>? logError = null, string? locatedGameFolder = null) =>
+		ModOnDisk.SetEnabled(modFolderPath, enable, activeGame, WitcherGameFolderOf(modFolderPath, activeGame, locatedGameFolder),
+			logError ?? ((where, why) => DiagnosticLog.Write("ModFiles", $"{where}: {why}")));
+
+	/// <summary>The Witcher 3 game folder a mod's outside files belong to, or empty for another game.</summary>
+	private static string WitcherGameFolderOf(string modFolderPath, string activeGame, string? locatedGameFolder = null)
 	{
-		string target = ModEnableState.TargetPath(modFolderPath, enable, activeGame);
-
-		// Even when the folder needs no renaming, The Witcher 3's own record of the mod may still disagree with
-		// what the user just asked for, so that is brought into line either way.
-		SyncWitcherModSettings(modFolderPath, enable, activeGame);
-
-		// A Witcher 3 mod's working parts may live outside its folder — the accessibility mod's .asi sits beside
-		// the game exe and is loaded by the game itself, so renaming the folder alone would leave it running.
-		// Done before the rename, while the record of those files is still at this path.
-		if (GameProfiles.Find(activeGame)?.IsWitcher3 == true)
-		{
-			string witcherModsFolder = Path.GetDirectoryName(modFolderPath.TrimEnd(Path.DirectorySeparatorChar)) ?? "";
-			string witcherGameFolder = Path.GetDirectoryName(witcherModsFolder) ?? "";
-
-			SetWitcher3ExtrasEnabled(
-				modFolderPath,
-				Path.GetFileName(modFolderPath.TrimEnd(Path.DirectorySeparatorChar)),
-				enable,
-				activeGame,
-				witcherGameFolder,
-				logError ?? ((_, _) => { }));
-		}
-
-		if (string.Equals(target, modFolderPath, StringComparison.OrdinalIgnoreCase)) return modFolderPath;
-
-		// The disabled folder doesn't exist until the first mod is switched off.
-		string? targetParent = Path.GetDirectoryName(target);
-		if (!string.IsNullOrEmpty(targetParent)) Directory.CreateDirectory(targetParent);
-
-		// A Minecraft mod is a single jar, so this is a file rename rather than a folder move. Directory.Move
-		// would throw on it — the one place the "a mod is a folder" assumption is load-bearing rather than
-		// merely conventional.
-		if (GameProfiles.Find(activeGame)?.IsMinecraft == true)
-			File.Move(modFolderPath, target);
-		else
-			Directory.Move(modFolderPath, target);
-
-		return target;
+		if (GameProfiles.Find(activeGame)?.IsWitcher3 != true || string.IsNullOrEmpty(modFolderPath)) return "";
+		string modsFolder = Path.GetDirectoryName(modFolderPath.TrimEnd(Path.DirectorySeparatorChar)) ?? "";
+		return Witcher3ModFiles.GameFolderFor(modsFolder, locatedGameFolder);
 	}
 
 	/// <summary>
 	/// Mirrors a Witcher 3 mod's on/off state into the game's own <c>mods.settings</c>, so the in-game mod menu
-	/// says the same thing the manager does. A no-op for every other game.
+	/// says the same thing the manager does. A no-op for every other game. See <see cref="Witcher3ModFiles.SyncSettings"/>.
 	/// </summary>
-	private static void SyncWitcherModSettings(string modFolderPath, bool enable, string activeGame)
-	{
-		GameProfile? profile = GameProfiles.Find(activeGame);
-		if (profile?.IsWitcher3 != true || string.IsNullOrEmpty(modFolderPath)) return;
-
-		// <game>\mods\modFoo — so the game folder is two levels up.
-		string modsFolder = Path.GetDirectoryName(modFolderPath.TrimEnd(Path.DirectorySeparatorChar)) ?? "";
-		string gameFolder = Path.GetDirectoryName(modsFolder) ?? "";
-		if (gameFolder.Length == 0) return;
-
-		string settingsPath = Witcher3ModSettings.PathFor(profile.UserDataDirectoryFor(gameFolder));
-		Witcher3ModSettings.SetEnabled(settingsPath, Path.GetFileName(modFolderPath.TrimEnd(Path.DirectorySeparatorChar)), enable);
-	}
-
-	/// <summary>
-	/// Forgets a Witcher 3 mod in the game's own <c>mods.settings</c> once its folder has gone, so an uninstalled
-	/// mod doesn't linger in the in-game menu. A no-op for every other game.
-	/// </summary>
-	public static void ForgetWitcherMod(string modFolderPath, string activeGame)
-	{
-		GameProfile? profile = GameProfiles.Find(activeGame);
-		if (profile?.IsWitcher3 != true || string.IsNullOrEmpty(modFolderPath)) return;
-
-		string modsFolder = Path.GetDirectoryName(modFolderPath.TrimEnd(Path.DirectorySeparatorChar)) ?? "";
-		string gameFolder = Path.GetDirectoryName(modsFolder) ?? "";
-		if (gameFolder.Length == 0) return;
-
-		string settingsPath = Witcher3ModSettings.PathFor(profile.UserDataDirectoryFor(gameFolder));
-		Witcher3ModSettings.Remove(settingsPath, Path.GetFileName(modFolderPath.TrimEnd(Path.DirectorySeparatorChar)));
-	}
+	private static void SyncWitcherModSettings(string modFolderPath, bool enable, string activeGame) =>
+		Witcher3ModFiles.SyncSettings(modFolderPath, enable, activeGame, WitcherGameFolderOf(modFolderPath, activeGame),
+			(where, why) => DiagnosticLog.Write("Witcher3", $"{where}: {why}"));
 
 	/// <summary>A declared master that won't satisfy a plugin: missing entirely, or present but not active.</summary>
 	public sealed class MasterIssue
@@ -1448,11 +1400,8 @@ public static class ModFileSystem
 	/// <summary>The name the manifest records a Witcher 3 mod's out-of-folder files under.</summary>
 	private const string WitcherExtraPathsKey = "ExtraPaths";
 
-	/// <summary>Where a disabled Witcher 3 mod's out-of-folder files are parked, inside the game folder.</summary>
-	public const string WitcherDisabledExtrasFolderName = "_KinetixDisabledMods";
-
 	/// <summary>Where game files a Witcher 3 mod replaced are kept, inside the game folder. See <see cref="OriginalFiles"/>.</summary>
-	public const string WitcherOriginalsFolderName = "_KinetixOriginals";
+	public const string WitcherOriginalsFolderName = Witcher3ModFiles.OriginalsFolderName;
 
 	/// <summary>
 	/// The parts of a Witcher 3 install a mod can write into. Everything else — above all <c>content</c>, which
@@ -1855,142 +1804,8 @@ public static class ModFileSystem
 		return cleaned.StartsWith("mod", StringComparison.OrdinalIgnoreCase) ? cleaned : "mod" + cleaned;
 	}
 
-	/// <summary>
-	/// Deletes the files a Witcher 3 mod put outside its own folder — the <c>dlc</c> and <c>bin</c> parts recorded
-	/// when it was installed. Called before the mod folder itself goes, since that is where the record lives.
-	/// </summary>
-	public static void RemoveWitcher3Extras(string modFolderPath, string activeGame, string gameFolder, Action<string, string> logError)
-	{
-		if (GameProfiles.Find(activeGame)?.IsWitcher3 != true) return;
-		if (string.IsNullOrEmpty(gameFolder) || string.IsNullOrEmpty(modFolderPath)) return;
-
-		// ⚠️ A file this mod has parked is not in the game: what sits at that path is the game's own, put back when the mod was
-		// switched off, or another mod's. Deleting the mod deleted that too, and only verifying the game could bring it back.
-		var parkedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-		try
-		{
-			// A mod that is currently disabled has these files parked outside the game; delete that copy too, or
-			// uninstalling would leave them behind where the user can't see them.
-			string parked = Path.Combine(
-				gameFolder, WitcherDisabledExtrasFolderName,
-				Witcher3ModSettings.BareName(Path.GetFileName(modFolderPath.TrimEnd(Path.DirectorySeparatorChar))));
-			if (Directory.Exists(parked))
-			{
-				foreach (string file in Directory.GetFiles(parked, "*", SearchOption.AllDirectories))
-					parkedFiles.Add(Path.GetRelativePath(parked, file));
-				ForceDeleteDirectory(parked);
-			}
-		}
-		catch (Exception ex)
-		{
-			logError(modFolderPath, "Could not remove the mod's parked files: " + ex.Message);
-		}
-
-		string manifestPath = Path.Combine(modFolderPath, ".manager_manifest.json");
-		if (!File.Exists(manifestPath)) return;
-
-		try
-		{
-			JObject manifest = JObject.Parse(File.ReadAllText(manifestPath));
-			if (manifest[WitcherExtraPathsKey] is not JArray extras) return;
-
-			foreach (JToken entry in extras)
-			{
-				string? relative = entry?.ToString();
-				if (string.IsNullOrEmpty(relative)) continue;
-				if (parkedFiles.Contains(relative.Replace('/', Path.DirectorySeparatorChar))) continue;
-
-				string full = Path.GetFullPath(Path.Combine(gameFolder, relative));
-
-				// Never step outside the game folder, whatever the manifest says.
-				if (!full.StartsWith(WithTrailingSeparator(Path.GetFullPath(gameFolder)), StringComparison.OrdinalIgnoreCase)) continue;
-				if (!File.Exists(full)) continue;
-
-				File.SetAttributes(full, FileAttributes.Normal);
-				File.Delete(full);
-				new OriginalFiles(Path.Combine(gameFolder, WitcherOriginalsFolderName)).Restore(full, relative);
-
-				// Take the folder too once the mod's last file has left it, but never a folder of the game's own.
-				string? dir = Path.GetDirectoryName(full);
-				if (dir != null && Directory.Exists(dir) &&
-					!Directory.EnumerateFileSystemEntries(dir).Any() &&
-					!IsWitcherGameOwnedFolder(dir, gameFolder))
-					Directory.Delete(dir);
-			}
-		}
-		catch (Exception ex)
-		{
-			logError(modFolderPath, "Could not remove the mod's files outside its folder: " + ex.Message);
-		}
-	}
-
-	/// <summary>
-	/// Moves a Witcher 3 mod's out-of-folder files out of the game (when disabling) or back into it (when
-	/// enabling), and reports how many moved.
-	///
-	/// Renaming the mod folder is enough for a mod that is only a mod folder. It is not enough for one whose
-	/// working parts live elsewhere: the accessibility mod's <c>.asi</c> sits beside the game's executable and is
-	/// loaded by the game itself, so a "disabled" mod whose <c>.asi</c> is still there goes on running — which is
-	/// the same trap BepInEx mods posed, where a renamed folder kept loading. Those files are parked in a folder
-	/// inside the game install and put back, byte for byte, on enabling.
-	/// </summary>
-	public static int SetWitcher3ExtrasEnabled(
-		string modFolderPath, string modFolderName, bool enable, string activeGame, string gameFolder,
-		Action<string, string> logError)
-	{
-		if (GameProfiles.Find(activeGame)?.IsWitcher3 != true) return 0;
-		if (string.IsNullOrEmpty(gameFolder) || string.IsNullOrEmpty(modFolderPath)) return 0;
-
-		List<string> extras = ReadWitcherExtraPaths(modFolderPath);
-		if (extras.Count == 0) return 0;
-
-		string parked = Path.Combine(gameFolder, WitcherDisabledExtrasFolderName, Witcher3ModSettings.BareName(modFolderName));
-		var originals = new OriginalFiles(Path.Combine(gameFolder, WitcherOriginalsFolderName));
-		int moved = 0;
-
-		foreach (string relative in extras)
-		{
-			try
-			{
-				string inGame = Path.GetFullPath(Path.Combine(gameFolder, relative));
-				string outOfGame = Path.GetFullPath(Path.Combine(parked, relative));
-
-				// Never step outside the game folder, whatever the manifest says.
-				if (!inGame.StartsWith(WithTrailingSeparator(Path.GetFullPath(gameFolder)), StringComparison.OrdinalIgnoreCase)) continue;
-
-				string from = enable ? outOfGame : inGame;
-				string to = enable ? inGame : outOfGame;
-
-				if (!File.Exists(from)) continue;
-				// Coming back: what is there now is the game's own, put back when the mod was switched off.
-				if (enable) originals.Keep(to, relative);
-				if (File.Exists(to)) File.Delete(to);
-
-				Directory.CreateDirectory(Path.GetDirectoryName(to)!);
-				File.Move(from, to);
-				if (!enable) originals.Restore(inGame, relative);
-				moved++;
-			}
-			catch (Exception ex)
-			{
-				logError(relative, $"Could not {(enable ? "restore" : "park")} a file belonging to the mod: " + ex.Message);
-			}
-		}
-
-		// Leave nothing behind once the last file has gone back.
-		if (enable)
-		{
-			try
-			{
-				if (Directory.Exists(parked) && !Directory.EnumerateFiles(parked, "*", SearchOption.AllDirectories).Any())
-					Directory.Delete(parked, recursive: true);
-			}
-			catch (Exception ex) { DiagnosticLog.WriteException("Witcher3", $"removing the emptied folder {parked}", ex); }
-		}
-
-		return moved;
-	}
+	// Removing a Witcher 3 mod's outside files and switching them on or off is Witcher3ModFiles, in the core. This file held
+	// its own copies of both until November 2026. See SetModEnabled and Form1.DeleteSelectedMod.
 
 	/// <summary>An uninstaller Windows has registered for a mod that installed itself into the game folder.</summary>
 	public sealed record ModUninstaller(string DisplayName, string Command, string RegistryKeyPath);
@@ -2104,25 +1919,6 @@ public static class ModFileSystem
 		}
 		catch (Exception ex) { DiagnosticLog.WriteException("Witcher3", "reading the extra paths the mod recorded", ex); }
 		return paths;
-	}
-
-	/// <summary>
-	/// True for the game's own folders, which must survive a mod's removal however empty they look. The two
-	/// executable folders are named because they are where an ASI-style mod puts most of its files, and an
-	/// over-eager tidy-up there would take the game's executable folder with it.
-	/// </summary>
-	private static bool IsWitcherGameOwnedFolder(string folder, string gameFolder)
-	{
-		string full = Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar);
-		foreach (string own in new[]
-				 {
-					 "dlc", "bin", "mods",
-					 Path.Combine("bin", "x64"), Path.Combine("bin", "x64_dx12"), Path.Combine("bin", "config")
-				 })
-			if (full.Equals(Path.GetFullPath(Path.Combine(gameFolder, own)).TrimEnd(Path.DirectorySeparatorChar),
-					StringComparison.OrdinalIgnoreCase))
-				return true;
-		return false;
 	}
 
 	/// <summary>
@@ -2537,15 +2333,6 @@ public static class ModFileSystem
 		}
 		catch (Exception ex) { DiagnosticLog.WriteException("Files", $"clearing read-only flags under {path}", ex); }
 	}
-
-	/// <summary>Deletes a directory tree robustly: clears read-only attributes first (the common cause of an
-	/// "access is denied" on delete) and retries a few times for a transient lock (e.g. an antivirus scanning a
-	/// freshly written file).</summary>
-	/// <summary>A folder as a prefix, so "game" does not match "game2", and a drive root such as "D:\\" keeps its one separator.</summary>
-	private static string WithTrailingSeparator(string folder) =>
-		Path.EndsInDirectorySeparator(folder) ? folder : folder + Path.DirectorySeparatorChar;
-
-	private static void ForceDeleteDirectory(string path) => ModOnDisk.DeleteDirectory(path);
 
 	/// <summary>Public entry point for deleting a mod's folder from the managed mods directory. Uses the same
 	/// read-only-clearing, retrying delete as the installer, so a mod that ships a read-only file (e.g. SkyPatcher's
