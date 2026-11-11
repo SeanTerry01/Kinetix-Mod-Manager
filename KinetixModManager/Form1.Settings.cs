@@ -262,13 +262,14 @@ public partial class Form1
 			Dock = DockStyle.Fill,
 			Font = new Font("Segoe UI", 10f),
 			AccessibleName = Loc.T("settings.apiKey"),
-			Visible = sessionUsesNexus,
 			// Said on the box itself rather than as a label beside it: a label is only found by someone already
 			// browsing for it, and the point is to reassure whoever has just landed on the field and is
 			// wondering whether they have to fill it in.
 			AccessibleDescription = sessionGame is null ? Loc.T("settings.apiKeySkipHint") : ""
 		};
-		tabPaths.Controls.Add(tKey, 0, pr++);
+		TableLayoutPanel keyRow = WithShowHideButton(tKey);
+		keyRow.Visible = sessionUsesNexus;
+		tabPaths.Controls.Add(keyRow, 0, pr++);
 
 		// A game that does not use Nexus says so once, in place of the field, rather than leaving a gap.
 		if (!sessionUsesNexus)
@@ -939,7 +940,8 @@ public partial class Form1
 			Font = new Font("Segoe UI", 10f),
 			AccessibleName = Loc.T("settings.aiKey")
 		};
-		tabAi.Controls.Add(tAiKey, 0, air++);
+		TableLayoutPanel aiKeyRow = WithShowHideButton(tAiKey);
+		tabAi.Controls.Add(aiKeyRow, 0, air++);
 
 		Label lblAiKeyHelp = new Label { Text = "", AutoSize = true, MaximumSize = new Size(480, 0), Padding = new Padding(0, 4, 0, 0) };
 		tabAi.Controls.Add(lblAiKeyHelp, 0, air++);
@@ -987,7 +989,7 @@ public partial class Form1
 			bool needsBase = on && (cmbAiProvider.SelectedItem as AiProviderInfo)?.NeedsBaseUrl == true;
 			lblAiBaseUrl.Visible = tAiBaseUrl.Visible = needsBase;
 			lblAiModel.Visible = cmbAiModel.Visible = on;
-			lblAiKey.Visible = tAiKey.Visible = on;
+			lblAiKey.Visible = aiKeyRow.Visible = on;
 			lblAiKeyHelp.Visible = on;
 			// Only shown when the selected provider actually has a key page of its own.
 			btnAiGetKey.Visible = on &&

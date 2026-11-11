@@ -82,6 +82,17 @@ public partial class Form1 : Form, IMessageFilter
     {
         if (keyData == Keys.F6)
         {
+            // Nothing to go into yet. From the tab strip, F6 during the opening or a game's first load went into a
+            // list with no mods in it and was told "List is empty", which was not true for long and sounded like
+            // the mods had gone. Sean asked for F6 to wait until the list has something in it (2026-11-10). It
+            // stays on the strip and says why, and the landing at the end of the load still happens and speaks,
+            // because this press is not counted as the user moving.
+            if (!OverlayIsOpen && mainTabs.Focused && ModsStillLoading)
+            {
+                Speak(Loc.T("app.stillLoadingMods"), interrupt: true);
+                return true;
+            }
+
             // The user is driving, as for any key: see the key preview. F6 is taken here, before that sees it, so pressed
             // while the opening was still being said it landed on "Installed Mods. list" with no row and no position.
             if (!OverlayIsOpen) _userMovedSinceLoadBegan = true;
@@ -193,6 +204,17 @@ public partial class Form1 : Form, IMessageFilter
 	// How many mod-list refreshes are running. Used only to answer "is one already going?" when the user's
 	// Refresh command arrives twice for one press, which a held key makes routine.
 	private int _refreshInFlight;
+
+	/// <summary>
+	/// Whether a game's mods have yet to reach the lists for the first time: during the opening, which comes before
+	/// the load starts, and from the start of a session's first load until it lands on the first tab (see
+	/// <see cref="_landOnFirstTabWhenReady"/>). A refresh later in the session is not this — the old list stays on
+	/// screen while it runs. Both halves end on their own: the opening by finishing, and the landing flag only
+	/// counts while a refresh is actually running, so a load that failed cannot leave this stuck on.
+	/// </summary>
+	private bool ModsStillLoading =>
+		_settings.ActiveGame != GameProfiles.NoGame &&
+		(_startupSpeechInProgress || (_landOnFirstTabWhenReady && Volatile.Read(ref _refreshInFlight) > 0));
 
 	// Keeps a held key from running a one-shot command over and over. See KeyRepeatFilter for the rule.
 	private readonly KeyRepeatFilter _keyRepeat = new();

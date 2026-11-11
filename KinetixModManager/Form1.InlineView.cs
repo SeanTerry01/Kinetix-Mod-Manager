@@ -151,7 +151,11 @@ public partial class Form1
 	/// — it reports an emptied box and a cancelled one identically, so callers there have to treat "" as "leave
 	/// it alone" and can never accept a deliberately empty answer.
 	/// </summary>
-	private string? ShowTextPrompt(string title, string prompt, string initial)
+	/// <param name="secret">
+	/// For keys and passwords: the box is protected, with a Show key button after it. See
+	/// <see cref="WithShowHideButton"/>.
+	/// </param>
+	private string? ShowTextPrompt(string title, string prompt, string initial, bool secret = false)
 	{
 		string? answer = null;
 
@@ -179,7 +183,7 @@ public partial class Form1
 				Font = new Font("Segoe UI", 11f),
 				AccessibleName = prompt
 			};
-			layout.Controls.Add(input, 0, 1);
+			layout.Controls.Add(secret ? WithShowHideButton(input) : input, 0, 1);
 
 			var ok = new Button { Text = Loc.T("prompt.ok"), AutoSize = true, MinimumSize = new Size(110, 36) };
 			var cancel = new Button { Text = Loc.T("prompt.cancel"), AutoSize = true, MinimumSize = new Size(110, 36) };
@@ -212,6 +216,61 @@ public partial class Form1
 		});
 
 		return answer;
+	}
+
+	/// <summary>
+	/// Makes <paramref name="box"/> a protected box and puts a Show key button straight after it, returning the
+	/// pair to add to the layout in the box's place.
+	///
+	/// <para>
+	/// A plain box read an API key out in full every time focus landed on it — twice in one Settings visit while
+	/// the November 2026 checklist was being run, and into the reader's speech history each time. A protected box
+	/// is read as "protected" and its characters are not spoken. The button is for checking what was pasted: press
+	/// it, Shift+Tab back, and the box reads as text until it is pressed again.
+	/// </para>
+	///
+	/// <para>
+	/// The button's own name changes between "Show key" and "Hide key", and the reader says a focused control's
+	/// new name by itself, so nothing is spoken here as well.
+	/// </para>
+	///
+	/// <para>
+	/// ⚠️ Set visibility on what this returns, not on the box: a visible box inside a hidden row is still hidden,
+	/// and the button would be left behind on its own.
+	/// </para>
+	/// </summary>
+	private static TableLayoutPanel WithShowHideButton(TextBox box)
+	{
+		box.UseSystemPasswordChar = true;
+
+		// A box that filled its cell keeps doing so with the button beside it; one with a set width keeps that width.
+		bool fill = box.Dock == DockStyle.Fill;
+		var row = new TableLayoutPanel
+		{
+			ColumnCount = 2,
+			RowCount = 1,
+			AutoSize = true,
+			AutoSizeMode = AutoSizeMode.GrowAndShrink,
+			Dock = fill ? DockStyle.Fill : DockStyle.None,
+			Margin = Padding.Empty,
+			Padding = Padding.Empty,
+			AccessibleName = SilentAccessibleName
+		};
+		row.ColumnStyles.Add(fill ? new ColumnStyle(SizeType.Percent, 100) : new ColumnStyle(SizeType.AutoSize));
+		row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+		row.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+		var toggle = new Button { Text = Loc.T("secret.show"), AutoSize = true, Anchor = AnchorStyles.Left };
+		toggle.Click += delegate
+		{
+			bool showing = !box.UseSystemPasswordChar;
+			box.UseSystemPasswordChar = showing;
+			toggle.Text = showing ? Loc.T("secret.show") : Loc.T("secret.hide");
+		};
+
+		row.Controls.Add(box, 0, 0);
+		row.Controls.Add(toggle, 1, 0);
+		return row;
 	}
 
 	/// <summary>

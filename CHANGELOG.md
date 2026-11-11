@@ -9,6 +9,13 @@
     the sound theme and shortcut screens and for lists that close themselves when empty. This needs NVDA 2026.3 or newer. On
     other screen readers the message still comes after, because they can't say when they have finished speaking.
 *   **Lists no longer say "list" twice.** "Installed Mods List list" is now "Installed Mods list", and the same for every list.
+*   **API keys are hidden.** The Nexus key and the AI key in Settings, and the keys under File, Mod source API keys, are now
+    protected boxes, so your screen reader no longer reads the key out when you land on one. A Show key button straight after
+    each box shows it until you press it again.
+*   **After a file picker, the window title is no longer read.** You hear the result, then the row you are on.
+*   **F6 while your mods are still loading says so**, "Your mods are still loading.", and stays where you are. It went into the
+    empty list and said "List is empty".
+*   **Forgetting a Modrinth key no longer says searching and downloading will stop.** Modrinth works without one.
 *   **Starting with no game loaded** no longer opens on a stray "1 of 6", ahead of the welcome. And arrowing through the games
     while the welcome is still being read now says where you are, "Minecraft, 2 of 6", instead of the game alone.
 *   **Searching Nexus by name puts that mod first.** "Stardew Valley Expanded" didn't list Stardew Valley Expanded on the first

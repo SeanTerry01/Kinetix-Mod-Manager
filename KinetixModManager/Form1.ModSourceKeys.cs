@@ -126,9 +126,11 @@ public partial class Form1
 	/// <summary>
 	/// Shows the stored key in a box that cannot be typed into, so it can be read back and checked.
 	///
-	/// Read-only rather than hidden, because the user is on their own machine looking at their own key, and
-	/// the reason anybody opens this is to find out whether what they typed months ago is what they meant. It
-	/// is still never spoken by the list itself — see <see cref="ModSourceKeyRow.Describe"/>.
+	/// The reason anybody opens this is to find out whether what they typed months ago is what they meant, so
+	/// the key is here to be read — but only once asked for. The box is protected like every other key box, with
+	/// Show key straight after it (<see cref="WithShowHideButton"/>), so landing here does not read the key out
+	/// to the room and into the reader's speech history. It is never spoken by the list itself either — see
+	/// <see cref="ModSourceKeyRow.Describe"/>.
 	/// </summary>
 	private void ShowStoredKey(ModSourceKeyRow row)
 	{
@@ -152,7 +154,7 @@ public partial class Form1
 				Font = new Font("Segoe UI", 10f),
 				AccessibleName = Loc.T("sourcekeys.viewBoxName", row.Source.DisplayName)
 			};
-			layout.Controls.Add(box, 0, 0);
+			layout.Controls.Add(WithShowHideButton(box), 0, 0);
 
 			var btnChange = new Button { Text = Loc.T("sourcekeys.change"), AutoSize = true };
 			btnChange.Click += delegate
@@ -194,7 +196,7 @@ public partial class Form1
 		};
 
 		string? typed = ShowTextPrompt(
-			Loc.T("sourcekeys.askTitle", row.Source.DisplayName), prompt, "");
+			Loc.T("sourcekeys.askTitle", row.Source.DisplayName), prompt, "", secret: true);
 		if (typed == null) { Speak(Loc.T("common.changesCancelled")); return false; }
 
 		string? refusal = ModSourceCredentials.WhyNotUsable(typed);
@@ -215,7 +217,12 @@ public partial class Form1
 	{
 		if (row is not { HasKey: true }) { Speak(Loc.T("sourcekeys.nothingToRemove")); return; }
 
-		if (SpeakBox(Loc.T("sourcekeys.confirmRemove", row.Source.DisplayName), Loc.T("sourcekeys.confirmRemoveTitle"),
+		// Modrinth works without a key, so forgetting one there loses only the followed mods and packs. Telling
+		// that user their searching and downloading would stop was not true.
+		string question = row.Source.Credential == ModSourceCredential.OptionalApiKey
+			? Loc.T("sourcekeys.confirmRemoveOptional", row.Source.DisplayName)
+			: Loc.T("sourcekeys.confirmRemove", row.Source.DisplayName);
+		if (SpeakBox(question, Loc.T("sourcekeys.confirmRemoveTitle"),
 				MessageBoxButtons.YesNo) != DialogResult.Yes)
 		{
 			Speak(Loc.T("common.changesCancelled"));
