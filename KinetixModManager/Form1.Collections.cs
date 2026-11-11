@@ -176,9 +176,10 @@ public partial class Form1
 			return;
 		}
 		// A collection is game-specific (mod ids and load order only mean anything for the game it was built for).
-		if (!string.Equals(collection.Game, _settings.ActiveGame, StringComparison.OrdinalIgnoreCase))
+		// The game, not the copy: see ImportLoadOrder. Named by its name, not its install key.
+		if (!string.Equals(GameProfiles.BaseId(collection.Game), GameProfiles.BaseId(_settings.ActiveGame), StringComparison.OrdinalIgnoreCase))
 		{
-			SpeakBox(Loc.T("collection.gameMismatch", collection.Name, collection.Game), Loc.T("collection.installTitle"), MessageBoxButtons.OK);
+			SpeakBox(Loc.T("collection.gameMismatch", collection.Name, GameDisplayName(collection.Game)), Loc.T("collection.installTitle"), MessageBoxButtons.OK);
 			return;
 		}
 

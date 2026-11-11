@@ -1430,9 +1430,13 @@ public class NexusService
 	/// </summary>
 	private JToken? SelectUpdateFile(JArray files, GameMod mod)
 	{
+		// Not archived. Nexus writes the literal "ARCHIVED" (see ModPartRules), so "has a category" let archived files through.
+		// An old version is kept only if there is nothing else: an update wants the current file.
 		var candidates = files
-			.Where(f => !string.IsNullOrEmpty(f["category_name"]?.ToString()))
+			.Where(f => f["category_name"]?.ToString() is { Length: > 0 } c && !c.Equals("ARCHIVED", StringComparison.OrdinalIgnoreCase))
 			.ToList();
+		var current = candidates.Where(f => !string.Equals(f["category_name"]?.ToString(), "OLD_VERSION", StringComparison.OrdinalIgnoreCase)).ToList();
+		if (current.Count > 0) candidates = current;
 		if (candidates.Count == 0) candidates = files.ToList(); // nothing categorised: fall back to the raw list
 
 		candidates = KeepThisCopysStore(candidates);
@@ -1449,36 +1453,42 @@ public class NexusService
 			if (part1 != null) return part1;
 		}
 
-		// The author-flagged primary file is the safest single "main download".
-		JToken? primary = candidates.FirstOrDefault(f => (bool?)f["is_primary"] == true);
-		if (primary != null) return primary;
-
-		// Otherwise prefer a MAIN-category file matching the latest known version, then the newest MAIN file.
+		// The MAIN file of the version the check found comes first. The author's "primary" flag went first before, and on
+		// SSE Engine Fixes' page it is an older all-in-one build: the update installed 7.0.19, recorded 7.0.20 as installed,
+		// and was never offered again, with the build Skyrim 1.7.99 won't start with on disk.
 		var mainFiles = candidates
 			.Where(f => string.Equals(f["category_name"]?.ToString(), "MAIN", StringComparison.OrdinalIgnoreCase))
 			.ToList();
-		if (mainFiles.Count > 0)
+		if (mainFiles.Count > 0 && !string.IsNullOrEmpty(mod.LatestVersion))
 		{
-			if (!string.IsNullOrEmpty(mod.LatestVersion))
-			{
-				JToken? versionMatch = mainFiles.FirstOrDefault(f =>
-					string.Equals(f["version"]?.ToString(),     mod.LatestVersion, StringComparison.OrdinalIgnoreCase) ||
-					string.Equals(f["mod_version"]?.ToString(), mod.LatestVersion, StringComparison.OrdinalIgnoreCase));
-				if (versionMatch != null) return versionMatch;
-			}
-			return mainFiles.OrderByDescending(f => (long?)f["uploaded_timestamp"] ?? 0L).First();
+			JToken? versionMatch = mainFiles.FirstOrDefault(f =>
+				string.Equals(f["version"]?.ToString(),     mod.LatestVersion, StringComparison.OrdinalIgnoreCase) ||
+				string.Equals(f["mod_version"]?.ToString(), mod.LatestVersion, StringComparison.OrdinalIgnoreCase));
+			if (versionMatch != null) return versionMatch;
 		}
+
+		// Then the author-flagged primary file, so long as it is not older than the version found.
+		JToken? primary = candidates.FirstOrDefault(f => (bool?)f["is_primary"] == true);
+		if (primary != null && (string.IsNullOrEmpty(mod.LatestVersion) ||
+				!ModVersions.IsNewer(primary["version"]?.ToString(), mod.LatestVersion)))
+			return primary;
+
+		// Then the newest MAIN file.
+		if (mainFiles.Count > 0)
+			return mainFiles.OrderByDescending(f => (long?)f["uploaded_timestamp"] ?? 0L).First();
 
 		// No MAIN file at all: take the newest non-archived file.
 		return candidates.OrderByDescending(f => (long?)f["uploaded_timestamp"] ?? 0L).First();
 	}
 
-	/// <summary>True if any of <paramref name="needles"/> appears in a file's name, file_name, or description.</summary>
+	/// <summary>
+	/// True if any of <paramref name="needles"/> appears in a file's name or file_name. Not its description, which mentions
+	/// the other parts as often as its own ("install Part 1 first") — see NexusFileInfo.NameHaystack.
+	/// </summary>
 	private static bool FileMentions(JToken file, params string[] needles)
 	{
 		string haystack = (file["name"]?.ToString() ?? "") + " " +
-						  (file["file_name"]?.ToString() ?? "") + " " +
-						  (file["description"]?.ToString() ?? "");
+						  (file["file_name"]?.ToString() ?? "");
 		return needles.Any(n => haystack.Contains(n, StringComparison.OrdinalIgnoreCase));
 	}
 

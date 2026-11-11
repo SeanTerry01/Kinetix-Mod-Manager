@@ -37,24 +37,42 @@ public class DeploymentManifest
 		return manifest;
 	}
 
+	/// <summary>
+	/// The record was there and could not be read. Not saved. ⚠️ Not the same as no record: taken as "nothing deployed", every
+	/// deployed file was then kept as one of the game's own, and a mod switched off later had its own copy put back as the
+	/// "original", in the game for good. A pass that finds this changes nothing and says a Rebuild is needed.
+	/// </summary>
+	[Newtonsoft.Json.JsonIgnore]
+	public bool Unreadable { get; set; }
+
 	private static DeploymentManifest Read(string game)
 	{
-		try
+		string path = ManifestPath(game);
+		if (!File.Exists(path)) return new DeploymentManifest();
+
+		// A sharing violation, an antivirus scanning it, is usually over in a moment.
+		for (int attempt = 1; attempt <= 3; attempt++)
 		{
-			string path = ManifestPath(game);
-			if (File.Exists(path))
+			try
 			{
 				var m = JsonConvert.DeserializeObject<DeploymentManifest>(File.ReadAllText(path));
-				if (m != null)
-				{
-					// Deserialization does not preserve the case-insensitive comparer, so rebuild it.
-					m.Deployed = new Dictionary<string, string>(m.Deployed, StringComparer.OrdinalIgnoreCase);
-					return m;
-				}
+				if (m?.Deployed == null) break;
+				// Deserialization does not preserve the case-insensitive comparer, so rebuild it.
+				m.Deployed = new Dictionary<string, string>(m.Deployed, StringComparer.OrdinalIgnoreCase);
+				return m;
+			}
+			catch (IOException ex) when (attempt < 3)
+			{
+				DiagnosticLog.WriteException("Deploy", "reading the record of which files are deployed, trying again", ex);
+				Thread.Sleep(200);
+			}
+			catch (Exception ex)
+			{
+				DiagnosticLog.WriteException("Deploy", "reading the record of which files are deployed", ex);
+				break;
 			}
 		}
-		catch (Exception ex) { DiagnosticLog.WriteException("Deploy", "reading the record of which files are deployed", ex); }
-		return new DeploymentManifest();
+		return new DeploymentManifest { Unreadable = true };
 	}
 
 	/// <summary>Writes the manifest for <paramref name="game"/>. Never throws.</summary>

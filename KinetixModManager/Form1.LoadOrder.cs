@@ -160,6 +160,31 @@ public partial class Form1
 
 	private int _lastDeploymentFailures;
 
+	/// <summary>Said once a session, not on every refresh. See AfterAnUnreadableRecord.</summary>
+	private bool _saidDeploymentRecordUnreadable;
+
+	/// <summary>
+	/// What to deploy from when the record of deployed files is there and can't be read, or null to change nothing. It is not
+	/// an empty record. Only a Rebuild, which links every enabled mod again, goes on: the bad file is set aside, and
+	/// SyncDeployment knows a mod's own file from a game original (see ModFileSystem.IsSameFile). Anything else is refused,
+	/// and said once.
+	/// </summary>
+	private DeploymentManifest? AfterAnUnreadableRecord(string game, HashSet<string>? forceRelink)
+	{
+		if (forceRelink == null)
+		{
+			if (!_saidDeploymentRecordUnreadable)
+			{
+				_saidDeploymentRecordUnreadable = true;
+				BeginInvoke(new Action(() => Speak(Loc.T("loadorder.recordUnreadable"))));
+			}
+			return null;
+		}
+		AtomicFile.SetAside(Path.Combine(AppSettings.AppDataFolder, "deployment", game + ".json"));
+		_saidDeploymentRecordUnreadable = false;
+		return DeploymentManifest.Load(game);
+	}
+
 	private List<FileConflict> SyncBethesdaDeploymentHoldingLock(HashSet<string>? forceRelink)
 	{
 		if (!IsBethesdaGame) return new List<FileConflict>();
@@ -173,7 +198,8 @@ public partial class Form1
 		// Asked again, because a game switch while that ran leaves it an empty answer, and to the sync below an empty
 		// answer means every deployed file should go.
 		if (!ModListIsTrustworthy) return _lastConflicts;
-		var manifest = DeploymentManifest.Load(game);
+		DeploymentManifest? manifest = DeploymentManifest.Load(game);
+		if (manifest.Unreadable && (manifest = AfterAnUnreadableRecord(game, forceRelink)) == null) return _lastConflicts;
 		_settings.FileWinnerOverrides.TryGetValue(game, out Dictionary<string, string>? overrides);
 		_lastConflicts = ModFileSystem.SyncDeployment(gameRoot, ordered, manifest, LogError, forceRelink, overrides);
 		manifest.Save(game);
@@ -429,7 +455,10 @@ public partial class Form1
 			return;
 		}
 
-		if (!string.IsNullOrEmpty(data.Game) && !string.Equals(data.Game, game, StringComparison.OrdinalIgnoreCase))
+		// The game, not the copy: a load order exported from the Steam copy is for the GOG one too, which is much of the
+		// reason to own both. Compared as install keys it was refused, "for Skyrim Special Edition, not Skyrim Special Edition".
+		if (!string.IsNullOrEmpty(data.Game) &&
+			!string.Equals(GameProfiles.BaseId(data.Game), GameProfiles.BaseId(game), StringComparison.OrdinalIgnoreCase))
 		{
 			_soundEngine.Play("error");
 			SpeakBox(Loc.T("loadorder.importGameMismatch", GameDisplayName(data.Game), GameDisplayName(game)));
@@ -718,10 +747,13 @@ public partial class Form1
 	/// writes the saved order back and announces it. Called when the game exits, so the file is no longer in
 	/// use. Does nothing when the two already agree, so a normal play session stays silent.
 	/// </summary>
-	private void RestorePluginOrderAfterPlay()
+	/// <param name="game">
+	/// The copy that was played. Read from the session at exit, a switch made while playing compared and wrote the other
+	/// copy's plugins.txt, and the one played was never put back.
+	/// </param>
+	private void RestorePluginOrderAfterPlay(string game)
 	{
-		if (!IsBethesdaGame) return;
-		string game = _settings.ActiveGame;
+		if (!GameProfiles.IsAnyGame(game, GameProfiles.SkyrimSE, GameProfiles.Fallout4)) return;
 		if (!_settings.PluginOrder.TryGetValue(game, out List<string>? order) || order == null || order.Count == 0)
 			return;
 
@@ -738,8 +770,12 @@ public partial class Form1
 		if (IsDisposed || !IsHandleCreated) return;
 		BeginInvoke(delegate
 		{
-			RefreshPluginOrderList();
-			RefreshCreationsList();
+			// The lists show the loaded session, which may by now be another game.
+			if (_settings.ActiveGame == game)
+			{
+				RefreshPluginOrderList();
+				RefreshCreationsList();
+			}
 			Speak(missing > 0
 				? Loc.T(missing == 1 ? "loadorder.restoredOne" : "loadorder.restoredMany", missing)
 				: Loc.T("loadorder.restoredOrder"));

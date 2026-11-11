@@ -1026,7 +1026,7 @@ public partial class Form1
 				// unaffected: BepInEx loads through a DLL beside the exe, whoever starts it.
 				if (TryLaunchViaSteam(profile, gamePath))
 				{
-					Fire(TrackGameSessionAsync(null, profile, exePath), "TrackGameSessionAsync");
+					Fire(TrackGameSessionAsync(null, profile, exePath, game), "TrackGameSessionAsync");
 				}
 				else
 				{
@@ -1036,7 +1036,7 @@ public partial class Form1
 						WorkingDirectory = Path.GetDirectoryName(exePath)
 					};
 					p.Start();
-					Fire(TrackGameSessionAsync(p, profile, exePath), "TrackGameSessionAsync");
+					Fire(TrackGameSessionAsync(p, profile, exePath, game), "TrackGameSessionAsync");
 				}
 			}
 			else
@@ -1166,7 +1166,8 @@ public partial class Form1
 	/// for the game <em>by name</em> after our handle goes away, and only calls it closed once nothing by that
 	/// name is running any more.
 	/// </summary>
-	private async Task TrackGameSessionAsync(Process? launched, GameProfile profile, string launchedExePath)
+	/// <param name="game">The copy that was launched. A session switched while it ran is not the one whose plugin order needs putting back.</param>
+	private async Task TrackGameSessionAsync(Process? launched, GameProfile profile, string launchedExePath, string game)
 	{
 		string gameExeName = profile.GameExeName;
 		bool launchedIsGameExe = string.Equals(
@@ -1253,7 +1254,7 @@ public partial class Form1
 		SetStatus(Loc.T("launch.gameClosed"));
 		// If the game did manage to rewrite plugins.txt (the guard is off, or the file was writable),
 		// put the manager's order — including the active Creations — back now that it has let go.
-		RestorePluginOrderAfterPlay();
+		RestorePluginOrderAfterPlay(game);
 		await Task.Delay(5000);
 		// Return the title to its resting state silently: "game closed" has already been spoken, and speaking
 		// the Nexus connection on top of it just sounds like something else happened.

@@ -63,7 +63,7 @@ public sealed class RefreshOffThreadTests
 	[Fact]
 	public void DeploymentAsksAgainAfterWorkingOutWhatIsEnabled()
 	{
-		InOrder(Body("Form1.LoadOrder.cs", "private List<FileConflict> SyncBethesdaDeploymentHoldingLock(", 900),
+		InOrder(Body("Form1.LoadOrder.cs", "private List<FileConflict> SyncBethesdaDeploymentHoldingLock(", 1200),
 			"!ModListIsTrustworthy", "GetOrderedEnabledMods();", "!ModListIsTrustworthy", "ModFileSystem.SyncDeployment(");
 	}
 

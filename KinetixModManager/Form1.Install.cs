@@ -1010,7 +1010,14 @@ public partial class Form1
 			// Asked for every install the user is watching, not only the ones that also ask "reinstall?". A nxm download whose
 			// page showed a newer version turned both off, so fetching a mod's second part replaced the first with no question:
 			// SSE Engine Fixes lost its plugin to its preloader. Only a silent batch and an update, which knows its mod, skip it.
-			Func<string, string, SamePageChoice>? askSamePage = silent || updating != null ? null : ConfirmSamePage;
+			// The answer is kept: a second file installed alongside is not the page's release, and must not be recorded as it.
+			bool alongside = false;
+			Func<string, string, SamePageChoice>? askSamePage = silent || updating != null ? null : (download, installedName) =>
+			{
+				SamePageChoice choice = ConfirmSamePage(download, installedName);
+				alongside = choice == SamePageChoice.InstallAlongside;
+				return choice;
+			};
 			string name = await Task.Run(() => ModFileSystem.ExtractModAsync(
 				zipPath, modsPath, installed,
 				backups, maxBackups, game, LogError, nexusId, _nexusService, gitHubRepo, gamePath,
@@ -1040,7 +1047,9 @@ public partial class Form1
 				// download's file name knows it. Without this the update check falls back to comparing the
 				// version the mod declares against the version on its page, and for the many mods whose authors
 				// never bump the number in the mod itself, that offers the same update forever.
-				if (ModScanner.ExtractVersionFromFileName(zipPath, nexusId) is string installedRelease)
+				// Not for a patch or optional file installed alongside the page's main mod: its version replaced the main
+				// file's, and the next check called a fully current mod outdated.
+				if (!alongside && ModScanner.ExtractVersionFromFileName(zipPath, nexusId) is string installedRelease)
 					RecordInstalledDownloadVersion("Nexus:" + nexusId, installedRelease);
 			}
 

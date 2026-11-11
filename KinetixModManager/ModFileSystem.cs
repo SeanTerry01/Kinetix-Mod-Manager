@@ -25,6 +25,39 @@ public static class ModFileSystem
 	[DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
 	private static extern bool CreateHardLink(string lpFileName, string lpExistingFileName, IntPtr lpSecurityAttributes);
 
+	[StructLayout(LayoutKind.Sequential)]
+	private struct ByHandleFileInformation
+	{
+		public uint FileAttributes;
+		public System.Runtime.InteropServices.ComTypes.FILETIME CreationTime, LastAccessTime, LastWriteTime;
+		public uint VolumeSerialNumber, FileSizeHigh, FileSizeLow, NumberOfLinks, FileIndexHigh, FileIndexLow;
+	}
+
+	[DllImport("kernel32.dll", SetLastError = true)]
+	private static extern bool GetFileInformationByHandle(Microsoft.Win32.SafeHandles.SafeFileHandle file, out ByHandleFileInformation info);
+
+	/// <summary>
+	/// Whether two paths are one file on disk: hard links to each other, as a deployed file is to its mod's. False when
+	/// either is missing or can't be opened, which is the safe answer for the caller, who then keeps what is there.
+	/// </summary>
+	public static bool IsSameFile(string a, string b)
+	{
+		try
+		{
+			if (!File.Exists(a) || !File.Exists(b)) return false;
+			using var fa = File.OpenHandle(a, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+			using var fb = File.OpenHandle(b, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+			return GetFileInformationByHandle(fa, out var ia) && GetFileInformationByHandle(fb, out var ib)
+				&& ia.VolumeSerialNumber == ib.VolumeSerialNumber
+				&& ia.FileIndexHigh == ib.FileIndexHigh && ia.FileIndexLow == ib.FileIndexLow;
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Deploy", $"comparing {a} with {b}", ex);
+			return false;
+		}
+	}
+
 	public static bool TryCreateHardLink(string newFilePath, string existingFilePath)
 	{
 		try
@@ -670,7 +703,9 @@ public static class ModFileSystem
 				if (destDir != null && !Directory.Exists(destDir)) Directory.CreateDirectory(destDir);
 				// Not in the record means the manager did not put it there, so it is the game's own or the user's. A
 				// failure to keep it stops here, rather than overwriting something that cannot be got back.
-				if (prevOwner == null) originals.Keep(destAbs, destRel);
+				// ⚠️ Unless it is the mod's own file already: a hard link to it, after the record of deployed files was lost.
+				// Kept as an "original", it came back into the game as the game's own when the mod was switched off.
+				if (prevOwner == null && !IsSameFile(destAbs, sourceFile)) originals.Keep(destAbs, destRel);
 				RobustDeleteFile(destAbs);
 				if (!TryCreateHardLink(destAbs, sourceFile)) RobustCopy(sourceFile, destAbs);
 			}
@@ -1148,7 +1183,10 @@ public static class ModFileSystem
 					continue;
 				}
 
-				var existing = installedMods.FirstOrDefault(m => m.UniqueId == uid);
+				// Without case, as SMAPI matches them: "author.modname" is the same mod as "Author.ModName", and installed beside
+				// it, SMAPI loads neither. A blank id matches nothing.
+				var existing = string.IsNullOrEmpty(uid) ? null : installedMods.FirstOrDefault(m =>
+					!m.IsGroup && string.Equals(m.UniqueId, uid, StringComparison.OrdinalIgnoreCase));
 				if (existing == null || !Directory.Exists(existing.FolderPath)) continue;
 
 				// Confirm once before touching anything the user already has on disk.
