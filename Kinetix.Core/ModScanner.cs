@@ -702,20 +702,4 @@ public static class ModScanner
 		return versionPart.Replace('-', '.');
 	}
 
-	public static bool CompareVersionsNewer(string? current, string? target)
-	{
-		if (string.IsNullOrEmpty(target)) return false;
-		if (string.IsNullOrEmpty(current)) return true;
-
-		string[] parts1 = current.Split('.');
-		string[] parts2 = target.Split('.');
-		for (int i = 0; i < Math.Max(parts1.Length, parts2.Length); i++)
-		{
-			int v1 = (i < parts1.Length && int.TryParse(parts1[i], out int r1)) ? r1 : 0;
-			int v2 = (i < parts2.Length && int.TryParse(parts2[i], out int r2)) ? r2 : 0;
-			if (v2 > v1) return true;
-			if (v1 > v2) return false;
-		}
-		return false;
-	}
 }

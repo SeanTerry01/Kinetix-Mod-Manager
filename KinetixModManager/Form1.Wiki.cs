@@ -745,7 +745,7 @@ public partial class Form1
 
 	private async void Wiki_SelectedIndexChanged(object? sender, EventArgs e)
 	{
-		if (listWikiResults.SelectedItem is WikiResult res && listWikiResults.Focused)
+		if (listWikiResults.SelectedItem is WikiResult && listWikiResults.Focused)
 		{
 			await Task.Delay(100);
 			if (!listWikiResults.Focused) return;

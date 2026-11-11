@@ -160,109 +160,8 @@ public static class ModFileSystem
 	}
 
 	// -------------------------------------------------------------------------
-	// Backup management
-	// -------------------------------------------------------------------------
-
-	// -------------------------------------------------------------------------
 	// File deployment (Skyrim / Fallout 4)
 	// -------------------------------------------------------------------------
-
-	/// <summary>
-	/// Hardlinks or copies files from a mod storage folder to the game's Data folder.
-	/// </summary>
-	public static void DeployModFiles(string modFolderPath, string gameDataPath, bool isDeploy, Action<string, string> logError)
-	{
-		if (!Directory.Exists(modFolderPath)) return;
-		if (!Directory.Exists(gameDataPath))
-		{
-			try { Directory.CreateDirectory(gameDataPath); }
-			catch (Exception ex)
-			{
-				logError("Deploy", $"Failed to create Data folder: {ex.Message}");
-				return;
-			}
-		}
-
-		string canonicalModFolder = Path.GetFullPath(modFolderPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-		string gameRoot = Path.GetDirectoryName(gameDataPath) ?? gameDataPath;
-
-		foreach (string sourceFile in Directory.GetFiles(modFolderPath, "*.*", SearchOption.AllDirectories))
-		{
-			if (Path.GetFileName(sourceFile).Equals(".manager_manifest.json", StringComparison.OrdinalIgnoreCase))
-				continue;
-
-			string relativePath = Path.GetFullPath(sourceFile).Substring(canonicalModFolder.Length);
-			bool isRootFile = relativePath.StartsWith("Root" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
-			                  relativePath.StartsWith("Root" + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
-
-			string destFile;
-			if (isRootFile)
-			{
-				string subPath = relativePath.Substring(5); // Remove "Root\" (5 chars)
-				destFile = Path.Combine(gameRoot, subPath);
-			}
-			else
-			{
-				destFile = Path.Combine(gameDataPath, relativePath);
-			}
-
-			if (isDeploy)
-			{
-				try
-				{
-					string? destDir = Path.GetDirectoryName(destFile);
-					if (destDir != null && !Directory.Exists(destDir))
-					{
-						Directory.CreateDirectory(destDir);
-					}
-
-					if (File.Exists(destFile))
-					{
-						File.Delete(destFile);
-					}
-
-					bool linkCreated = TryCreateHardLink(destFile, sourceFile);
-					if (!linkCreated)
-					{
-						File.Copy(sourceFile, destFile, true);
-					}
-				}
-				catch (Exception ex)
-				{
-					logError(sourceFile, $"Deployment failed: {ex.Message}");
-				}
-			}
-			else
-			{
-				try
-				{
-					if (File.Exists(destFile))
-					{
-						File.Delete(destFile);
-					}
-
-					string? parentDir = Path.GetDirectoryName(destFile);
-					string limitPath = isRootFile ? gameRoot : gameDataPath;
-					while (parentDir != null && parentDir.Length > limitPath.Length)
-					{
-						if (Directory.Exists(parentDir) && !Directory.EnumerateFileSystemEntries(parentDir).Any())
-						{
-							Directory.Delete(parentDir);
-							parentDir = Path.GetDirectoryName(parentDir);
-						}
-						else
-						{
-							break;
-						}
-					}
-				}
-				catch (Exception ex)
-				{
-					logError(destFile, $"Undeployment failed: {ex.Message}");
-				}
-			}
-		}
-	}
 
 	/// <summary>
 	/// Scans mod folder for plugins and adds/removes them in the game's plugins.txt.
@@ -2385,24 +2284,6 @@ public static class ModFileSystem
 			}
 			RobustCopy(file, destFile);
 		}
-	}
-
-	/// <summary>Clears the read-only attribute on a file/directory tree. A single read-only file (some mods ship
-	/// their config or ESL files that way) makes <see cref="Directory.Delete(string, bool)"/> and an overwriting
-	/// <see cref="File.Copy(string, string, bool)"/> fail with "access to the path is denied", so we strip it first.</summary>
-	private static void ClearReadOnlyRecursive(string path)
-	{
-		try
-		{
-			var di = new DirectoryInfo(path);
-			if (!di.Exists) return;
-			if ((di.Attributes & FileAttributes.ReadOnly) != 0) di.Attributes &= ~FileAttributes.ReadOnly;
-			foreach (FileInfo file in di.GetFiles("*", SearchOption.AllDirectories))
-				if ((file.Attributes & FileAttributes.ReadOnly) != 0) file.Attributes &= ~FileAttributes.ReadOnly;
-			foreach (DirectoryInfo dir in di.GetDirectories("*", SearchOption.AllDirectories))
-				if ((dir.Attributes & FileAttributes.ReadOnly) != 0) dir.Attributes &= ~FileAttributes.ReadOnly;
-		}
-		catch (Exception ex) { DiagnosticLog.WriteException("Files", $"clearing read-only flags under {path}", ex); }
 	}
 
 	/// <summary>Public entry point for deleting a mod's folder from the managed mods directory. Uses the same

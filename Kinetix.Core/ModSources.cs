@@ -130,11 +130,7 @@ public sealed class ModSourceInfo
 }
 
 /// <summary>A mod's page, and which site it is on.</summary>
-public sealed record ModPageLink(string SourceId, string Url, string Id)
-{
-	/// <summary>The site's name, or the id itself if the site is not one the manager knows.</summary>
-	public string DisplayName => ModSources.Find(SourceId)?.DisplayName ?? SourceId;
-}
+public sealed record ModPageLink(string SourceId, string Url, string Id);
 
 /// <summary>
 /// Every place the manager knows mods can come from.
