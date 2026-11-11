@@ -602,6 +602,8 @@ public partial class Form1
 
         // Updates install the mod enabled; remember if it was disabled so we can turn it back off afterward.
         bool wasDisabled = !mod.IsEnabled;
+        // And the other mods switched off, for a Stardew download that holds several: the update brings them all back on.
+        HashSet<string> parkedBefore = ParkedStardewMods(mod);
 
         // Minecraft's mods come from Modrinth and from their authors' own GitHub releases, and every one of them is
         // a single jar. Neither the Nexus branch below nor the GitHub one can install that: the first wants a
@@ -736,6 +738,7 @@ public partial class Form1
                     Invoke(delegate { RefreshModPriorityList(); });
                 }
 
+                string? othersLeftOff = await KeepParkedModsOff(parkedBefore, silent);
                 bool saidGitHub = await ReapplyDisabledIfNeeded(mod, wasDisabled, silent);
                 // Remember which release is now on disk, so the next check compares against what was installed
 
@@ -748,7 +751,8 @@ public partial class Form1
                 if (!silent)
                 {
                     _soundEngine.Play("load_complete");
-                    if (!saidGitHub) Speak(Loc.T("updates.githubSuccess", mod.Name));
+                    if (!saidGitHub) Speak(Loc.T("updates.githubSuccess", mod.Name) + (othersLeftOff is null ? "" : " " + othersLeftOff));
+                    else if (othersLeftOff is not null) Speak(othersLeftOff);
                     // ResetStatus, not SetStatus: the title only needs to stop showing "Installing...", and SetStatus speaks by
                     // default, so this said "Connected as ..." straight after the update was announced. ResetStatus also asks
                     // RestingStatus what the title should be, which answers "Ready" when there is no known user -- the hardcoded
@@ -811,6 +815,7 @@ public partial class Form1
                 listUpdates.EndUpdate();
             });
             // No rescan here: InstallFromZip has just done one, and each costs seconds on a large setup.
+            string? othersLeftOff = await KeepParkedModsOff(parkedBefore, silent);
             bool saidNexus = await ReapplyDisabledIfNeeded(mod, wasDisabled, silent);
             // Remember which release is now on disk, so the next check compares against what was installed
 
@@ -822,7 +827,8 @@ public partial class Form1
             if (!silent)
             {
                 _soundEngine.Play("load_complete");
-                if (!saidNexus) Speak(Loc.T("updates.success", mod.Name));
+                if (!saidNexus) Speak(Loc.T("updates.success", mod.Name) + (othersLeftOff is null ? "" : " " + othersLeftOff));
+                else if (othersLeftOff is not null) Speak(othersLeftOff);
                 // ResetStatus, not SetStatus: the title only needs to stop showing "Installing...", and SetStatus speaks by
                 // default, so this said "Connected as ..." straight after the update was announced. ResetStatus also asks
                 // RestingStatus what the title should be, which answers "Ready" when there is no known user -- the hardcoded
@@ -962,6 +968,61 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// The Stardew mods switched off before an update, other than the one being updated, by their own ids.
+	///
+	/// <para>
+	/// A Stardew download can hold several mods (Mods\CapeStardew\A to E), and the update puts in every one the archive has,
+	/// switched on. Only the mod the update row is for was looked at, so a sub-mod the player had switched off came back on
+	/// with nothing said. Matched by the mod's own id, never ModHealth.IsSameMod, which matches on the Nexus id and so on
+	/// any sibling. An id that also has a copy switched on is left out: that copy being on says nothing about this update.
+	/// </para>
+	/// </summary>
+	private HashSet<string> ParkedStardewMods(GameMod updating)
+	{
+		var parked = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		if (!GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley)) return parked;
+
+		var on = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		foreach (GameMod m in _allInstalledMods.Where(m => !m.IsGroup && !string.IsNullOrEmpty(m.UniqueId)))
+			(m.IsEnabled ? on : parked).Add(m.UniqueId);
+		parked.ExceptWith(on);
+		if (!string.IsNullOrEmpty(updating.UniqueId)) parked.Remove(updating.UniqueId);
+		return parked;
+	}
+
+	/// <summary>
+	/// Switches off again the mods from <see cref="ParkedStardewMods"/> that the update switched on, and returns what to
+	/// say about them, or null when there were none. Off is kept without asking: the player chose it for that mod, and
+	/// the update was asked for another. In a batch the names go to the end-of-run report instead.
+	/// </summary>
+	private async Task<string?> KeepParkedModsOff(HashSet<string> parkedBefore, bool silent)
+	{
+		if (parkedBefore.Count == 0) return null;
+
+		var names = new List<string>();
+		foreach (GameMod m in _allInstalledMods.Where(m => !m.IsGroup && m.IsEnabled && parkedBefore.Contains(m.UniqueId)).ToList())
+		{
+			if (IsTheWholeModsFolder(m)) continue;
+			try
+			{
+				m.FolderPath = ModFileSystem.SetModEnabled(m.FolderPath, false, _settings.ActiveGame,
+					locatedGameFolder: _settings.CurrentGamePath);
+				m.IsEnabled = false;
+				names.Add(m.Name);
+			}
+			catch (Exception ex)
+			{
+				LogFailure(m.Name, "Could not switch a bundled mod off again after an update", ex);
+			}
+		}
+		if (names.Count == 0) return null;
+
+		if (silent) _updatesLeftDisabled.AddRange(names);
+		await RefreshModList(checkUpdates: false);
+		return Loc.T("updates.othersLeftOff", names.Count, string.Join(", ", names));
+	}
+
+	/// <summary>
 	/// Mods left switched off by an Update All, so the batch can say so once at the end rather than asking about
 	/// each one in the middle of a run the user started precisely to avoid answering things.
 	/// </summary>
@@ -990,6 +1051,7 @@ public partial class Form1
 	/// </returns>
 	private async Task<bool> ReapplyDisabledIfNeeded(GameMod original, bool wasDisabled, bool silent = false)
 	{
+		// (The mod being updated. Its siblings in the same download are KeepParkedModsOff's.)
 		if (!wasDisabled) return false;
 
 		GameMod? updated = _allInstalledMods.FirstOrDefault(m => !m.IsGroup && m.IsEnabled && ModHealth.IsSameMod(original, m));

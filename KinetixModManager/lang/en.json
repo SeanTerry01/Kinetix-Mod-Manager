@@ -1169,6 +1169,7 @@
   "updates.enableAfterUpdateTitle": "Switch this mod on?",
   "updates.leftEnabled": "{0} updated, and switched on.",
   "updates.leftDisabled": "{0} updated, and left switched off as it was.",
+  "updates.othersLeftOff": "{0} {0|mod|mods} from the same download stayed switched off, as you had {0|it|them}: {1}.",
   "updateAll.finishedSomeDisabled": "All updates finished. {0} {0|was|were} switched off before and {0|has|have} been left that way: {1}.",
   "updateAll.finishedFailed": "Update All finished, but {0|this|these} could not be updated: {1}. {0|It is|They are} still on the Updates tab, and the reasons are in the error log.",
   "updateAll.leftDisabled": "{0|This was|These were} switched off before and {0|has|have} been left that way: {1}.",
