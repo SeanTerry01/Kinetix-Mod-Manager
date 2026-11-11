@@ -87,7 +87,7 @@ public static class BackupStore
 			using (FileStream target = ClaimName(backupsPath, modName, out partial))
 				WriteBackup(target, folderPath, oneFile, progress);
 
-			File.Move(partial, partial[..^PartialSuffix.Length]);
+			MoveWhenFree(partial, partial[..^PartialSuffix.Length]);
 		}
 		catch
 		{
@@ -202,6 +202,29 @@ public static class BackupStore
 	}
 
 	private const string PartialSuffix = ".kinetix-part";
+
+	/// <summary>
+	/// Renames a finished backup into place, waiting out a brief hold on it.
+	///
+	/// ⚠️ A zip that has only just been closed is often opened at once by the virus scanner, and renaming it then fails with
+	/// "access denied". Six backups at once hit it twice in about a dozen test runs on Windows, and the backup that lost was thrown away
+	/// whole. A hold like that lasts milliseconds, so a few short tries settle it; a real refusal still fails on the last.
+	/// </summary>
+	private static void MoveWhenFree(string from, string to)
+	{
+		for (int attempt = 1; ; attempt++)
+		{
+			try
+			{
+				File.Move(from, to);
+				return;
+			}
+			catch (Exception ex) when (attempt < 10 && ex is IOException or UnauthorizedAccessException && !File.Exists(to))
+			{
+				Thread.Sleep(50 * attempt);
+			}
+		}
+	}
 
 	/// <summary>Clears what a forced close left behind. An hour old, so another backup still being written is never touched.</summary>
 	private static void SweepAbandonedBackups(string backupsPath)
