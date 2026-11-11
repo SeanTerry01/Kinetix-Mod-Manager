@@ -1026,6 +1026,7 @@ public partial class Form1
 		{
 			return;
 		}
+		bool typedOntoSameRow = TypedOntoTheSameRow(list);
 		// No wait for a move the program made — see SpeakListPosition for why the reader has to be caught as it
 		// starts rather than waited for.
 		await Task.Delay(announceRowName ? 0 : 100);
@@ -1059,6 +1060,9 @@ public partial class Form1
 			else
 				text = RowThenPosition(list.SelectedItem, text);
 		}
+		// The reader says nothing for a row it is already on. See TypedOntoTheSameRow.
+		else if (typedOntoSameRow)
+			text = RowThenPosition(list.SelectedItem, text);
 		if (list.Name == "listLog")
 		{
 			string lineText = list.SelectedItem.ToString() ?? "";
@@ -1293,7 +1297,10 @@ public partial class Form1
 			// search, check what the catalogue holds without the filter and say so when it is more, so a thin
 			// result reads as "the filter is narrow" rather than "these mods aren't on Nexus".
 			string hiddenByLanguage = "";
-			if (!loadMore && !string.IsNullOrEmpty(language))
+			// Nexus games only. Minecraft searches Modrinth, which has no language filter, and the count asked Nexus with no
+			// game: "Found 13688 modpacks... That is 13688 of this game's 985558 mods. The English language filter hides the
+			// rest", the whole of Nexus (heard 2026-11-11).
+			if (!loadMore && !string.IsNullOrEmpty(language) && _nexusService.UsesNexus)
 			{
 				// A name search is compared with the same search unfiltered. Against the whole catalogue it said "27 of this
 				// game's 35416 mods", as though the filter hid 35,000 matches.
@@ -1342,6 +1349,22 @@ public partial class Form1
 	private int _discoveryRunning;
 
 	/// <summary>
+	/// Shows the Language filter for a game that searches Nexus and hides it for one that doesn't, and says which.
+	///
+	/// <para>
+	/// Minecraft searches Modrinth, which has no language to filter by, so the filter did nothing there. It was still on
+	/// screen, read "English (515182)", and the list of languages was asked of Nexus with no game, so the counts were the
+	/// whole of Nexus (heard 2026-11-11).
+	/// </para>
+	/// </summary>
+	private bool ShowLanguageFilterForThisGame()
+	{
+		bool nexus = _nexusService.UsesNexus;
+		if (cmbDiscoveryLanguage != null) cmbDiscoveryLanguage.Visible = nexus;
+		return nexus;
+	}
+
+	/// <summary>
 	/// Fills the Discovery "Language" dropdown with the languages that actually have mods for the active game
 	/// (most common first, with counts), and selects the user's saved language preference. Falls back to the
 	/// starter list if the facet query returns nothing.
@@ -1349,6 +1372,7 @@ public partial class Form1
 	private async Task PopulateDiscoveryLanguagesAsync()
 	{
 		if (cmbDiscoveryLanguage == null) return;
+		if (!ShowLanguageFilterForThisGame()) return;
 		// Taken before the request, which asks about the game open when it is made.
 		string game = _settings.ActiveGame;
 		var langs = await _nexusService.GetModLanguagesAsync();
@@ -1542,6 +1566,8 @@ public partial class Form1
 	private async Task PopulateDiscoveryCategoriesAsync()
 	{
 		if (cmbDiscoveryCategory == null) return;
+		// Here too, because startup comes through here and not through the game switch that fills the languages.
+		ShowLanguageFilterForThisGame();
 
 		// Fetched once per game rather than on every data refresh. A game's categories do not change while the
 		// manager is open, and RefreshAllData runs often enough that asking each time would be a request spent

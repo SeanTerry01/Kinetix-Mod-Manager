@@ -747,9 +747,12 @@ public partial class Form1
 	{
 		if (listWikiResults.SelectedItem is WikiResult && listWikiResults.Focused)
 		{
+			bool typedOntoSameRow = TypedOntoTheSameRow(listWikiResults);
 			await Task.Delay(100);
 			if (!listWikiResults.Focused) return;
-			Speak(Loc.T("common.position", listWikiResults.SelectedIndex + 1, listWikiResults.Items.Count));
+			string position = Loc.T("common.position", listWikiResults.SelectedIndex + 1, listWikiResults.Items.Count);
+			// The reader says nothing for a row it is already on. See TypedOntoTheSameRow.
+			Speak(typedOntoSameRow ? RowThenPosition(listWikiResults.SelectedItem, position) : position);
 		}
 	}
 }

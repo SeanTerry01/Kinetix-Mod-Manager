@@ -1148,6 +1148,7 @@
   "updates.markNoVersion": "There is no offered version to record for {0}.",
   "updates.markNoLink": "{0} is not linked to a Nexus page or a GitHub repository, so there is no download to record a version against. Link it first with {1}.",
   "updates.markNoLinkNoKey": "{0} is not linked to a Nexus page or a GitHub repository, so there is no download to record a version against. Link it first: choose Assign a Nexus ID to Selected Mod on the Mods menu, under Selected Mod.",
+  "updates.markNotForMinecraft": "Minecraft updates are found from the file itself, so there is no version to record for {0}. To stop hearing about this update, press Delete to ignore it.",
   "updates.smapiBox": "A SMAPI update is available.\n\nInstalled: {0}\nLatest: {1}\n\nThe manager can download and install it for you. Update SMAPI now?",
   "updates.smapiTitle": "SMAPI Update Available",
   "updates.updatingGitHub": "Updating {0} from GitHub...",

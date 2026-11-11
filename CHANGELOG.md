@@ -197,6 +197,13 @@ A review of the whole manager before 1.6.0 found these. All are fixed.
 *   **"A mod site did not answer" now means one didn't.** A mod Nexus has removed or hides, or a mod whose page is given as
     "Nexus:-1" (a part with no page of its own, such as Ridgeside Village's SMAPI component), was counted as no answer,
     so an update check said this every time. Each one is now written to the log, so which mod it was can be found.
+*   **Pressing a letter that only one row starts with, when you are already on that row, says the row again**, not only its
+    position. NVDA says nothing for a row it is already on. This is in every list, Shortcut Customization included.
+*   **Minecraft's search no longer shows a Language filter**, which did nothing there, and a modpack search no longer says
+    "the English language filter hides the rest" with a count of every mod on Nexus.
+*   **Ctrl+Shift+Y on a Minecraft update says why there is nothing to record**, rather than telling you to link the Fabric
+    loader to a Nexus page.
+*   **An emptied Stardew key reads "Currently empty"**, not "Currently ." with nothing in it.
 *   **Sentences that name a key use your key**, if you changed it, and a key you cleared is no longer read as "Press Unmapped".
 *   **Typing in the installed search** reads the count once, after you pause.
 *   **After a file picker closes**, you hear which mod you are on as well as its position.
@@ -1056,7 +1063,7 @@ brings across the ones you already have in the Modrinth App.
 
 ## ✅ Tests
 
-*   **2,215 passing**, and all of them now pass off Windows too, where sixteen used to fail.
+*   **2,219 passing**, and all of them now pass off Windows too, where sixteen used to fail.
 *   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 *   Twenty-six of them cover unpacking a downloaded mod, including one that extracts a **real .7z** rather than a stand-in — the only way to know that reading one without `7za.exe` actually works.

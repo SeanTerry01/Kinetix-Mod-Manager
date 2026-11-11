@@ -4,6 +4,44 @@ namespace KinetixModManager;
 /// <summary>Keyboard input, focus cycling, and list key handling for Form1.</summary>
 public partial class Form1
 {
+	/// <summary>
+	/// The list a letter or digit was just typed into, and the row it was on then. Set as the character arrives, which is
+	/// before the list acts on it, and cleared by the next key. See <see cref="TypedOntoTheSameRow"/>.
+	/// </summary>
+	private (ListBox List, int Index)? _typedIntoList;
+
+	/// <summary>
+	/// Watches keys on their way to any control, for <see cref="_typedIntoList"/>. A filter rather than the window's key
+	/// preview, which is switched off while a prompt or in-window view is up (see RunOverlay), and Shortcut Customization,
+	/// where this was found, is one. It only looks, and lets every message through.
+	/// </summary>
+	private sealed class TypedIntoListWatcher(Form1 form) : IMessageFilter
+	{
+		private const int KeyDown = 0x0100, Character = 0x0102;
+
+		public bool PreFilterMessage(ref Message m)
+		{
+			if (m.Msg == KeyDown)
+				form._typedIntoList = null;
+			else if (m.Msg == Character && char.IsLetterOrDigit((char)(long)m.WParam) && Control.FromHandle(m.HWnd) is ListBox list)
+				form._typedIntoList = (list, list.SelectedIndex);
+			return false;
+		}
+	}
+
+	/// <summary>
+	/// Whether this selection change is a typed letter or digit landing on the row it was already on: one only that row
+	/// starts with. The list says its selection changed, the reader has nothing new to read and says nothing, and all that
+	/// was heard was the position, with no name (Sean, in Shortcut Customization, 2026-11-11). Such a change names its row,
+	/// as a move to any other row does. Read before the handler's first await, and used up by it.
+	/// </summary>
+	private bool TypedOntoTheSameRow(ListBox list)
+	{
+		bool same = _typedIntoList is { } typed && ReferenceEquals(typed.List, list) && typed.Index == list.SelectedIndex;
+		_typedIntoList = null;
+		return same;
+	}
+
 	private void Form1_KeyDown(object? sender, KeyEventArgs e)
 	{
 		// Recorded before anything else can return, so the held key is known even for presses this handler

@@ -564,9 +564,12 @@ public partial class Form1
 	{
 		if (_suppressPrioritySpeak) return;
 		if (sender is not ListBox { SelectedItem: not null } list || !list.Focused) return;
+		bool typedOntoSameRow = TypedOntoTheSameRow(list);
 		await Task.Delay(100);
 		if (!list.Focused) return;
-		Speak(Loc.T("common.position", list.SelectedIndex + 1, list.Items.Count));
+		string position = Loc.T("common.position", list.SelectedIndex + 1, list.Items.Count);
+		// The reader says nothing for a row it is already on. See TypedOntoTheSameRow.
+		Speak(typedOntoSameRow && list.SelectedItem != null ? RowThenPosition(list.SelectedItem, position) : position);
 	}
 
 	/// <summary>

@@ -91,7 +91,7 @@ public partial class Form1
 				Loc.T("sdvconfig.chooseListName", setting.Label),
 				new[] { "true", "false" },
 				setting.Value,
-				Loc.T("sdvconfig.chooseHint", setting.Description, setting.Value),
+				Loc.T("sdvconfig.chooseHint", setting.Description, setting.Value.Length > 0 ? setting.Value : Loc.T("sdvconfig.valueEmpty")),
 				apply);
 
 		// A key binding is the one free-text setting a list can be built for without the mod telling us
@@ -106,7 +106,8 @@ public partial class Form1
 				Loc.T("sdvconfig.chooseListName", setting.Label),
 				choices,
 				setting.Value,
-				Loc.T("sdvconfig.chooseKeyHint", setting.Description, setting.Value),
+				// An emptied key read "Currently ." with nothing between (heard 2026-11-11).
+				Loc.T("sdvconfig.chooseKeyHint", setting.Description, setting.Value.Length > 0 ? setting.Value : Loc.T("sdvconfig.valueEmpty")),
 				p => p == Loc.T("sdvconfig.otherValue") ? null : apply(p));
 
 			if (picked == null) return null;

@@ -110,6 +110,14 @@ public partial class Form1
 			Speak(Loc.T("updates.markNoVersion", mod.Name));
 			return;
 		}
+		// Minecraft's updates come from Modrinth by the file itself, so a version recorded against a link changes nothing, and
+		// the Fabric loader and Minecraft are not mods to link at all. "Link it first with Ctrl+K" was said for the loader
+		// (heard 2026-11-11).
+		if (GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true)
+		{
+			Speak(Loc.T("updates.markNotForMinecraft", mod.Name));
+			return;
+		}
 		// Without a Nexus page or GitHub repo there is no download to key the record to, and recording it
 		// against nothing would look like it had worked while changing nothing at all.
 		if (!UpdateCoverage.HasUpdateLink(mod))
