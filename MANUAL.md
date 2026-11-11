@@ -336,6 +336,7 @@ Each row says the mod, when it was backed up and its size: "Chat Commands, backe
 ### Load Order Tabs (Skyrim & Fallout 4 only)
 *These tabs — **Mod Priority**, **Plugin Order**, and **Creations** — appear only for Skyrim Special Edition and Fallout 4. See the "Load Order Management" section below for what they do.*
 *   **Ctrl + Up / Ctrl + Down**: Move the selected mod (Mod Priority tab) or plugin (Plugin Order tab) higher or lower in the order.
+*   **Ctrl + T**: Move the selected mod or plugin by a number of places you type, such as **23 down** or **36 up**, or to a position number, or to the **top** or **bottom**.
 *   **F8**: **Auto-sort** the plugin load order (Plugin Order tab), arranging every plugin to load after the masters it needs, using LOOT rules when available.
 *   **Space**: (Creations tab) Activate or deactivate the selected Creation.
 
@@ -1456,8 +1457,15 @@ Skyrim Special Edition and Fallout 4 decide how mods combine using **load order*
 ### Mod Priority
 When two mods provide the same loose file, the one with **higher priority wins**. The **Mod Priority** tab lists your mods highest-priority-first (the top of the list wins conflicts). Each row also tells you how many files that mod **overrides** or **is overridden in**, so you can judge its standing by ear. Press **Ctrl + Up** or **Ctrl + Down** to move the selected mod higher or lower; the change is applied immediately and the new position is announced.
 
+To move a mod a long way without holding a key down, press **Ctrl + T** (or choose **Mods → Load Order and Files → Move Selected Mod or Plugin by a Number of Places**) and type the move, then press **Enter**:
+*   **23 down** or **36 up** moves it that many places. **down 23** works too, and so do **d** and **u**. Asking for more places than there are takes it to the top or the bottom.
+*   A number on its own, such as **12**, moves it to that position.
+*   **top** or **bottom** moves it to the top or the bottom.
+
+You hear how far it moved, then the mod at its new place. Escape leaves it where it was.
+
 ### Plugin Order
-The **Plugin Order** tab is the load order of your plugin files (the `.esp`, `.esm`, and `.esl` files), written to `plugins.txt`. Plugins higher in the list load first. Masters and light masters always load before regular plugins, and the base game and its add-ons are handled automatically and not listed. Press **Ctrl + Up / Ctrl + Down** to move a plugin (it can't cross the boundary between masters and regular plugins). Press **F8** to **auto-sort**: the manager arranges every plugin to load after the masters it needs, using LOOT's community rules when it can reach them, and a master-dependency sort otherwise.
+The **Plugin Order** tab is the load order of your plugin files (the `.esp`, `.esm`, and `.esl` files), written to `plugins.txt`. Plugins higher in the list load first. Masters and light masters always load before regular plugins, and the base game and its add-ons are handled automatically and not listed. Press **Ctrl + Up / Ctrl + Down** to move a plugin (it can't cross the boundary between masters and regular plugins). **Ctrl + T** moves it by a typed number of places, as on the Mod Priority tab; a move that would cross that boundary stops at it, and you're told so. Press **F8** to **auto-sort**: the manager arranges every plugin to load after the masters it needs, using LOOT's community rules when it can reach them, and a master-dependency sort otherwise.
 
 ### Creations
 **Creations** (formerly Creation Club content) are official add-ons you download **inside the game**, from its **Creations** menu — or queue from the Bethesda.net website to your linked account. No mod manager downloads them for you; the game installs them into its own folder. The **Creations** tab lists the Creations already installed in your game, whether each is **Active**, and whether it's a master or light master. Press **Space** to activate or deactivate the selected one. To change where a Creation loads, use the Plugin Order tab.

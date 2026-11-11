@@ -577,6 +577,8 @@ public static class ModFileSystem
 		}
 
 		// 2. (Re)link desired files whose winning owner changed, that are missing, or that are forced.
+		// Read here, after step 1 has removed what it removes. See FilesPresent for why it isn't File.Exists.
+		var present = new FilesPresent();
 		foreach (var kv in desiredSource)
 		{
 			string destRel = kv.Key;
@@ -586,7 +588,7 @@ public static class ModFileSystem
 
 			bool needsRelink = !manifest.Deployed.TryGetValue(destRel, out string? prevOwner)
 							   || !string.Equals(prevOwner, owner, StringComparison.OrdinalIgnoreCase)
-							   || !File.Exists(destAbs)
+							   || !present.Contains(destAbs)
 							   || (forceRelink != null && forceRelink.Contains(owner));
 			if (!needsRelink) continue;
 

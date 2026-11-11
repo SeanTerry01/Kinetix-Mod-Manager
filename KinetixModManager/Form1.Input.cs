@@ -329,6 +329,11 @@ public partial class Form1
 			e.SuppressKeyPress = true;
 			Fire(AutoSortPluginsAsync(), "AutoSortPluginsAsync");
 		}
+		if (IsShortcut(e, "MoveByPlaces"))
+		{
+			e.SuppressKeyPress = true;
+			MoveByPlaces();
+		}
 		if (IsShortcut(e, "OpenErrorLog"))
 		{
 			e.SuppressKeyPress = true;

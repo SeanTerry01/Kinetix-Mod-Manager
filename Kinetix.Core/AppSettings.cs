@@ -1084,6 +1084,12 @@ public class AppSettings : IModScanContext
 				Shortcut.Function(8)
 			},
 			{
+				// T for "to": a typed move on Mod Priority or Plugin Order, "23 down" or "36 up". Ctrl+Shift+T is
+				// Tracked Mods; Ctrl+T was free in the window and in every list.
+				"MoveByPlaces",
+				Shortcut.Letter('T') | Shortcut.Control
+			},
+			{
 				"SearchHistory",
 				Shortcut.Letter('H') | Shortcut.Shift | Shortcut.Control
 			},

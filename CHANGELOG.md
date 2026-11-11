@@ -111,6 +111,17 @@
 *   **When a site says to slow down, the manager does**, and says that is why some mods were not checked.
 *   **Minecraft asks Modrinth once, not once per mod**, and no longer freezes while it reads your mods.
 
+## ✨ Move a mod by typing how far
+
+*   **Ctrl+T on Mod Priority or Plugin Order asks how far to move the selected mod or plugin.** Type **23 down**, **36 up**, a
+    position number, **top** or **bottom**, and press Enter. Holding Ctrl+Down across a long list is hard on an older laptop
+    keyboard. It is also on the Mods menu, under Load Order and Files, and can be given another key in Shortcut Customization.
+    Asked for by a player with 60 mods.
+*   **Moving a mod on Mod Priority is several times faster on a large setup.** After each move the manager checked, one at a
+    time, that every mod file it had put in the game was still there. With 60 mods and 24,000 files that took 2.4 seconds a
+    move, and now takes under half a second. Holding Ctrl+Up or Ctrl+Down no longer queues a full check for every place the mod
+    passes, so the manager isn't left working long after you let go.
+
 ## ✨ Cancel a download
 
 *   **Ctrl+Shift+S stops downloads**, and stops Update All. A large file could only be stopped by closing the manager.
@@ -1030,7 +1041,7 @@ brings across the ones you already have in the Modrinth App.
 
 ## ✅ Tests
 
-*   **2,164 passing**, and all of them now pass off Windows too, where sixteen used to fail.
+*   **2,202 passing**, and all of them now pass off Windows too, where sixteen used to fail.
 *   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 *   Twenty-six of them cover unpacking a downloaded mod, including one that extracts a **real .7z** rather than a stand-in — the only way to know that reading one without `7za.exe` actually works.

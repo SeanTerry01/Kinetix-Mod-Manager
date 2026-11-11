@@ -1121,10 +1121,10 @@ public partial class Form1
 			text = Loc.T("help.profiles");
 			break;
 		case AppTab.ModPriority:
-			text = Loc.T("help.modPriority");
+			text = Loc.T("help.modPriority", GetShortcutString("MoveByPlaces"));
 			break;
 		case AppTab.PluginOrder:
-			text = Loc.T("help.pluginOrder", GetShortcutString("AutoSort"), GetShortcutString("PluginSlots"));
+			text = Loc.T("help.pluginOrder", GetShortcutString("AutoSort"), GetShortcutString("PluginSlots"), GetShortcutString("MoveByPlaces"));
 			break;
 		case AppTab.Creations:
 			text = Loc.T("help.creations");

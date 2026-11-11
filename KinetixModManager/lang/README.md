@@ -94,6 +94,25 @@ minutes ago". Rules:
 
 ---
 
+## Words the user types: `moveBy.wordsUp` and the others
+
+Four lines are not said aloud. They are the words a player may type to move a mod on the Mod
+Priority tab, such as "23 down":
+
+```json
+  "moveBy.wordsUp": "up,u",
+  "moveBy.wordsDown": "down,d",
+  "moveBy.wordsTop": "top,first",
+  "moveBy.wordsBottom": "bottom,last",
+```
+
+- **List your language's words, with a comma between them** and no spaces. Any of them will
+  work, in capitals or not.
+- **One word each, with no spaces inside.** A short form, like "d" for "down", is welcome.
+- Change the examples in `moveBy.prompt` and `moveBy.notUnderstood` to match.
+
+---
+
 ## Things to leave in their original form
 
 Translate the *meaning*, but keep these unchanged when they appear inside a line:

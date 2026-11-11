@@ -577,6 +577,66 @@ public partial class Form1
 	/// <summary>Which Ctrl+Up/Down press is the latest, so only that one speaks. See ListModPriority_KeyDown.</summary>
 	private int _priorityMoveGeneration;
 
+	/// <summary>The deployment pass for priority changes that is running, if one is. See DeployPriorityChangeAsync.</summary>
+	private Task? _priorityDeploy;
+
+	/// <summary>The order changed again while that pass ran, so it goes round once more.</summary>
+	private bool _priorityDeployAgain;
+
+	/// <summary>
+	/// Saves the order and brings the game folder up to date with it, away from the window's thread. The task returned
+	/// finishes once the folder matches the latest order.
+	///
+	/// <para>
+	/// At most one pass runs, and changes made during it are taken by one more pass after it. Held down, Ctrl+Down repeats
+	/// many times a second, and each press started a whole pass of its own. With 60 mods a pass took seconds, so the
+	/// manager went on working long after the key was let go, and the player heard it slow down as the list grew.
+	/// </para>
+	/// </summary>
+	private Task DeployPriorityChangeAsync()
+	{
+		if (_priorityDeploy is { IsCompleted: false })
+		{
+			_priorityDeployAgain = true;
+			return _priorityDeploy;
+		}
+		return _priorityDeploy = RunPriorityDeploysAsync();
+	}
+
+	private async Task RunPriorityDeploysAsync()
+	{
+		do
+		{
+			// Read and set on the window's thread only: each await comes back to it.
+			_priorityDeployAgain = false;
+			try
+			{
+				await Task.Run(() =>
+				{
+					_settings.Save();
+					SyncBethesdaDeployment();
+				});
+			}
+			catch (Exception ex) { LogFailure("Deploy", "Could not bring the game folder up to date after a priority change", ex); }
+		}
+		while (_priorityDeployAgain);
+	}
+
+	/// <summary>
+	/// Puts the mod at <paramref name="from"/> at <paramref name="to"/> in the active game's priority order, the mods between
+	/// shifting one place to make room. In a copy, so a deployment already walking the old order on another thread is not
+	/// changed under it ("Collection was modified").
+	/// </summary>
+	private List<string> MovePriority(int from, int to)
+	{
+		var next = new List<string>(_settings.ModPriority[_settings.ActiveGame]);
+		string moving = next[from];
+		next.RemoveAt(from);
+		next.Insert(to, moving);
+		_settings.ModPriority[_settings.ActiveGame] = next;
+		return next;
+	}
+
 	private async void ListModPriority_KeyDown(object? sender, KeyEventArgs e)
 	{
 		if (!(e.Control && (e.KeyCode == Keys.Up || e.KeyCode == Keys.Down))) return;
@@ -596,19 +656,13 @@ public partial class Form1
 			return;
 		}
 
-		// Swapped in a copy, so a deployment already walking the old order on another thread is not changed under it
-		// ("Collection was modified"). Then the walk runs off the window's thread: on a large setup it takes seconds, and on
-		// this thread the reader went quiet and keys did nothing, and it waited too on a refresh holding the lock. Holding
-		// Ctrl+Up speaks once, for where the mod ends up.
-		var next = new List<string>(order);
-		(next[idx], next[target]) = (next[target], next[idx]);
-		_settings.ModPriority[_settings.ActiveGame] = next;
-		order = next;
-		_settings.Save();
+		// The walk runs off the window's thread: on a large setup it takes seconds, and on this thread the reader went quiet
+		// and keys did nothing, and it waited too on a refresh holding the lock. Holding Ctrl+Up speaks once, for where the
+		// mod ends up.
+		order = MovePriority(idx, target);
 		int generation = ++_priorityMoveGeneration;
 		string game = _settings.ActiveGame;
-		try { await Task.Run(() => SyncBethesdaDeployment()); }
-		catch (Exception ex) { LogFailure("Deploy", "Could not bring the game folder up to date after a priority change", ex); }
+		await DeployPriorityChangeAsync();
 		if (generation != _priorityMoveGeneration || _settings.ActiveGame != game || listModPriority.IsDisposed) return;
 
 		_suppressPrioritySpeak = true;
@@ -619,6 +673,139 @@ public partial class Form1
 		_soundEngine.Play(up ? "enable" : "disable");
 		string movedEntry = (listModPriority.SelectedItem as PriorityEntry)?.Summary ?? entry.Display;
 		Speak(Loc.T(up ? "loadorder.movedUp" : "loadorder.movedDown", movedEntry, target + 1, order.Count));
+	}
+
+	// -------------------------------------------------------------------------
+	// Moving by a typed number of places
+	// -------------------------------------------------------------------------
+
+	/// <summary>
+	/// Moves the selected mod on Mod Priority, or plugin on Plugin Order, by a move typed in: "23 down", "36 up", a position
+	/// number, "top" or "bottom". See <see cref="PlacesToMove"/> for why.
+	/// </summary>
+	private void MoveByPlaces()
+	{
+		if (!IsBethesdaGame)
+		{
+			Speak(Loc.T("moveBy.notApplicable"));
+			return;
+		}
+		if (mainTabs.SelectedTab == tabModPriority && listModPriority.SelectedItem is PriorityEntry mod)
+			MoveModByPlaces(mod);
+		else if (mainTabs.SelectedTab == tabPluginOrder && listPluginOrder.SelectedItem is PluginEntry plugin)
+			MovePluginByPlaces(plugin);
+		else
+			Speak(Loc.T("moveBy.wrongPlace"));
+	}
+
+	private static PlacesToMove.Words MoveWords => new(
+		Loc.T("moveBy.wordsUp"), Loc.T("moveBy.wordsDown"), Loc.T("moveBy.wordsTop"), Loc.T("moveBy.wordsBottom"));
+
+	/// <summary>
+	/// Asks where to move <paramref name="name"/>, now at <paramref name="from"/> of <paramref name="count"/>, and hands
+	/// a move that makes sense to <paramref name="apply"/> while the box is still up. One that doesn't is said once the box
+	/// has gone, and the box opens again with what was typed still in it, as a number setting's does.
+	/// </summary>
+	private void AskForMove(string name, int from, int count, Func<PlacesToMove.Move, ResultBeforeReturning?> apply)
+	{
+		string typed = "";
+		while (true)
+		{
+			string? problem = null;
+			string? answer = ShowTextPrompt(Loc.T("moveBy.title", name), Loc.T("moveBy.prompt", name, from + 1, count), typed,
+				actOnAnswer: t =>
+				{
+					if (PlacesToMove.Read(t, from, count, MoveWords, out PlacesToMove.Problem why) is not { } move)
+					{
+						problem = why == PlacesToMove.Problem.NoSuchPosition
+							? Loc.T("moveBy.noSuchPosition", count)
+							: Loc.T("moveBy.notUnderstood");
+						return null;
+					}
+					return move.Target == from
+						? new ResultBeforeReturning(Loc.T("moveBy.alreadyThere", from + 1))
+						: apply(move);
+				},
+				sayOnCancel: Loc.T("common.changesCancelled"));
+			if (answer == null || problem == null) return;
+
+			Speak(problem);
+			typed = answer;
+		}
+	}
+
+	/// <summary>"Moved up 23 places." or, at either end, "Moved to the top."</summary>
+	private static string MovedPlacesText(int from, int to, int count)
+	{
+		if (to < from) return to == 0 ? Loc.T("moveBy.movedToTop") : Loc.T("moveBy.movedUp", from - to);
+		return to == count - 1 ? Loc.T("moveBy.movedToBottom") : Loc.T("moveBy.movedDown", to - from);
+	}
+
+	private void MoveModByPlaces(PriorityEntry entry)
+	{
+		string game = _settings.ActiveGame;
+		List<string> order = _settings.ModPriority[game];
+		int from = order.FindIndex(n => string.Equals(n, entry.Key, StringComparison.OrdinalIgnoreCase));
+		if (from < 0) return;
+
+		AskForMove(entry.Display, from, order.Count, move =>
+		{
+			// Found again: a refresh while the box was up can have added a mod above it.
+			List<string> now = _settings.ModPriority[game];
+			int at = now.FindIndex(n => string.Equals(n, entry.Key, StringComparison.OrdinalIgnoreCase));
+			if (at < 0 || _settings.ActiveGame != game) return null;
+			int to = Math.Clamp(move.Target, 0, now.Count - 1);
+			if (to == at) return new ResultBeforeReturning(Loc.T("moveBy.alreadyThere", at + 1));
+
+			MovePriority(at, to);
+			// A Ctrl+Up still waiting on its pass is no longer the latest move, and must not speak over this one.
+			++_priorityMoveGeneration;
+			_settings.Save();
+			// One pass, here, while the box is still up and before anything is said, so the row read on the way back has its
+			// new file counts. Typing the move costs one pass however far it goes; holding Ctrl+Up cost one for each place.
+			try { SyncBethesdaDeployment(); }
+			catch (Exception ex) { LogFailure("Deploy", "Could not bring the game folder up to date after a priority change", ex); }
+
+			// RefreshModPriorityList keeps the selection on the mod, wherever it now is.
+			return new ResultBeforeReturning(MovedPlacesText(at, to, now.Count), RefreshModPriorityList);
+		});
+	}
+
+	private void MovePluginByPlaces(PluginEntry entry)
+	{
+		string game = _settings.ActiveGame;
+		if (!_settings.PluginOrder.TryGetValue(game, out List<string>? order) || order == null) return;
+		int from = order.FindIndex(n => string.Equals(n, entry.Name, StringComparison.OrdinalIgnoreCase));
+		if (from < 0) return;
+
+		bool IsMasterGroup(string plugin) =>
+			InMasterGroup(_pluginClass.TryGetValue(plugin, out var c) ? c : BethesdaPlugins.ReadPluginFlags(plugin));
+
+		AskForMove(entry.Name, from, order.Count, move =>
+		{
+			int at = order.FindIndex(n => string.Equals(n, entry.Name, StringComparison.OrdinalIgnoreCase));
+			if (at < 0 || _settings.ActiveGame != game) return null;
+
+			// Masters load before regular plugins whatever plugins.txt says, so a plugin goes only as far as the edge of its
+			// own group. Walked a place at a time, as Ctrl+Up checks the one it would pass.
+			bool master = IsMasterGroup(order[at]);
+			int target = Math.Clamp(move.Target, 0, order.Count - 1);
+			int step = target > at ? 1 : -1;
+			int to = at;
+			while (to != target && IsMasterGroup(order[to + step]) == master) to += step;
+			if (to == at)
+				return new ResultBeforeReturning(target == at ? Loc.T("moveBy.alreadyThere", at + 1) : Loc.T("loadorder.masterBoundary"));
+
+			string moving = order[at];
+			order.RemoveAt(at);
+			order.Insert(to, moving);
+			_settings.Save();
+			ModFileSystem.WritePluginsTxt(game, _settings.CurrentGamePath, order, LogError, _settings.ProtectPluginOrder);
+
+			string said = MovedPlacesText(at, to, order.Count);
+			if (to != target) said += " " + Loc.T("moveBy.stoppedAtBoundary");
+			return new ResultBeforeReturning(said, RefreshPluginOrderList);
+		});
 	}
 
 	// -------------------------------------------------------------------------

@@ -202,6 +202,7 @@ public partial class Form1
 		// Submenu: Skyrim/Fallout 4 load order and loose-file deployment.
 		var grpLoad = new ToolStripMenuItem(Loc.T("menu.groupLoadOrder")) { Name = "menuGroupLoadOrder" };
 		grpLoad.DropDownItems.Add(ShortcutLabel("menu.autoSort", "AutoSort"), null, async delegate { await AutoSortPluginsAsync(); }).Name = "menuAutoSort";
+		grpLoad.DropDownItems.Add(ShortcutLabel("menu.moveByPlaces", "MoveByPlaces"), null, delegate { MoveByPlaces(); }).Name = "menuMoveByPlaces";
 		grpLoad.DropDownItems.Add(Loc.T("menu.conflictWinners"), null, delegate { ShowConflictOverride(); }).Name = "menuConflictWinners";
 		grpLoad.DropDownItems.Add(Loc.T("menu.addLoadRule"), null, delegate { AddLoadOrderRule(); }).Name = "menuAddLoadRule";
 		grpLoad.DropDownItems.Add(Loc.T("menu.manageLoadRules"), null, delegate { ShowLoadOrderRules(); }).Name = "menuManageLoadRules";
