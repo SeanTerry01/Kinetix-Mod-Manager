@@ -191,7 +191,13 @@ public partial class Form1
 		string root, JObject versionJson, string gameVersion, List<MinecraftFetch> wanted)
 	{
 		string component = MinecraftGameFiles.JavaComponent(versionJson);
-		if (MinecraftLauncher.FindBundledJava(component, root).Length > 0) return "";
+		// A launcher's own runtime is the launcher's to keep whole. The manager's own, under <root>\runtime, is checked file by
+		// file: about 400 files arrive in parallel, and if some failed while javaw.exe arrived, finding javaw.exe said "done"
+		// for good, and every launch died in the JVM with nothing to repair it. Offline, the manifest can't be fetched and
+		// this returns "" below, so launching still works.
+		string bundled = MinecraftLauncher.FindBundledJava(component, root);
+		if (bundled.Length > 0 && !bundled.StartsWith(Path.Combine(root, "runtime") + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+			return "";
 
 		JObject? all = await FetchJsonAsync(MinecraftGameFiles.JavaRuntimeManifestUrl);
 		if (all is null) return "";   // reported by the launch itself if it turns out to matter
@@ -398,27 +404,37 @@ public partial class Form1
 		// thousands of small objects get the one whose timeout means something.
 		HttpClient client = file.Bytes >= 8L * 1024 * 1024 ? KinetixHttp.Downloads : KinetixHttp.Api;
 
+		// ⚠️ Into a ".part" file, moved into place only once it is whole and checked. Written straight to the real name, a
+		// download dropped half way left a short file that every later check counts as installed, because they test only that
+		// the file exists: a truncated client jar was never fetched again, and Java died on it every launch. The read also has
+		// a stall watchdog, which HttpClient's timeout does not give past the headers.
+		string partial = file.Destination + ModArchive.PartialDownloadSuffix;
 		for (int attempt = 0; attempt < 2; attempt++)
 		{
 			try
 			{
 				Directory.CreateDirectory(Path.GetDirectoryName(file.Destination)!);
+				if (File.Exists(partial)) File.Delete(partial);
 
 				using HttpResponseMessage response =
 					await client.GetAsync(file.Url, HttpCompletionOption.ResponseHeadersRead);
 				response.EnsureSuccessStatusCode();
 
-				await using (FileStream stream = File.Create(file.Destination))
-					await response.Content.CopyToAsync(stream);
+				await NexusService.SaveResponseAsync(response, partial, null, CancellationToken.None);
 
-				if (string.IsNullOrEmpty(file.Sha1) || FileHasSha1(file.Destination, file.Sha1!)) return true;
-
-				File.Delete(file.Destination);
+				if (string.IsNullOrEmpty(file.Sha1) || FileHasSha1(partial, file.Sha1!))
+				{
+					File.Move(partial, file.Destination, overwrite: true);
+					return true;
+				}
 			}
 			catch (Exception ex)
 			{
 				DiagnosticLog.WriteException("Minecraft", $"fetching {file.Url}", ex);
 			}
+
+			try { if (File.Exists(partial)) File.Delete(partial); }
+			catch (Exception ex) { DiagnosticLog.WriteException("Minecraft", $"removing the partial download {partial}", ex); }
 		}
 
 		return false;

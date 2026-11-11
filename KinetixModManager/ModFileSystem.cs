@@ -1552,11 +1552,22 @@ public static class ModFileSystem
 		// What the copies about to be replaced put in the game folder, read while they are still here. Those files are
 		// that mod's, so a reinstall overwriting them is not touching anything of the game's.
 		var alreadyTheMods = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		// ⚠️ Not for a copy that is switched off. Its files were parked out of the game and the game's own put back, so what
+		// sits at those paths now is the game's. Counted as the mod's, the reinstall wrote over the game's file and kept
+		// nothing, and the parked copies outlived it: RemoveExtras later took them for the live ones and left the mod in
+		// the game. So a parked path is kept like any game file, and the stale parked folder goes once the new copy is in.
+		var staleParked = new List<string>();
 		foreach (string source in modFolders)
 		{
 			string name = source == wrapped ? WitcherModFolderName(archiveName) : Path.GetFileName(source);
 			GameMod? had = InstallTarget.Find(installedMods, nexusId, name, matchExistingByNexusId).Mod;
-			if (had != null) alreadyTheMods.UnionWith(ReadWitcherExtraPaths(had.FolderPath));
+			if (had == null) continue;
+
+			string parked = string.IsNullOrEmpty(currentGamePath) ? "" : Path.Combine(currentGamePath, Witcher3ModFiles.DisabledExtrasFolderName,
+				Witcher3ModSettings.BareName(Path.GetFileName(had.FolderPath.TrimEnd(Path.DirectorySeparatorChar))));
+			alreadyTheMods.UnionWith(ReadWitcherExtraPaths(had.FolderPath)
+				.Where(rel => parked.Length == 0 || !File.Exists(Path.Combine(parked, rel))));
+			if (parked.Length > 0 && Directory.Exists(parked)) staleParked.Add(parked);
 		}
 		var originals = new OriginalFiles(Path.Combine(currentGamePath ?? "", WitcherOriginalsFolderName));
 
@@ -1609,6 +1620,13 @@ public static class ModFileSystem
 					}
 				}
 			}
+		}
+
+		// The new copy goes in switched on, so what the old one had parked is no longer anything's. See alreadyTheMods.
+		foreach (string parked in staleParked)
+		{
+			try { ModOnDisk.DeleteDirectory(parked); }
+			catch (Exception ex) { logError(parked, "Could not clear the old copy's parked files: " + ex.Message); }
 		}
 
 		string destModFolder = Path.Combine(modsPath, primaryFolderName);

@@ -276,7 +276,7 @@ public partial class Form1
 			// Only now, with every new file in hand, can the pack's own mod ids be read — and with them, any other copy
 			// of one of its mods that would stop the game starting. See MinecraftModpacks.FindSuperseded.
 			(IReadOnlyList<(string Path, bool WasDisabled)> superseded, IReadOnlyList<string> keepOffToo) =
-				await Task.Run(() => FindModsSupersededByPack(pack, plan, staging));
+				await Task.Run(() => FindModsSupersededByPack(pack, plan, staging, mrpack));
 			var keepDisabled = new HashSet<string>(plan.KeepDisabled, StringComparer.OrdinalIgnoreCase);
 			keepDisabled.UnionWith(keepOffToo);
 
@@ -360,7 +360,7 @@ public partial class Form1
 	/// every jar involved, so it runs only once the new files are all in the staging folder.
 	/// </summary>
 	private static (IReadOnlyList<(string Path, bool WasDisabled)> Superseded, IReadOnlyList<string> KeepOff)
-		FindModsSupersededByPack(MinecraftPack pack, ModpackUpdatePlan plan, string staging)
+		FindModsSupersededByPack(MinecraftPack pack, ModpackUpdatePlan plan, string staging, string mrpack)
 	{
 		string suffix = MinecraftDisabledSuffix;
 		static string IdOf(string file)
@@ -373,15 +373,33 @@ public partial class Form1
 			}
 		}
 
+		static bool IsModJar(string recordPath) =>
+			recordPath.StartsWith("mods/", StringComparison.OrdinalIgnoreCase) &&
+			recordPath.EndsWith(MinecraftLayout.ModExtension, StringComparison.OrdinalIgnoreCase);
+
 		var downloaded = new HashSet<string>(plan.Download.Select(f => MinecraftModpacks.RecordPath(f.RelativePath)),
 			StringComparer.OrdinalIgnoreCase);
+
+		// ⚠️ The jars the pack carries in its overrides are not on disk yet: they are written last. Read from the pack folder,
+		// a bundled mod whose copy the player had replaced was never seen, and the player's copy stayed beside the pack's new
+		// one — two copies of one mod id, which Fabric refuses to start with. So they are unpacked into the staging folder
+		// first, just to be read. DiscardStaging takes them away with the rest.
+		string bundledStaging = Path.Combine(staging, ".bundled");
+		var bundledJars = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		var bundledToRead = plan.Bundled.Files.Where(o => IsModJar(MinecraftModpacks.RecordPath(o.RelativePath))).ToList();
+		if (bundledToRead.Count > 0)
+		{
+			MinecraftModpacks.ExtractOverrides(mrpack, bundledStaging, new OverridePlan { Files = bundledToRead });
+			foreach (var o in bundledToRead) bundledJars.Add(MinecraftModpacks.RecordPath(o.RelativePath));
+		}
+
 		var packJars = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-		foreach (string recordPath in plan.ProvidedFiles.Where(p =>
-					 p.StartsWith("mods/", StringComparison.OrdinalIgnoreCase) &&
-					 p.EndsWith(MinecraftLayout.ModExtension, StringComparison.OrdinalIgnoreCase)))
+		foreach (string recordPath in plan.ProvidedFiles.Where(IsModJar))
 		{
 			string local = recordPath.Replace('/', Path.DirectorySeparatorChar);
-			string file = downloaded.Contains(recordPath) ? Path.Combine(staging, local) : Path.Combine(pack.Folder, local);
+			string file = downloaded.Contains(recordPath) ? Path.Combine(staging, local)
+				: bundledJars.Contains(recordPath) ? Path.Combine(bundledStaging, local)
+				: Path.Combine(pack.Folder, local);
 			if (!File.Exists(file)) file += suffix;
 			if (File.Exists(file)) packJars[recordPath] = IdOf(file);
 		}
@@ -406,6 +424,15 @@ public partial class Form1
 		// A mod the player had switched off stays off when the pack's copy of it takes over.
 		var offIds = new HashSet<string>(superseded.Where(s => s.WasDisabled).Select(s => others[s.Path]),
 			StringComparer.OrdinalIgnoreCase);
+
+		// And one of the pack's own jars the player had switched off stays off, whatever the new version calls it. PlanUpdate
+		// knows only the downloads; a bundled one came back on, so a rival access mod switched off spoke everything twice.
+		foreach (string recordPath in pack.ProvidedFiles.Where(IsModJar))
+		{
+			string disabled = Path.Combine(pack.Folder, recordPath.Replace('/', Path.DirectorySeparatorChar)) + suffix;
+			if (File.Exists(disabled) && IdOf(disabled) is { Length: > 0 } id) offIds.Add(id);
+		}
+
 		List<string> keepOff = packJars.Where(j => offIds.Contains(j.Value)).Select(j => j.Key).ToList();
 
 		return (superseded, keepOff);
@@ -439,16 +466,25 @@ public partial class Form1
 				keepDisabled.Contains(recordPath) ? target + MinecraftDisabledSuffix : target);
 		}
 
-		// A file that did not change but whose mod the player had switched off under its old name is switched off
-		// under this one too.
+		MinecraftModpacks.ExtractOverrides(mrpack, pack.Folder, plan.Bundled);
+
+		// A file whose mod the player had switched off is switched off again, under whatever name it now has. After the
+		// overrides, not before: they are written switched on, and run first this undid nothing for a bundled jar. A switched-off
+		// twin left from before is in the backup, and makes way for the new copy.
+		var backedUp = new HashSet<string>(plan.Bundled.Files.Select(o => MinecraftModpacks.RecordPath(o.RelativePath)),
+			StringComparer.OrdinalIgnoreCase);
 		foreach (string recordPath in keepDisabled)
 		{
 			string enabled = Full(recordPath);
-			if (File.Exists(enabled) && !File.Exists(enabled + MinecraftDisabledSuffix))
-				File.Move(enabled, enabled + MinecraftDisabledSuffix);
+			if (!File.Exists(enabled)) continue;
+			if (File.Exists(enabled + MinecraftDisabledSuffix))
+			{
+				// Only a twin BackUpBeforePackUpdate kept. Any other is left, with the enabled file, as it was found.
+				if (!backedUp.Contains(recordPath)) continue;
+				File.Delete(enabled + MinecraftDisabledSuffix);
+			}
+			File.Move(enabled, enabled + MinecraftDisabledSuffix);
 		}
-
-		MinecraftModpacks.ExtractOverrides(mrpack, pack.Folder, plan.Bundled);
 	}
 
 	// -------------------------------------------------------------------------

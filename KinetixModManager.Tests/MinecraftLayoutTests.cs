@@ -103,6 +103,23 @@ public class MinecraftLayoutTests
 	}
 
 	[Fact]
+	public void AListOfMinecraftRangesAcceptsAVersionAnyOfThemAccepts()
+	{
+		// In fabric.mod.json a list means OR. Read as AND, a mod built for 26.2 and 26.3 was judged unable to run on either,
+		// so its update was thrown away and a version move switched it off.
+		const string manifest = """
+		{ "id": "x", "version": "1", "depends": { "minecraft": ["~26.2", "~26.3"] } }
+		""";
+
+		string range = MinecraftLayout.ParseModInfo(manifest, "x.jar").Depends["minecraft"];
+
+		Assert.True(FabricVersionRange.Accepts(range, "26.3"));
+		Assert.True(FabricVersionRange.Accepts(range, "26.2"));
+		Assert.False(FabricVersionRange.Accepts(range, "26.1"));
+		Assert.False(FabricVersionRange.Accepts("26.1 or 26.2", "26.3"));
+	}
+
+	[Fact]
 	public void UnparseableJsonIsReportedRatherThanThrown()
 	{
 		// A truncated download sitting in the mods folder must show up as a broken mod the user can delete,

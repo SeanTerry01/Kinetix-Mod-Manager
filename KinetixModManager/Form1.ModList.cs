@@ -912,7 +912,8 @@ public partial class Form1
 	/// <summary>Prompts the user to enter or replace their Nexus Mods API key, then refreshes the mod list.</summary>
 	private void PromptForApiKey()
 	{
-		string? text = ShowTextPrompt(Loc.T("login.title"), Loc.T("login.pasteApiKey"), _settings.ApiKey);
+		// Protected, like every key box: filled with the saved key and selected, a plain box read it out in full.
+		string? text = ShowTextPrompt(Loc.T("login.title"), Loc.T("login.pasteApiKey"), _settings.ApiKey, secret: true);
 		if (text == null) { Speak(Loc.T("common.changesCancelled")); return; }
 
 		text = text.Trim();

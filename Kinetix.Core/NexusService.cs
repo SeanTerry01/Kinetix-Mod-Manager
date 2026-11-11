@@ -909,8 +909,9 @@ public class NexusService
 	/// <summary>
 	/// Writes a response's body to a file. Runs off the interface thread: resuming on it for each block of a fast download
 	/// is what made keys feel slow during one. The progress reporters do their own moving back, and only when something changes.
+	/// Public because Minecraft's own files are fetched with it too, for its stall watchdog.
 	/// </summary>
-	private static async Task SaveResponseAsync(HttpResponseMessage response, string path, IProgress<double>? progress, CancellationToken cancel)
+	public static async Task SaveResponseAsync(HttpResponseMessage response, string path, IProgress<double>? progress, CancellationToken cancel)
 	{
 		const int BlockSize = 81920;
 		long? totalBytes = response.Content.Headers.ContentLength;

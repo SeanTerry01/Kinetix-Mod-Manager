@@ -585,7 +585,10 @@ public partial class Form1
 		// Started on the UI thread: a nxm link can arrive on the named-pipe thread, and the install reports itself
 		// through the window as it goes. The name is carried across so the install talks about the same mod the
 		// download did, even where the file name it arrived under says nothing.
-		if (install) OnUi(() => { Fire(InstallFromZip(path, nexusId, confirmReinstall: !isUpgrade, displayName: modName), "InstallFromZip"); });
+		// A page the manager knows ships in parts never uses the page id to pick what this replaces: every part shares it.
+		bool partOfMultiPartMod = nexusId != null && ModPartRules.Find(_settings.ActiveGame, nexusId)?.Parts.Count > 1;
+		if (install) OnUi(() => { Fire(InstallFromZip(path, nexusId, confirmReinstall: !isUpgrade, displayName: modName,
+			partOfMultiPartMod: partOfMultiPartMod), "InstallFromZip"); });
 	}
 
 	[System.Runtime.InteropServices.DllImport("user32.dll")]
@@ -951,7 +954,10 @@ public partial class Form1
 			// game switch would otherwise see nothing installed, and one just after a Space a folder that has since moved.
 			while (Volatile.Read(ref _refreshInFlight) > 0) await Task.Delay(25);
 			List<GameMod> installed = _allInstalledMods.ToList();
-			Func<string, string, SamePageChoice>? askSamePage = confirmReinstall ? ConfirmSamePage : null;
+			// Asked for every install the user is watching, not only the ones that also ask "reinstall?". A nxm download whose
+			// page showed a newer version turned both off, so fetching a mod's second part replaced the first with no question:
+			// SSE Engine Fixes lost its plugin to its preloader. Only a silent batch and an update, which knows its mod, skip it.
+			Func<string, string, SamePageChoice>? askSamePage = silent || updating != null ? null : ConfirmSamePage;
 			string name = await Task.Run(() => ModFileSystem.ExtractModAsync(
 				zipPath, modsPath, installed,
 				backups, maxBackups, game, LogError, nexusId, _nexusService, gitHubRepo, gamePath,

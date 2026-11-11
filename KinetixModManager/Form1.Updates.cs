@@ -924,6 +924,11 @@ public partial class Form1
 	private async Task SyncManifestVersionAfterUpdate(GameMod original, string? installedVersion)
 	{
 		if (string.IsNullOrEmpty(installedVersion)) return;
+		// ⚠️ Never on Stardew. There the file is the author's manifest.json, and a Nexus page's version is free text: "2.0.3.5"
+		// or "1.4 beta" written into it makes SMAPI refuse the manifest and skip the mod — for an accessibility mod, a silent
+		// game. See MarkSelectedUpdateAsInstalled. RecordInstalledDownloadVersion, which runs before this, already settles the
+		// comparison, so the Updates tab still lets go of the row.
+		if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley)) return;
 		if (UpdateCoverage.HasUpdateLink(original))
 		{
 			string key = DownloadKey(original);
@@ -941,8 +946,7 @@ public partial class Form1
 			if (updated == null || !Directory.Exists(updated.FolderPath)) return;
 			if (!IsNewerVersion(updated.Version, installedVersion)) return;   // already at or beyond the new version
 
-			string manifestPath = Path.Combine(updated.FolderPath,
-				GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.StardewValley) ? "manifest.json" : ".manager_manifest.json");
+			string manifestPath = Path.Combine(updated.FolderPath, ".manager_manifest.json");
 			if (!File.Exists(manifestPath)) return;
 
 			JObject manifest = JObject.Parse(File.ReadAllText(manifestPath));

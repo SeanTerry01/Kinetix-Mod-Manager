@@ -54,8 +54,13 @@ public static class FabricVersionRange
 	{
 		if (string.IsNullOrWhiteSpace(range) || string.IsNullOrWhiteSpace(version)) return true;
 
-		// "||" separates whole alternatives: any one of them being satisfied is enough.
-		return range.Split(new[] { "||" }, StringSplitOptions.None)
+		// "||" separates whole alternatives: any one of them being satisfied is enough. So does a standalone "or", which is
+		// how MinecraftLayout.ParseModInfo writes a fabric.mod.json array of ranges, ["~26.2", "~26.3"], so that it reads
+		// well when spoken. Read as one more term instead, "~26.2 or ~26.3" needed both at once and accepted no version,
+		// and a mod built for either was judged unable to run.
+		string normalised = System.Text.RegularExpressions.Regex.Replace(range, @"\s+or\s+", " || ",
+			System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+		return normalised.Split(new[] { "||" }, StringSplitOptions.None)
 			.Any(alternative => AllTermsHold(alternative, version!));
 	}
 
