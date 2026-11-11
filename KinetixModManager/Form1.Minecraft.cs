@@ -979,8 +979,15 @@ public partial class Form1
 		List<GameMod> failedThatMustGoOff = await Task.Run(() =>
 			MinecraftMovePlan.FailedThatMustGoOff(couldNotUpdate, m => SurvivesTheMove(m, newVersion, installedBuilds)).ToList());
 
-		// Nothing has changed yet, so this is the moment to stop.
-		if (failedThatMustGoOff.Any(m => string.Equals(m.UniqueId, accessMod.FabricModId, StringComparison.OrdinalIgnoreCase)))
+		// Nothing has changed yet, so this is the moment to stop. Not only for the access mod: switching off what it needs —
+		// Fabric API for United Minecraft, or any other library it requires — leaves a game Fabric refuses to start, which is
+		// the outcome this order of work exists to prevent. A failed Fabric API download did exactly that.
+		var mustStay = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { accessMod.FabricModId };
+		if (accessMod.NeedsFabricApi) mustStay.Add(MinecraftSuite.FabricApi.FabricModId);
+		if (mods.FirstOrDefault(m => string.Equals(m.UniqueId, accessMod.FabricModId, StringComparison.OrdinalIgnoreCase)) is { } installedAccessMod)
+			foreach (ModDependency needed in installedAccessMod.Dependencies.Where(d => d.IsRequired && d.UniqueId.Length > 0))
+				mustStay.Add(needed.UniqueId);
+		if (failedThatMustGoOff.Any(m => mustStay.Contains(m.UniqueId)))
 		{
 			ResetStatus();
 			_soundEngine.Play("error");
@@ -1168,11 +1175,17 @@ public partial class Form1
 			if (candidate.Length == 0 || tried.Contains(candidate, StringComparer.OrdinalIgnoreCase)) continue;
 			tried.Add(candidate);
 
+			// Only "no such project" moves on to the next spelling. Anything else — offline, a timeout, Modrinth down — goes up to
+			// the caller, which says it could not be fetched. Swallowed here, being offline was heard as "has no build for
+			// Minecraft 26.3", and sent the player looking for a version problem that wasn't there.
 			try
 			{
 				if (await ModrinthService.GetLatestFileAsync(candidate, gameVersion) is { } file) return file;
 			}
-			catch (Exception ex) { DiagnosticLog.WriteException("Modrinth", $"looking for {candidate}", ex); }
+			catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+			{
+				DiagnosticLog.WriteException("Modrinth", $"looking for {candidate}", ex);
+			}
 		}
 
 		return null;
@@ -1495,8 +1508,24 @@ public partial class Form1
 						StringComparison.OrdinalIgnoreCase))
 				: null;
 
+			// A jar that says it can't run on the Minecraft in use stops Fabric starting the game at all. Asked, not refused:
+			// the player may be about to move version.
+			string gameVersion = MinecraftGameVersionInUse(MinecraftRootFolder());
+			if (gameVersion.Length > 0 && !JarAcceptsGameVersion(jarPath, gameVersion) &&
+				SpeakBox(Loc.T("mc.install.wrongVersionBox", info.Name,
+						info.Depends.TryGetValue("minecraft", out string? range) ? range : "", gameVersion),
+					Loc.T("mc.install.wrongVersionTitle"), MessageBoxButtons.YesNo) != DialogResult.Yes)
+			{
+				Speak(Loc.T("common.changesCancelled"));
+				return;
+			}
+
 			if (existing != null && !ConfirmOverwrite(info.Name, MinecraftLayout.ReadModInfo(existing).Version))
 				return;
+
+			// A copy the player had switched off stays off: a rival access mod coming back on says everything twice.
+			bool wasOff = existing != null &&
+				existing.EndsWith(GameProfiles.Require(GameProfiles.Minecraft).DisabledModSuffix, StringComparison.OrdinalIgnoreCase);
 
 			// Backed up before it is replaced, like every other game's install path does, and a backup that fails stops it.
 			if (existing != null && File.Exists(existing))
@@ -1507,7 +1536,13 @@ public partial class Form1
 			await InstallJarAsync(jarPath, modsFolder);
 			RecordDownloadInstalled(jarPath);
 
-			Speak(Loc.T("mc.install.done", info.Name));
+			if (wasOff && File.Exists(destination))
+			{
+				File.Move(destination, destination + GameProfiles.Require(GameProfiles.Minecraft).DisabledModSuffix, overwrite: true);
+				Speak(Loc.T("mc.install.doneLeftOff", info.Name));
+			}
+			else
+				Speak(Loc.T("mc.install.done", info.Name));
 			await RefreshModList(checkUpdates: false);
 		}
 		catch (Exception ex)

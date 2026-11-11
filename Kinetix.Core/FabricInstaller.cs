@@ -113,14 +113,36 @@ public static class FabricInstaller
 	public static string DetectInstalledGameVersion(string root, IEnumerable<string>? notThese = null)
 	{
 		var excluded = new HashSet<string>(notThese ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
-		foreach (string id in InstalledVersionIds(root))
-		{
-			if (excluded.Contains(id)) continue;
-			string game = GameVersionOf(id);
-			if (game.Length > 0) return game;
-		}
+		List<string> ids = InstalledVersionIds(root).Where(id => !excluded.Contains(id) && GameVersionOf(id).Length > 0).ToList();
+		if (ids.Count == 0) return "";
 
-		return "";
+		// ⚠️ Not the first id: that list is ordered by the whole id, so by the LOADER first. With Fabric for 1.21.4 and, later,
+		// a newer loader for 1.21.1, the player's 1.21.4 setup was taken to be 1.21.1, F5 started the wrong one with every
+		// mod refusing, and the suite then pinned it. What the launcher last used comes first, then the newest game version.
+		if (LastUsedFabricVersion(root, ids) is { Length: > 0 } used) return GameVersionOf(used);
+		return ids.Select(GameVersionOf).OrderByDescending(v => v, Comparer<string>.Create(CompareNumbersAsNumbers)).First();
+	}
+
+	/// <summary>The installed Fabric version id the launcher's most recently used profile names, or empty.</summary>
+	private static string LastUsedFabricVersion(string root, IReadOnlyCollection<string> installed)
+	{
+		try
+		{
+			string path = MinecraftLayout.LauncherProfilesPathFor(root);
+			if (!File.Exists(path) || ParsePreservingDates(File.ReadAllText(path))["profiles"] is not JObject profiles) return "";
+
+			return profiles.Properties()
+				.Select(p => p.Value as JObject)
+				.Where(p => p?["lastVersionId"]?.ToString() is { } id && installed.Contains(id, StringComparer.OrdinalIgnoreCase))
+				.OrderByDescending(p => p!["lastUsed"]?.ToString() ?? "", StringComparer.Ordinal)
+				.Select(p => p!["lastVersionId"]!.ToString())
+				.FirstOrDefault() ?? "";
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.WriteException("Minecraft", "reading which installation the launcher last used", ex);
+			return "";
+		}
 	}
 
 	/// <summary>Any installed Fabric version id under <paramref name="root"/>, newest-looking first.</summary>

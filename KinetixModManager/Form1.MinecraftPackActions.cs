@@ -186,6 +186,12 @@ public partial class Form1
 	/// </summary>
 	private async Task UpdateModpackAsync(MinecraftPack pack, ModpackVersion update)
 	{
+		// Not while Minecraft runs: it holds the mod jars open, and the first delete failing left a pack half old, half new.
+		if (Volatile.Read(ref _minecraftGamesRunning) > 0)
+		{
+			SpeakBox(Loc.T("mc.pack.update.closeGameFirst", pack.Name), Loc.T("mc.pack.update.title"), MessageBoxButtons.OK);
+			return;
+		}
 		using IDisposable busy = BeginModOperation();
 
 		string root = MinecraftRootFolder();
@@ -231,8 +237,16 @@ public partial class Form1
 		string question = Loc.T("mc.pack.update.confirm", pack.Name, pack.PackVersion, update.VersionNumber,
 			plan.Download.Count, FormatBytes(plan.Download.Sum(f => f.Size)),
 			plan.Remove.Count == 0 ? "" : Loc.T("mc.pack.update.oldFilesGo", plan.Remove.Count));
+		// Mods the player added to the pack are kept, but one that says it can't run on the pack's new Minecraft would stop
+		// Fabric starting it at all, straight after "updated". Those are named here and switched off once the update is in.
+		List<string> addedThatCantRun = index.MinecraftVersion != pack.MinecraftVersion
+			? await Task.Run(() => PlayerModsThatRejectVersion(pack, plan, index.MinecraftVersion))
+			: new List<string>();
 		if (index.MinecraftVersion != pack.MinecraftVersion)
 			question += "\n\n" + Loc.T("mc.pack.update.movesVersion", pack.MinecraftVersion, index.MinecraftVersion);
+		if (addedThatCantRun.Count > 0)
+			question += "\n\n" + Loc.T("mc.pack.update.yoursSwitchedOff", addedThatCantRun.Count, index.MinecraftVersion,
+				string.Join(", ", addedThatCantRun.Select(Path.GetFileName)));
 
 		if (SpeakBox(question, Loc.T("mc.pack.update.title"), MessageBoxButtons.YesNo) != DialogResult.Yes)
 		{
@@ -250,6 +264,7 @@ public partial class Form1
 			return;
 		}
 
+		bool applied = false;
 		string staging = pack.Folder.TrimEnd('\\', '/') + ".updating";
 		try
 		{
@@ -284,6 +299,13 @@ public partial class Form1
 
 			await Task.Run(() => ApplyPackUpdate(pack, plan, staging, mrpack, keepDisabled, superseded.Select(s => s.Path)));
 
+			// The player's own mods that said they can't run on the new version, switched off as the question said.
+			foreach (string file in addedThatCantRun)
+			{
+				try { if (File.Exists(file)) File.Move(file, file + MinecraftDisabledSuffix); }
+				catch (Exception ex) { LogFailure("Minecraft", $"Could not switch off {Path.GetFileName(file)}", ex); }
+			}
+
 			pack.PackVersion = index.VersionId.Length > 0 ? index.VersionId : update.VersionNumber;
 			pack.MinecraftVersion = index.MinecraftVersion;
 			pack.LoaderVersion = index.LoaderVersion;
@@ -292,6 +314,7 @@ public partial class Form1
 			pack.ProvidedFiles = plan.ProvidedFiles;
 			pack.FileProjects = plan.FileProjects;
 			MinecraftModpacks.Save(pack);
+			applied = true;
 
 			_packUpdates.Remove(pack.Folder);
 			_activePackCache = default;
@@ -316,9 +339,36 @@ public partial class Form1
 			ResetStatus();
 		}
 
-		RemoveUpdateRowsFor(new GameMod { UniqueId = ModpackRowId });
+		// Kept when the update didn't go in, so it can be tried again: a second try plans against what is on disk and finishes it.
+		if (applied) RemoveUpdateRowsFor(new GameMod { UniqueId = ModpackRowId });
 		await RefreshMinecraftPacksListAsync();
 		if (MinecraftModpacks.InstallKeyFor(pack) == _settings.ActiveGame) RefreshAllData(checkUpdates: false);
+	}
+
+	/// <summary>
+	/// The switched-on jars the player added to a pack (not the pack's own, not ones the update will replace) whose own
+	/// fabric.mod.json says they can't run on <paramref name="newVersion"/>. Judged on what each declares, offline: a jar
+	/// that says nothing is left alone, as the version move does. See FabricVersionRange.
+	/// </summary>
+	private static List<string> PlayerModsThatRejectVersion(MinecraftPack pack, ModpackUpdatePlan plan, string newVersion)
+	{
+		string mods = Path.Combine(pack.Folder, "mods");
+		if (!Directory.Exists(mods)) return new List<string>();
+		var provided = new HashSet<string>(pack.ProvidedFiles.Concat(plan.ProvidedFiles), StringComparer.OrdinalIgnoreCase);
+
+		var cantRun = new List<string>();
+		foreach (string file in Directory.EnumerateFiles(mods, "*" + MinecraftLayout.ModExtension))
+		{
+			if (provided.Contains("mods/" + Path.GetFileName(file))) continue;
+			try
+			{
+				FabricModInfo info = MinecraftLayout.ReadModInfo(file);
+				if (info.Depends.TryGetValue("minecraft", out string? range) && !FabricVersionRange.Accepts(range, newVersion))
+					cantRun.Add(file);
+			}
+			catch (Exception ex) { DiagnosticLog.WriteException("Minecraft", $"reading {Path.GetFileName(file)}", ex); }
+		}
+		return cantRun;
 	}
 
 	/// <summary>The suffix a switched-off Minecraft mod carries — <c>.disabled</c>.</summary>

@@ -81,6 +81,30 @@ public class FabricInstallerTests
 		finally { Directory.Delete(dir, recursive: true); }
 	}
 
+	[Fact]
+	public void TheGameVersionInUseIsNotTheOneWithTheNewestLoader()
+	{
+		// Ordered by the whole id, the newer loader for 1.21.1 came first and the player's 1.21.4 setup was taken for 1.21.1.
+		string dir = NewTempDir();
+		try
+		{
+			Directory.CreateDirectory(Path.Combine(dir, "versions", "fabric-loader-0.16.10-1.21.4"));
+			Directory.CreateDirectory(Path.Combine(dir, "versions", "fabric-loader-0.16.14-1.21.1"));
+
+			// No launcher record: the newest game version.
+			Assert.Equal("1.21.4", FabricInstaller.DetectInstalledGameVersion(dir));
+
+			// The launcher's most recently used profile wins.
+			File.WriteAllText(Path.Combine(dir, "launcher_profiles.json"), """
+			{ "profiles": {
+			  "a": { "lastVersionId": "fabric-loader-0.16.10-1.21.4", "lastUsed": "2026-10-01T10:00:00.000Z" },
+			  "b": { "lastVersionId": "fabric-loader-0.16.14-1.21.1", "lastUsed": "2026-11-01T10:00:00.000Z" } } }
+			""");
+			Assert.Equal("1.21.1", FabricInstaller.DetectInstalledGameVersion(dir));
+		}
+		finally { Directory.Delete(dir, recursive: true); }
+	}
+
 	// -------------------------------------------------------------------------
 	// Picking a version
 	// -------------------------------------------------------------------------
