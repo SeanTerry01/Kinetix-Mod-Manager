@@ -323,6 +323,10 @@ public partial class Form1
 		_userMovedSinceLoadBegan = false;
 		_landOnFirstTabWhenReady = true;
 		_landShouldSpeak = false;   // focus moves onto the strip here, and the reader announces that itself
+		// A check still running is for the game just left, even if the player comes straight back to it: the rows it had found
+		// go below, and the answers that arrive while another game is open are dropped. Marked abandoned here, so it ends
+		// quietly and the game that is open when it does gets a fresh check, instead of a part result read out as complete.
+		if (Volatile.Read(ref _updateCheckRunning) != 0) _updateCheckGame = null;
 		ForgetPreviousGamesMods();
 		RefreshAllData(checkUpdates: _settings.CheckForUpdatesAtStartup);
 

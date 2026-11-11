@@ -332,6 +332,8 @@ public partial class Form1
 				});
 				return;
 			}
+			// Set only for a check refused while an abandoned one wound down, so it must not carry over into a later refresh.
+			_checkAgainWhenFree = false;
 
 			_soundEngine.Play("load_complete");
 			var pendingSmapi = _pendingSmapiUpdate;

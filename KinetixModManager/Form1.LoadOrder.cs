@@ -284,6 +284,9 @@ public partial class Form1
 		{
 			// Held first, so a refresh that was already waiting for the lock finds it and doesn't put everything back.
 			_settings.DeploymentHeldOff.Add(game);
+			// Read again now, under the lock: the one read before the question can be older than a deployment that ran while
+			// it was open, and purging from it left that deployment's files in the game with a record that no longer named them.
+			manifest = DeploymentManifest.Load(game);
 			removed = ModFileSystem.PurgeDeployment(gameRoot, manifest, LogError);
 			manifest.Save(game);
 		}
@@ -571,7 +574,10 @@ public partial class Form1
 	/// order is persisted, the deployment is re-synced (which is fast: only files whose winner changed are
 	/// relinked), the list is rebuilt with fresh conflict counts, and the new position is announced.
 	/// </summary>
-	private void ListModPriority_KeyDown(object? sender, KeyEventArgs e)
+	/// <summary>Which Ctrl+Up/Down press is the latest, so only that one speaks. See ListModPriority_KeyDown.</summary>
+	private int _priorityMoveGeneration;
+
+	private async void ListModPriority_KeyDown(object? sender, KeyEventArgs e)
 	{
 		if (!(e.Control && (e.KeyCode == Keys.Up || e.KeyCode == Keys.Down))) return;
 		e.Handled = true;
@@ -590,9 +596,20 @@ public partial class Form1
 			return;
 		}
 
-		(order[idx], order[target]) = (order[target], order[idx]);
+		// Swapped in a copy, so a deployment already walking the old order on another thread is not changed under it
+		// ("Collection was modified"). Then the walk runs off the window's thread: on a large setup it takes seconds, and on
+		// this thread the reader went quiet and keys did nothing, and it waited too on a refresh holding the lock. Holding
+		// Ctrl+Up speaks once, for where the mod ends up.
+		var next = new List<string>(order);
+		(next[idx], next[target]) = (next[target], next[idx]);
+		_settings.ModPriority[_settings.ActiveGame] = next;
+		order = next;
 		_settings.Save();
-		SyncBethesdaDeployment();
+		int generation = ++_priorityMoveGeneration;
+		string game = _settings.ActiveGame;
+		try { await Task.Run(() => SyncBethesdaDeployment()); }
+		catch (Exception ex) { LogFailure("Deploy", "Could not bring the game folder up to date after a priority change", ex); }
+		if (generation != _priorityMoveGeneration || _settings.ActiveGame != game || listModPriority.IsDisposed) return;
 
 		_suppressPrioritySpeak = true;
 		RefreshModPriorityList();

@@ -478,6 +478,9 @@ public partial class Form1
 			?? game.DisplayName;
 
 		CrossGameDownloadAction choice = _settings.CrossGameDownloads;
+		// A view is open (Settings, say), and a switch would change the game under it, so its Save would write the old
+		// game's choices to the new one. Not asked either, so no chooser lands on top of it. The file is kept for later.
+		if (OnUi(() => OverlayIsOpen)) choice = CrossGameDownloadAction.SaveForLater;
 		if (choice == CrossGameDownloadAction.Ask)
 		{
 			// With no session open there is nothing to interrupt, so the question is only worth asking when it

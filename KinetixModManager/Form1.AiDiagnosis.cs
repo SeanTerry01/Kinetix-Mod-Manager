@@ -209,6 +209,8 @@ public partial class Form1
 			try
 			{
 				string answer = await _aiService.ChatAsync(system, turns, maxTokens: 1200);
+				// Closed while it was asked: the answer was read out, whole, over whatever the player had gone on to.
+				if (transcript.IsDisposed) return;
 				turns.Add(new AiTurn(false, answer));
 				transcript.AppendText(Environment.NewLine + Environment.NewLine + Loc.T("ai.chatAi") + Environment.NewLine + NormalizeNewlines(answer));
 				_soundEngine.Play("load_complete");
@@ -216,6 +218,8 @@ public partial class Form1
 			}
 			catch (Exception ex)
 			{
+				// Nor a failure box over the main window, for a conversation that is no longer there.
+				if (transcript.IsDisposed) { DiagnosticLog.WriteException("AI", "a follow-up asked from a closed view", ex); return; }
 				turns.RemoveAt(turns.Count - 1); // drop the unanswered question so a retry starts clean
 				_soundEngine.Play("error");
 				SpeakBox(Loc.T("ai.failed", ex.Message), Loc.T("ai.title"), MessageBoxButtons.OK);

@@ -274,6 +274,8 @@ public partial class Form1
 	/// </summary>
 	private async Task<bool> InstallBepInExAsync(string gameRoot)
 	{
+		// The copy this is for. A game switched to during the download had its mods folder set to this game's plugins.
+		string key = _settings.ActiveGame;
 		string tempDir = Path.Combine(Path.GetTempPath(), "KinetixBepInEx_" + Path.GetRandomFileName());
 		LoadingPulse pulse = StartLoadingPulse();
 
@@ -297,9 +299,10 @@ public partial class Form1
 
 			// A session whose mods path was never resolved (BepInEx wasn't installed when the game was detected)
 			// now has somewhere real to point at.
-			if (string.IsNullOrEmpty(_settings.CurrentModsPath) || !Directory.Exists(_settings.CurrentModsPath))
+			string current = _settings.GameModsPaths.TryGetValue(key, out string? had) ? had : "";
+			if (string.IsNullOrEmpty(current) || !Directory.Exists(current))
 			{
-				_settings.CurrentModsPath = plugins;
+				_settings.GameModsPaths[key] = plugins;
 				_settings.Save();
 			}
 
@@ -307,7 +310,7 @@ public partial class Form1
 			_soundEngine.Play("load_complete");
 			Speak(Loc.T("bepinex.installedSpeak", BepInExPinnedVersion));
 
-			await RefreshModList(checkUpdates: false);
+			if (_settings.ActiveGame == key) await RefreshModList(checkUpdates: false);
 			ResetStatus();
 			return true;
 		}

@@ -42,6 +42,9 @@ public partial class Form1
 		{
 			// Or the next refresh puts everything back while the game is updating.
 			_settings.DeploymentHeldOff.Add(game);
+			// Read again now, under the lock: the one read before the question can be older than a deployment that ran while
+			// it was open, and purging from it left that deployment's files in the game with a record that no longer named them.
+			manifest = DeploymentManifest.Load(game);
 			removed = ModFileSystem.PurgeDeployment(gameRoot, manifest, LogError);
 			manifest.Save(game);
 		}

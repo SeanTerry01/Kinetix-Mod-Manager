@@ -269,6 +269,8 @@ public partial class Form1
 
 			return built;
 		});
+		// Switched to another setup meanwhile: this one would mark the wrong row current. That switch fills the list itself.
+		if (!string.Equals(_settings.ActiveGame, active, StringComparison.Ordinal)) return;
 
 		string? keep = (listMinecraftPacks.SelectedItem as MinecraftSetupRow)?.Pack?.Folder;
 		int keepIndex = listMinecraftPacks.SelectedIndex;

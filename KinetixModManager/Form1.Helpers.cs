@@ -1340,8 +1340,12 @@ public partial class Form1
 	private async Task PopulateDiscoveryLanguagesAsync()
 	{
 		if (cmbDiscoveryLanguage == null) return;
+		// Taken before the request, which asks about the game open when it is made.
+		string game = _settings.ActiveGame;
 		var langs = await _nexusService.GetModLanguagesAsync();
 		if (langs.Count == 0) return; // network failure etc. — keep whatever is already there
+		// A quick switch has two of these in flight, and the one for the game left can answer last. The open game's own fills it.
+		if (!string.Equals(_settings.ActiveGame, game, StringComparison.Ordinal)) return;
 
 		string desired = _settings.DiscoveryLanguage; // "" = Any language
 		_suppressDiscoveryLanguageEvent = true;
@@ -1537,7 +1541,8 @@ public partial class Form1
 		if (string.Equals(_discoveryCategoriesGame, game, StringComparison.Ordinal)) return;
 
 		var categories = await _nexusService.GetModCategoriesAsync();
-		if (cmbDiscoveryCategory == null || categories.Count == 0) return;
+		// The game left can answer after the game switched to, which would leave its categories here and mark them fetched.
+		if (cmbDiscoveryCategory == null || categories.Count == 0 || !string.Equals(_settings.ActiveGame, game, StringComparison.Ordinal)) return;
 		_discoveryCategoriesGame = game;
 
 		cmbDiscoveryCategory.Items.Clear();

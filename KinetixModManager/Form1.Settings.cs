@@ -291,7 +291,9 @@ public partial class Form1
 		//
 		// A game with one searchable catalogue gets neither control and a sentence saying so. A dropdown with
 		// one item in it is not a choice, and offering one would suggest the user is missing something.
-		IReadOnlyList<ModSourceInfo> searchable = ModSources.SearchableFor(_settings.ActiveGame);
+		// The game the list belongs to, kept so Save files the choice under it even if the session changed meanwhile.
+		string settingsGame = _settings.ActiveGame;
+		IReadOnlyList<ModSourceInfo> searchable = ModSources.SearchableFor(settingsGame);
 
 		(ModSearchMode Mode, string Text)[] searchModes =
 		{
@@ -1074,6 +1076,8 @@ public partial class Form1
 			try
 			{
 				var live = await _aiService.ListModelsAsync(prov.Id, key, baseUrl);
+				// Settings closed while it was asked: nothing to fill, and nothing to say over whatever came next.
+				if (btnAiRefresh.IsDisposed) return;
 				if (live.Count == 0) { Speak(Loc.T("settings.aiRefreshNone")); return; }
 
 				// Compare against the previously cached list so we can tell the user what changed (new / removed models).
@@ -1098,6 +1102,7 @@ public partial class Form1
 			}
 			catch (Exception ex)
 			{
+				if (btnAiRefresh.IsDisposed) { DiagnosticLog.WriteException("AI", "refreshing models after Settings closed", ex); return; }
 				_soundEngine.Play("error");
 				SpeakBox(Loc.T("settings.aiRefreshFail", ex.Message), Loc.T("ai.title"), MessageBoxButtons.OK);
 			}
@@ -1123,12 +1128,14 @@ public partial class Form1
 			{
 				// 256 tokens of headroom so a "thinking" model still has room to emit the visible reply.
 				await _aiService.AskAsync(prov.Id, model, key, "You are a connection test.", "Reply with the single word OK.", 256, testBaseUrl);
+				if (btnAiTest.IsDisposed) return;
 				// A test that passed is an operation that finished, not a connection the app now holds.
 				_soundEngine.Play("load_complete");
 				Speak(Loc.T("settings.aiTestOk"));
 			}
 			catch (Exception ex)
 			{
+				if (btnAiTest.IsDisposed) { DiagnosticLog.WriteException("AI", "testing the connection after Settings closed", ex); return; }
 				_soundEngine.Play("error");
 				SpeakBox(Loc.T("settings.aiTestFail", ex.Message), Loc.T("ai.title"), MessageBoxButtons.OK);
 			}
@@ -1246,7 +1253,7 @@ public partial class Form1
 				if (cSearchMode != null && cSearchMode.SelectedIndex >= 0)
 					_settings.ModSearchMode = searchModes[cSearchMode.SelectedIndex].Mode;
 				if (cPreferredSource != null && cPreferredSource.SelectedIndex >= 0)
-					_settings.PreferredModSource[_settings.ActiveGame] = searchable[cPreferredSource.SelectedIndex].Id;
+					_settings.PreferredModSource[settingsGame] = searchable[cPreferredSource.SelectedIndex].Id;
 
 				_settings.AllowManualTheme = cManualTheme.Checked;
 				_settings.CurrentTheme = cManualTheme.Checked
