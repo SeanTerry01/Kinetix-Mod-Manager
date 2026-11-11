@@ -775,7 +775,8 @@ public partial class Form1
 
 		// A world from a newer Minecraft is the one copy that can go wrong. Asked, not refused: the copy is only a
 		// copy, and a player may well want to try.
-		if (IsNewerThanPack(chosen, pack) &&
+		bool? newer = await WorldIsNewerThanPackAsync(chosen, pack);
+		if (newer == true &&
 			SpeakBox(Loc.T("mc.world.newer", chosen.Name, chosen.LastPlayedVersion, pack.Name, pack.MinecraftVersion),
 				Loc.T("mc.world.title"), MessageBoxButtons.YesNo) != DialogResult.Yes)
 		{
@@ -785,7 +786,11 @@ public partial class Form1
 
 		try
 		{
-			Speak(Loc.T("mc.world.copying", chosen.Name));
+			// Both versions known and different, and still no telling which is newer (offline, or a version Mojang does not
+			// list): said, in the same line, rather than taken as "not newer" with nothing said.
+			bool couldNotTell = newer is null && chosen.LastPlayedVersion.Length > 0 && pack.MinecraftVersion.Length > 0;
+			Speak((couldNotTell ? Loc.T("mc.world.couldNotCompare", chosen.LastPlayedVersion, pack.MinecraftVersion) + " " : "")
+				+ Loc.T("mc.world.copying", chosen.Name));
 			await Task.Run(() => MinecraftWorlds.CopyInto(chosen, pack.Folder));
 			Speak(Loc.T("mc.world.copied", chosen.Name, pack.Name));
 		}
@@ -802,21 +807,46 @@ public partial class Form1
 	private static string VersionOrUnknown(MinecraftWorld world) =>
 		world.LastPlayedVersion.Length > 0 ? world.LastPlayedVersion : Loc.T("mc.world.versionUnknown");
 
-	/// <summary>Whether a world was last played in a newer Minecraft than the pack runs. Unknown counts as no.</summary>
-	private bool IsNewerThanPack(MinecraftWorld world, MinecraftPack pack)
+	/// <summary>Mojang's version list, fetched once a session for comparing versions. Null until it has been had.</summary>
+	private JObject? _mojangVersionsThisSession;
+
+	/// <summary>
+	/// Whether a world was last played in a newer Minecraft than the pack runs, or null when that cannot be told.
+	///
+	/// <para>
+	/// ⚠️ Not only the launcher's cached list. <c>versionsersion_manifest_v2.json</c> is the official launcher's, which a
+	/// Minecraft installed by the manager never has, so the warning could never fire there; and a stale copy lacks newer
+	/// versions. Mojang's list is fetched (a few seconds at most, once a session), and the cached one is tried when that
+	/// fails or does not know the version.
+	/// </para>
+	/// </summary>
+	private async Task<bool?> WorldIsNewerThanPackAsync(MinecraftWorld world, MinecraftPack pack)
 	{
+		string version = world.LastPlayedVersion, than = pack.MinecraftVersion;
+		if (version.Length == 0 || than.Length == 0) return null;
+		if (version == than) return false;
+
 		try
 		{
-			string manifestPath = Path.Combine(MinecraftRootFolder(), "versions", "version_manifest_v2.json");
-			if (!File.Exists(manifestPath)) return false;
+			if (_mojangVersionsThisSession is null)
+			{
+				Task<JObject?> fetch = FetchJsonAsync(MinecraftGameFiles.VersionManifestUrl);
+				if (await Task.WhenAny(fetch, Task.Delay(TimeSpan.FromSeconds(4))) == fetch)
+					_mojangVersionsThisSession = await fetch;
+			}
+			if (_mojangVersionsThisSession is { } fetched &&
+				MinecraftWorlds.IsNewer(version, than, fetched) is bool fromMojang)
+				return fromMojang;
 
-			return MinecraftWorlds.IsNewer(world.LastPlayedVersion, pack.MinecraftVersion,
-				JObject.Parse(File.ReadAllText(manifestPath))) == true;
+			string cachedPath = Path.Combine(MinecraftRootFolder(), "versions", "version_manifest_v2.json");
+			if (!File.Exists(cachedPath)) return null;
+			JObject cached = await Task.Run(() => JObject.Parse(File.ReadAllText(cachedPath)));
+			return MinecraftWorlds.IsNewer(version, than, cached);
 		}
 		catch (Exception ex)
 		{
 			DiagnosticLog.WriteException("Minecraft", "comparing a world's version with a pack's", ex);
-			return false;
+			return null;
 		}
 	}
 }

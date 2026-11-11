@@ -1577,6 +1577,7 @@
   "mc.world.rowModrinthApp": "{0}, from the Modrinth App's {1}, last played in {2}",
   "mc.world.versionUnknown": "an unknown version",
   "mc.world.newer": "{0} was last played in Minecraft {1}, which is newer than {2}'s Minecraft {3}.\n\nMinecraft cannot safely open a world in an older version: the copy may not load, or may lose things. Your original is not touched either way.\n\nCopy it anyway?",
+  "mc.world.couldNotCompare": "Could not tell whether Minecraft {0} is newer than {1}. If it is, the copy may not open.",
   "mc.world.copying": "Copying {0}...",
   "mc.world.copied": "{0} copied into {1}.",
   "mc.world.failed": "{0} could not be copied.\n\n{1}",
