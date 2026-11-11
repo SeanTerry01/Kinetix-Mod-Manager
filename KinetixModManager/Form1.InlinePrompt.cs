@@ -277,16 +277,8 @@ public partial class Form1
 			{
 				if (!host.IsDisposed)
 				{
-					// Focus has to leave the overlay BEFORE the overlay leaves the window. Removing a container
-					// while something inside it still has focus makes WinForms park that control's handle on its
-					// hidden holding window — and the focus goes with it, so the screen reader dutifully
-					// announced "WindowsFormsParkingWindow". Clearing the active control moves focus to the form
-					// without focusing anything in particular, which raises no GotFocus and so leaves the
-					// carefully ordered announcements below exactly as they were.
-					if (host.ActiveControl != null && overlay.Contains(host.ActiveControl))
-						host.ActiveControl = null;
-
-					host.Controls.Remove(overlay);
+					// What was behind the overlay comes back on first, so that focus can go straight back to it while
+					// the overlay is still there. See the removal below for why that order matters.
 					foreach (Control restore in disabled)
 						if (!restore.IsDisposed) restore.Enabled = true;
 
@@ -343,6 +335,21 @@ public partial class Form1
 						if (returningTo != null && _announceListNameOnNextChange)
 							List_Enter(returningTo, EventArgs.Empty);
 					}
+
+					// Focus has to leave the overlay BEFORE the overlay leaves the window. Removing a container
+					// while something inside it still has focus makes WinForms park that control's handle on its
+					// hidden holding window — and the focus goes with it, so the screen reader dutifully
+					// announced "WindowsFormsParkingWindow".
+					//
+					// ⚠️ Removed only AFTER focus has gone back, not before. Clearing the active control to get focus
+					// out first put it on the form for a moment, and the reader read the form as it passed: the whole
+					// title bar after every view closed, or "window" from inside another view, ahead of the row.
+					// Measured with NVDA 2026-11-10. Focus now goes straight from the overlay to where it was, and
+					// this only catches the case where there was nowhere to go back to.
+					if (host.ActiveControl != null && overlay.Contains(host.ActiveControl))
+						host.ActiveControl = null;
+
+					host.Controls.Remove(overlay);
 				}
 			}
 			catch (Exception ex) { DiagnosticLog.WriteException("UI", "putting the window back after a prompt closed", ex); }
