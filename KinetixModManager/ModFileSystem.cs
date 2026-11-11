@@ -142,7 +142,8 @@ public static class ModFileSystem
 
 		foreach (GameMod mod in mods.Where(m => !m.IsGroup && !string.IsNullOrEmpty(m.FolderPath) && Directory.Exists(m.FolderPath)))
 		{
-			foreach (string file in EnumerateFilesSafe(mod.FolderPath))
+			// Only the plugins the game loads: one in a subfolder is not a master anything can have. See LoadablePluginFiles.
+			foreach (string file in BethesdaPlugins.LoadablePluginFiles(mod.FolderPath))
 			{
 				string leaf = Path.GetFileName(file);
 				if (!BethesdaPlugins.IsPluginFile(leaf) || !activePlugins.Contains(leaf)) continue; // only active plugins load
@@ -156,13 +157,6 @@ public static class ModFileSystem
 			}
 		}
 		return result;
-	}
-
-	/// <summary>Enumerates files under <paramref name="root"/> recursively, swallowing IO errors (returns what it can).</summary>
-	private static IEnumerable<string> EnumerateFilesSafe(string root)
-	{
-		try { return Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories); }
-		catch { return Enumerable.Empty<string>(); }
 	}
 
 	// -------------------------------------------------------------------------
@@ -278,7 +272,7 @@ public static class ModFileSystem
 		string pluginsFilePath = PluginsTxtPath(activeGame, gameFolder);
 		if (pluginsFilePath.Length == 0) return;
 
-		var plugins = Directory.GetFiles(modFolderPath, "*.*", SearchOption.AllDirectories)
+		var plugins = BethesdaPlugins.LoadablePluginFiles(modFolderPath)
 			.Select(p => Path.GetFileName(p))
 			.Where(name => !string.IsNullOrEmpty(name))
 			.Select(name => name!)

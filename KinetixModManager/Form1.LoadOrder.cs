@@ -654,7 +654,8 @@ public partial class Form1
 		foreach (GameMod mod in mods.Where(m => !m.IsGroup))
 		{
 			if (!Directory.Exists(mod.FolderPath)) continue;
-			foreach (string file in Directory.GetFiles(mod.FolderPath, "*.*", SearchOption.AllDirectories))
+			// Top level only: a plugin in a subfolder deploys where the game never looks. See LoadablePluginFiles.
+			foreach (string file in BethesdaPlugins.LoadablePluginFiles(mod.FolderPath))
 			{
 				string name = Path.GetFileName(file);
 				if (!BethesdaPlugins.IsPluginFile(name)) continue;

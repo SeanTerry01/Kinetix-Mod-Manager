@@ -109,7 +109,7 @@ public sealed class RefreshOffThreadTests
 	public void AnInstallReadsAListThatIsCurrent()
 	{
 		// Reading it mid-rescan after a game switch saw nothing installed, so nothing was backed up.
-		InOrder(Body("Form1.Install.cs", "private async Task<bool> InstallFromZip(", 3000),
+		InOrder(Body("Form1.Install.cs", "private async Task<bool> InstallFromZip(", 4000),
 			"_refreshInFlight", "List<GameMod> installed = _allInstalledMods.ToList();");
 	}
 

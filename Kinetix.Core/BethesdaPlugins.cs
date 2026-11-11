@@ -28,6 +28,60 @@ public static class BethesdaPlugins
 	}
 
 	/// <summary>
+	/// The plugins in a stored mod folder that the game will actually load: the ones at the folder's top level, which
+	/// deploy straight into <c>Data</c>.
+	///
+	/// <para>
+	/// ⚠️ Never a recursive search. A plugin in a subfolder (an archive's <c>Optional\</c> choices, say) deploys to
+	/// <c>Data\Optional\</c>, where the engine never looks, so it was written to plugins.txt as active, counted against the
+	/// limit and taken as a master that was there, while the game crashed for want of it. Every place that asks which
+	/// plugins a mod has goes through here so they cannot disagree. I/O errors give an empty list.
+	/// </para>
+	/// </summary>
+	public static IReadOnlyList<string> LoadablePluginFiles(string modFolder)
+	{
+		if (string.IsNullOrEmpty(modFolder) || !Directory.Exists(modFolder)) return Array.Empty<string>();
+		try
+		{
+			return Directory.EnumerateFiles(modFolder, "*", SearchOption.TopDirectoryOnly)
+				.Where(f => IsPluginFile(Path.GetFileName(f)))
+				.ToList();
+		}
+		catch
+		{
+			return Array.Empty<string>();
+		}
+	}
+
+	/// <summary>
+	/// Plugins in a stored mod folder's subfolders, which the game will not load (see <see cref="LoadablePluginFiles"/>).
+	/// Paths are relative to the folder. <c>Root\</c> and the manager's own folders are not looked in.
+	/// </summary>
+	public static IReadOnlyList<string> NestedPluginFiles(string modFolder)
+	{
+		if (string.IsNullOrEmpty(modFolder) || !Directory.Exists(modFolder)) return Array.Empty<string>();
+		try
+		{
+			string root = Path.GetFullPath(modFolder).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+			return Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+				.Where(f => IsPluginFile(Path.GetFileName(f)))
+				.Select(f => Path.GetRelativePath(root, f))
+				.Where(rel =>
+				{
+					string top = rel.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)[0];
+					return rel.IndexOfAny(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }) >= 0
+						&& !top.Equals(BethesdaLayout.RootFolderName, StringComparison.OrdinalIgnoreCase)
+						&& !top.StartsWith('.');
+				})
+				.ToList();
+		}
+		catch
+		{
+			return Array.Empty<string>();
+		}
+	}
+
+	/// <summary>
 	/// Base-game and official DLC master files that the engine always loads first on its own. They are
 	/// kept implicit: never shown in the Plugin Order list and never written to plugins.txt.
 	/// </summary>

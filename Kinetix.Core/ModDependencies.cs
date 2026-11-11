@@ -22,25 +22,12 @@ namespace KinetixModManager;
 public static class ModDependencies
 {
 	/// <summary>
-	/// The plugin files (<c>.esp</c>/<c>.esm</c>/<c>.esl</c>) a mod ships. I/O errors are swallowed: a mod
+	/// The plugin files (<c>.esp</c>/<c>.esm</c>/<c>.esl</c>) a mod ships that the game loads. I/O errors are swallowed: a mod
 	/// folder that cannot be walked is a mod with no known plugins, not a reason to abandon the question.
+	/// See <see cref="BethesdaPlugins.LoadablePluginFiles"/>: one in a subfolder never loads, so nothing depends on it.
 	/// </summary>
-	public static IReadOnlyList<string> PluginFiles(GameMod mod)
-	{
-		if (mod == null || string.IsNullOrEmpty(mod.FolderPath) || !Directory.Exists(mod.FolderPath))
-			return Array.Empty<string>();
-
-		try
-		{
-			return Directory.EnumerateFiles(mod.FolderPath, "*", SearchOption.AllDirectories)
-				.Where(f => BethesdaPlugins.IsPluginFile(Path.GetFileName(f)))
-				.ToList();
-		}
-		catch
-		{
-			return Array.Empty<string>();
-		}
-	}
+	public static IReadOnlyList<string> PluginFiles(GameMod mod) =>
+		mod == null ? Array.Empty<string>() : BethesdaPlugins.LoadablePluginFiles(mod.FolderPath);
 
 	/// <summary>One mod that depends on the one being asked about, and why.</summary>
 	public readonly record struct Dependent(GameMod Mod, string ViaPlugin, string Master)

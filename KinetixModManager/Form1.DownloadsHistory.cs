@@ -19,11 +19,17 @@ public partial class Form1
 			return;
 		}
 
+		// A Minecraft download is a jar, never an archive, so the list was always empty there. The same test as Pending.
+		bool minecraft = GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true;
 		List<DownloadItem> items;
 		try
 		{
-			items = Directory.EnumerateFiles(downloadsPath)
-				.Where(f => DownloadArchiveExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+			items = (Directory.Exists(downloadsPath) ? Directory.EnumerateFiles(downloadsPath) : Enumerable.Empty<string>())
+				.Where(f =>
+				{
+					string ext = Path.GetExtension(f).ToLowerInvariant();
+					return minecraft ? ext == MinecraftLayout.ModExtension : DownloadArchiveExtensions.Contains(ext);
+				})
 				.Select(f => new FileInfo(f))
 				.Select(fi => new DownloadItem
 				{
@@ -47,10 +53,10 @@ public partial class Form1
 			return;
 		}
 
-		ShowDownloadsDialog(items);
+		ShowDownloadsDialog(items, minecraft);
 	}
 
-	private void ShowDownloadsDialog(List<DownloadItem> items)
+	private void ShowDownloadsDialog(List<DownloadItem> items, bool minecraft)
 	{
 		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
 		ShowInlineView(Loc.T("downloads.title"), (container, closeView) =>
@@ -86,7 +92,12 @@ public partial class Form1
 					// Same route as picking an archive by hand; it runs its own progress and overwrite prompt. The list
 					// stays open, and every download is still in it afterwards, so the user can go on to the next.
 					busy = true;
-					try { await InstallFromZip(item.FullPath, confirmReinstall: true); }
+					try
+					{
+						// The jar install asks before replacing the same mod and backs the old jar up.
+						if (minecraft) await InstallMinecraftJarAsync(item.FullPath);
+						else await InstallFromZip(item.FullPath, confirmReinstall: true);
+					}
 					finally { busy = false; }
 				}
 				else if (e.KeyCode == Keys.Delete)

@@ -411,15 +411,34 @@ public partial class Form1
 		try
 		{
 			SetStatus(Loc.T("modactions.batchStatus", flag ? Loc.T("modactions.batchEnabling") : Loc.T("modactions.batchDisabling"), list.Count));
+			// Each mod on its own, so one folder held open does not stop the rest. See ApplyProfile.
+			var failed = new List<string>();
 			foreach (GameMod item in list)
 			{
 				// Left alone: its folder is the mods folder. See RefusedAsTheWholeModsFolder.
 				if (item.IsEnabled != flag && !IsTheWholeModsFolder(item))
 				{
-					item.FolderPath = ModFileSystem.SetModEnabled(item.FolderPath, flag, _settings.ActiveGame,
-						locatedGameFolder: _settings.CurrentGamePath);
+					try
+					{
+						item.FolderPath = ModFileSystem.SetModEnabled(item.FolderPath, flag, _settings.ActiveGame,
+							locatedGameFolder: _settings.CurrentGamePath);
+					}
+					catch (Exception ex)
+					{
+						DiagnosticLog.WriteException("ModActions", $"switching {item.Name} in a category batch", ex);
+						failed.Add(item.Name);
+						continue;
+					}
 					item.IsEnabled = flag;
 				}
+			}
+			if (failed.Count > 0)
+			{
+				_soundEngine.Play("error");
+				await SayAndRefreshModList(Loc.T("modactions.batchPartly", list.Count - failed.Count,
+					flag ? Loc.T("modactions.batchEnabled") : Loc.T("modactions.batchDisabled"), failed.Count, string.Join(", ", failed)));
+				ResetStatus();
+				return;
 			}
 			if (flag)
 			{

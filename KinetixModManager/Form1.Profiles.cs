@@ -139,6 +139,9 @@ public partial class Form1
 			SetStatus(Loc.T("profiles.applying"));
 			bool anyEnabled = false;
 			bool anyDisabled = false;
+			// One folder held open by the game or a virus scanner is no reason to leave the rest half done, the load order
+			// unrestored and the list unrefreshed. Each mod is tried, and the ones that would not move are named at the end.
+			var failed = new List<string>();
 			// Only what actually differs. A mod the profile never mentioned is left alone rather than
 			// switched off for not appearing, and one already in the right state is not renamed to the name
 			// it already has - see ProfileStore.Changes.
@@ -148,8 +151,17 @@ public partial class Form1
 				if (IsTheWholeModsFolder(change.Mod)) continue;
 				// Asset deployment and plugins.txt are reconciled once by RefreshModList at the end
 				// (a profile can flip many mods at once), so only the folder enable/disable happens here.
-				change.Mod.FolderPath = ModFileSystem.SetModEnabled(
-					change.Mod.FolderPath, change.Enable, _settings.ActiveGame, locatedGameFolder: _settings.CurrentGamePath);
+				try
+				{
+					change.Mod.FolderPath = ModFileSystem.SetModEnabled(
+						change.Mod.FolderPath, change.Enable, _settings.ActiveGame, locatedGameFolder: _settings.CurrentGamePath);
+				}
+				catch (Exception ex)
+				{
+					DiagnosticLog.WriteException("Profiles", $"switching {change.Mod.Name} while applying {profile.Name}", ex);
+					failed.Add(change.Mod.Name);
+					continue;
+				}
 				change.Mod.IsEnabled = change.Enable;
 
 				if (change.Enable) anyEnabled = true; else anyDisabled = true;
@@ -173,6 +185,15 @@ public partial class Form1
 				_settings.CurrentTheme = profile.ThemeOverride;
 				_settings.Save();
 				Speak(Loc.T("profiles.themeSwitched", profile.ThemeOverride));
+			}
+			if (failed.Count > 0)
+			{
+				_soundEngine.Play("error");
+				await RefreshModList(checkUpdates: false);
+				ResetStatus();
+				// A box, not speech as well: the box would flush it. It is said after the refresh, which has its own speech.
+				SpeakBox(Loc.T("profiles.appliedPartly", profile.Name, failed.Count, string.Join(", ", failed)));
+				return;
 			}
 			if (anyEnabled)
 			{

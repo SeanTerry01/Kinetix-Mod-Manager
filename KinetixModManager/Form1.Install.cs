@@ -969,6 +969,15 @@ public partial class Form1
 		bool confirmReinstall = false, bool partOfMultiPartMod = false, string? displayName = null,
 		string? gitHubRepo = null, GameMod? updating = null, string? expectedGame = null)
 	{
+		// ⚠️ Minecraft has no archive install. Here a .zip fell into the Bethesda branch and became a folder in the mods
+		// folder that Fabric never loads, reported as installed. Refused before anything touches the disk; this one
+		// place covers picking "All files", GitHub's fallback, and the Reinstall list.
+		if (GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true)
+		{
+			SpeakBox(Loc.T("mc.install.archiveNotSupported", Path.GetFileName(zipPath)), Loc.T("mc.install.notAModTitle"), MessageBoxButtons.OK);
+			return false;
+		}
+
 		using IDisposable busy = BeginModOperation();
 
 		// A download is not an operation, so a game can be switched while one runs. Checked here, with the gate held so no
@@ -1068,7 +1077,15 @@ public partial class Form1
 			// end-of-run "All updates finished" cover it; a per-mod box would force a click on every mod.
 			// The folder a mod landed in is not necessarily what it is called: Stardew names its folder from the
 			// mod's own manifest (already the real name), while the Bethesda games name it from the download.
-			if (!silent) SpeakBox(WithHeldOffNote(Loc.T("install.installed", ModDisplayName.ForSpeech(name, nexusId, spokenName))));
+			string installedSay = Loc.T("install.installed", ModDisplayName.ForSpeech(name, nexusId, spokenName));
+			// A plugin in a subfolder is almost always an option the archive meant you to choose, and the game never loads
+			// it from there. Nothing shows that on screen, so it is said.
+			if (IsBethesdaGame && BethesdaPlugins.NestedPluginFiles(Path.Combine(modsPath, name)) is { Count: > 0 } nested)
+			{
+				DiagnosticLog.Write("Install", $"{name}: plugins in subfolders, which the game will not load: {string.Join(", ", nested)}");
+				installedSay += " " + Loc.T("install.nestedPlugins", nested.Count, string.Join(", ", nested.Select(Path.GetFileName)));
+			}
+			if (!silent) SpeakBox(WithHeldOffNote(installedSay));
 			return true;
 		}
 		catch (OperationCanceledException)
