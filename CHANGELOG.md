@@ -11,6 +11,15 @@
 *   **Lists no longer say "list" twice.** "Installed Mods List list" is now "Installed Mods list", and the same for every list.
 *   **Starting with no game loaded** no longer opens on a stray "1 of 6", ahead of the welcome. And arrowing through the games
     while the welcome is still being read now says where you are, "Minecraft, 2 of 6", instead of the game alone.
+*   **Searching Nexus by name puts that mod first.** "Stardew Valley Expanded" didn't list Stardew Valley Expanded on the first
+    page. Results are now most downloaded first, and the count says how many matched, not how many fit on the page.
+*   **A mod with an update still says whether it is on or off in Installed Mods**, instead of reading like an update row.
+*   **Updating a switched-off Minecraft mod works**, and says it once. It said no build existed for your Minecraft version.
+*   **Switching a mod on or off no longer drops the Fabric Loader's update** from the Updates tab.
+*   **Pressing F5 twice starts one Minecraft**, and says it is already running. It started two.
+*   **Restoring a safety backup works when plugins.txt is protected.** It said access was denied and left the purge in place.
+*   **A switched-off Skyrim or Fallout 4 mod's name no longer starts with a dot**, and the "your mods stay out of the game" note
+    names both ways back.
 *   **Answering a question on a list says what happened and where you are, once.** Ignoring an update with Delete said the
     next row twice, and recording a version with Ctrl+Shift+Y first read out the row that had just gone. Both now say
     "Update ignored. Canon-Friendly Dialogue Expansion… 2 of 9", and the same goes for every Yes or No asked from a list.
