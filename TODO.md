@@ -35,18 +35,21 @@ Done or decided everything else on the list. What is here needs a person, or is 
     records it, so switching the mod off or deleting it leaves its patchers running. Needs a record like Witcher's outside files.
   - **Unconfirmed:** whether `MinecraftAuth` drops the saved refresh token when a refresh fails for a reason other than the token
     being refused (offline, say), which would sign the player out. Microsoft rotates the token, so check before changing anything.
-- [ ] **Heard in the NVDA run of 2026-11-11, not fixed yet.**
-  - **"list unavailable" between two screens.** When one screen closes and a question or box opens straight after, focus goes back
-    to the list behind for a moment, the new screen disables it, and NVDA reads it late: "Minecraft setups list unavailable,
-    Simply Optimized Continued… unavailable" before the newer-world question, and the same between the Stardew key chooser's
-    "Something else" and its typing box. Wants RunOverlay to hand focus straight from one overlay to the next; needs care.
-  - **Cancelling the newer-world question reads the pack twice:** NVDA's row, then "Changes cancelled. <row>. 2 of 2". That
-    cancel isn't said the way-2 way yet.
-  - **Closing the "applied, except for…" box after Apply Profile read the whole window title.** Other boxes don't. Measure first.
-  - **Modrinth results say "endorsements"**, which is Nexus's word; Modrinth has follows.
-  - **Not reachable on the test copy:** deleting a save (the test Skyrim's saves are Sean's real ones), the MCM screen (no MCM
-    mod), Ctrl+T stopping at the masters line (the test Skyrim's plugins are all masters), the Stardew bundle update with a
-    parked part, and a download for another game arriving while Settings is open (needs the browser).
+- [ ] **Left from the NVDA runs of 2026-11-11.** Fixed and heard: "list unavailable" for the Stardew key chooser, the newer-world
+  question and the Modrinth App import (asked over the first screen, `_nextOverlayReturnsQuietly`); cancels said once; Modrinth
+  "followers"; Ignored Updates screen; the MCM screen, on a made-up MCM Helper mod (`Kinetix MCM Test` in the test Skyrim).
+  - **The same "unavailable" family may live elsewhere.** A question opened straight after another screen closes. Fixed where
+    heard; Share Suggestions (scope, then name, then author) chains three, and saving a profile chains two without the noise, so
+    it isn't every chain. Listen for it.
+  - **Apply Profile's window title after its box:** did not happen again once the needless theme switch was gone. Not proven
+    that was the cause; listen for it when a profile really changes the theme.
+  - **The packs list once read "Your own Minecraft… 2 of 2"** on tabbing in just after a game switch, likely a refresh finishing
+    at that moment. Seen once.
+  - **SkyrimAccess's own menu can't be shown in the manager:** it is built in Papyrus (`SkyrimAccess_MCM.psc`), not an MCM
+    Helper `config.json`, so there is nothing on disk to read.
+  - **Not reachable on the test copy:** deleting a save (the test Skyrim's saves are Sean's real ones), Ctrl+T stopping at the
+    masters line (the test Skyrim's plugins are all masters), the Stardew bundle update with a parked part, and a download for
+    another game arriving while Settings is open (needs the browser).
 - [ ] **The GTK head has been compiled, never run.** See its section below. Only an ear test on Linux can settle it.
 - [ ] **GTK gaps found while fixing it:** GitHub-hosted mods such as United Minecraft are never checked for updates on Linux, yet count as
   checked. `mods.settings` looks wrong under Proton (`UserDataDirectoryFor` ignores `IGameLocator.UserDocumentsFolder`). A Linux user may have

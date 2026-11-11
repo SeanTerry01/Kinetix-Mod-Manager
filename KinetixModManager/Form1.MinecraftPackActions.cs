@@ -44,10 +44,11 @@ public partial class Form1
 		(string Label, Func<Task> Run)? follow = await FollowActionForAsync(result);
 		if (follow is { } f) actions.Add(f.Label);
 
+		// Cancelling is said as the list closes, the way a result is. Said after, it came with the row read twice.
 		string? chosen = ShowChoiceList(Loc.T("mc.result.title", result.Name), Loc.T("mc.result.listName"),
-			actions, actions[0], Loc.T("mc.pack.result.hint", result.Name));
+			actions, actions[0], Loc.T("mc.pack.result.hint", result.Name), sayOnCancel: Loc.T("common.changesCancelled"));
 
-		if (chosen is null) { Speak(Loc.T("common.changesCancelled")); return; }
+		if (chosen is null) return;
 		if (chosen == actions[1]) { SpeakLong(result.Description); return; }
 		if (chosen == actions[2]) { OpenModPage(); return; }
 		if (follow is { } toggle && chosen == toggle.Label) { await toggle.Run(); return; }
@@ -586,30 +587,33 @@ public partial class Form1
 			labels[label] = instance;
 		}
 
-		string? picked = ShowChoiceList(Loc.T("mc.import.title"), Loc.T("mc.import.listName"), labels.Keys.ToList(),
-			labels.Keys.First(), Loc.T("mc.import.hint"));
-		if (picked is null || !labels.TryGetValue(picked, out ModrinthAppInstance? chosen))
-		{
-			Speak(Loc.T("common.changesCancelled"));
-			return;
-		}
-
-		if (!chosen.IsFabric || !chosen.HasVersions)
-		{
-			SpeakBox(!chosen.IsFabric
-					? Loc.T("mc.import.wrongLoader", chosen.Name, LoaderDisplayName(chosen.Loader))
-					: Loc.T("mc.import.unknownVersions", chosen.Name),
-				Loc.T("mc.import.title"), MessageBoxButtons.OK);
-			return;
-		}
+		// Both questions about the chosen pack are asked over the list, before it closes, rather than after it: see the world
+		// copy below and _nextOverlayReturnsQuietly. Cancelling is said as the list closes, the way a result is.
+		ModrinthAppInstance? chosen = null;
+		ShowChoiceList(Loc.T("mc.import.title"), Loc.T("mc.import.listName"), labels.Keys.ToList(),
+			labels.Keys.First(), Loc.T("mc.import.hint"),
+			actOnChoice: p =>
+			{
+				if (!labels.TryGetValue(p, out ModrinthAppInstance? instance)) return null;
+				_nextOverlayReturnsQuietly = true;
+				if (!instance.IsFabric || !instance.HasVersions)
+				{
+					SpeakBox(!instance.IsFabric
+							? Loc.T("mc.import.wrongLoader", instance.Name, LoaderDisplayName(instance.Loader))
+							: Loc.T("mc.import.unknownVersions", instance.Name),
+						Loc.T("mc.import.title"), MessageBoxButtons.OK);
+					return null;
+				}
+				if (SpeakBox(Loc.T("mc.import.confirm", instance.Name, instance.MinecraftVersion, instance.LoaderVersion, instance.ModCount),
+						Loc.T("mc.import.title"), MessageBoxButtons.YesNo) != DialogResult.Yes)
+					return new ResultBeforeReturning(Loc.T("common.changesCancelled"));
+				chosen = instance;
+				return null;
+			},
+			sayOnCancel: Loc.T("common.changesCancelled"));
+		if (chosen is null) return;
 
 		string root = MinecraftRootFolder();
-		if (SpeakBox(Loc.T("mc.import.confirm", chosen.Name, chosen.MinecraftVersion, chosen.LoaderVersion, chosen.ModCount),
-				Loc.T("mc.import.title"), MessageBoxButtons.YesNo) != DialogResult.Yes)
-		{
-			Speak(Loc.T("common.changesCancelled"));
-			return;
-		}
 
 		if (!await EnsureMinecraftVersionAsync(root, chosen.MinecraftVersion)) return;
 		try { await FabricInstaller.WriteVersionJsonAsync(root, chosen.MinecraftVersion, chosen.LoaderVersion); }
@@ -765,24 +769,36 @@ public partial class Form1
 			labels[unique] = world;
 		}
 
-		string? picked = ShowChoiceList(Loc.T("mc.world.title"), Loc.T("mc.world.listName"), labels.Keys.ToList(),
-			labels.Keys.First(), Loc.T("mc.world.hint", pack.Name));
-		if (picked is null || !labels.TryGetValue(picked, out MinecraftWorld? chosen))
-		{
-			Speak(Loc.T("common.changesCancelled"));
-			return true;
-		}
+		// Worked out before the list opens, so that the question below can be asked while the list is still up. Only a world
+		// whose version differs from the pack's asks anything of the network, and Mojang's list is fetched once a session.
+		var newerBy = new Dictionary<MinecraftWorld, bool?>();
+		foreach (MinecraftWorld world in labels.Values)
+			newerBy[world] = await WorldIsNewerThanPackAsync(world, pack);
 
 		// A world from a newer Minecraft is the one copy that can go wrong. Asked, not refused: the copy is only a
-		// copy, and a player may well want to try.
-		bool? newer = await WorldIsNewerThanPackAsync(chosen, pack);
-		if (newer == true &&
-			SpeakBox(Loc.T("mc.world.newer", chosen.Name, chosen.LastPlayedVersion, pack.Name, pack.MinecraftVersion),
-				Loc.T("mc.world.title"), MessageBoxButtons.YesNo) != DialogResult.Yes)
-		{
-			Speak(Loc.T("common.changesCancelled"));
-			return true;
-		}
+		// copy, and a player may well want to try. Asked over the list rather than after it had closed, which put focus on
+		// the packs list for a moment and had NVDA read it as "unavailable"; and "Changes cancelled." is said the way a
+		// result is, before the list closes, where said afterwards it came with the pack read a second time. See
+		// _nextOverlayReturnsQuietly.
+		MinecraftWorld? chosen = null;
+		ShowChoiceList(Loc.T("mc.world.title"), Loc.T("mc.world.listName"), labels.Keys.ToList(),
+			labels.Keys.First(), Loc.T("mc.world.hint", pack.Name),
+			actOnChoice: p =>
+			{
+				if (!labels.TryGetValue(p, out MinecraftWorld? world)) return null;
+				if (newerBy.GetValueOrDefault(world) == true)
+				{
+					_nextOverlayReturnsQuietly = true;
+					if (SpeakBox(Loc.T("mc.world.newer", world.Name, world.LastPlayedVersion, pack.Name, pack.MinecraftVersion),
+							Loc.T("mc.world.title"), MessageBoxButtons.YesNo) != DialogResult.Yes)
+						return new ResultBeforeReturning(Loc.T("common.changesCancelled"));
+				}
+				chosen = world;
+				return null;
+			},
+			sayOnCancel: Loc.T("common.changesCancelled"));
+		if (chosen is null) return true;
+		bool? newer = newerBy.GetValueOrDefault(chosen);
 
 		try
 		{

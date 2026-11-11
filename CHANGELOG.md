@@ -186,6 +186,12 @@ A review of the whole manager before 1.6.0 found these. All are fixed.
 *   **Restoring a backup, updating and deleting** now do what they say, and failures are said rather than reported as success.
     A switch of game no longer leaves another game's rows live. This has been compiled, but not yet run.
 
+## ✨ Undo an ignored update
+
+*   **Ignored Updates, in the Mods menu under Health and Reports, lists the updates you told the manager to ignore**, for
+    the game you have open. Press Enter or Delete on one and the next update check offers it again. Ignoring used to be
+    for good: nothing in the manager could undo it. The question that asks before ignoring now says where to undo it.
+
 ## 💬 Smaller things you may hear
 
 *   **"1 mods" and "1 files" are gone everywhere**, not only in the messages heard most.
@@ -204,6 +210,12 @@ A review of the whole manager before 1.6.0 found these. All are fixed.
 *   **Ctrl+Shift+Y on a Minecraft update says why there is nothing to record**, rather than telling you to link the Fabric
     loader to a Nexus page.
 *   **An emptied Stardew key reads "Currently empty"**, not "Currently ." with nothing in it.
+*   **No more "list unavailable" when one question follows another.** Choosing Something else for a Stardew key, copying a
+    newer world into a modpack, and bringing a pack across from the Modrinth App each said "list unavailable" and named the
+    list behind before the next question. Those questions are now asked while the first screen is still open.
+*   **Cancelling a choice says "Changes cancelled." once**, before you land back on the list, rather than after it with the
+    row read twice.
+*   **Modrinth results say "followers"**, Modrinth's own word, not "endorsements". "1 downloads" and "1 endorsements" are gone too.
 *   **Sentences that name a key use your key**, if you changed it, and a key you cleared is no longer read as "Press Unmapped".
 *   **Typing in the installed search** reads the count once, after you pause.
 *   **After a file picker closes**, you hear which mod you are on as well as its position.
@@ -1063,7 +1075,7 @@ brings across the ones you already have in the Modrinth App.
 
 ## ✅ Tests
 
-*   **2,219 passing**, and all of them now pass off Windows too, where sixteen used to fail.
+*   **2,221 passing**, and all of them now pass off Windows too, where sixteen used to fail.
 *   Much of that is mod scanning, backups, profiles, dependency checks and the update decision, none of which could be tested before: they lived inside the window, and the test project deliberately does not load the window.
 *   A new guard catches the bug at the top of this list: it fails the build if any message is given fewer values than it has placeholders. There were two.
 *   Twenty-six of them cover unpacking a downloaded mod, including one that extracts a **real .7z** rather than a stand-in — the only way to know that reading one without `7za.exe` actually works.

@@ -92,6 +92,7 @@ public static class ModrinthAccount
 				Description = (string?)project["description"] ?? "",
 				Downloads = (long?)project["downloads"] ?? -1,
 				Endorsements = (long?)project["followers"] ?? -1,
+				EndorsementsAreFollowers = true,
 				IsModpack = type == "modpack",
 				PackGameVersions = (project["game_versions"] as JArray ?? new JArray()).Select(v => (string?)v ?? "").ToList()
 			});

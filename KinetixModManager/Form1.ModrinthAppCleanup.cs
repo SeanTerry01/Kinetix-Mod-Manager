@@ -119,9 +119,11 @@ public partial class Form1
 			string removeAnyway = Loc.T("mc.cleanup.removeAnyway", FormatBytes(size));
 			string? picked = ShowChoiceList(Loc.T("mc.cleanup.title"), Loc.T("mc.cleanup.listName"),
 				new[] { importFirst, removeAnyway }, importFirst,
-				Loc.T("mc.cleanup.notImportedHint", left.Count, string.Join("; ", left.Select(DescribeUnimported))));
+				Loc.T("mc.cleanup.notImportedHint", left.Count, string.Join("; ", left.Select(DescribeUnimported))),
+				// Said as the list closes, the way a result is. Said after, it came with the row read twice.
+				sayOnCancel: Loc.T("common.changesCancelled"));
 
-			if (picked is null) { Speak(Loc.T("common.changesCancelled")); return; }
+			if (picked is null) return;
 			if (picked == importFirst)
 			{
 				await ImportFromModrinthAppAsync();

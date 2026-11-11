@@ -136,6 +136,12 @@ public class GameMod
 	public long Endorsements { get; set; } = -1;
 
 	/// <summary>
+	/// <see cref="Endorsements"/> holds Modrinth's followers, its nearest equivalent, and the row says so. Modrinth results
+	/// read "147 endorsements", Nexus's word for something Modrinth does not have (heard 2026-11-11).
+	/// </summary>
+	public bool EndorsementsAreFollowers { get; set; }
+
+	/// <summary>
 	/// When Nexus last saw a change to the mod, or <c>null</c> when it is not known — nothing on disk records
 	/// it, so it is only filled in for search results.
 	///
@@ -259,8 +265,10 @@ public class GameMod
 			string popularity = "";
 			if (Downloads >= 0 || Endorsements >= 0)
 			{
-				string downloads = Downloads >= 0 ? $"{Downloads:N0} downloads" : "";
-				string endorsements = Endorsements >= 0 ? $"{Endorsements:N0} endorsements" : "";
+				string downloads = Downloads >= 0 ? $"{Downloads:N0} " + (Downloads == 1 ? "download" : "downloads") : "";
+				string endorsements = Endorsements >= 0
+					? $"{Endorsements:N0} " + (EndorsementsAreFollowers ? (Endorsements == 1 ? "follower" : "followers") : (Endorsements == 1 ? "endorsement" : "endorsements"))
+					: "";
 				string joined = string.Join(", ", new[] { downloads, endorsements }.Where(p => p.Length > 0));
 				if (joined.Length > 0) popularity = joined + ". ";
 			}

@@ -198,6 +198,7 @@ public partial class Form1
 		grpHealth.DropDownItems.Add(Loc.T("menu.updateCoverage"), null, async delegate { await ShowUpdateCoverageReport(); }).Name = "menuUpdateCoverage";
 		grpHealth.DropDownItems.Add(ShortcutLabel("menu.pluginSlots", "PluginSlots"), null, delegate { AnnouncePluginSlotUsage(); }).Name = "menuPluginSlots";
 		grpHealth.DropDownItems.Add(Loc.T("menu.resetIgnoredReqs"), null, delegate { ResetIgnoredRequirements(); });
+		grpHealth.DropDownItems.Add(Loc.T("menu.ignoredUpdates"), null, delegate { ShowIgnoredUpdates(); }).Name = "menuIgnoredUpdates";
 		menuMods.DropDownItems.Add(grpHealth);
 
 		// Submenu: Skyrim/Fallout 4 load order and loose-file deployment.

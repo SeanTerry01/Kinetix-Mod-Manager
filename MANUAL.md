@@ -328,7 +328,7 @@ Each row says the mod, when it was backed up and its size: "Chat Commands, backe
     *   In **Updates**, on an update the manager can fetch itself — anything from Modrinth or a GitHub release, and every Minecraft mod — you're asked **whether to update it now or open its page**, with update first. Escape leaves it alone. For a Nexus update, Enter opens its page as before, because fetching one needs the Mod Manager Download button or a Premium account.
     *   In **Updates**, on the **Fabric Loader** or **Minecraft** row: install it, or start moving to the new Minecraft version. Those aren't mods and have no page. See "Keeping Fabric and Minecraft up to date".
     *   In **Search for Mods**: Open the Nexus page for the selected mod — **or**, on the **"Load more results"** row at the bottom of the list, load the next batch of results.
-*   **Delete**: (In Updates tab) **Ignore Update** - Hides this specific version from the updates list.
+*   **Delete**: (In Updates tab) **Ignore Update** - Hides this specific version from the updates list. To undo it, choose **Mods → Health and Reports → Ignored Updates**, which lists this game's ignored updates; press **Enter** or **Delete** on one and the next update check offers it again.
 *   **Ctrl + Shift + Y**: (In Updates tab) **Mark As Already Installed** - Records the offered version as the one you already have. See "When a mod is offered the same update forever" below.
 *   **Ctrl + U**: **Update All** mods. A **Nexus Premium** account is only needed for the updates that come from Nexus; mods from Modrinth or GitHub releases are updated whatever account you have, and the confirmation says how many Nexus updates will be skipped.
 *   **Ctrl + R**: Read the mod's summary.

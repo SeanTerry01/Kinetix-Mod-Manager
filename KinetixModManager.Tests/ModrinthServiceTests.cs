@@ -103,7 +103,9 @@ public class ModrinthServiceTests
 
 		Assert.StartsWith("Accessible Step (ID: accessible-step).", row);
 		Assert.Contains("179,831 downloads", row);
-		Assert.Contains("147 endorsements", row);
+		// Modrinth's word, not Nexus's: it has followers, not endorsements.
+		Assert.Contains("147 followers", row);
+		Assert.DoesNotContain("endorsement", row);
 	}
 
 	[Fact]

@@ -273,6 +273,22 @@ public partial class Form1
 			: outcome.Say);
 	}
 
+	/// <summary>
+	/// Set just before a question is asked over a screen that will close as soon as it is answered. That question then
+	/// puts focus back without announcing the row it lands on, because the screen beneath closes next and says where the
+	/// user really is. Used up by the next overlay to open.
+	///
+	/// <para>
+	/// The question used to be asked after the first screen had gone. Focus went back to the list behind for a moment,
+	/// the question then disabled it, and NVDA read it late: "Minecraft setups list unavailable, Simply Optimized
+	/// Continued… unavailable" before the newer-world question (heard 2026-11-11).
+	/// </para>
+	/// </summary>
+	private bool _nextOverlayReturnsQuietly;
+
+	/// <summary>The list such a question has just put focus back on, whose arrival List_Enter leaves unsaid. Used up by it.</summary>
+	private ListBox? _arrivingQuietly;
+
 	/// <summary>How many overlays (prompts or in-window views) are currently up. See <see cref="RunOverlay"/>.</summary>
 	private int _overlayDepth;
 
@@ -291,6 +307,9 @@ public partial class Form1
 		// Remember what to put back: the overlay borrows the window's focus, its Enter/Escape handling, its
 		// name and the enabled state of everything already in it.
 		Control? focusBefore = host.ActiveControl;
+		// Taken now, so it belongs to this overlay and no other. See _nextOverlayReturnsQuietly.
+		bool returnQuietly = _nextOverlayReturnsQuietly;
+		_nextOverlayReturnsQuietly = false;
 		bool keyPreviewBefore = host.KeyPreview;
 		string? hostNameBefore = host.AccessibleName;
 		var disabled = new List<Control>();
@@ -381,7 +400,12 @@ public partial class Form1
 						// a view read out "twelve of a hundred and forty-seven" and never said which mod that
 						// was; the only way to hear it was to arrow off the row and back. The flag is consumed by
 						// whichever of the list's handlers speaks first, and only ever by a list.
-						ListBox? returningTo = focusBefore as ListBox;
+						// Quietly: a question asked over another screen that closes straight after, which says where the user
+						// lands. Announced here as well, the row of that screen was read on the way past.
+						ListBox? returningTo = returnQuietly ? null : focusBefore as ListBox;
+						// And the position its GotFocus would say: "Changes cancelled. 1 of 1", the 1 of 1 being the list of
+						// worlds that was closing (heard 2026-11-11).
+						if (returnQuietly && focusBefore is ListBox quietList) _arrivingQuietly = quietList;
 						if (returningTo != null)
 						{
 							// The list must already be on the right mod before anything looks at it. A view that

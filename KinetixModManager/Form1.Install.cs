@@ -54,9 +54,11 @@ public partial class Form1
 			if (yours > 0) choices.Add(onlyYours);
 			choices.Add(all);
 
+			// Cancelling is said as the list closes, the way a result is. Said after, it came with the row read twice.
 			string? picked = ShowChoiceList(Loc.T("mc.pack.modUpdate.title"), Loc.T("mc.pack.updateAll.listName"),
-				choices, choices[0], Loc.T("mc.pack.updateAll.hint", packMods.Count, activePack.Name, yours));
-			if (picked is null) { Speak(Loc.T("common.changesCancelled")); return; }
+				choices, choices[0], Loc.T("mc.pack.updateAll.hint", packMods.Count, activePack.Name, yours),
+				sayOnCancel: Loc.T("common.changesCancelled"));
+			if (picked is null) return;
 			if (picked == onlyYours) rows = rows.Except(packMods).ToList();
 		}
 		List<GameMod> needPremium = _nexusService.IsPremium

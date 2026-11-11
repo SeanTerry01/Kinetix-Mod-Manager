@@ -349,6 +349,7 @@ public static class ModrinthService
 				// watch the mod — and it answers the same question a download count cannot: whether anyone
 				// stuck around.
 				Endorsements   = (long?)hit["follows"] ?? -1,
+				EndorsementsAreFollowers = true,
 				LastUpdated    = ParseDate((string?)hit["date_modified"]),
 				IsModpack      = string.Equals((string?)hit["project_type"], "modpack", StringComparison.OrdinalIgnoreCase),
 				PackGameVersions = (hit["versions"] as JArray ?? new JArray()).Select(v => (string?)v ?? "").ToList()

@@ -270,6 +270,13 @@ public partial class Form1
 
 		if (sender is not ListBox listBox) return;
 
+		// Focus put back by a question over a screen that is closing next. See _nextOverlayReturnsQuietly.
+		if (ReferenceEquals(_arrivingQuietly, listBox))
+		{
+			_arrivingQuietly = null;
+			return;
+		}
+
 		if (listBox.Items.Count == 0)
 		{
 			AnnounceListEmpty(listBox);

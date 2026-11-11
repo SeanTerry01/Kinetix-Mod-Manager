@@ -101,6 +101,10 @@ public partial class Form1
 		{
 			var choices = new List<string>(StardewModConfig.KeyNames) { Loc.T("sdvconfig.otherValue") };
 
+			// Typing, starting from what they already had, is opened over the list rather than after it has closed. After, focus
+			// went back to the settings list for a moment, the box then disabled it, and NVDA read "list unavailable, Toggle
+			// Key: None unavailable" (heard 2026-11-11). See _nextOverlayReturnsQuietly.
+			string? typed = null;
 			string? picked = ShowChoiceList(
 				Loc.T("sdvconfig.chooseTitle", setting.Label),
 				Loc.T("sdvconfig.chooseListName", setting.Label),
@@ -108,16 +112,19 @@ public partial class Form1
 				setting.Value,
 				// An emptied key read "Currently ." with nothing between (heard 2026-11-11).
 				Loc.T("sdvconfig.chooseKeyHint", setting.Description, setting.Value.Length > 0 ? setting.Value : Loc.T("sdvconfig.valueEmpty")),
-				p => p == Loc.T("sdvconfig.otherValue") ? null : apply(p));
+				p =>
+				{
+					if (p != Loc.T("sdvconfig.otherValue")) return apply(p);
+					_nextOverlayReturnsQuietly = true;
+					typed = ShowTextPrompt(
+						Loc.T("sdvconfig.chooseTitle", setting.Label),
+						Loc.T("sdvconfig.prompt", setting.Label, setting.Description),
+						setting.Value, actOnAnswer: apply, sayOnCancel: Loc.T("common.changesCancelled"));
+					return null;
+				});
 
 			if (picked == null) return null;
-			if (picked != Loc.T("sdvconfig.otherValue")) return picked;
-
-			// Fall through to typing, starting from what they already had.
-			return ShowTextPrompt(
-				Loc.T("sdvconfig.chooseTitle", setting.Label),
-				Loc.T("sdvconfig.prompt", setting.Label, setting.Description),
-				setting.Value, actOnAnswer: apply);
+			return picked != Loc.T("sdvconfig.otherValue") ? picked : typed;
 		}
 
 		string prompt = setting.Kind == StardewValueKind.Number
