@@ -44,7 +44,13 @@ internal class AccessibleTabControl : TabControl
 
 		public StripAccessibleObject(AccessibleTabControl tabs) : base(tabs) => _tabs = tabs;
 
-		public override AccessibleRole Role => AccessibleRole.PageTabList;
+		/// <summary>
+		/// A pane, not a tab list, so the reader does not say "tab control". It said it every time focus came back to the
+		/// window from Settings or a screen, "tab control, Installed Mods list…", and on arriving at the strip, "tab control,
+		/// Installed Mods tab selected". Each tab still says it is a tab, which is all the strip's role added. Sean asked
+		/// for it to go (2026-11-11).
+		/// </summary>
+		public override AccessibleRole Role => AccessibleRole.Pane;
 
 		public override int GetChildCount() => _tabs.TabCount + (_tabs.SelectedTab is null ? 0 : 1);
 

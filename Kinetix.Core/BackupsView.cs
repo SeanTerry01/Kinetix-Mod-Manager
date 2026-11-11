@@ -23,7 +23,7 @@ public sealed record BackupRow(string Path, string ModName, DateTime TakenAt, lo
 		if (ago.TotalHours < 24) return Loc.T("backups.hoursAgo", (int)ago.TotalHours);
 		if (ago.TotalDays < 30) return Loc.T("backups.daysAgo", (int)ago.TotalDays);
 
-		return when.ToString("d MMMM yyyy");
+		return Loc.T("backups.onDate", when.ToString("d MMMM yyyy"));
 	}
 
 	/// <summary>
