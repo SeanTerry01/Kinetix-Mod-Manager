@@ -1217,7 +1217,9 @@ public partial class Form1
 			if (results.Count > 0)
 			{
 				// How many matched, not how many fit on the page: "Found 20 mods" was said for 27.
+				// And packs are called packs: a modpack search said "Found 48 mods".
 				string found = loadMore ? Loc.T("discovery.added", results.Count)
+					: SearchingForModpacks ? Loc.T(total > results.Count ? "discovery.foundPacksListed" : "discovery.foundPacks", total, results.Count)
 					: total > results.Count ? Loc.T("discovery.foundListed", total, results.Count)
 					: Loc.T(results.Count == 1 ? "discovery.foundOne" : "discovery.found", results.Count);
 				Speak(found + hiddenByLanguage);
