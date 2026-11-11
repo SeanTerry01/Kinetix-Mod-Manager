@@ -554,9 +554,17 @@ public partial class Form1
 	/// </summary>
 	private string WithWhereYouAre(ListBox list, string result, bool namesRow)
 	{
+		// A result naming the mod the list is on needs only the position: "Updating (1/4): DaisyNiko's Tilesheets" was
+		// followed by "DaisyNiko's Tilesheets by DaisyNiko…", the name twice and run together. Measured 2026-11-10.
+		if (list.SelectedItem is GameMod { Name.Length: > 0 } on && result.Contains(on.Name, StringComparison.OrdinalIgnoreCase))
+			namesRow = true;
+
 		string position = PositionTextFor(list);
 		string where = !namesRow && list.SelectedItem != null ? RowThenPosition(list.SelectedItem, position) : position;
-		return where.Length == 0 ? result : result + " " + where;
+		if (where.Length == 0) return result;
+
+		string said = result.TrimEnd();
+		return (said.Length > 0 && ".!?…".Contains(said[^1]) ? said : said + ".") + " " + where;
 	}
 
 	/// <summary>
