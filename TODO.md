@@ -35,6 +35,18 @@ Done or decided everything else on the list. What is here needs a person, or is 
     records it, so switching the mod off or deleting it leaves its patchers running. Needs a record like Witcher's outside files.
   - **Unconfirmed:** whether `MinecraftAuth` drops the saved refresh token when a refresh fails for a reason other than the token
     being refused (offline, say), which would sign the player out. Microsoft rotates the token, so check before changing anything.
+- [ ] **Heard in the NVDA run of 2026-11-11, not fixed yet.**
+  - **"list unavailable" between two screens.** When one screen closes and a question or box opens straight after, focus goes back
+    to the list behind for a moment, the new screen disables it, and NVDA reads it late: "Minecraft setups list unavailable,
+    Simply Optimized Continued… unavailable" before the newer-world question, and the same between the Stardew key chooser's
+    "Something else" and its typing box. Wants RunOverlay to hand focus straight from one overlay to the next; needs care.
+  - **Cancelling the newer-world question reads the pack twice:** NVDA's row, then "Changes cancelled. <row>. 2 of 2". That
+    cancel isn't said the way-2 way yet.
+  - **Closing the "applied, except for…" box after Apply Profile read the whole window title.** Other boxes don't. Measure first.
+  - **Modrinth results say "endorsements"**, which is Nexus's word; Modrinth has follows.
+  - **Not reachable on the test copy:** deleting a save (the test Skyrim's saves are Sean's real ones), the MCM screen (no MCM
+    mod), Ctrl+T stopping at the masters line (the test Skyrim's plugins are all masters), the Stardew bundle update with a
+    parked part, and a download for another game arriving while Settings is open (needs the browser).
 - [ ] **The GTK head has been compiled, never run.** See its section below. Only an ear test on Linux can settle it.
 - [ ] **GTK gaps found while fixing it:** GitHub-hosted mods such as United Minecraft are never checked for updates on Linux, yet count as
   checked. `mods.settings` looks wrong under Proton (`UserDataDirectoryFor` ignores `IGameLocator.UserDocumentsFolder`). A Linux user may have
