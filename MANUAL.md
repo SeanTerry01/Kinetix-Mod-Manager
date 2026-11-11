@@ -71,8 +71,8 @@ You must be **signed in** to the Nexus website for this stage to work.
 
 1.  Switch back to Kinetix Mod Manager.
 2.  Press **Ctrl + P** to open the **Settings Dashboard**.
-3.  Tab to the field labeled **"Nexus API Key"**.
-4.  Press **Ctrl + V** to **paste** your copied key into the field.
+3.  Tab to the field labeled **"Nexus API Key"**. It is a **protected** box, the kind used for passwords, so your screen reader says "protected" and does not read the key out.
+4.  Press **Ctrl + V** to **paste** your copied key into the field. To check what you pasted, press **Tab** to the **"Show key"** button straight after the box and press **Space**, then **Shift + Tab** back: the box now reads as ordinary text. Press the button again, now called **"Hide key"**, to hide it.
 5.  Activate the **"Save Settings"** button (or press **Enter**).
 6.  If the key is correct, the manager plays the **"Connect"** sound and shows your Nexus username in the window title bar. You are now connected.
 
@@ -81,7 +81,7 @@ You must be **signed in** to the Nexus website for this stage to work.
 *   **You hear the "Disconnect" sound, or nothing happens.** The key was most likely copied incompletely or has extra spaces. Go back to Stage 2, copy the **entire** key again with **Ctrl + A** then **Ctrl + C**, and re-paste it.
 *   **You're not sure a key was ever created.** Return to the Personal API Key section (Stage 2) and look for the **"Generate" / "Request Api Key"** button. If it's still there, your key hasn't been created yet — activate it.
 *   **You can change or re-enter your key at any time** by pressing **Ctrl + L** in the manager, or by reopening the Settings Dashboard with **Ctrl + P**.
-*   Your key is stored **encrypted** on your own computer and is never shown in plain text or shared with anyone but Nexus Mods.
+*   Your key is stored **encrypted** on your own computer and is never shared with anyone but Nexus Mods. It is only shown, or read out, when you press **Show key**.
 
 ---
 
@@ -123,11 +123,11 @@ Different games keep their mods in different places, and some keep them in more 
 
 Some mod sites want an API key before they will answer. From the **File** menu, choose **"Mod source API keys..."** — it lists every site that asks for one and whether you have given it.
 
-*   **Press Enter on a site.** If it has no key, you are asked to type or paste one. If it already has one, the key appears in a **read-only box** so you can read it back and check it against what you meant to type.
+*   **Press Enter on a site.** If it has no key, you are asked to type or paste one, into a protected box. If it already has one, the key appears in a **read-only, protected box**: press **Tab** to **"Show key"** and **Space**, then **Shift + Tab** back to read it and check it against what you meant to type. Every key box in the manager works this way, so a key is never read out until you ask for it.
 *   **"Edit key"** asks for a new one whichever the case — which is the point of it. A key you typed wrongly months ago cannot be put right by a screen that only ever shows it back to you.
 *   **"Forget key"** (or the **Delete** key on a row) removes one, after asking. The manager cannot get it back for you.
 *   **"Open the site to get a key"** takes you straight to the page where that site issues them.
-*   **Arrowing down the list never reads your keys out loud.** Each row says the site's name and whether a key is saved, and nothing else. The key is only spoken on the one row you open, because a credential read out in passing is read out in whatever room you happen to be in.
+*   **Arrowing down the list never reads your keys out loud.** Each row says the site's name and whether a key is saved, and nothing else. A key is only spoken when you press **Show key** on the one you opened, because a credential read out in passing is read out in whatever room you happen to be in.
 *   **Keys are stored encrypted on your computer**, the same way your Nexus key and your AI provider key already were, and they are never sent anywhere except to the site they belong to.
 *   **Sites that need nothing are not listed at all.** Modrinth and GitHub need no account to search or download, so there is nothing for you to do about them.
 
@@ -250,7 +250,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Shift + F1**: **Context Help** - Speaks the shortcuts for your current tab.
 *   **Ctrl + F** (inside the F1, F2 or F3 viewer): Search the whole document for a phrase; **F3** / **Shift + F3** then step through the results. See "Searching a Document" below.
 *   **F5**: Launch the active game through its mod loader (SMAPI for Stardew Valley, SKSE for Skyrim Special Edition, F4SE for Fallout 4, BepInEx for Moonlight Peaks, and directly for The Witcher 3 and Minecraft).
-*   **F6**: **Cycle Focus** - Jump between the tab headers and the primary list in each tab (and the web view in the Wiki tab).
+*   **F6**: **Cycle Focus** - Jump between the tab headers and the primary list in each tab (and the web view in the Wiki tab). While your mods are still loading, just after the manager starts or a game is switched, it says "Your mods are still loading." and stays on the tabs.
 *   **F9**: **Diagnose Log with AI** - Send the current SMAPI or game log to your chosen AI provider for a plain-language explanation and fixes (opt-in; see "AI Log Diagnosis" below).
 *   **Alt**: Access the Menu Bar.
 *   **Ctrl + P**: Open the **Settings Dashboard**.
@@ -304,10 +304,15 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **Delete**: Remove the selected profile.
 
 ### Backups Tab Shortcuts
-*   **Enter**: **Restore Backup** - Puts that version back in place of the installed copy, which is backed up first.
-*   **Delete**: Permanently remove the backup zip file.
+The Backups tab has **two lists**. **F6** lands on the first, and **Tab** moves between them:
+*   **Deleted Mods** — the backup taken as each mod was deleted. This is where to get back a mod you removed.
+*   **Replaced Copies** — the copy kept just before an update, a reinstall or a restore wrote over a mod. This is where to undo an update.
+
+Each row says the mod, when it was backed up and its size: "Chat Commands, backed up 3 minutes ago, 40 kilobytes". Newest first in both lists.
+*   **Enter**: **Restore Backup** - Puts that version back in place of the installed copy, which is backed up first, into Replaced Copies.
+*   **Delete**: Permanently remove the backup zip file. You hear "Backup deleted.", then the row you land on.
 *   **Ctrl + Shift + D**: **Delete Old Backups** - Deletes all but the most recent archives based on your settings.
-*   **Ctrl + Shift + S**: **Cancel Downloads** - Stops whatever is downloading, and stops Update All if it is running. Mods already updated stay updated.
+*   **Ctrl + Shift + S**: **Cancel Downloads** - Stops whatever is downloading, and stops Update All if it is running. Mods already updated stay updated. A mod already being installed finishes first, and you are told so; nothing after it is updated.
 
 ### SMAPI Log Tab Shortcuts (Stardew Valley only)
 *The SMAPI Log tab appears only when Stardew Valley is the active game, since SMAPI is its mod loader.*
@@ -1761,7 +1766,7 @@ When a log has you stuck, Kinetix can send it to an AI service that reads it and
 1. Open **Settings** (Ctrl + P) and go to the **AI** tab. (While "Enable AI features" is unchecked, the rest of the tab is hidden; checking it reveals the settings below and is announced aloud.)
 2. Check **Enable AI features**.
 3. Choose an **AI Provider** — **Anthropic (Claude)**, **OpenAI (GPT)**, **Google (Gemini)**, or **OpenAI-compatible / Custom endpoint**. The last one works with any service that speaks OpenAI's API — OpenRouter, or a local server like Ollama or LM Studio — and shows an extra **Endpoint base URL** box (enter the URL the service gives you, usually ending in `/v1`). For a local server that needs no key, put any placeholder such as `local` in the key box.
-4. Paste your **API key** for that provider. You create the key on the provider's website; usage is billed to **your** account. The key is stored **encrypted** on your PC (the same protection used for your Nexus key) and is kept per-provider, so you can switch providers without re-entering keys. The help text under the key box tells you where to get a key for the chosen provider.
+4. Paste your **API key** for that provider. You create the key on the provider's website; usage is billed to **your** account. The key is stored **encrypted** on your PC (the same protection used for your Nexus key) and is kept per-provider, so you can switch providers without re-entering keys. The help text under the key box tells you where to get a key for the chosen provider. Like every key box, it is protected, with a **Show key** button straight after it for checking what you pasted.
 5. Choose a **Model**. The list starts with a few common models; press **Refresh model list** to pull the provider's **current** catalog using your key. The manager **remembers** that list, so it keeps showing the real models (and your saved choice) the next time you open Settings — you don't have to refresh every time. Refreshing again reports what changed since last time ("2 new, 1 removed"). You can also choose **Custom** and type any model ID yourself.
 6. Press **Test Connection** — the manager makes one tiny request and speaks whether it worked, so you can confirm the key before relying on it.
 7. Save.
@@ -1824,12 +1829,14 @@ Beyond the basics of enabling and updating mods, Kinetix Mod Manager includes se
 Profiles allow you to have different mod setups for different playthroughs. Save your current list with **Ctrl + S**, and switch between them in the **Profiles** tab. Profiles also remember your active **Audio Theme**.
 
 ### 2. Automatic & Smart Backups
-Before every update, re-installation, or deletion, the manager automatically zips your current mod folder. By default, it keeps the **last 5 backups** for each mod to save space. You can adjust this limit in **Settings**.
+Before every update, re-installation, or deletion, the manager automatically zips your current mod folder. By default, it keeps the **last 5 backups** for each mod to save space. You can adjust this limit in **Settings**. The Backups tab lists them in two places: **Deleted Mods** for the mods you deleted, and **Replaced Copies** for the copies an update, a reinstall or a restore wrote over.
 
 ### 3. Audio Theme Packs
 You can customize all application sounds via **Help -> Audio Theme Manager**. Create new themes, open their folders to drop in custom `.ogg` files, and switch between them in **Settings**.
 
-**Which theme plays.** Each theme is a folder inside the `sounds` folder where the manager is installed. Every game has its own theme, named after the game: `Stardew Valley`, `Skyrim`, `Fallout 4`, `Moonlight Peaks`, `The Witcher 3` and `Minecraft`. Load a game and its theme plays. To pick a theme yourself instead, check **Set theme manually** on the **Audio** tab in Settings.
+**Where themes are kept.** The themes the manager comes with are folders inside the `sounds` folder where the manager is installed. Themes you make with **Create New Theme** go in the `sounds` folder in your data folder instead, `%APPDATA%\AudiVentureGames\KinetixModManager\sounds`, because Windows doesn't let an installed program write beside itself. The manager reads both, and a theme of yours with the same name as one of its own is used in place of it. The themes the manager comes with can't be deleted; **Add Missing Folders** only fills in your own.
+
+**Which theme plays.** Every game has its own theme, named after the game: `Stardew Valley`, `Skyrim`, `Fallout 4`, `Moonlight Peaks`, `The Witcher 3` and `Minecraft`. Load a game and its theme plays. To pick a theme yourself instead, check **Set theme manually** on the **Audio** tab in Settings.
 
 **How a theme is laid out.** Inside a theme folder there is one folder per sound, named exactly:
 

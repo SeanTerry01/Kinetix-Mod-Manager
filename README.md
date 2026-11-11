@@ -10,14 +10,14 @@ A fully keyboard-driven, screen-reader-compatible mod manager for **Stardew Vall
 - **Update Checking** — detects available updates via the Nexus Mods API, via Modrinth for Minecraft, and for Stardew Valley via SMAPI's own mod database, which also covers mods hosted on ModDrop and CurseForge; one-click "Update All" for Premium members
 - **Mod Discovery** — search for mods without leaving the app, and **choose where they are searched for**: every source at once, one source, or a preferred source with the rest a keypress away. Minecraft searches Modrinth and needs no account at all
 - **Install from GitHub** — name a repository (or paste its address) and the newest release is downloaded and installed, for the many mods published there and nowhere else
-- **Mod Source API Keys** — one screen listing every site that wants a key, whether you have given it one, and the key itself when you ask for it; stored encrypted, and never read aloud in passing
+- **Mod Source API Keys** — one screen listing every site that wants a key, and whether you have given it one; stored encrypted. Every key box, here and in Settings, is a protected box with a **Show key** button straight after it, so a key is only ever read out when you ask for it
 - **Mod Profiles** — save and restore different enabled/disabled mod configurations for different playthroughs
-- **Automatic Backups** — zips the current mod folder before every update or deletion; configurable retention limit
+- **Automatic Backups** — zips the current mod folder before every update or deletion; configurable retention limit. The Backups tab keeps them in two lists, **Deleted Mods** and **Replaced Copies** (taken before an update, a reinstall or a restore wrote over a mod)
 - **Dependency Viewer** — shows required and optional dependencies for the selected mod, flagging missing or outdated ones
 - **SMAPI Log Viewer** — parses your latest SMAPI log, filters by level, and suggests fixes for common errors (Stardew Valley)
 - **Integrated Game Wiki** — built-in, screen-reader-friendly wiki browser (Stardew Valley Wiki, UESP for Skyrim, Fallout Wiki, Minecraft Wiki) with category drilling
 - **Walkthroughs** — read community walkthroughs and guides for the active game inside the app
-- **Audio Themes** — feedback sounds are `.ogg` files in swappable theme packs, and the theme **follows the game you load**, so a Skyrim session sounds like Skyrim before anything is read out. Adding a game's sounds is dropping files into a folder. For Minecraft the connect and disconnect cues follow the game's own log, so they sound when you join and leave a multiplayer server
+- **Audio Themes** — feedback sounds are `.ogg` files in swappable theme packs, and the theme **follows the game you load**, so a Skyrim session sounds like Skyrim before anything is read out. Adding a game's sounds is dropping files into a folder. Themes you make yourself are kept in your data folder, which an installed copy can always write to. For Minecraft the connect and disconnect cues follow the game's own log, so they sound when you join and leave a multiplayer server
 - **NXM Protocol** — registers as an `nxm://` handler so "Mod Manager Download" buttons on Nexus open the app directly
 - **Secure API Key Storage** — every mod site key, and your AI provider key, are stored encrypted using Windows DPAPI (never plain text on disk)
 
@@ -98,8 +98,8 @@ The solution is five projects. The last two are experimental and are not part of
 | Project | Target | Purpose |
 |---|---|---|
 | `Kinetix.Core` | `net10.0` | The rules, the parsers and the file and HTTP work, with no user interface. Settings (`AppSettings`), the Nexus and Modrinth services, game profiles, mod scanning rules, FOMOD, archive extraction, the mod-source catalogue and search planner, sound-theme resolution, Modrinth, GitHub releases, the Minecraft launcher and Fabric installer, save and INI readers, the localisation catalogue, and the domain models under `Models/`. |
-| `KinetixModManager` | `net10.0-windows` | The WinForms application: the screen it draws, the keys it listens for, and the Windows-only pieces. Those now sit behind interfaces in `Platform/` — Tolk, DPAPI and the UI-thread dispatcher — with the registry, NAudio and WebView2 still to follow. |
-| `KinetixModManager.Tests` | `net10.0` | 1,398 xUnit tests against `Kinetix.Core` and `Kinetix.Platform.Linux`. |
+| `KinetixModManager` | `net10.0-windows` | The WinForms application: the screen it draws, the keys it listens for, and the Windows-only pieces. Speech (Tolk, and NVDA's own controller for knowing when it has finished speaking), DPAPI and the UI-thread dispatcher sit behind interfaces in `Platform/`; WebView2 and the prompts are still to follow. |
+| `KinetixModManager.Tests` | `net10.0` | 2,158 xUnit tests against `Kinetix.Core` and `Kinetix.Platform.Linux`, plus guards that read the app's own source. |
 | `Kinetix.Platform.Linux` | `net10.0` | The Linux answers to the same platform questions: speech through speech-dispatcher, sounds through GStreamer, secrets through libsecret, and finding an installed game through Steam (four layouts, Flatpak included), its Proton prefixes, and Heroic. No UI toolkit. |
 | `Kinetix.Gtk` | `net10.0` | A GTK4 front end for Linux: games, installed mods, mod search and install, updates, profiles, dependencies, backups, the loader log, an embedded wiki Orca reads, per-game sounds and settings. Eleven tabs against the Windows head's sixty-odd. All six games can be searched and update-checked; only Minecraft mods can be installed from here so far. See `ARCHITECTURE_REVIEW.md` §17 and §28–§36. |
 

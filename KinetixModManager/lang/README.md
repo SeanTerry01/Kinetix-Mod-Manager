@@ -72,6 +72,28 @@ exactly as-is — just keep the whole `{1:F0}` token intact.
 
 ---
 
+## Words that change with a number: `{0|mod|mods}`
+
+Some lines pick a word to agree with a number:
+
+```json
+  "backups.minutesAgo": "backed up {0} {0|minute|minutes} ago",
+```
+
+`{0|minute|minutes}` means: look at placeholder `{0}`; if it is exactly 1, say the first
+word, otherwise say the second. So this reads "backed up 1 minute ago" and "backed up 5
+minutes ago". Rules:
+
+- **Keep the number and the two bars**: `{0|` … `|` … `}`. Translate only the two words
+  between them, the one form first and the many form second.
+- **Either side may be several words**, such as `{1|mod is|mods are}`, and may be left
+  empty, such as `{0||s}`.
+- **There are only two forms.** If your language needs more (a different word for 2 to 4,
+  say), use the form that reads best for most numbers, and tell Sean, so the program can be
+  taught your language's rule.
+
+---
+
 ## Things to leave in their original form
 
 Translate the *meaning*, but keep these unchanged when they appear inside a line:

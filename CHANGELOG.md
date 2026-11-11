@@ -3,8 +3,8 @@
 ## 🐛 What the manager says comes in the right order, and all of it
 
 *   **Enabling, disabling or deleting a mod no longer cuts its own message off.** The list moving to the mod's new place used to
-    talk over "X is now disabled". You now hear one sentence: "X is now disabled. 12 of 149". Bulk changes, categories, notes and
-    linking a mod work the same way.
+    talk over "X is now disabled". You now hear "X is now disabled", then the row you are on, then "12 of 149". Bulk changes,
+    categories, notes and linking a mod work the same way.
 *   **"Settings saved" comes first**, ahead of the window and tab being read out. So does "Changes cancelled", and the same for
     the sound theme and shortcut screens and for lists that close themselves when empty. This needs NVDA 2026.3 or newer. On
     other screen readers the message still comes after, because they can't say when they have finished speaking.
@@ -48,11 +48,19 @@
     names both ways back.
 *   **Answering a question on a list says what happened and where you are, once.** Ignoring an update with Delete said the
     next row twice, and recording a version with Ctrl+Shift+Y first read out the row that had just gone. Both now say
-    "Update ignored. Canon-Friendly Dialogue Expansion… 2 of 9", and the same goes for every Yes or No asked from a list.
-*   **Backups say when they were taken.** "Chat Commands, 3 minutes ago, 40 kilobytes" instead of "Chat Commands" and
+    "Update ignored.", then the row you land on, then "2 of 9", and the same goes for every Yes or No asked from a list.
+*   **Backups say when they were taken.** "Chat Commands, backed up 3 minutes ago, 40 kilobytes" instead of "Chat Commands" and
     "Chat Commands_Delete", so two backups of one mod can be told apart.
 *   **Changing a mod setting says where you are.** Choosing a value in the Content Patcher, MCM, INI or Stardew settings
-    lists now says "FriendableZuzuNPCs set to Stella. 4 of 12" in one sentence. The position was lost.
+    lists now says "FriendableZuzuNPCs set to Stella.", then the row, then "4 of 12". The position was lost.
+*   **Putting a Content Patcher setting back to an empty default says "empty".** It said "put back to the default, ." with nothing
+    in the gap.
+*   **Update All with one mod to update names it:** "Update Chat Commands?", not "Update 1 mod?".
+*   **Ctrl+Shift+S during Update All says what it really stopped.** It said "Download cancelled" while the mod being installed went
+    on and was updated seconds later. It now says that mod finishes first and nothing after it is updated.
+*   **Ctrl+U with nothing to update says so.** It said nothing.
+*   **A modpack search says "modpacks", not "mods"**, and "7 mods could not be checked" now says those mods have no mod page to
+    check against.
 *   **Closing a screen no longer reads the window first.** The title bar, or a bare "window" from inside another screen, was
     read for a moment before the row you came back to.
 *   **F6 back to the tabs says the tab once.** It was "Installed Mods Tab, Installed Mods tab selected".
