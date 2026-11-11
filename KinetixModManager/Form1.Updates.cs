@@ -706,10 +706,8 @@ public partial class Form1
                 dlProgress?.Complete();
 
                 ProgressAnnouncer? instProgress = NewProgress(mod.Name, installing: true);
-                string name = await ModFileSystem.ExtractModAsync(
-                    destinationPath, _settings.CurrentModsPath, _allInstalledMods,
-                    backupsPath, _settings.MaxBackupsPerMod, _settings.ActiveGame, LogError,
-                    mod.NexusID, _nexusService, mod.GitHubRepo, _settings.CurrentGamePath, null, instProgress, updating: mod);
+                string name = await ExtractModOffTheWindowAsync(destinationPath, mod.NexusID, mod.GitHubRepo,
+                    fomodWizard: false, instProgress, updating: mod);
                 instProgress?.Complete();
                 RecordDownloadInstalled(destinationPath);
 
@@ -1004,6 +1002,9 @@ public partial class Form1
 			Speak(Loc.T("updates.leftEnabled", updated.Name));
 			return true;
 		}
+
+		// Its folder is the mods folder, so switching it off would take every mod with it. See RefusedAsTheWholeModsFolder.
+		if (IsTheWholeModsFolder(updated)) return false;
 
 		try
 		{

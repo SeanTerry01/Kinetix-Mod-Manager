@@ -75,11 +75,15 @@ public partial class Form1
 			? Loc.T("modsfolder.confirmIntoGame", modCount, destination)
 			: Loc.T("modsfolder.confirmOutOfGame", modCount, destination);
 
+		// Not while an install or Update All is writing into the folder being moved: what it wrote went with the old folder,
+		// and the update was then recorded as installed and never offered again.
+		if (RefusedWhileModsAreChanging()) return false;
 		if (SpeakBox(confirmBody, Loc.T("modsfolder.title"), MessageBoxButtons.YesNo) != DialogResult.Yes)
 		{
 			Speak(Loc.T("modsfolder.cancelled"));
 			return false;
 		}
+		if (RefusedWhileModsAreChanging()) return false;
 
 		try
 		{

@@ -30,6 +30,16 @@ public class ModProfile
 	/// </summary>
 	public List<string>? PluginOrder { get; set; }
 
+	/// <summary>
+	/// The install key of the copy of the game it was saved in, or <c>null</c> for one saved before profiles were kept per
+	/// game, when every game's profiles sat in one folder and a Skyrim profile could be applied to Fallout 4.
+	/// </summary>
+	public string? Game { get; set; }
+
+	/// <summary>The file it was read from, so it is deleted from where it is. Not saved.</summary>
+	[Newtonsoft.Json.JsonIgnore]
+	public string SourcePath { get; set; } = "";
+
 	/// <inheritdoc/>
 	public override string ToString() => Name;
 }

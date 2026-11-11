@@ -381,8 +381,6 @@ public partial class Form1
 			string? targetKey = ResolveDownloadTargetCopy(game);
 			if (targetKey == null) return;
 
-			bool alreadyLoaded = GameProfiles.IsGame(_settings.ActiveGame, game.Id) && targetKey == _settings.ActiveGame;
-
 			SetStatus(Loc.T("download.parsingLink"));
 			var (dlUri, fileName, modName) = await _nexusService.ResolveNxmUrlAsync(url);
 			SetStatus(Loc.T("download.downloading", modName), speak: false);
@@ -394,10 +392,13 @@ public partial class Form1
 			progress.Complete();
 			_soundEngine.Play("load_complete");
 
+			// Worked out now, once the file is here, not before the download. A game switched to while it downloaded used to
+			// count as the one it was for, and the mod went into whichever game was open: a Skyrim mod into Fallout 4.
+			bool alreadyLoaded = GameProfiles.IsGame(_settings.ActiveGame, game.Id) && targetKey == _settings.ActiveGame;
 			if (!alreadyLoaded && !await OfferToSwitchForDownload(game, targetKey, modName))
 				return;
 
-			await OfferToInstallDownload(link, path, modName);
+			await OfferToInstallDownload(link, path, modName, targetKey);
 		}
 		catch (DownloadCancelledException)
 		{
@@ -553,7 +554,8 @@ public partial class Form1
 	/// check is best-effort in both directions: a mod list still refreshing after a game switch simply means the
 	/// question gets asked, which is the safe way to be wrong.
 	/// </summary>
-	private async Task OfferToInstallDownload(NxmLink link, string path, string modName)
+	/// <param name="forGame">The copy the download was filed under. The install refuses any other. See InstallFromZip.</param>
+	private async Task OfferToInstallDownload(NxmLink link, string path, string modName, string forGame)
 	{
 		string? nexusId = Regex.IsMatch(link.ModId, @"^\d+$") ? link.ModId : null;
 
@@ -588,7 +590,7 @@ public partial class Form1
 		// A page the manager knows ships in parts never uses the page id to pick what this replaces: every part shares it.
 		bool partOfMultiPartMod = nexusId != null && ModPartRules.Find(_settings.ActiveGame, nexusId)?.Parts.Count > 1;
 		if (install) OnUi(() => { Fire(InstallFromZip(path, nexusId, confirmReinstall: !isUpgrade, displayName: modName,
-			partOfMultiPartMod: partOfMultiPartMod), "InstallFromZip"); });
+			partOfMultiPartMod: partOfMultiPartMod, expectedGame: forGame), "InstallFromZip"); });
 	}
 
 	[System.Runtime.InteropServices.DllImport("user32.dll")]
@@ -664,6 +666,7 @@ public partial class Form1
 	/// <summary>Opens a file dialog to select a .zip file and installs it via <see cref="InstallFromZip"/>.</summary>
 	private void ManualInstall()
 	{
+		if (RefusedWhileModsAreChanging()) return;
 		bool minecraft = GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true;
 
 		using OpenFileDialog openFileDialog = new OpenFileDialog
@@ -734,6 +737,42 @@ public partial class Form1
 	private IDisposable BeginModOperation() => _modOperations.Begin();
 
 	/// <summary>
+	/// Refuses, said, an action the user started while something is already changing mods on disk. The gate only counts, so
+	/// a second operation simply ran: a restore during Update All moved the same folder the update was swapping, and one of
+	/// them was reported done with the other's result on disk. Checked before any question, so nobody is asked and then
+	/// refused, and again after it, because a question pumps messages and an install can start while it is open.
+	/// </summary>
+	/// <summary>
+	/// Unpacks and puts a mod in place away from the window's thread, for the installs that don't go through
+	/// <see cref="InstallFromZip"/> (a GitHub update, a collection, a dependency). Awaited straight from the window, the
+	/// backing up, deleting and copying after the unpacking ran on its thread: "Installing… 100 percent", then the window
+	/// answered nothing for as long as a large mod took to copy. Reads the settings first, and waits out a refresh, so the
+	/// list it matches against is current. The FOMOD wizard moves itself back onto the window's thread.
+	/// </summary>
+	private async Task<string> ExtractModOffTheWindowAsync(string zip, string? nexusId, string? gitHubRepo, bool fomodWizard,
+		ProgressAnnouncer? progress, GameMod? updating = null)
+	{
+		string modsPath = _settings.CurrentModsPath;
+		string game = _settings.ActiveGame;
+		string gamePath = _settings.CurrentGamePath;
+		string backups = backupsPath;
+		int maxBackups = _settings.MaxBackupsPerMod;
+		while (Volatile.Read(ref _refreshInFlight) > 0) await Task.Delay(25);
+		List<GameMod> installed = _allInstalledMods.ToList();
+
+		return await Task.Run(() => ModFileSystem.ExtractModAsync(
+			zip, modsPath, installed, backups, maxBackups, game, LogError, nexusId, _nexusService, gitHubRepo, gamePath,
+			fomodWizard ? ShowFomodWizardAsync : null, progress, null, updating: updating));
+	}
+
+	private bool RefusedWhileModsAreChanging()
+	{
+		if (!ModOperationRunning) return false;
+		Speak(Loc.T("session.busy"));
+		return true;
+	}
+
+	/// <summary>
 	/// Puts a backup back in place of the mod it came from. The copy being replaced is backed up first, so a restore
 	/// can itself be undone, and a failure leaves things as they were.
 	///
@@ -744,6 +783,8 @@ public partial class Form1
 	/// <param name="startSaid">"Restoring…" has already been said, by the question that asked. Only shown, then.</param>
 	private async Task RestoreBackupAsync(BackupItem backup, bool startSaid = false)
 	{
+		// Again, after the question: something may have started while it was open.
+		if (RefusedWhileModsAreChanging()) return;
 		using IDisposable busy = BeginModOperation();
 
 		string name = BackupRestore.ModNameOf(backup.FullPath);
@@ -923,9 +964,21 @@ public partial class Form1
 	/// </param>
 	private async Task<bool> InstallFromZip(string zipPath, string? nexusId = null, bool silent = false,
 		bool confirmReinstall = false, bool partOfMultiPartMod = false, string? displayName = null,
-		string? gitHubRepo = null, GameMod? updating = null)
+		string? gitHubRepo = null, GameMod? updating = null, string? expectedGame = null)
 	{
 		using IDisposable busy = BeginModOperation();
+
+		// A download is not an operation, so a game can be switched while one runs. Checked here, with the gate held so no
+		// switch can follow: an install meant for one copy never goes into another. The file stays for later.
+		if (expectedGame != null && _settings.ActiveGame != expectedGame)
+		{
+			string forName = _settings.InstallFor(expectedGame)?.DisplayName(withPlatform: true) ?? expectedGame;
+			string fileName = Path.GetFileName(zipPath);
+			SpeakBox(ShortcutIsSet("InstallPendingDownload")
+				? Loc.T("nxm.savedFor", fileName, forName, GetShortcutString("InstallPendingDownload"))
+				: Loc.T("nxm.savedForNoKey", fileName, forName));
+			return false;
+		}
 
 		// Never the raw file name: a Nexus download is called "Skyrim Access-181131-1-2-3-1723456789.7z", and the
 		// mod id, version and timestamp on the end of that are not part of what the mod is called. See ModDisplayName.

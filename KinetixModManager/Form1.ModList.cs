@@ -224,11 +224,31 @@ public partial class Form1
 		// conflict scan. Only files whose winner changed relink, but finding that out means looking at every one of them.
 		if (IsBethesdaGame)
 		{
-			await Task.Run(() =>
+			// Caught, and the list rebuilt anyway. A folder the scan accepts can still make the deployment throw (a subfolder
+			// the user can't read), and escaping here left the list never rebuilt for the rest of the session and a Space that
+			// had worked reported as failed. Nothing on disk was changed, so the list is still true and stays trusted.
+			try
 			{
-				SyncBethesdaDeployment();
-				SyncBethesdaPlugins();
-			});
+				await Task.Run(() => SyncBethesdaDeployment());
+			}
+			catch (Exception ex) when (Volatile.Read(ref _refreshInFlight) <= 1)
+			{
+				LogFailure("Deploy", "Could not bring the game folder up to date", ex);
+				Speak(Loc.T("loadorder.deploySyncFailed", FriendlyError(ex)));
+			}
+			catch (Exception ex)
+			{
+				// A newer pass is on its way: a folder renamed under this one is no news.
+				DiagnosticLog.WriteException("Deploy", "bringing the game folder up to date, with a newer refresh coming", ex);
+			}
+			try
+			{
+				await Task.Run(SyncBethesdaPlugins);
+			}
+			catch (Exception ex)
+			{
+				LogFailure("Deploy", "Could not write the plugin list", ex);
+			}
 			if (Superseded()) return;
 		}
 
@@ -353,6 +373,9 @@ public partial class Form1
 			// there was nothing left to say where you had landed. Consumed here rather than in the Shown handler
 			// because the refresh is asynchronous, and this is the first point at which "Connected as …" has
 			// already been said.
+			// Profiles saved before they were kept per game are listed by the mods they name, which are only known now.
+			if (!listProfiles.Focused) RefreshProfilesList();
+
 			if (_landOnFirstTabWhenReady)
 			{
 				_landOnFirstTabWhenReady = false;

@@ -133,6 +133,8 @@ public partial class Form1
 		try
 		{
 			SetStatus(Loc.T("modparts.downloading", what), speak: true);
+			// The copy this is for, so a game switched to during the download is not the one installed into.
+			string forGame = _settings.ActiveGame;
 			ProgressAnnouncer progress = NewProgress(what, installing: false);
 			string archive = await _nexusService.DownloadFileByIdAsync(
 				known.NexusModId, file.FileId, file.FileName, downloadsPath, progress);
@@ -145,7 +147,7 @@ public partial class Form1
 				// differently — the extender records a manifest so it can be cleanly uninstalled later.
 				if (IsScriptExtenderPart(part))
 					await ModFileSystem.InstallScriptExtenderAsync(
-						archive, gameFolder, _settings.ActiveGame, install);
+						archive, gameFolder, forGame, install);
 				else
 					await ModFileSystem.InstallEnginePreloaderAsync(archive, gameFolder);
 				install.Complete();
@@ -156,7 +158,7 @@ public partial class Form1
 				// mod is being replaced — it would pick a sibling. Installing the Engine Fixes plugin deleted the
 				// preloader exactly that way, leaving a game that would not start.
 				// It has already said why, and saying "installed" after that is what this used to do.
-				if (!await InstallFromZip(archive, known.NexusModId, partOfMultiPartMod: known.Parts.Count > 1))
+				if (!await InstallFromZip(archive, known.NexusModId, partOfMultiPartMod: known.Parts.Count > 1, expectedGame: forGame))
 				{
 					ResetStatus();
 					return PartsOutcome.Failed;

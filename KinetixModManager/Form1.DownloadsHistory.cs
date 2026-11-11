@@ -82,6 +82,7 @@ public partial class Form1
 				if (e.KeyCode == Keys.Enter)
 				{
 					e.Handled = e.SuppressKeyPress = true;
+					if (RefusedWhileModsAreChanging()) return;
 					// Same route as picking an archive by hand; it runs its own progress and overwrite prompt. The list
 					// stays open, and every download is still in it afterwards, so the user can go on to the next.
 					busy = true;
@@ -218,6 +219,7 @@ public partial class Form1
 					e.Handled = e.SuppressKeyPress = true;
 					string path = item.FullPath;
 					int countBefore = list.Items.Count;
+					if (RefusedWhileModsAreChanging()) return;
 
 					busy = true;
 					try

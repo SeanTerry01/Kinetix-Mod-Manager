@@ -95,7 +95,11 @@ public static class ProfileStore
 			try
 			{
 				ModProfile? profile = JsonConvert.DeserializeObject<ModProfile>(File.ReadAllText(path));
-				if (profile != null) profiles.Add(profile);
+				if (profile != null)
+				{
+					profile.SourcePath = path;
+					profiles.Add(profile);
+				}
 			}
 			catch (Exception ex)
 			{

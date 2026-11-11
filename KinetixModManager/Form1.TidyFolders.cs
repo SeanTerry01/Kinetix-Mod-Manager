@@ -59,24 +59,52 @@ public partial class Form1
 
 		var (renames, skips) = ModFolderTidy.Plan(folders, disabledPrefix, isWitcher);
 
+		// ⚠️ A switched-off Witcher 3 mod's outside files are parked under a folder named after the mod's, which a rename would
+		// not move: switched on, it came back without its .asi, and deleted, the game's own file went in its place. Left as is.
+		if (isWitcher)
+		{
+			string witcherGame = Witcher3ModFiles.GameFolderFor(modsPath, _settings.CurrentGamePath);
+			foreach (FolderTidyRename rename in renames.ToList())
+			{
+				if (!rename.From.StartsWith(disabledPrefix, StringComparison.Ordinal)) continue;
+				string parked = witcherGame.Length == 0 ? "" : Path.Combine(witcherGame, Witcher3ModFiles.DisabledExtrasFolderName,
+					Witcher3ModSettings.BareName(rename.From));
+				if (witcherGame.Length > 0 && !Directory.Exists(parked)) continue;
+				renames.Remove(rename);
+				skips.Add(new FolderTidySkip(rename.From, Loc.T("tidy.skipParked")));
+			}
+		}
+
 		if (renames.Count == 0)
 		{
 			Speak(Loc.T("tidy.nothingToDo", GameDisplayName()));
 			return;
 		}
 
+		if (RefusedWhileModsAreChanging()) return;
 		if (!ShowTidyPreview(renames, skips)) return;
 
 		// A mod being deployed or scanned while its folder moves out from under it is the one way this can do
-		// damage, so the rename runs on its own and the list is rebuilt from disk afterwards.
+		// damage, so the rename runs on its own and the list is rebuilt from disk afterwards. "On its own" is made true:
+		// nothing else may change mods meanwhile, a refresh already running is waited out, and the list is not trusted while
+		// folders move, so a refresh that slips in cannot act on half-renamed folders and drop them from the load order.
+		if (RefusedWhileModsAreChanging()) return;
+		using IDisposable busy = BeginModOperation();
+		string game = _settings.ActiveGame;
+		while (Volatile.Read(ref _refreshInFlight) > 0) await System.Threading.Tasks.Task.Delay(25);
+		if (_settings.ActiveGame != game) return;
+
+		_scannedGame = null;
 		var (renamed, failed) = await System.Threading.Tasks.Task.Run(() => ApplyTidy(modsPath, renames));
 
 		if (renamed.Count > 0)
 		{
-			MigrateFolderReferences(renamed, isWitcher);
+			// Under the deployment lock, which every other writer of the deployment record holds.
+			lock (_deploymentLock) MigrateFolderReferences(renamed, isWitcher);
 			_settings.Save();
-			await RefreshModList(checkUpdates: false);
 		}
+		// Always, so the list is trusted again.
+		await RefreshModList(checkUpdates: false);
 
 		SpeakBox(failed.Count == 0
 			? Loc.T("tidy.done", renamed.Count)
@@ -210,9 +238,12 @@ public partial class Form1
 	/// </summary>
 	private void MigrateProfiles(Dictionary<string, string> newNameFor)
 	{
-		if (!Directory.Exists(profilesPath)) return;
+		// This game's own profiles, and the old shared folder's, where a profile saved before they were kept per game still is.
+		IEnumerable<string> files = new[] { profilesPath, sharedProfilesPath }
+			.Where(Directory.Exists)
+			.SelectMany(folder => Directory.GetFiles(folder, "*.json"));
 
-		foreach (string path in Directory.GetFiles(profilesPath, "*.json"))
+		foreach (string path in files)
 		{
 			try
 			{

@@ -304,11 +304,13 @@ public partial class Form1
 			SetStatus(Loc.T("suggested.downloading", entry.Name), speak: true);
 
 			var target = new GameMod { NexusID = entry.NexusId, Name = entry.Name };
+			// The copy this is for, so a game switched to during the download is not the one installed into.
+			string forGame = _settings.ActiveGame;
 			ProgressAnnouncer progress = NewProgress(entry.Name, installing: false);
 			string archive = await _nexusService.DownloadModUpdateAsync(target, downloadsPath, progress);
 			progress.Complete();
 
-			await InstallFromZip(archive, entry.NexusId, displayName: entry.Name);
+			await InstallFromZip(archive, entry.NexusId, displayName: entry.Name, expectedGame: forGame);
 		}
 		catch (Exception ex)
 		{

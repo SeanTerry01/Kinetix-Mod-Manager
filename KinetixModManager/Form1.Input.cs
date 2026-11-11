@@ -679,7 +679,7 @@ public partial class Form1
 				// "Restoring…" is said before the question closes, so focus coming back doesn't cut it, nor it the reader's
 				// reading of the row. See ActBeforeReturning.
 				string name = BackupRestore.ModNameOf(backupItem.FullPath);
-				if (SpeakBox(Loc.T("modlist.restoreConfirm", name), Loc.T("modlist.restoreTitle"), MessageBoxButtons.YesNo,
+				if (!RefusedWhileModsAreChanging() && SpeakBox(Loc.T("modlist.restoreConfirm", name), Loc.T("modlist.restoreTitle"), MessageBoxButtons.YesNo,
 						answer => answer == DialogResult.Yes ? new ResultBeforeReturning(Loc.T("backups.restoring", name)) : null)
 					== DialogResult.Yes)
 				{
@@ -702,7 +702,8 @@ public partial class Form1
 					MessageBoxButtons.YesNo, answer =>
 					{
 						if (answer != DialogResult.Yes) return null;
-						string path = ProfileStore.PathFor(profilesPath, modProfile.Name);
+						// From where it was read: this game's folder, or the old shared one.
+						string path = modProfile.SourcePath.Length > 0 ? modProfile.SourcePath : ProfileStore.PathFor(profilesPath, modProfile.Name);
 						if (File.Exists(path))
 						{
 							File.Delete(path);

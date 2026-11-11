@@ -28,6 +28,16 @@ public partial class Form1
 		}
 
 		ModProfile modProfile = ProfileStore.Capture(text, _allInstalledMods, _settings.CurrentTheme, priority, plugins);
+		modProfile.Game = _settings.ActiveGame;
+
+		// Asked, not overwritten without a word. A profile is somebody's setup, and the name is all that says which.
+		string existingPath = ProfileStore.PathFor(profilesPath, text);
+		if (existingPath.Length > 0 && File.Exists(existingPath) &&
+			SpeakBox(Loc.T("profiles.overwriteConfirm", text), Loc.T("profiles.saveTitle"), MessageBoxButtons.YesNo) != DialogResult.Yes)
+		{
+			Speak(Loc.T("common.changesCancelled"));
+			return;
+		}
 
 		if (ProfileStore.Save(profilesPath, modProfile).Length == 0)
 		{
@@ -39,6 +49,29 @@ public partial class Form1
 
 		RefreshProfilesList();
 		Speak(Loc.T("profiles.saved"));
+	}
+
+	/// <summary>
+	/// The loaded copy's profiles: its own folder's, then any from the old shared folder that name one of its installed mods.
+	/// Those were saved before profiles were kept per game, record no game, and are left where they are; a profile none of
+	/// whose mods are here belongs to another game, and showing it here is how one game's load order reached another.
+	/// </summary>
+	private List<ModProfile> ProfilesForThisGame()
+	{
+		void Failed(string file, Exception ex) => LogFailure("Profiles", $"Failed to load profile '{file}'", ex);
+
+		List<ModProfile> own = ProfileStore.LoadAll(profilesPath, Failed);
+		var installed = new HashSet<string>(_allInstalledMods.Where(m => !m.IsGroup).Select(m => m.UniqueId),
+			StringComparer.OrdinalIgnoreCase);
+		foreach (ModProfile shared in ProfileStore.LoadAll(sharedProfilesPath, Failed))
+		{
+			if (own.Any(p => string.Equals(p.Name, shared.Name, StringComparison.OrdinalIgnoreCase))) continue;
+			bool forThisGame = shared.Game != null
+				? string.Equals(shared.Game, _settings.ActiveGame, StringComparison.OrdinalIgnoreCase)
+				: shared.ModStates.Keys.Any(installed.Contains);
+			if (forThisGame) own.Add(shared);
+		}
+		return own;
 	}
 
 	/// <summary>Scans the profiles directory and repopulates <c>listProfiles</c>.</summary>
@@ -54,8 +87,7 @@ public partial class Form1
 
 		listProfiles.BeginUpdate();
 		listProfiles.Items.Clear();
-		foreach (ModProfile modProfile in ProfileStore.LoadAll(profilesPath,
-			(file, ex) => LogFailure("Profiles", $"Failed to load profile '{file}'", ex)))
+		foreach (ModProfile modProfile in ProfilesForThisGame())
 		{
 			listProfiles.Items.Add(modProfile);
 		}
@@ -95,10 +127,13 @@ public partial class Form1
 	/// </summary>
 	private async void ApplyProfile(ModProfile profile)
 	{
+		if (RefusedWhileModsAreChanging()) return;
 		if (SpeakBox(Loc.T("profiles.applyConfirm", profile.Name), Loc.T("profiles.applyTitle"), MessageBoxButtons.YesNo) == DialogResult.No)
 		{
 			return;
 		}
+		if (RefusedWhileModsAreChanging()) return;
+		using IDisposable busy = BeginModOperation();
 		try
 		{
 			SetStatus(Loc.T("profiles.applying"));
@@ -109,6 +144,8 @@ public partial class Form1
 			// it already has - see ProfileStore.Changes.
 			foreach (var change in ProfileStore.Changes(profile, _allInstalledMods))
 			{
+				// Left alone: its folder is the mods folder. See RefusedAsTheWholeModsFolder.
+				if (IsTheWholeModsFolder(change.Mod)) continue;
 				// Asset deployment and plugins.txt are reconciled once by RefreshModList at the end
 				// (a profile can flip many mods at once), so only the folder enable/disable happens here.
 				change.Mod.FolderPath = ModFileSystem.SetModEnabled(
@@ -119,7 +156,10 @@ public partial class Form1
 			}
 			// Restore the profile's saved load order (mod priority and plugin order) for Skyrim/Fallout 4.
 			// The RefreshModList call below then reconciles assets and rewrites plugins.txt accordingly.
-			if (IsBethesdaGame)
+			// Never another copy's order: its folder names are not this game's, and an order of names that match nothing is
+			// thrown away and the list re-sorted, losing the order the user had tuned. See ProfilesForThisGame.
+			bool orderIsThisGames = profile.Game == null || string.Equals(profile.Game, _settings.ActiveGame, StringComparison.OrdinalIgnoreCase);
+			if (IsBethesdaGame && orderIsThisGames)
 			{
 				if (profile.ModPriority != null)
 					_settings.ModPriority[_settings.ActiveGame] = new List<string>(profile.ModPriority);

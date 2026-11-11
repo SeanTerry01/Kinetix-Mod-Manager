@@ -22,6 +22,7 @@ public partial class Form1
 	/// </summary>
 	private async Task InstallFromGitHubAsync()
 	{
+		if (RefusedWhileModsAreChanging()) return;
 		string? typed = ShowTextPrompt(
 			Loc.T("github.installTitle"), Loc.T("github.installPrompt"), "");
 		if (typed == null) { Speak(Loc.T("common.changesCancelled")); return; }
@@ -78,6 +79,8 @@ public partial class Form1
 		{
 			Directory.CreateDirectory(downloadsPath);
 			string destination = Path.Combine(downloadsPath, asset.Name);
+			// The copy this is for, so a game switched to during the download is not the one installed into.
+			string forGame = _settings.ActiveGame;
 
 			ProgressAnnouncer progress = NewProgress(asset.Name, installing: false);
 			await _nexusService.DownloadFileWithProgressAsync(asset.Url, destination, progress, asset.Digest);
@@ -94,7 +97,7 @@ public partial class Form1
 			}
 			else
 			{
-				await InstallFromZip(destination, confirmReinstall: true, gitHubRepo: repo);
+				await InstallFromZip(destination, confirmReinstall: true, gitHubRepo: repo, expectedGame: forGame);
 			}
 		}
 		catch (Exception ex)

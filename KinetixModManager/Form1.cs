@@ -174,7 +174,17 @@ public partial class Form1 : Form, IMessageFilter
 		}
 	}
 
-	private string profilesPath = Path.Combine(dataBasePath, "profiles");
+	/// <summary>
+	/// The loaded copy's own profiles. One folder for every game let a Skyrim profile be applied to Fallout 4, which put
+	/// Skyrim's folder names in as Fallout 4's load order, and a same-named profile in another game overwrote it.
+	/// </summary>
+	private string profilesPath => Path.Combine(sharedProfilesPath, _settings.ActiveGame);
+
+	/// <summary>
+	/// Where every game's profiles were kept before that. Read, never written: one is listed only in the game whose mods it
+	/// names. See <see cref="RefreshProfilesList"/>.
+	/// </summary>
+	private static readonly string sharedProfilesPath = Path.Combine(dataBasePath, "profiles");
 
 	/// <summary>
 	/// Where sound themes are: the user's own in the data folder, then the ones beside the program. See
@@ -756,9 +766,9 @@ public partial class Form1 : Form, IMessageFilter
 		{
 			Directory.CreateDirectory(backupsPath);
 		}
-		if (!Directory.Exists(profilesPath))
+		if (!Directory.Exists(sharedProfilesPath))
 		{
-			Directory.CreateDirectory(profilesPath);
+			Directory.CreateDirectory(sharedProfilesPath);
 		}
 		// The user's themes folder, not the one beside the program: creating that one on an installed copy is refused.
 		try { Directory.CreateDirectory(_themeFolders.User); }

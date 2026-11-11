@@ -232,10 +232,9 @@ public partial class Form1
 					ProgressAnnouncer progress = NewProgress(Loc.T("deps.resolveProgressName", i + 1, toGet.Count, req.ModName), installing: false);
 					string zip = await _nexusService.DownloadModUpdateAsync(stub, downloadsPath, progress);
 					progress.Complete();
-					string installedName = await ModFileSystem.ExtractModAsync(
-						zip, _settings.CurrentModsPath, _allInstalledMods, backupsPath, _settings.MaxBackupsPerMod,
-						_settings.ActiveGame, LogError, req.ModId, _nexusService, null, _settings.CurrentGamePath,
-						fomodSelector: ShowFomodWizardAsync, installProgress: null, confirmOverwrite: null);
+					ProgressAnnouncer installing = NewProgress(req.ModName, installing: true);
+					string installedName = await ExtractModOffTheWindowAsync(zip, req.ModId, null, fomodWizard: true, installing);
+					installing.Complete();
 					RecordDownloadInstalled(zip);
 					installedNames.Add(installedName);
 					installed.Add(req.ModName);

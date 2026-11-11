@@ -228,10 +228,9 @@ public partial class Form1
 				// A scripted (FOMOD) mod opens the accessible install wizard so the user picks their own options and
 				// hits OK; the batch then carries on to the next mod. Plain mods install straight through (the selector
 				// is only consulted for FOMOD archives). confirmOverwrite null => silent overwrite of an existing copy.
-				string installedName = await ModFileSystem.ExtractModAsync(
-					zip, _settings.CurrentModsPath, _allInstalledMods, backupsPath, _settings.MaxBackupsPerMod,
-					_settings.ActiveGame, LogError, cm.NexusId, _nexusService, null, _settings.CurrentGamePath,
-					fomodSelector: ShowFomodWizardAsync, installProgress: null, confirmOverwrite: null);
+				ProgressAnnouncer installing = NewProgress(cm.Name, installing: true);
+				string installedName = await ExtractModOffTheWindowAsync(zip, cm.NexusId, null, fomodWizard: true, installing);
+				installing.Complete();
 				RecordDownloadInstalled(zip);
 
 				installedNames.Add(installedName);

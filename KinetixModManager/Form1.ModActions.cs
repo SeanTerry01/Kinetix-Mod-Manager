@@ -380,18 +380,22 @@ public partial class Form1
 			Speak(Loc.T("modactions.noModsInCategory"));
 			return;
 		}
+		if (RefusedWhileModsAreChanging()) return;
 		DialogResult dialogResult = SpeakBox(Loc.T("modactions.batchBox", category, list.Count), Loc.T("modactions.batchTitle"), MessageBoxButtons.YesNoCancel);
 		if (dialogResult == DialogResult.Cancel)
 		{
 			return;
 		}
+		if (RefusedWhileModsAreChanging()) return;
+		using IDisposable busy = BeginModOperation();
 		bool flag = dialogResult == DialogResult.Yes;
 		try
 		{
 			SetStatus(Loc.T("modactions.batchStatus", flag ? Loc.T("modactions.batchEnabling") : Loc.T("modactions.batchDisabling"), list.Count));
 			foreach (GameMod item in list)
 			{
-				if (item.IsEnabled != flag)
+				// Left alone: its folder is the mods folder. See RefusedAsTheWholeModsFolder.
+				if (item.IsEnabled != flag && !IsTheWholeModsFolder(item))
 				{
 					item.FolderPath = ModFileSystem.SetModEnabled(item.FolderPath, flag, _settings.ActiveGame,
 						locatedGameFolder: _settings.CurrentGamePath);
@@ -414,6 +418,8 @@ public partial class Form1
 		{
 			ResetStatus();
 			SpeakBox(Loc.T("modactions.batchFailedBox", FriendlyError(ex)));
+			// Some were renamed before it stopped: the list is made to match what is on disk.
+			await RefreshModList(checkUpdates: false);
 		}
 	}
 
@@ -459,6 +465,22 @@ public partial class Form1
 	/// Toggles the selected mod between enabled and disabled. How that is done on disk depends on the game —
 	/// see <see cref="ModFileSystem.SetModEnabled"/>.
 	/// </summary>
+	/// <summary>
+	/// Whether <paramref name="mod"/> is files loose in the mods folder itself, and so refused, said, for anything that renames
+	/// or deletes its folder. Stardew lists a Mods\manifest.json as a mod whose folder is the whole of Mods: Space renamed
+	/// Mods to .Mods and every mod went, and Delete deleted them all. The Linux head always checked; this one didn't.
+	/// </summary>
+	private bool RefusedAsTheWholeModsFolder(GameMod mod)
+	{
+		if (!ModOnDisk.IsTheModsFolderItself(mod.FolderPath, _settings.CurrentModsPath)) return false;
+		_soundEngine.Play("error");
+		Speak(Loc.T("modactions.rowIsModsFolder", mod.Name));
+		return true;
+	}
+
+	/// <summary>The same, quietly, for a batch that goes on with every other mod.</summary>
+	private bool IsTheWholeModsFolder(GameMod mod) => ModOnDisk.IsTheModsFolderItself(mod.FolderPath, _settings.CurrentModsPath);
+
 	private async void ToggleModStatus()
 	{
 		if (!(listInstalled.SelectedItem is GameMod selectedMod))
@@ -478,6 +500,7 @@ public partial class Form1
 			Speak(Loc.T("common.modGroupFirst"));
 			return;
 		}
+		if (RefusedAsTheWholeModsFolder(selectedMod)) return;
 		try
 		{
 			selectedMod.FolderPath = ModFileSystem.SetModEnabled(
@@ -517,6 +540,7 @@ public partial class Form1
 	private async void DeleteSelectedMod()
 	{
 		if (listInstalled.SelectedItem is not GameMod selectedMod || selectedMod.IsGroup) return;
+		if (RefusedAsTheWholeModsFolder(selectedMod)) return;
 		// Pressed again during the backup, this used to ask again and delete twice.
 		if (ModOperationRunning)
 		{

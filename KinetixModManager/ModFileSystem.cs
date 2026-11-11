@@ -1200,10 +1200,19 @@ public static class ModFileSystem
 				string mName     = ((string?)manifest["Name"]) ?? "Unknown";
 				targetFolderNameStardew = Path.GetFileName(sourceFolderStardew);
 				if (sourceFolderStardew.TrimEnd('\\') == tempDir.TrimEnd('\\'))
-					targetFolderNameStardew = mName.Replace(" ", "");
+				{
+					// Through the same cleaning every other name gets. Straight from the archive, a Name of "" or "." made the
+					// destination the Mods folder itself, and the install replaced every mod with this one; ".." was the game.
+					string fromName = ModScanner.SanitiseFolderName(mName.Replace(" ", ""));
+					targetFolderNameStardew = fromName.Length > 0 ? fromName : installFolderName;
+				}
 			}
 
 			string destModFolderStardew = Path.Combine(modsPath, targetFolderNameStardew);
+			// Never anywhere but a folder directly inside Mods, whatever named it.
+			if (!string.Equals(Path.GetDirectoryName(Path.GetFullPath(destModFolderStardew)),
+					Path.GetFullPath(modsPath).TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+				throw new ModArchiveContentException($"'{Path.GetFileName(zipPath)}' names a folder that isn't inside the Mods folder.");
 			// Something else already in that folder is replaced as well, so it gets the same backup.
 			if (Directory.Exists(destModFolderStardew) && replacing.Add(destModFolderStardew))
 			{
@@ -1279,6 +1288,18 @@ public static class ModFileSystem
 		string? nexusId, NexusService? nexusService, string? gitHubRepo, string? currentGamePath, FomodInfo? fomodInfo,
 		string buildFolder, string? docsSourceRoot = null, bool matchExistingByNexusId = true, GameMod? updating = null)
 	{
+		// An update keeps the name of the copy it replaces. Taken from the download, a GitHub update's "X_github_latest.zip"
+		// renamed the mod to that, and with it went its place in Mod Priority, its category, note and profile entries, all
+		// kept against the old name; the next update made "X_github_latest_github_latest". The same for a Nexus download whose
+		// name changed between versions ("A 2.0 SE"), and for a copy the user chose to replace: Mod Priority put it at the top.
+		if ((InstallTarget.ForUpdate(updating, installedMods)
+				?? InstallTarget.Find(installedMods, nexusId, targetFolderName, matchExistingByNexusId).Mod) is { FolderPath.Length: > 0 } updated)
+		{
+			string ownName = Path.GetFileName(ModEnableState.TargetPath(
+				updated.FolderPath.TrimEnd(Path.DirectorySeparatorChar), enable: true, activeGame));
+			if (ownName.Length > 0) targetFolderName = ownName;
+		}
+
 		// The new copy is built here and only moved into place once it is whole. See ModFolderSwap.
 		string destModFolder = buildFolder;
 
