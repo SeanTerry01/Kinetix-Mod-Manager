@@ -159,7 +159,7 @@ public partial class Form1 : IProgressDisplay
 
 	/// <summary>Updates the title bar with the live percentage for an in-progress download or install.</summary>
 	private void SetProgressTitle(string name, string phraseKey, int pct) =>
-		Text = Loc.T(TitleKeyFor(phraseKey), GameDisplayName(), name, pct);
+		Text = WindowTitle(Loc.T(TitleKeyFor(phraseKey), GameDisplayName(), name, pct));
 
 	/// <summary>The title-bar wording that goes with an opening phrase.</summary>
 	private static string TitleKeyFor(string phraseKey) => phraseKey switch
