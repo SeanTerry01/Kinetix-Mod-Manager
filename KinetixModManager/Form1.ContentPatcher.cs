@@ -128,7 +128,9 @@ public partial class Form1
 
 				int index = list.SelectedIndex;
 				Reload(index);
-				Speak(Loc.T("cpconfig.reset", row.Option.Name, row.Option.Default));
+				// An empty default was said as "put back to the default, ." with nothing in the gap.
+				Speak(Loc.T("cpconfig.reset", row.Option.Name,
+					row.Option.Default.Length > 0 ? row.Option.Default : Loc.T("cpconfig.valueEmpty")));
 			}
 
 			btnClose.Click += delegate { closeView(); };
