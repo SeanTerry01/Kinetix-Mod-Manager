@@ -1192,6 +1192,7 @@
   "mc.move.couldNotAsk": "The mod sites could not be asked which of your mods work on Minecraft {0}, so nothing has been changed. Check your internet connection and try again. Reason: {1}",
   "mc.move.accessModFailed": "{0} could not be downloaded for Minecraft {1}, and the game would not speak without it. Nothing has been changed. Check your internet connection and try again.",
   "mc.launch.alreadyStarting": "Minecraft is already starting.",
+  "mc.launch.alreadyRunning": "Minecraft is already running. Close it to start it again.",
   "mc.launch.noFabricForVersionBox": "Fabric is not installed for Minecraft {0}, the version this setup is on, so Minecraft would not start with your mods.\n\nOpen the accessibility suite and choose Install to set it up.",
   "mc.move.doneAll": "Moved to Minecraft {0}. {1} {1|mod is|mods are} ready for it, and nothing had to be switched off.",
   "mc.game.title": "Download Minecraft {0}",

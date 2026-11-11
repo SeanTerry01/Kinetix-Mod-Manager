@@ -1605,6 +1605,14 @@ public partial class Form1
 	/// </param>
 	private async Task LaunchMinecraftAsync(MinecraftPack? pack = null)
 	{
+		// And once it has started. The flag below is let go the moment the process exists, so F5 twice quickly still
+		// started two games, both said "Starting Minecraft offline". Measured on the test copy 2026-11-10.
+		if (Volatile.Read(ref _minecraftGamesRunning) > 0)
+		{
+			Speak(Loc.T("mc.launch.alreadyRunning"));
+			return;
+		}
+
 		// F5 twice during a sign-in or a download started two games, both talking.
 		if (Interlocked.Exchange(ref _minecraftLaunching, 1) == 1)
 		{
@@ -1616,6 +1624,9 @@ public partial class Form1
 	}
 
 	private int _minecraftLaunching;
+
+	/// <summary>Games this manager started that have not exited yet. See <see cref="LaunchMinecraftAsync"/>.</summary>
+	private int _minecraftGamesRunning;
 
 	private async Task StartMinecraftAsync(MinecraftPack? pack)
 	{
@@ -1690,7 +1701,14 @@ public partial class Form1
 			{
 				started.ErrorDataReceived += (_, e) => errors.Add(e.Data);
 				started.BeginErrorReadLine();
-				Fire(TrackMinecraftSessionAsync(started, log, errors, logPath), "TrackMinecraftSessionAsync");
+				Interlocked.Increment(ref _minecraftGamesRunning);
+				Fire(TrackThenCountAsync(), "TrackMinecraftSessionAsync");
+
+				async Task TrackThenCountAsync()
+				{
+					try { await TrackMinecraftSessionAsync(started, log, errors, logPath); }
+					finally { Interlocked.Decrement(ref _minecraftGamesRunning); }
+				}
 			}
 		}
 		catch (Exception ex)
