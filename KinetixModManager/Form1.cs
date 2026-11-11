@@ -82,6 +82,9 @@ public partial class Form1 : Form, IMessageFilter
     {
         if (keyData == Keys.F6)
         {
+            // The user is driving, as for any key: see the key preview. F6 is taken here, before that sees it, so pressed
+            // while the opening was still being said it landed on "Installed Mods. list" with no row and no position.
+            if (!OverlayIsOpen) _userMovedSinceLoadBegan = true;
             HandleCycleFocus();
             return true;
         }
