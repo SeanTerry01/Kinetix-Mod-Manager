@@ -164,7 +164,7 @@ public sealed class RefreshOffThreadTests
 	public void AListWhoseRowHasGoneStaysNearWhereItWas(string file, string start)
 	{
 		// Starting from 0 made "not found" look found, and deleting backup 20 of 40 landed on row 1.
-		InOrder(Body(file, start, 1200), "int newIndex = -1;", "newIndex >= 0 ? newIndex : Math.Min(");
+		InOrder(Body(file, start, 2000), "int newIndex = -1;", "newIndex >= 0 ? newIndex : Math.Min(");
 	}
 
 	[Fact]

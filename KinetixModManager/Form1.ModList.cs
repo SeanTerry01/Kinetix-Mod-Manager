@@ -833,9 +833,11 @@ public partial class Form1
 		{
 			return;
 		}
-		int oldIndex = listBackups.SelectedIndex;
+		// Your place is kept only while you are in the list; otherwise the newest, the one a new backup would be.
+		bool inList = listBackups.Focused;
+		int oldIndex = inList ? listBackups.SelectedIndex : 0;
 		// By file: two backups of one mod share a name.
-		string? oldName = (listBackups.SelectedItem as BackupItem)?.FullPath;
+		string? oldName = inList ? (listBackups.SelectedItem as BackupItem)?.FullPath : null;
 
 		listBackups.BeginUpdate();
 		listBackups.Items.Clear();
