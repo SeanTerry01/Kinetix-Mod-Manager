@@ -130,6 +130,46 @@
 *   **It could delete a file the game needs.** Switching a mod off puts back whatever the mod replaced, and deleting the mod then
     deleted that too, so only verifying the game could bring it back.
 
+## 🐛 Found in a full review before release
+
+A review of the whole manager before 1.6.0 found these. All are fixed.
+
+*   **Applying a profile no longer stops at the first mod that will not move.** A folder held open by the game or a virus
+    scanner used to leave the profile half applied, the load order not restored and the list out of date. The rest is applied
+    now, and you are told which mods could not be switched. Switching a whole category on or off works the same way.
+*   **Profiles are kept per copy of a game.** One copy's load order is never applied to another, and saving over a profile asks
+    first.
+*   **Updating a Stardew download that holds several mods keeps the ones you had switched off, off,** and says which.
+*   **A Stardew update no longer writes the Nexus page's version into the mod's manifest.** A version like "2.0.3.5" made SMAPI
+    refuse the manifest and skip the mod.
+*   **Fetching the second part of a mod that comes in parts no longer replaces the first.**
+*   **The update check picks the right file.** A mod page's main file of the matching version comes first, and files marked
+    archived or old version are no longer offered as updates.
+*   **Plugins in a mod's subfolders are no longer listed as active.** The game only loads plugins at the top of `Data`, so one in
+    an `Optional` folder was written to plugins.txt, counted against the limit and taken as a master that was there, while the
+    game crashed for want of it. Installing such a mod now says the plugin is in a subfolder.
+*   **Minecraft: Reinstall a Downloaded Mod lists your jars.** It was always empty there. A `.zip` chosen in a Minecraft session
+    is refused, instead of becoming a folder Fabric never loads.
+*   **Minecraft: copying a newer world into a pack warns you on a Minecraft installed by the manager too.** It only ever looked
+    at the official launcher's files.
+*   **Minecraft: moving to another version stops before changing anything** when it would switch off what your accessibility
+    mod needs, such as Fabric API. A failed Fabric API download used to leave a game Fabric would not start.
+*   **Minecraft: a modpack update waits until Minecraft is closed**, keeps its row when it fails, and switches off and names the
+    mods you added that say they cannot run on the pack's new version. Installing a jar built for another version asks first.
+*   **A dropped Minecraft download no longer leaves a broken game.** The game, its sounds and Java are downloaded to a temporary
+    file and only put in place once whole, and the manager's own Java is checked file by file. A pack's own bundled mods are
+    kept out of your mods folder.
+*   **A download for another game that finishes while a screen is open is saved for later**, rather than switching games under
+    the screen, where its Save would have written to the wrong game.
+*   **Switching games during an update check starts a fresh check** instead of reading out part of the old one as complete.
+*   **Deleting, enabling or updating can no longer act on the whole mods folder**, and an install meant for one copy of a game
+    never goes into another.
+*   **Moving a mod in Mod Priority no longer freezes the keyboard** while the game folder is brought up to date.
+*   **Menus no longer say "Unmapped"** for commands that have no key. "Assign a Nexus ID to Selected Mod" is on the Mods menu,
+    under Selected Mod.
+*   **Wording:** an emptied setting says "set to empty"; a modpack search says "modpacks" throughout; counts say "1 request", "1
+    control"; a failed action no longer ends with two full stops; Shift+F1 on Backups names both lists.
+
 ## 🐧 The Linux version
 
 *   **Restoring a backup, updating and deleting** now do what they say, and failures are said rather than reported as success.

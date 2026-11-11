@@ -5,7 +5,7 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-11-03, after the second round from the whole-manager review.
+**Last updated:** 2026-11-11, after fixing the 1.6.0 review.
 **State:** all tests passing on Windows; the solution builds clean.
 
 ---
@@ -30,6 +30,11 @@ Done or decided everything else on the list. What is here needs a person, or is 
 - [ ] **Small leftovers:** `SyncPluginsFile`'s `isDeploy` is always false; `Shortcut.Describe` stays because it is the only thing asking for
   `shortcut.unbound`; the portable zip creates empty `profiles`, `downloads` and `backups` folders the manager doesn't use; the INI editor
   doesn't share the settings-view builder, because it differs in font and buttons.
+- [ ] **Left from the 1.6.0 review (2026-11-11).** Every confirmed finding but one is fixed, none of it ear-tested yet.
+  - **BepInEx patchers are copied untracked.** `FinalizeBepInExModAsync` copies a mod's `BepInEx\patchers` into the game's, and nothing
+    records it, so switching the mod off or deleting it leaves its patchers running. Needs a record like Witcher's outside files.
+  - **Unconfirmed:** whether `MinecraftAuth` drops the saved refresh token when a refresh fails for a reason other than the token
+    being refused (offline, say), which would sign the player out. Microsoft rotates the token, so check before changing anything.
 - [ ] **The GTK head has been compiled, never run.** See its section below. Only an ear test on Linux can settle it.
 - [ ] **GTK gaps found while fixing it:** GitHub-hosted mods such as United Minecraft are never checked for updates on Linux, yet count as
   checked. `mods.settings` looks wrong under Proton (`UserDataDirectoryFor` ignores `IGameLocator.UserDocumentsFolder`). A Linux user may have
