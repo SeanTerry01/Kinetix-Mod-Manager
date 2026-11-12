@@ -424,6 +424,16 @@ public partial class Form1 : Form, IMessageFilter
 	/// startup landing must not pull them back. See <see cref="LandOnFirstTab"/>.
 	/// </summary>
 	private bool _userMovedSinceLoadBegan;
+
+	/// <summary>
+	/// Which window had the keyboard focus when the landing on the first tab was armed. Focus somewhere else by the time it
+	/// lands means the user moved, whatever the key preview saw: Tab is handled before any key event is raised, so tabbing
+	/// into the search box never counted, and the landing took focus back to the strip while they typed (2026-11-11).
+	/// </summary>
+	private IntPtr _focusWhenLandingArmed;
+
+	/// <summary>A search typed into Installed Mods before its mods had been read; the count is said when they have been.</summary>
+	private bool _sayMatchCountWhenListArrives;
 	/// <summary>
 	/// True while startup is speaking its own opening, so a list does not announce its position over the top.
 	///
@@ -958,6 +968,7 @@ public partial class Form1 : Form, IMessageFilter
 				// Armed before the refresh, spent by it: the refresh is what says "Connecting…" and "Connected
 				// as …", so landing on the first tab has to happen at its end rather than here. See LandOnFirstTab.
 				form._landOnFirstTabWhenReady = true;
+				form._focusWhenLandingArmed = GetFocus();
 				// The reader is told which window this is up in the Shown handler, before the opening starts, so
 				// by the time this lands there is nothing left to describe the arrival, and the app says which tab
 				// it landed on itself. See LandOnFirstTab.

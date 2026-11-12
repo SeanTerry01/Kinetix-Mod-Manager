@@ -470,7 +470,8 @@ public static class ModFileSystem
 		DeploymentManifest manifest,
 		Action<string, string> logError,
 		HashSet<string>? forceRelink = null,
-		IReadOnlyDictionary<string, string>? winnerOverrides = null)
+		IReadOnlyDictionary<string, string>? winnerOverrides = null,
+		IReadOnlyDictionary<string, string>? installedModFolders = null)
 	{
 		var conflicts = new List<FileConflict>();
 		if (string.IsNullOrEmpty(gameRootPath)) return conflicts;
@@ -561,11 +562,48 @@ public static class ModFileSystem
 		var originals = new OriginalFiles(manifest.OriginalsFolder);
 		manifest.Failures = 0;
 
+		// Every installed mod's folder, switched on or not, so a file whose only copy left is the game's can go back to its mod.
+		var modFolders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		if (installedModFolders != null)
+			foreach (var (name, folder) in installedModFolders) modFolders[name] = folder;
+		foreach (var (name, folder) in enabledModsHighToLow)
+			if (!string.IsNullOrEmpty(folder)) modFolders[name] = folder;
+		var enabledNames = new HashSet<string>(enabledModsHighToLow.Select(m => m.Name), StringComparer.OrdinalIgnoreCase);
+
 		// 1. Remove files we previously deployed that are no longer wanted by any enabled mod.
 		foreach (var kv in manifest.Deployed)
 		{
 			if (desiredSource.ContainsKey(kv.Key)) continue;
 			string destAbs = Path.Combine(gameRootPath, kv.Key);
+
+			// ⚠️ Not wanted can mean the mod is still installed and has lost its own copy, and then the game's is the last one left.
+			// Deleting it is how a real Skyrim lost the Unofficial Patch's .esp and .bsa files (2026-11-11). It goes back into the
+			// mod's folder first; a mod still switched on keeps it in the game. See DeployedFileRescue.
+			if (modFolders.TryGetValue(kv.Value, out string? ownerFolder))
+			{
+				try
+				{
+					DeployedFileRescue.Rescue rescue = DeployedFileRescue.PutBackIntoMod(destAbs, ownerFolder, kv.Key, TryCreateHardLink);
+					if (rescue == DeployedFileRescue.Rescue.PutBack)
+						DiagnosticLog.Write("Deployment", $"Put {kv.Key} back into {kv.Value}, which had lost its own copy.");
+					if (rescue != DeployedFileRescue.Rescue.NothingToKeep)
+					{
+						if (enabledNames.Contains(kv.Value))
+						{
+							recorded[kv.Key] = kv.Value;
+							continue;
+						}
+					}
+				}
+				catch (Exception ex)
+				{
+					// Left in the game and in the record, so the next pass tries again rather than deleting the last copy.
+					logError(destAbs, $"Kept, because it couldn't be put back into {kv.Value}: {ex.Message}");
+					recorded[kv.Key] = kv.Value;
+					continue;
+				}
+			}
+
 			try
 			{
 				RobustDeleteFile(destAbs);

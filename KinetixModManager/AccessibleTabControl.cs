@@ -37,6 +37,62 @@ internal class AccessibleTabControl : TabControl
 {
 	protected override AccessibleObject CreateAccessibilityInstance() => new StripAccessibleObject(this);
 
+	/// <summary>UIA_AutomationFocusChangedEventId.</summary>
+	private const int AutomationFocusChanged = 20005;
+
+	private TabPage? _lastAnnouncedPage;
+	private long _lastAnnouncedAt;
+
+	private const System.Reflection.BindingFlags Internal = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+
+	/// <summary>WinForms' own accessible object for a page's tab, the one NVDA is on when a tab has the focus. Internal.</summary>
+	private static readonly System.Reflection.PropertyInfo? TabAccessibilityObject =
+		typeof(TabPage).GetProperty("TabAccessibilityObject", Internal);
+
+	/// <summary>WinForms' own way of raising a UI Automation event for an accessible object. Internal.</summary>
+	private static readonly System.Reflection.MethodInfo? RaiseAutomationEvent = typeof(AccessibleObject)
+		.GetMethods(Internal)
+		.FirstOrDefault(m => m.Name == "RaiseAutomationEvent" && m.GetParameters() is { Length: 1 } p && p[0].ParameterType.IsEnum);
+
+	/// <summary>
+	/// Points the reader at the selected tab again, as WinForms does when the strip gets the focus. For when the strip already
+	/// has the focus and the reader has lost track of the tab: a menu closing over it leaves NVDA holding the strip itself, an
+	/// unnamed pane, and focusing it again raises nothing because nothing moved (traced 2026-11-11). Returns false when it
+	/// couldn't, and the caller says the tab instead.
+	///
+	/// <para>
+	/// ⚠️ On WinForms' own object for the tab, not on the <see cref="TabAccessibleObject"/> above: the focused tab NVDA reports
+	/// is WinForms' (it offers selection, which ours doesn't), and a focus event raised on ours was ignored. Measured, all doing
+	/// nothing: the window event the native strip sends, WM_SETFOCUS, WM_KILLFOCUS then WM_SETFOCUS, and that UI Automation
+	/// event on our object. Giving the form the focus and letting it hand it back did work, but NVDA read the form on the way,
+	/// "unknown", twice, on a real Moonlight Peaks switch. Both members are internal, so found by name, and a later .NET that
+	/// renames them makes this return false rather than fail.
+	/// </para>
+	/// </summary>
+	public bool AnnounceSelectedTab()
+	{
+		if (!IsHandleCreated || !Focused || SelectedTab is not { } page || TabAccessibilityObject is null || RaiseAutomationEvent is null)
+			return false;
+		// A menu closing and a game's list arriving can both ask within moments of each other, and the tab was heard twice
+		// (2026-11-11). One arrival, one announcement.
+		long now = Environment.TickCount64;
+		if (ReferenceEquals(page, _lastAnnouncedPage) && now - _lastAnnouncedAt < 1000) return true;
+		try
+		{
+			if (TabAccessibilityObject.GetValue(page) is not AccessibleObject tab) return false;
+			object eventId = Enum.ToObject(RaiseAutomationEvent.GetParameters()[0].ParameterType, AutomationFocusChanged);
+			if (RaiseAutomationEvent.Invoke(tab, new[] { eventId }) is not true) return false;
+			_lastAnnouncedPage = page;
+			_lastAnnouncedAt = now;
+			return true;
+		}
+		catch (Exception ex) when (ex is System.Reflection.TargetInvocationException or ArgumentException or MemberAccessException)
+		{
+			DiagnosticLog.WriteException("UI", "pointing the reader at the selected tab", ex);
+			return false;
+		}
+	}
+
 	/// <summary>The strip itself: a list of page tabs, with the selected page's content bringing up the rear.</summary>
 	private sealed class StripAccessibleObject : ControlAccessibleObject
 	{

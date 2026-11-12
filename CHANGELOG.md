@@ -141,6 +141,22 @@
 *   **It could delete a file the game needs.** Switching a mod off puts back whatever the mod replaced, and deleting the mod then
     deleted that too, so only verifying the game could bring it back.
 
+## 🐛 Found testing on a real setup
+
+*   **Deploying no longer deletes the last copy of a mod's file.** When a file was in the game folder but had gone missing from
+    its mod's own folder, deploying removed it from the game, and it was gone. It is now put back into the mod's folder first.
+    The manager does this for you the first time it deploys, so the files go back into the mods they came from.
+*   **Installing a `.rar` works.** Every ordinary `.rar` failed with "ExtractAllEntries can only be used on solid archives or 7Zip
+    archives".
+*   **Typing in the search box straight after the manager opens is kept.** Focus jumped to the tabs once "Connected as" was said,
+    and what you had typed went with it. Pressing Ctrl to stop speech while it loads no longer counts as moving away either.
+*   **Searching before your mods have loaded says the real count** once they arrive. It said "0 mods found" and left it there.
+*   **Switching games, or closing a menu, puts NVDA back on the tab.** You heard an unnamed pane and had to press Tab. Now you
+    hear "Installed Mods tab selected" once.
+*   **After OK on "installed!", you land on the new mod** in Installed Mods, with its position. You were left on the tab.
+*   **A deleted mod is not read out again.** When a search left only that mod, its row came back after "Deleted". You now hear
+    "List is empty".
+
 ## 🐛 Found in a full review before release
 
 A review of the whole manager before 1.6.0 found these. All are fixed.

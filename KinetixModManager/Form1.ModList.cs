@@ -398,6 +398,13 @@ public partial class Form1
 				_landOnFirstTabWhenReady = false;
 				LandOnFirstTab();
 			}
+
+			// A search typed while the mods were still being read, now that they have been. See FilterInstalledMods.
+			if (_sayMatchCountWhenListArrives && ModListIsTrustworthy)
+			{
+				_sayMatchCountWhenListArrives = false;
+				if (txtSearchInstalled.Text.Trim().Length > 0) Speak(InstalledMatchCounts());
+			}
 		});
 
 		// Nexus slow to answer, or not answering at all, as in an outage: the mods went up without it, and how the connection
@@ -813,6 +820,9 @@ public partial class Form1
 			Speak(result);
 			await WaitForSpeechAsync();
 			await RefreshModList(checkUpdates: false);
+			// Nothing left to read: a search or a filter held only the mod just deleted or switched off. The reader says the
+			// list's name and stops, and that is all that was heard (2026-11-11).
+			if (listInstalled.Focused && listInstalled.Items.Count == 0) Speak(Loc.T("common.listEmpty"));
 			return;
 		}
 

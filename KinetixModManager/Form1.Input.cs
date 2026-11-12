@@ -60,7 +60,10 @@ public partial class Form1
 		// being pulled back to Installed Mods mid-keystroke is worse than never being told where you started.
 		// Set here rather than on any key at all, so typing into a first-run wizard does not count as wandering
 		// the main window.
-		_userMovedSinceLoadBegan = true;
+		// ⚠️ Not a modifier on its own. Ctrl is how a screen-reader user stops speech, and pressed during the welcome it counted
+		// as moving: the landing was called off and the session opened without saying where you were (2026-11-11).
+		if (e.KeyCode is not (Keys.ControlKey or Keys.ShiftKey or Keys.Menu or Keys.LWin or Keys.RWin))
+			_userMovedSinceLoadBegan = true;
 
 		// Every command below is a one-shot, and none of them wants to run again because a key was held a
 		// moment too long: holding Refresh Everything started a refresh per repeat, and holding F1 would have

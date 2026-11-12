@@ -126,6 +126,14 @@ public partial class Form1
 	{
 		RebuildInstalledListBox();
 
+		// Typed before the mods have been read, there is nothing to count yet: "0 mods found" was said, and once the list came
+		// up nothing said otherwise, so it sounded as though nothing matched (2026-11-11). Said when the list arrives instead.
+		if (!ModListIsTrustworthy)
+		{
+			_sayMatchCountWhenListArrives = true;
+			return;
+		}
+
 		// The counts, and only the counts. Which sorting the user has just moved to is the screen reader's to say —
 		// it names the new value of the dropdown as they arrow onto it — and the manager saying it as well was
 		// heard as the sorting twice over, once at each end: "All Mods. 198 mods found. 147 rows, including 31 mod
@@ -136,10 +144,7 @@ public partial class Form1
 		// and groups are named as well: a group is one row standing for several mods, so the two counts differ —
 		// fewer rows than mods while groups are collapsed, more once they are expanded — and either reading is
 		// puzzling without the other.
-		int groups = listInstalled.Items.OfType<GameMod>().Count(m => m.IsGroup);
-		string counts = groups == 0
-			? Loc.T(_installedMatchCount == 1 ? "modlist.foundOne" : "modlist.found", _installedMatchCount)
-			: Loc.T("modlist.foundWithGroups", _installedMatchCount, listInstalled.Items.Count, groups);
+		string counts = InstalledMatchCounts();
 
 		if (!readerNamesTheChange)
 		{
@@ -148,6 +153,15 @@ public partial class Form1
 		}
 
 		Fire(SpeakAfterReaderNamesTheChangeAsync(counts), "SpeakAfterReaderNamesTheChangeAsync");
+	}
+
+	/// <summary>What the last rebuild of Installed Mods matched: "2 mods found", with rows and groups when any group is on show.</summary>
+	private string InstalledMatchCounts()
+	{
+		int groups = listInstalled.Items.OfType<GameMod>().Count(m => m.IsGroup);
+		return groups == 0
+			? Loc.T(_installedMatchCount == 1 ? "modlist.foundOne" : "modlist.found", _installedMatchCount)
+			: Loc.T("modlist.foundWithGroups", _installedMatchCount, listInstalled.Items.Count, groups);
 	}
 
 	/// <summary>
@@ -914,6 +928,14 @@ public partial class Form1
 		// screen opened during startup owns the window; taking focus out from under it would be worse still.
 		if (_userMovedSinceLoadBegan || OverlayIsOpen) return;
 
+		// Moved by the key preview's reckoning or not: focus that is neither where it was when the landing was armed nor on
+		// the strip itself is somewhere the user went. See _focusWhenLandingArmed.
+		IntPtr focusNow = GetFocus();
+		if (focusNow != IntPtr.Zero && _focusWhenLandingArmed != IntPtr.Zero
+			&& focusNow != _focusWhenLandingArmed && focusNow != mainTabs.Handle)
+			return;
+
+		bool stripHadFocus = mainTabs.Focused;
 		SelectTab(AppTab.Installed);
 		mainTabs.Focus();
 
@@ -922,6 +944,11 @@ public partial class Form1
 		// session opens in silence. A session switch drags focus off the game-selection list onto the strip, which
 		// the reader announces itself; saying it too was heard as the tab twice.
 		if (_landShouldSpeak)
+			Speak(Loc.T("common.tabSuffix", mainTabs.SelectedTab?.Text ?? ""));
+		// ⚠️ A switch from the Games menu leaves focus on the strip while its tabs are taken away and put back, and the reader
+		// is left holding the strip itself, an unnamed pane, instead of its selected tab (2026-11-11). Focus() on a control that
+		// already has it raises nothing, so the tab is pointed out the way the strip itself does it.
+		else if (stripHadFocus && !(mainTabs is AccessibleTabControl strip && strip.AnnounceSelectedTab()))
 			Speak(Loc.T("common.tabSuffix", mainTabs.SelectedTab?.Text ?? ""));
 	}
 
@@ -954,10 +981,14 @@ public partial class Form1
 		{
 			List_Enter(list, EventArgs.Empty);
 		}
-		else if (focused is TabControl || mainTabs.Focused)
+		else if ((focused is TabControl || mainTabs.Focused) && !_landOnFirstTabWhenReady)
 		{
-			// Leaving the menu with the tab strip focused never re-fires the tab's own announcement, so say it here.
-			Speak(Loc.T("common.tabSuffix", mainTabs.SelectedTab?.Text ?? ""));
+			// Leaving the menu with the tab strip focused never re-fires the tab's own announcement, and leaves the reader on
+			// the strip itself, an unnamed pane. The strip says its tab again, which puts the reader back on it too; saying the
+			// tab's name from here was heard, but left the reader where it was. Not when a game was just chosen from the menu:
+			// the landing at the end of loading says the tab, and this was heard as the tab read out early, then again.
+			if (!(mainTabs is AccessibleTabControl strip && strip.AnnounceSelectedTab()))
+				Speak(Loc.T("common.tabSuffix", mainTabs.SelectedTab?.Text ?? ""));
 		}
 	}
 

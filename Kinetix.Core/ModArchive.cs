@@ -178,16 +178,39 @@ public static class ModArchive
 
 		long done = 0;
 		using IArchive archive = ArchiveFactory.OpenArchive(archivePath);
-		using IReader reader = archive.ExtractAllEntries();
-		while (reader.MoveToNextEntry())
+
+		// ⚠️ The single reader is only for archives that need it. SharpCompress refuses it for anything else: "ExtractAllEntries
+		// can only be used on solid archives or 7Zip archives", which is what an ordinary RAR got, and the install failed (a real
+		// Carry Weight Modifiers .rar, 2026-11-11). An archive that isn't solid can be read entry by entry at no cost.
+		if (ReadsForwardsOnly(archive))
 		{
-			if (reader.Entry.IsDirectory) continue;
-			reader.WriteEntryToDirectory(outputDir, options);
-			if (reader.Entry.Size > 0) done += reader.Entry.Size;
-			progress?.Report(Math.Min((double)done / total * 100.0, 100.0));
+			using IReader reader = archive.ExtractAllEntries();
+			while (reader.MoveToNextEntry())
+			{
+				if (reader.Entry.IsDirectory) continue;
+				reader.WriteEntryToDirectory(outputDir, options);
+				if (reader.Entry.Size > 0) done += reader.Entry.Size;
+				progress?.Report(Math.Min((double)done / total * 100.0, 100.0));
+			}
+		}
+		else
+		{
+			foreach (IArchiveEntry entry in archive.Entries)
+			{
+				if (entry.IsDirectory) continue;
+				entry.WriteToDirectory(outputDir, options);
+				if (entry.Size > 0) done += entry.Size;
+				progress?.Report(Math.Min((double)done / total * 100.0, 100.0));
+			}
 		}
 		progress?.Report(100.0);
 	}
+
+	/// <summary>
+	/// Whether an archive has to be read forwards through one reader: solid ones, whose files share one compressed stream, and
+	/// 7z, which SharpCompress only extracts quickly that way. The only kinds it allows a single reader for, too.
+	/// </summary>
+	internal static bool ReadsForwardsOnly(IArchive archive) => archive.IsSolid || archive.Type == ArchiveType.SevenZip;
 
 	/// <summary>
 	/// Confirms that nothing under <paramref name="extractedRoot"/> leads anywhere else — the check that

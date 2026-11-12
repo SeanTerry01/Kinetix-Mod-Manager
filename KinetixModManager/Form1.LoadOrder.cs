@@ -124,6 +124,18 @@ public partial class Form1
 	}
 
 	/// <summary>
+	/// Every installed mod's folder by the name the deployment record uses, switched on or not. A deployment puts a file back into
+	/// its mod's folder from here when the game's copy is the only one left (see DeployedFileRescue).
+	/// </summary>
+	private Dictionary<string, string> InstalledModFolders()
+	{
+		var folders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		foreach (GameMod mod in _allInstalledMods)
+			if (!mod.IsGroup && !string.IsNullOrEmpty(mod.FolderPath)) folders.TryAdd(PriorityKey(mod), mod.FolderPath);
+		return folders;
+	}
+
+	/// <summary>
 	/// Reconciles the game folder so each file is provided by its highest-priority enabled mod, records
 	/// the resulting conflicts in <see cref="_lastConflicts"/>, and persists the deployment manifest.
 	/// Safe to call for any game; does nothing unless a Skyrim/Fallout 4 session with a known game path
@@ -201,7 +213,7 @@ public partial class Form1
 		DeploymentManifest? manifest = DeploymentManifest.Load(game);
 		if (manifest.Unreadable && (manifest = AfterAnUnreadableRecord(game, forceRelink)) == null) return _lastConflicts;
 		_settings.FileWinnerOverrides.TryGetValue(game, out Dictionary<string, string>? overrides);
-		_lastConflicts = ModFileSystem.SyncDeployment(gameRoot, ordered, manifest, LogError, forceRelink, overrides);
+		_lastConflicts = ModFileSystem.SyncDeployment(gameRoot, ordered, manifest, LogError, forceRelink, overrides, InstalledModFolders());
 		manifest.Save(game);
 		_lastDeploymentFailures = manifest.Failures;
 		return _lastConflicts;

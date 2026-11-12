@@ -322,6 +322,7 @@ public partial class Form1
 		// moving around starts again from here: only wandering off DURING this load should cancel the landing.
 		_userMovedSinceLoadBegan = false;
 		_landOnFirstTabWhenReady = true;
+		_focusWhenLandingArmed = GetFocus();
 		_landShouldSpeak = false;   // focus moves onto the strip here, and the reader announces that itself
 		// A check still running is for the game just left, even if the player comes straight back to it: the rows it had found
 		// go below, and the answers that arrive while another game is open are dropped. Marked abandoned here, so it ends

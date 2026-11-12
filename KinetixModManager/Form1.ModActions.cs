@@ -594,6 +594,23 @@ public partial class Form1
 			confirm += Loc.T("modactions.deleteDependentsWarning", dependents.Count,
 				string.Join("\n", dependents.Take(10)));
 
+		// Where the row was taken out, for a delete that stops before the rescan to put it back. See below.
+		int takenOutAt = -1;
+		void PutRowBack()
+		{
+			if (takenOutAt < 0 || listInstalled.Items.Contains(selectedMod)) return;
+			// Only a mod still there: one that went before the failure is gone, and its row with it.
+			if (!Directory.Exists(selectedMod.FolderPath) && !File.Exists(selectedMod.FolderPath)) return;
+			_movingListSilently = true;
+			try
+			{
+				listInstalled.Items.Insert(Math.Min(takenOutAt, listInstalled.Items.Count), selectedMod);
+				listInstalled.SelectedItem = selectedMod;
+			}
+			finally { _movingListSilently = false; }
+			takenOutAt = -1;
+		}
+
 		// "Deleting…" is said before the question closes, so focus coming back doesn't cut it, nor it the reader's reading
 		// of the row. See ActBeforeReturning.
 		// Back on the list quietly after Yes: the rescan that follows the delete says where the user lands. Announced as focus
@@ -604,7 +621,24 @@ public partial class Form1
 				{
 					if (answer != DialogResult.Yes) return null;
 					if (_announcer.IsSpeakingForCertain is not null) _returnQuietlyFromThisAnswer = true;
-					return new ResultBeforeReturning(Loc.T("modactions.deletingStatus", selectedMod.Name));
+					// Its row goes before focus comes back. Quiet or not, the reader reads the row focus lands on, and that was the
+					// mod being deleted: "Installed Mods list, Kinetix MCM Test… Enabled. Deleted Kinetix MCM Test" (heard
+					// 2026-11-11, with a search leaving it the only row). A delete that then fails is put back by the rescan.
+					return new ResultBeforeReturning(Loc.T("modactions.deletingStatus", selectedMod.Name), () =>
+					{
+						int index = listInstalled.Items.IndexOf(selectedMod);
+						if (index < 0) return;
+						takenOutAt = index;
+						_movingListSilently = true;
+						try
+						{
+							listInstalled.Items.RemoveAt(index);
+							if (listInstalled.Items.Count > 0)
+								listInstalled.SelectedIndex = Math.Min(index, listInstalled.Items.Count - 1);
+						}
+						finally { _movingListSilently = false; }
+						if (listInstalled.Items.Count > 0) AlignListCaretToSelection(listInstalled);
+					});
 				})
 			!= DialogResult.Yes)
 			return;
@@ -628,6 +662,7 @@ public partial class Form1
 				// deleting it destroys something with no copy anywhere — so it stops here and says so, rather
 				// than going ahead and reporting that a backup was kept.
 				ResetStatus();
+				PutRowBack();
 				_soundEngine.Play("error");
 				SpeakBox(Loc.T("modactions.deleteNoBackupBox", selectedMod.Name), Loc.T("modactions.deleteNoBackupTitle"),
 					MessageBoxButtons.OK);
@@ -657,6 +692,7 @@ public partial class Form1
 				// ⚠️ The folder stays. Its record is then the only list of files still loading in the game, and deleting it
 				// leaves them there with nothing that knows they are the mod's.
 				ResetStatus();
+				PutRowBack();
 				_soundEngine.Play("error");
 				SpeakBox(Loc.T("modactions.deleteLeftInGame", selectedMod.Name, string.Join(", ", leftInGame.Take(10))),
 					Loc.T("common.error"), MessageBoxButtons.OK);
@@ -676,6 +712,7 @@ public partial class Form1
 		catch (Exception ex)
 		{
 			ResetStatus();
+			PutRowBack();
 			_soundEngine.Play("error");
 			SpeakBox(Loc.T("modactions.deleteFailedBox", FriendlyError(ex)));
 		}

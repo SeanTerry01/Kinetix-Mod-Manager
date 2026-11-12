@@ -668,6 +668,44 @@ public partial class Form1
 		catch (Exception ex) { DiagnosticLog.WriteException("UI", "bringing the manager to the front", ex); }
 	}
 
+	/// <summary>
+	/// The Installed Mods row of the mod in <paramref name="folderName"/>: its own row, or the row of the collapsed group it is in,
+	/// such as a second copy of a mod from the same Nexus page (a script extender, 2026-11-11). -1 when it isn't listed.
+	/// </summary>
+	private int InstalledRowOf(string folderName)
+	{
+		bool InFolder(GameMod m) => !string.IsNullOrEmpty(m.FolderPath)
+			&& string.Equals(Path.GetFileName(Path.TrimEndingDirectorySeparator(m.FolderPath)), folderName, StringComparison.OrdinalIgnoreCase);
+
+		int group = -1;
+		for (int i = 0; i < listInstalled.Items.Count; i++)
+		{
+			if (listInstalled.Items[i] is not GameMod mod) continue;
+			if (!mod.IsGroup && InFolder(mod)) return i;
+			if (mod.IsGroup && group < 0 && mod.SubMods?.Any(InFolder) == true) group = i;
+		}
+		return group;
+	}
+
+	/// <summary>
+	/// Puts focus on an Installed Mods row and has it read with the list's name, as the Accessibility Suite installer does when
+	/// it closes: a move the user did not make is one the reader often treats as no move at all.
+	/// </summary>
+	private void LandOnInstalledRow(int row)
+	{
+		if (row < 0 || row >= listInstalled.Items.Count) return;
+		_movingListSilently = true;
+		try { listInstalled.SelectedIndex = row; }
+		finally { _movingListSilently = false; }
+		AlignListCaretToSelection(listInstalled);
+		_announceRowNameOnNextChange = true;
+		_announceListNameOnNextChange = true;
+
+		if (listInstalled.CanFocus) listInstalled.Focus();
+		// Still set means nothing announced the arrival, because focus was already on the list. See the suite's onClosed.
+		if (_announceListNameOnNextChange) List_Enter(listInstalled, EventArgs.Empty);
+	}
+
 	/// <summary>Opens a file dialog to select a .zip file and installs it via <see cref="InstallFromZip"/>.</summary>
 	private void ManualInstall()
 	{
@@ -1089,7 +1127,24 @@ public partial class Form1
 				DiagnosticLog.Write("Install", $"{name}: plugins in subfolders, which the game will not load: {string.Join(", ", nested)}");
 				installedSay += " " + Loc.T("install.nestedPlugins", nested.Count, string.Join(", ", nested.Select(Path.GetFileName)));
 			}
-			if (!silent) SpeakBox(WithHeldOffNote(installedSay));
+			if (!silent)
+			{
+				// Started from Installed Mods, OK lands on the mod just installed, and the reader names it. It used to hand focus
+				// back to the tab strip, a long way from the mod (Sean, 2026-11-11). Anywhere else, such as Browse, you stay where
+				// you were. Looked up before the box opens: a mod that a search or filter is hiding has no row, and then the box
+				// returns as it always has, rather than quietly onto nothing.
+				bool land = CurrentTab() == AppTab.Installed && InstalledRowOf(name) >= 0;
+				if (land) _nextOverlayReturnsQuietly = true;
+				SpeakBox(WithHeldOffNote(installedSay));
+				if (land)
+				{
+					// Looked up again: the list can be rebuilt while the box is up, and a row number from before it then points at
+					// another mod. Gone from view meanwhile, the user is told where they are rather than left in a quiet return.
+					int row = InstalledRowOf(name);
+					if (row >= 0) LandOnInstalledRow(row);
+					else AnnounceFocusRestored();
+				}
+			}
 			return true;
 		}
 		catch (OperationCanceledException)

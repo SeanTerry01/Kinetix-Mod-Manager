@@ -5,7 +5,7 @@ which has the reasoning behind each; this file is the list, not the argument.
 
 Anything resolved gets deleted from here rather than ticked, so the file stays short enough to read.
 
-**Last updated:** 2026-11-11, after fixing the 1.6.0 review.
+**Last updated:** 2026-11-11, after testing on Sean's real setup.
 **State:** all tests passing on Windows; the solution builds clean.
 
 ---
@@ -48,6 +48,16 @@ Done or decided everything else on the list. What is here needs a person, or is 
     Helper `config.json`, so there is nothing on disk to read.
   - **Not reachable on the test copy:** the Stardew bundle update with a parked part (needs a real update of a bundle), and a
     download for another game arriving while Settings is open (needs the browser).
+- [ ] **Left from testing on Sean's real setup, 2026-11-11** (Skyrim and Moonlight Peaks, under `tools\kinetix-snapshot.cs`).
+  Fixed and heard: deploying deleted the last copy of 8 files whose mod-folder copies had gone (`DeployedFileRescue`), `.rar`
+  installs, search typing lost at startup, "0 mods found" before the list, the unnamed pane after a switch or a menu, landing on
+  a newly installed mod, a deleted mod's row read again.
+  - **Why those 8 files left their mod folders is not known.** They went between 21 August and 5 September, and no backup has
+    them. 1.5.1 deletes the same way, so the rescue is what keeps it from costing anything now.
+  - **The tab is pointed at through two internal WinForms members** (`AccessibleTabControl.AnnounceSelectedTab`). A .NET that
+    renames them falls back to saying the tab's name; check after a .NET upgrade.
+  - **After a restore from Backups, the position and "restored" are queued together**, so the result may cut the position off.
+  - **The window title after a file picker** is queued and cut within 25 ms: not heard. Sean to say if he ever hears it.
 - [ ] **The GTK head has been compiled, never run.** See its section below. Only an ear test on Linux can settle it.
 - [ ] **GTK gaps found while fixing it:** GitHub-hosted mods such as United Minecraft are never checked for updates on Linux, yet count as
   checked. `mods.settings` looks wrong under Proton (`UserDataDirectoryFor` ignores `IGameLocator.UserDocumentsFolder`). A Linux user may have
