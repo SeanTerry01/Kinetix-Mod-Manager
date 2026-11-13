@@ -1525,7 +1525,8 @@ public partial class Form1
 
 			// A copy the player had switched off stays off: a rival access mod coming back on says everything twice.
 			bool wasOff = existing != null &&
-				existing.EndsWith(GameProfiles.Require(GameProfiles.Minecraft).DisabledModSuffix, StringComparison.OrdinalIgnoreCase);
+				GameProfiles.Require(GameProfiles.Minecraft).DisabledModSuffix is { } offSuffix &&
+				existing.EndsWith(offSuffix, StringComparison.OrdinalIgnoreCase);
 
 			// Backed up before it is replaced, like every other game's install path does, and a backup that fails stops it.
 			if (existing != null && File.Exists(existing))

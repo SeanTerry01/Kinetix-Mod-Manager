@@ -661,6 +661,24 @@ public partial class Form1
 		tabAudio.Controls.Add(flowSoundTheme, 0, ar++);
 		RefreshLogoList(_settings.CurrentTheme);
 
+		// Off: "Switched to …" is spoken over the game switch sound. On: it, and anything else said while the sound plays,
+		// waits for the sound to end. See HoldSpeechUntilSoundEnds.
+		CheckBox cSpeakAfterSessionSound = new CheckBox
+		{
+			Text = Loc.T("settings.speakAfterSessionSound"),
+			Checked = _settings.SpeakAfterSessionSound,
+			AutoSize = true,
+			Padding = new Padding(0, 5, 0, 0),
+			AccessibleName = Loc.T("settings.speakAfterSessionSoundName")
+		};
+		cSpeakAfterSessionSound.CheckedChanged += delegate
+		{
+			Speak(cSpeakAfterSessionSound.Checked
+				? Loc.T("settings.speakAfterSessionSoundOn")
+				: Loc.T("settings.speakAfterSessionSoundOff"));
+		};
+		tabAudio.Controls.Add(cSpeakAfterSessionSound, 0, ar++);
+
 		FlowLayoutPanel flowLang = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Fill,
@@ -865,6 +883,7 @@ public partial class Form1
 			cmbLogo.Visible = logo;
 			flowVolume.Visible = sounds; // volume
 			flowSoundTheme.Visible = sounds; // sound theme
+			cSpeakAfterSessionSound.Visible = sounds; // no sound to wait for when sounds are off
 		}
 		cEnableSounds.CheckedChanged += delegate
 		{
@@ -1231,6 +1250,7 @@ public partial class Form1
 				_settings.SpeakShutdownMessage = cShutdownMsg.Checked;
 				_settings.SaveSearchHistory = cSearchHistory.Checked;
 				_settings.EnableUiSounds = cEnableSounds.Checked;
+				_settings.SpeakAfterSessionSound = cSpeakAfterSessionSound.Checked;
 				if (nVol.SelectedItem is int volValue) _settings.SoundVolume = volValue;
 				if (nPrune.SelectedItem is int backupValue) _settings.MaxBackupsPerMod = backupValue;
 				if (cmbProgress.SelectedItem is ProgressFeedbackChoice pfc)

@@ -922,6 +922,9 @@ public partial class Form1
 	{
 		if (_shuttingDown || mainTabs == null) return;
 
+		// Speech is waiting for the game switch sound, and the reader announcing the tab now would come before it.
+		if (LandingHeldForSessionSound()) return;
+
 		// Two reasons to leave focus exactly where it is. The window is usable while the session loads, so
 		// somebody may already be several keystrokes into moving around — being hauled back to Installed Mods
 		// mid-keystroke is worse than never being told where you began. And a first-run wizard or a Settings
@@ -1663,6 +1666,9 @@ public partial class Form1
 	/// </summary>
 	private void Speak(string text, bool interrupt)
 	{
+		// Waiting for the game switch sound to end, when the user has asked for that. Comes back through here on release.
+		if (HeldForSessionSound(text, interrupt)) return;
+
 		// Straight after a prompt closes onto a list, what is said is the answer's result, and it rides on the list's own
 		// return announcement rather than claiming the floor from it. Claiming it stopped the swallow, so the reader's
 		// reading of the row came through after ours and the row was heard twice, or ours named a row that the answer
@@ -1904,6 +1910,12 @@ public partial class Form1
 		return new LoadingPulse(this);
 	}
 
+	/// <summary>
+	/// The decrement lives here rather than in <see cref="LoadingPulse"/>: a form is a marshal-by-reference object, and
+	/// taking <c>ref</c> to another instance's field is what the compiler warns about (CS0197).
+	/// </summary>
+	private void EndLoading() => Interlocked.Decrement(ref _loadingCount);
+
 	/// <summary>One operation's share of the pulse. Ending it twice counts once, as failure paths may well do.</summary>
 	private sealed class LoadingPulse(Form1 owner)
 	{
@@ -1911,7 +1923,7 @@ public partial class Form1
 
 		public void End()
 		{
-			if (Interlocked.Exchange(ref _ended, 1) == 0) Interlocked.Decrement(ref owner._loadingCount);
+			if (Interlocked.Exchange(ref _ended, 1) == 0) owner.EndLoading();
 		}
 	}
 }

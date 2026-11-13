@@ -141,6 +141,15 @@
 *   **It could delete a file the game needs.** Switching a mod off puts back whatever the mod replaced, and deleting the mod then
     deleted that too, so only verifying the game could bring it back.
 
+## ✨ A sound for switching games
+
+*   **Opening a game, or switching to another one, plays that game's own session sound.** If the manager still has to connect to
+    Nexus Mods, the connect sound and "Connected as" follow once it has finished, rather than playing over it. Minecraft's
+    sign-in waits for it the same way. It is in the Sound Demo, and new themes get a `session_switch` folder for it.
+*   **New on the Audio tab: Speak after the game switch sound.** Off by default, so "Switched to …" is spoken over the sound.
+    Check it to have the manager wait until the sound has finished before it says anything. Only the speech waits, not the
+    mod list, and pressing a key says what was waiting straight away.
+
 ## 🐛 Found testing on a real setup
 
 *   **Deploying no longer deletes the last copy of a mod's file.** When a file was in the game folder but had gone missing from
@@ -224,6 +233,15 @@ A review of the whole manager before 1.6.0 found these. All are fixed.
 
 ## 💬 Smaller things you may hear
 
+*   **A FOMOD installer starts each step on its options, not on Install.** You land on the first group's selected
+    option, so a step's choices are heard before Enter can confirm them. The first step always landed on Install.
+*   **A FOMOD installer's options say where you are in their group**, such as "2 of 3", before the option's description.
+    The arrows wrap from the last option back to the first, and until now nothing told you it had happened.
+*   **The Skyrim and Fallout 4 accessibility suites no longer stop for OK after every mod.** Each mod is said as it is
+    installed, and the summary at the end is the one box. Installing the whole Skyrim suite took eleven OKs. A mod that
+    comes in two parts, such as SSE Engine Fixes, also no longer says it was installed twice.
+*   **"Installed SKSE64"**, not "Installed SKSE64 of Skyrim Script Extender (SKSE64)". The same for F4SE.
+*   **"List is empty" is said once** after ignoring or recording the last update in the Updates list, not twice.
 *   **"1 mods" and "1 files" are gone everywhere**, not only in the messages heard most.
 *   **A value that won't do is explained with the box still open**, so you hear all of it and correct it there. The box
     used to close and open again, which cut the explanation off after a word or two. This is in moving a mod by places,

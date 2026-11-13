@@ -520,7 +520,7 @@ public partial class Form1
 								ProgressAnnouncer dl = NewProgress(item.Name, installing: false);
 								string tempPath = await _nexusService.DownloadModUpdateAsync(tempMod, downloadsPath, dl);
 								dl.Complete();
-								if (!await InstallFromZip(tempPath, item.Source)) failedNames.Add(item.Name);
+								if (!await InstallFromZip(tempPath, item.Source, sayInsteadOfBox: true)) failedNames.Add(item.Name);
 								continue;
 							}
 							catch (Exception ex)
@@ -549,7 +549,7 @@ public partial class Form1
 							string tempPath = Path.Combine(downloadsPath, zipName);
 							File.WriteAllBytes(tempPath, bytes);
 
-							if (!await InstallFromZip(tempPath)) failedNames.Add(item.Name);
+							if (!await InstallFromZip(tempPath, sayInsteadOfBox: true)) failedNames.Add(item.Name);
 						}
 						catch (Exception ex)
 						{

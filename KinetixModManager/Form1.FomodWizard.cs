@@ -143,15 +143,18 @@ public partial class Form1
 		layout.Controls.Add(buttonRow, 0, 2);
 		container.Controls.Add(layout);
 
-		// Speaks an option's description shortly after it gains focus, so the screen reader reads the
-		// control name and state first — the same pattern the main form's lists use.
-		void AttachAnnounce(Control control, string? description)
+		// Speaks an option's place in its group, then its description, shortly after it gains focus, so the screen
+		// reader reads the control name and state first — the same pattern the main form's lists use. The place is
+		// said because the arrows wrap from the last option to the first, and nothing else tells you it happened: a
+		// WinForms radio button or check box reports no position to the reader (Sean, 2026-11-12).
+		void AttachAnnounce(Control control, int position, int count, string? description)
 		{
-			if (string.IsNullOrWhiteSpace(description)) return;
+			string place = Loc.T("common.position", position, count);
+			string line = string.IsNullOrWhiteSpace(description) ? place : Loc.T("fomod.positionThenDescription", place, description);
 			control.GotFocus += async (s, e) =>
 			{
 				await Task.Delay(100);
-				if (control.Focused) Speak(description);
+				if (control.Focused) Speak(line);
 			};
 		}
 
@@ -201,9 +204,12 @@ public partial class Form1
 				box.Controls.Add(inner);
 
 				bool isRadio = group.Type == FomodGroupType.SelectExactlyOne || group.Type == FomodGroupType.SelectAtMostOne;
+				// What the arrows move between: the group's options, and "None" first when the group has one.
+				bool hasNone = group.Type == FomodGroupType.SelectAtMostOne;
+				int optionCount = group.Plugins.Count + (hasNone ? 1 : 0);
 
 				// "None" option lets a SelectAtMostOne group be cleared.
-				if (group.Type == FomodGroupType.SelectAtMostOne)
+				if (hasNone)
 				{
 					var none = new RadioButton
 					{
@@ -215,6 +221,7 @@ public partial class Form1
 					FomodGroup capturedGroup = group;
 					none.CheckedChanged += (s, e) => { if (none.Checked) { foreach (FomodPlugin p in capturedGroup.Plugins) selected[p] = false; UpdateNav(); } };
 					inner.Controls.Add(none);
+					AttachAnnounce(none, 1, optionCount, null);
 				}
 
 				// First pass: create and add every option control so radio mutual-exclusion is wired up.
@@ -283,7 +290,8 @@ public partial class Form1
 							UpdateNav();
 						};
 
-					AttachAnnounce(ctrl, plugin.Description);
+					// The options come after "None" when there is one, in the order they were added above.
+					AttachAnnounce(ctrl, inner.Controls.IndexOf(ctrl) + 1, optionCount, plugin.Description);
 				}
 
 				content.Controls.Add(box);
@@ -388,16 +396,30 @@ public partial class Form1
 	/// <summary>Focuses the first enabled option control in the rendered step, falling back to a button.</summary>
 	private static void FocusFirstOption(Control container, Control fallback)
 	{
-		Control? target = FirstFocusableOption(container);
-		(target ?? fallback).Focus();
+		Control target = FirstFocusableOption(container) ?? fallback;
+		// A control drawn a moment ago may not take focus yet; once its layout has run it does.
+		if (!target.Focus() && container.IsHandleCreated)
+			container.BeginInvoke(new Action(() => target.Focus()));
 	}
 
+	/// <summary>
+	/// Where a step starts: the first group's selected option, or its first option when none is selected, so the step's
+	/// choices are heard before anything can be confirmed (Sean, 2026-11-12).
+	///
+	/// ⚠️ Not <c>CanFocus</c>: it is false for every control until the view is on screen, and the first step is built
+	/// before that. Asking it sent every wizard's first step to Install, one key press from installing unheard choices.
+	/// </summary>
 	private static Control? FirstFocusableOption(Control container)
 	{
 		foreach (Control child in container.Controls)
 		{
-			if ((child is RadioButton || child is CheckBox) && child.Enabled && child.CanFocus)
+			if ((child is RadioButton || child is CheckBox) && child.Enabled)
+			{
+				// A radio group is entered on its selected option, the one Tab would land on.
+				if (child is RadioButton && child.Parent != null)
+					return child.Parent.Controls.OfType<RadioButton>().FirstOrDefault(r => r.Checked && r.Enabled) ?? child;
 				return child;
+			}
 			Control? nested = FirstFocusableOption(child);
 			if (nested != null) return nested;
 		}

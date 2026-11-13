@@ -1009,7 +1009,7 @@ public partial class Form1
 	/// </param>
 	private async Task<bool> InstallFromZip(string zipPath, string? nexusId = null, bool silent = false,
 		bool confirmReinstall = false, bool partOfMultiPartMod = false, string? displayName = null,
-		string? gitHubRepo = null, GameMod? updating = null, string? expectedGame = null)
+		string? gitHubRepo = null, GameMod? updating = null, string? expectedGame = null, bool sayInsteadOfBox = false)
 	{
 		// ⚠️ Minecraft has no archive install. Here a .zip fell into the Bethesda branch and became a folder in the mods
 		// folder that Fabric never loads, reported as installed. Refused before anything touches the disk; this one
@@ -1127,7 +1127,11 @@ public partial class Form1
 				DiagnosticLog.Write("Install", $"{name}: plugins in subfolders, which the game will not load: {string.Join(", ", nested)}");
 				installedSay += " " + Loc.T("install.nestedPlugins", nested.Count, string.Join(", ", nested.Select(Path.GetFileName)));
 			}
-			if (!silent)
+			// One of several installed in a row, such as the accessibility suite: said, with no box to press OK on after each
+			// mod (eleven of them for Skyrim, Sean, 2026-11-12). Whatever runs the row says once at the end how it went.
+			if (!silent && sayInsteadOfBox)
+				Speak(WithHeldOffNote(installedSay));
+			else if (!silent)
 			{
 				// Started from Installed Mods, OK lands on the mod just installed, and the reader names it. It used to hand focus
 				// back to the tab strip, a long way from the mod (Sean, 2026-11-11). Anywhere else, such as Browse, you stay where

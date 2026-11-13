@@ -451,7 +451,10 @@ public sealed class InstallOrderGuardTests
 		string source = App(file);
 		int at = source.IndexOf(signature, StringComparison.Ordinal);
 		Assert.True(at >= 0, signature);
-		Assert.Contains("BeginModOperation()", source.Substring(at, 900));
+		// Near the top of the body, counted from its opening brace: a longer parameter list must not push it out of reach.
+		int body = source.IndexOf('{', at);
+		Assert.True(body >= 0, signature);
+		Assert.Contains("BeginModOperation()", source.Substring(body, Math.Min(900, source.Length - body)));
 	}
 
 	[Fact]

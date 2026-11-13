@@ -63,7 +63,11 @@ public partial class Form1
 		// ⚠️ Not a modifier on its own. Ctrl is how a screen-reader user stops speech, and pressed during the welcome it counted
 		// as moving: the landing was called off and the session opened without saying where you were (2026-11-11).
 		if (e.KeyCode is not (Keys.ControlKey or Keys.ShiftKey or Keys.Menu or Keys.LWin or Keys.RWin))
+		{
 			_userMovedSinceLoadBegan = true;
+			// Said now, ahead of whatever this key says: the user's own keys don't wait behind the game switch sound.
+			ReleaseHeldSpeech();
+		}
 
 		// Every command below is a one-shot, and none of them wants to run again because a key was held a
 		// moment too long: holding Refresh Everything started a refresh per repeat, and holding F1 would have
@@ -703,11 +707,9 @@ public partial class Form1
 					if (answer != DialogResult.Yes) return null;
 					_settings.IgnoredVersions[modWithUpdate.UniqueId] = modWithUpdate.LatestVersion ?? "";
 					_settings.Save();
-					// The last row going leaves nothing to land on, which the sentence says.
-					bool last = listUpdates.Items.Count <= 1;
-					return new ResultBeforeReturning(
-						Loc.T(last ? "modlist.updateIgnoredEmpty" : "modlist.updateIgnored"),
-						() => RemoveSettledUpdateRow(modWithUpdate));
+					// The last row going leaves nothing to land on, and the list says so itself once you are back on it. Saying
+					// "List is empty." here as well had it said twice (heard on Ctrl+Shift+Y, 2026-11-12).
+					return new ResultBeforeReturning(Loc.T("modlist.updateIgnored"), () => RemoveSettledUpdateRow(modWithUpdate));
 				});
 			e.Handled = true;
 			e.SuppressKeyPress = true;

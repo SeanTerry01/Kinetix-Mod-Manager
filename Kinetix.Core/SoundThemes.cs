@@ -35,6 +35,7 @@ public static class SoundThemes
 		"error",
 		"loading_indicator",
 		"load_complete",
+		"session_switch",
 	};
 
 	/// <summary>

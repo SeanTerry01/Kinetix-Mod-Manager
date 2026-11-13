@@ -538,6 +538,13 @@ public class AppSettings : IModScanContext
 	public bool AllowManualTheme { get; set; } = false;
 
 	/// <summary>
+	/// When <c>true</c>, what the manager says on opening or switching a game ("Switched to …", "Connecting to Nexus") waits
+	/// until the session_switch sound has finished, instead of being spoken over it. Off by default: Sean prefers the speech
+	/// over the sound (2026-11-12), and asked for this so anyone who doesn't can choose.
+	/// </summary>
+	public bool SpeakAfterSessionSound { get; set; } = false;
+
+	/// <summary>
 	/// Maps an active-game identifier to its sound-theme folder name (under <c>sounds/</c>).
 	/// Kept here because half the app already calls it by this name; the rule itself is
 	/// <see cref="SoundThemes.ForGame"/>, in the core, where the Linux head can reach it.

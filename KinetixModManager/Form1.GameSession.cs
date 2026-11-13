@@ -149,6 +149,113 @@ public partial class Form1
 		}
 	}
 
+	/// <summary>
+	/// The session_switch sound, while it plays. Opening a game, or switching from one to another, plays it; the startup
+	/// opening doesn't, because the logo has just played for that game. Sean asked for it (2026-11-11).
+	/// </summary>
+	private Task _sessionSound = Task.CompletedTask;
+
+	/// <summary>
+	/// Only a backstop. Everything waits for the sound itself to end (<see cref="SoundEngine.PlayAsync"/> completes when
+	/// playback stops), so a short sound releases at once; this only stops a very long sound in a theme holding speech back.
+	/// </summary>
+	private static readonly TimeSpan SessionSoundLongest = TimeSpan.FromSeconds(5);
+
+	/// <summary>
+	/// Waits for the session sound to finish. The connect sound and "Connected as" come after it, as Sean asked, rather than
+	/// over it: two theme sounds at once are heard as neither.
+	/// </summary>
+	private async Task AfterSessionSoundAsync()
+	{
+		Task playing = _sessionSound;
+		if (!playing.IsCompleted) await Task.WhenAny(playing, Task.Delay(SessionSoundLongest));
+	}
+
+	// -------------------------------------------------------------------------
+	// Speak after the session sound (Settings > Audio, SpeakAfterSessionSound)
+	// -------------------------------------------------------------------------
+	//
+	// Only what the manager SAYS waits. The mods are read, Nexus is asked and the tabs are rebuilt underneath exactly as
+	// they are with the setting off: delaying the session itself would have let an install that switches games first
+	// (Form1.Install.cs) run ahead of its own refresh. What was held is said in the order it was asked for, and landing on
+	// the first tab waits with it, or the reader would announce the tab ahead of "Switched to …".
+
+	/// <summary>What was asked to be said while the sound played, in order. Also the lock for the three fields below.</summary>
+	private readonly List<(string Text, bool Interrupt)> _heldSpeech = new();
+	private bool _holdingSpeech;
+	private bool _landWhenSpeechReleased;
+	/// <summary>Which hold is current, so a quick second switch isn't released by the first one's sound ending.</summary>
+	private int _speechHoldGeneration;
+
+	/// <summary>
+	/// Holds speech until <paramref name="playing"/> ends (at most <see cref="SessionSoundLongest"/>), when the setting is on.
+	/// Returns what the connection cues wait on: the release, so they still come after everything that was held.
+	/// </summary>
+	private Task HoldSpeechUntilSoundEnds(Task playing)
+	{
+		if (!_settings.SpeakAfterSessionSound || playing.IsCompleted) return playing;
+
+		int generation;
+		lock (_heldSpeech)
+		{
+			_holdingSpeech = true;
+			generation = ++_speechHoldGeneration;
+		}
+		return ReleaseWhenDone();
+
+		// Started on the interface thread, so it resumes there, which LandOnFirstTab needs.
+		async Task ReleaseWhenDone()
+		{
+			await Task.WhenAny(playing, Task.Delay(SessionSoundLongest));
+			if (Volatile.Read(ref _speechHoldGeneration) == generation) ReleaseHeldSpeech();
+		}
+	}
+
+	/// <summary>Called by <see cref="Speak(string, bool)"/>: keeps the text for later while a hold is on.</summary>
+	private bool HeldForSessionSound(string text, bool interrupt)
+	{
+		lock (_heldSpeech)
+		{
+			if (!_holdingSpeech) return false;
+			_heldSpeech.Add((text, interrupt));
+			return true;
+		}
+	}
+
+	/// <summary>Called by <see cref="LandOnFirstTab"/>: puts the landing off until the release while a hold is on.</summary>
+	private bool LandingHeldForSessionSound()
+	{
+		lock (_heldSpeech)
+		{
+			if (!_holdingSpeech) return false;
+			_landWhenSpeechReleased = true;
+			return true;
+		}
+	}
+
+	/// <summary>
+	/// Says everything that was held, then lands on the first tab if that was put off. Interface thread only. Also called
+	/// when a key is pressed (the user is driving, and their own keys must not wait behind a sound) and on closing the
+	/// session. Does nothing when nothing is held.
+	/// </summary>
+	private void ReleaseHeldSpeech()
+	{
+		List<(string Text, bool Interrupt)> held;
+		bool land;
+		lock (_heldSpeech)
+		{
+			if (!_holdingSpeech) return;
+			_holdingSpeech = false;
+			_speechHoldGeneration++;
+			held = new List<(string Text, bool Interrupt)>(_heldSpeech);
+			_heldSpeech.Clear();
+			land = _landWhenSpeechReleased;
+			_landWhenSpeechReleased = false;
+		}
+		foreach ((string text, bool interrupt) in held) Speak(text, interrupt);
+		if (land) LandOnFirstTab();
+	}
+
 	private void SwitchActiveGame(string game)
 	{
 		if (_settings.ActiveGame == game) return;
@@ -222,11 +329,17 @@ public partial class Form1
 			// exit with no game loaded does not replay a disconnect for an already-closed
 			// session. See the FormClosing handler in Form1.cs.
 			_nexusService.Disconnect();
+			// Anything still held from opening the game is said now, before "Game session closed", not after it.
+			ReleaseHeldSpeech();
 			_soundEngine.Play("disconnect", closingTheme);
 			if (_lstGames != null) _lstGames.Focus();
 			Speak(Loc.T("session.closed"));
 			return;
 		}
+
+		// The new game's own sound, in its theme, which was switched above. Kept, so connecting to Nexus can wait for it. With
+		// "Speak after the game switch sound" on, everything said from here waits for it too.
+		_sessionSound = HoldSpeechUntilSoundEnds(_soundEngine.PlayAsync("session_switch"));
 
 		// Re-label the game-specific Mods items for the newly loaded game. Items are found by their stable
 		// Name (set in SetupAccessibleUI), not their visible text, so this keeps working when the UI is localized.

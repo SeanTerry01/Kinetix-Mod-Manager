@@ -177,6 +177,44 @@ public class BatchAGuardTests
 	}
 
 	[Fact]
+	public void TheSuiteSaysEachModInsteadOfStoppingForOk()
+	{
+		// Eleven OKs to install the Skyrim suite (Sean, 2026-11-12). Every install the suite and a two-part mod make is said;
+		// the suite's summary is its one box.
+		foreach (string file in new[] { "Form1.SuiteDialog.cs", "Form1.ModParts.cs" })
+		{
+			string source = WithoutComments(App(file));
+			MatchCollection calls = Regex.Matches(source, @"InstallFromZip\([^;]*;");
+			Assert.NotEmpty(calls);
+			foreach (Match call in calls) Assert.Contains("sayInsteadOfBox: true", call.Value);
+		}
+	}
+
+	[Fact]
+	public void AFomodStepStartsOnItsOptionsNotOnInstall()
+	{
+		// CanFocus is false until the view is on screen, and the first step is built before that, so asking it landed every
+		// wizard on Install (Sean, 2026-11-12). The view focuses what the builder hands back: an option, Next only without one.
+		string body = WithoutComments(MethodBody("Form1.FomodWizard.cs", "private static Control? FirstFocusableOption("));
+		Assert.DoesNotContain("CanFocus", body);
+		Assert.Contains("r.Checked", body);
+		Assert.Matches(new Regex(@"return FirstFocusableOption\(content\) \?\? \(Control\)btnNext;"),
+			WithoutComments(App("Form1.FomodWizard.cs")));
+	}
+
+	[Fact]
+	public void EveryFomodOptionSaysWhereItIsInItsGroup()
+	{
+		// The arrows wrap from the last option to the first, and a WinForms radio button or check box tells the reader
+		// nothing about its position, so the wizard says it. Every option, "None" included, and with no description too.
+		string body = WithoutComments(App("Form1.FomodWizard.cs"));
+		Assert.Contains("Loc.T(\"common.position\", position, count)", body);
+		Assert.Matches(new Regex(@"AttachAnnounce\(none, 1, optionCount, null\)"), body);
+		Assert.Matches(new Regex(@"AttachAnnounce\(ctrl, inner\.Controls\.IndexOf\(ctrl\) \+ 1, optionCount, plugin\.Description\)"), body);
+		Assert.DoesNotMatch(new Regex(@"IsNullOrWhiteSpace\(description\)\) return"), body);
+	}
+
+	[Fact]
 	public void TheInterfaceIsBuiltExactlyOnce()
 	{
 		// It adds a second tab control and menu beside the first rather than replacing them. Calling it to refresh

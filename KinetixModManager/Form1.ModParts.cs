@@ -108,7 +108,9 @@ public partial class Form1
 	/// </summary>
 	private async Task<PartsOutcome> FetchAndInstallPartAsync(KnownMod known, ModPart part, NexusFileInfo file, string gameFolder)
 	{
-		string what = Loc.T("modparts.partOf", part.Name, known.DisplayName);
+		// "Part 1 — the SKSE plugin of SSE Engine Fixes" only where there is more than one part. A mod in one part said its
+		// own name twice: "Installed SKSE64 of Skyrim Script Extender (SKSE64)" (Sean, 2026-11-12).
+		string what = known.Parts.Count > 1 ? Loc.T("modparts.partOf", part.Name, known.DisplayName) : part.Name;
 
 		// A free account cannot be given a download link by the API at all — Nexus mints the key that unlocks it
 		// on the website, which is what an nxm:// link carries. So the useful thing the manager can still do is
@@ -158,11 +160,16 @@ public partial class Form1
 				// mod is being replaced — it would pick a sibling. Installing the Engine Fixes plugin deleted the
 				// preloader exactly that way, leaving a game that would not start.
 				// It has already said why, and saying "installed" after that is what this used to do.
-				if (!await InstallFromZip(archive, known.NexusModId, partOfMultiPartMod: known.Parts.Count > 1, expectedGame: forGame))
+				// Said rather than boxed, and said by the install itself, which names the mod as its own files do. A box
+				// here, then "Installed Part 1 — …" after it, was the same news twice with an OK to press between.
+				if (!await InstallFromZip(archive, known.NexusModId, partOfMultiPartMod: known.Parts.Count > 1, expectedGame: forGame,
+						sayInsteadOfBox: true))
 				{
 					ResetStatus();
 					return PartsOutcome.Failed;
 				}
+				ResetStatus();
+				return PartsOutcome.Installed;
 			}
 
 			ResetStatus();

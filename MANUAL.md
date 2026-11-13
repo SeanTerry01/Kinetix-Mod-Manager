@@ -146,6 +146,7 @@ GitHub is not one of the sources in the dropdown above, and that is on purpose: 
 *   **Enable UI Sounds** — This is the **first** control on the tab and acts as a master switch for the manager's sound effects (the connect, enable, disable, error sounds, and the startup logo). **Uncheck it to turn all of those sounds off.** When it is unchecked, the rest of the audio options (volume, sound theme, and the logo selector) are **hidden**, since they no longer apply — leaving only the download and install feedback option, which is controlled separately and still works even with UI sounds off.
 *   **Sound Volume** — A dropdown from 0 to 100 for the overall loudness of those sound effects.
 *   **Set theme manually / Current Audio Theme** — By default the sound theme follows the game you're managing, so a Skyrim session and a Stardew session sound different from the moment you load them; check **Set theme manually** to choose a specific theme from the dropdown instead. A theme the manager hasn't got a particular sound for falls back to the Default theme for that one sound, so a part-finished theme is never silent.
+*   **Speak after the game switch sound** — Off by default. Opening a game, or switching to another one, plays its **Session Switch** sound, and normally "Switched to …" and "Connecting to Nexus" are spoken while it plays. **Check this to have the manager wait until the sound has finished before it says anything.** The mod list still loads during the sound, so nothing takes longer; only the speech waits. If you press a key while the sound is playing, what was waiting is said straight away, so your own keys never wait behind the sound. Hidden when **Enable UI Sounds** is off.
 *   **The connect and disconnect sounds mean more in Minecraft.** For every other game they tell you the manager has signed in to Nexus Mods, or lost that connection. In Minecraft, **connect plays when your Microsoft sign-in is confirmed and when you join a multiplayer server or a Realm. Disconnect plays when you leave a server, switch to offline play, or sign out.** Leaving a server includes being dropped, kicked or timed out, and quitting the game while still on one. A Modrinth key that checks out plays connect too. See "Signing in, and online or offline play" below for the sign-in.
 *   **Random Logo at Startup / Select Specific Logo** — These appear only when **Show Splash Screen** (on the Startup tab) is enabled, and let you pick which startup logo sound plays.
 *   **Download and install feedback** — Choose how long downloads and installs report progress: **Tones**, **Speech**, **Both**, or **Off**. This is independent of the **Enable UI Sounds** switch above, so you can keep progress feedback even with the other sounds turned off (or vice versa).
@@ -641,10 +642,10 @@ When you install such a mod (with **Ctrl + I**, or after a Mod Manager Download)
 
 Using the wizard:
 
-*   **Read the options**: Each step presents a group of options as **radio buttons** (pick one) or **checkboxes** (pick any number). Arrow or Tab to each one and its **description is spoken**, so you know what it does before choosing.
+*   **Read the options**: Each step presents a group of options as **radio buttons** (pick one) or **checkboxes** (pick any number). Each step starts on its first group, on the option already selected, so you hear the choices before you can confirm anything. Arrow or Tab to each one and you hear **where it is in its group**, such as "2 of 3", then its **description**, so you know what it does before choosing. The arrows wrap from the last option back to the first, which the position tells you.
 *   **Make your choices**: Press **Space** to select a radio button or check/uncheck a checkbox; the manager announces "checked" or "unchecked" as you toggle. Sensible defaults are pre-selected, so if you're unsure you can just move forward.
 *   **Required and unavailable options**: Options the mod marks as **required** stay selected, and options that are **not usable** with your current setup can't be selected — but both are still read aloud with their status, so nothing is hidden from you.
-*   **Track your progress**: The window title shows where you are, such as "Step 2 of 6" (read it any time with your screen reader's title command, e.g. **NVDA + T**).
+*   **Track your progress**: Each step is announced with where you are, such as "Step 2 of 6", and the same words head the step, at the top of the wizard.
 *   **Move through the steps**: Tab to the **Next** button to continue; some choices reveal or hide later steps, and the button reads **Install** on the final step. Press **Cancel** or **Escape** at any point to stop without installing anything.
 
 Your selections are installed exactly as a sighted user's would be, including any extra files the mod adds based on the options you picked.
@@ -1813,7 +1814,8 @@ The sounds are kept short on purpose. They play while your screen reader is talk
 5.  **Error**: Played when something fails: a download, an install, or a check.
 6.  **Loading Indicator**: A pulsing sound that plays while a background update check is running.
 7.  **Load Complete**: Played when an operation finishes: an install, an update, an import, a check, or a load-order sort.
-8.  **Logo**: The startup sound. A theme can hold several; see "Splash Screen Customization" below.
+8.  **Session Switch**: Played when you open a game from the game list, or switch from one game to another, such as from Skyrim to Moonlight Peaks or to a Minecraft modpack. It plays in the theme of the game you are opening. If the manager still has to connect to Nexus Mods, the **Connect** sound and "Connected as" wait until it has finished. It doesn't play when the manager starts, because the logo has just played.
+9.  **Logo**: The startup sound. A theme can hold several; see "Splash Screen Customization" below.
 
 **Every game sounds different.** The sound theme follows the game you are managing, so you can tell by ear which game you have loaded, before anything is read out. Each game's sounds are in its own theme; see "Audio Theme Packs" below.
 
@@ -1855,6 +1857,7 @@ You can customize all application sounds via **Help -> Audio Theme Manager**. Cr
 *   `error`
 *   `loading_indicator`
 *   `load_complete`
+*   `session_switch`
 *   `logo`
 
 Put one `.ogg` file in each folder; its file name does not matter. The `logo` folder is the exception: it can hold as many `.ogg` files as you like, and you choose between them in Settings. See "Sound Cues Explained" above for when each sound plays.

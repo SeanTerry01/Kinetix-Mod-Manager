@@ -251,6 +251,8 @@ public partial class Form1
 			if (refreshed) _settings.Save();
 
 			_minecraftOnlineWorking = true;
+			// After the session sound, as Nexus's is, when this sign-in is part of opening Minecraft.
+			await AfterSessionSoundAsync();
 			_soundEngine.Play("connect");
 			SetStatus(Loc.T("mcAccount.connectedStatus", identity.Username), speak: false);
 			Speak(Loc.T("mcAccount.connected", identity.Username));

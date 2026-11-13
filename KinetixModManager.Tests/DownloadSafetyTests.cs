@@ -37,8 +37,15 @@ public sealed class DownloadSafetyTests : IDisposable
 		using TcpClient client = await _server.AcceptTcpClientAsync();
 		using NetworkStream stream = client.GetStream();
 
+		// The whole of the request's headers, which need not arrive in one piece.
 		var request = new byte[4096];
-		await stream.ReadAsync(request);
+		int received = 0;
+		while (received < request.Length && !Encoding.ASCII.GetString(request, 0, received).Contains("\r\n\r\n"))
+		{
+			int read = await stream.ReadAsync(request.AsMemory(received));
+			if (read == 0) break;
+			received += read;
+		}
 
 		byte[] head = Encoding.ASCII.GetBytes($"HTTP/1.1 200 OK\r\nContent-Length: {Body.Length}\r\nConnection: close\r\n\r\n");
 		await stream.WriteAsync(head);
@@ -53,7 +60,7 @@ public sealed class DownloadSafetyTests : IDisposable
 		await stream.FlushAsync();
 		halfSent?.SetResult();
 		// Until the other end gives up, which is a reset rather than a clean close.
-		try { await stream.ReadAsync(request); }
+		try { while (await stream.ReadAsync(request) > 0) { } }
 		catch (IOException) { }
 	}
 

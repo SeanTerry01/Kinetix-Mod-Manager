@@ -119,6 +119,19 @@ public class SpokenStringGuardTests
     }
 
     [Fact]
+    public void EverySoundHasADescription()
+    {
+        // The Sound Demo reads each sound by "sound." + its folder name. A sound added to the list without one would read
+        // "sound dot session underscore switch" out loud, which is how session_switch would have sounded (2026-11-11).
+        HashSet<string> known = EnglishKeys();
+        // SoundThemes.EventNames is the list the Sound Demo reads (SoundEngine.SoundNames is the same list).
+        var missing = SoundThemes.EventNames.Where(n => !known.Contains("sound." + n)).ToList();
+
+        Assert.True(missing.Count == 0,
+            "These sounds have no \"sound.<name>\" description in lang/en.json for the Sound Demo:\n  " + string.Join("\n  ", missing));
+    }
+
+    [Fact]
     public void NoPhraseIsDefinedTwice()
     {
         // A duplicated key is legal JSON and the last one silently wins, so two people can disagree about the

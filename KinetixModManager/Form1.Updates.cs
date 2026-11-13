@@ -138,10 +138,9 @@ public partial class Form1
 				// this command exists for the manifest legitimately says something else. Overwriting it here would put a
 				// number in the installed list that no file on disk agrees with, until the next rescan quietly undid it.
 
-				bool last = listUpdates.Items.Count <= 1;
-				return new ResultBeforeReturning(
-					last ? Loc.T("updates.markedEmpty", mod.Name, version) : Loc.T("updates.marked", mod.Name, version),
-					() => RemoveSettledUpdateRow(mod));
+				// Not "List is empty." on the last row: the list says that itself once you are back on it, and said it twice
+				// (heard 2026-11-12).
+				return new ResultBeforeReturning(Loc.T("updates.marked", mod.Name, version), () => RemoveSettledUpdateRow(mod));
 			});
 	}
 

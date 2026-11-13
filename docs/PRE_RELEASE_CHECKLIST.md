@@ -1,22 +1,28 @@
 # Pre-release checklist
 
-Written 2026-08-08 for the release that followed v1.4.5, and kept up since. **Now for v1.6.0**, on branch
-`refactor/kinetix-core-split`, **many commits ahead of `origin/master`, unpushed**, version 1.6.0 in both
-`KinetixModManager.csproj` and `KinetixModManager\setup.iss`. **1,398 tests**, all five projects build clean
-with no warnings.
+Written 2026-08-08 for the release that followed v1.4.5, and kept up since. **Now for v1.6.0** (brought up to
+date 2026-11-12), on branch `refactor/kinetix-core-split`. The branch is **215 commits ahead of `origin/master`**,
+and **104 of them have never been pushed** at all (origin's copy of the branch stops at `2104ad7`, 2026-09-24).
+Version 1.6.0 is already set in `KinetixModManager.csproj`, `KinetixModManager\setup.iss` and the top heading of
+`CHANGELOG.md`. **2,251 tests**, all passing, and every project builds with no warnings.
+
+⚠️ **1.5.2 was never released.** The newest tag and GitHub release is v1.5.1. Everything in §1.0a ships as part of
+1.6.0.
 
 ⚠️ The branch name describes the first thing done on it, not the whole of it. It now carries the core split,
-the Linux spike, the archive pipeline, per-game sounds and the mod source chooser.
+the Linux spike, the archive pipeline, per-game sounds, the mod source chooser, Minecraft and the game switch
+sound.
 
-⚠️ **The only tester zip in `KinetixModManager\Setup\` is the 1.5.2 one, and it is stale** — it predates every
-Minecraft commit. Re-cut with `tools\make-test-zip.ps1` before giving anything to a tester.
+⚠️ **The tester zip in `KinetixModManager\Setup\` (`KinetixModManager-1.6.0-portable.zip`, 2026-11-03) is
+stale**, and so is `KinetixModManager_Setup.exe` there, which is from 1.5.1. Re-cut the zip with
+`tools\make-test-zip.ps1` before giving anything to a tester.
 
 ⚠️ Sections 1.1 to 1.7 are the v1.5.0/v1.5.1 list. They all shipped and are kept because they describe how to
-test those areas, not because they are outstanding. **§1.0b is the newest work and the live list; §1.0 is the
-rest of v1.6.0; §1.0a is what is still outstanding from v1.5.2.**
+test those areas, not because they are outstanding. **§1.0c is the newest work; §1.0b is the work before it;
+§1.0 is the rest of v1.6.0; §1.0a is what is still outstanding from v1.5.2.**
 
 This is what has **not** been confirmed by ear, what is known to be unverified, and what is deliberately not in
-this release. Everything here builds clean, passes 1,398 tests, and publishes a complete Release folder — none of
+this release. Everything here builds clean, passes 2,251 tests, and publishes a complete Release folder — none of
 it is unfinished work. It is untested work, which is a different thing.
 
 ---
@@ -25,23 +31,41 @@ it is unfinished work. It is untested work, which is a different thing.
 
 Ordered by how likely a problem is and how much it would cost. Work down the list.
 
-### 1.0b The newest work — none of it confirmed by ear
+### 1.0c November 2026 — the newest work
 
-Everything in this section was written in one day and is covered by tests, which is not the same as having been
-heard. The first three are the ones where a problem would cost the most.
+#### Confirmed by ear, on the real setup (2026-11-11, Skyrim and Moonlight Peaks)
+Tested under `tools\kinetix-snapshot.cs`, so everything it touched could have been put back. Nothing needed to be.
+*   **Deploying no longer deletes the last copy of a file.** Eight real files (USSEP and others) were in the game
+    folder but had gone from their mods' own folders; they are now put back into the mod first.
+*   **A `.7z` FOMOD install** (Audio Overhaul for Skyrim) and **an ordinary `.rar` install**, which failed before
+    the fix (non-solid archives are now read entry by entry).
+*   **Typing in the search box straight after startup**, the "0 mods found" said too early, the unnamed pane
+    after a game switch, OK on "installed!" landing on the new mod, and a deleted mod's row no longer read again.
 
-*   ⚠️ **`.7z` and `.rar` mods install as they used to.** The biggest behavioural change in the release:
-    `7za.exe` is gone and both formats are now unpacked in-process. Install a real `.7z` Skyrim or Fallout 4 mod
-    — ideally a large, solid one — and confirm it lands correctly and that progress still climbs to 100. The
-    decoder is not the same code as before, and this is the one thing tests cannot settle.
-*   ⚠️ **A FOMOD mod inside a `.7z`.** Same reason, one layer deeper: the wizard runs on what came out of the
-    archive.
+#### Not yet confirmed
+*   **The game switch sound, with every theme's own sound.** Switch between several games and listen for each
+    one's sound. All seven themes have one; Skyrim's is the longest at 4.5 seconds. Heard and approved with only
+    the Default and Moonlight Peaks sounds (`build-1.6.0g`).
+*   **"Speak after the game switch sound"** (Audio tab, off by default, hidden when sounds are off). With it on,
+    the sound plays first, then "Switched to…", then the Nexus connection. A key pressed during the sound should
+    let the speech through straight away, and the wait never runs longer than 5 seconds.
+*   **Results said first on a return to a list ("way 2", 2026-11-11).** Ignoring or recording an update and the
+    other returns listed in `TODO.md` have not been heard.
+
+### 1.0b The work before that
+
+Written in one day and covered by tests. The `.7z` and `.rar` items were heard in November (§1.0c); the rest has
+not been heard yet.
+
+*   ✅ **`.7z` and `.rar` mods install as they used to.** The biggest behavioural change in the release:
+    `7za.exe` is gone and both formats are now unpacked in-process. Heard 2026-11-11 on the real setup. A large,
+    solid `.7z` with progress climbing to 100 is still worth one more try.
+*   ✅ **A FOMOD mod inside a `.7z`.** Heard 2026-11-11 (Audio Overhaul for Skyrim).
 *   ⚠️ **A script extender install.** `InstallScriptExtenderAsync` and the Engine Fixes preloader both routed on
     the file extension before and now sniff the file. Confirm SKSE and F4SE still install from the Accessibility
     Suite.
-*   **Per-game sounds.** Load each game in turn and confirm the sounds change with it. Minecraft's theme folder
-    is present but has no sounds in it yet, so Minecraft should sound like the Default theme rather than silent
-    — silence there is a bug, not an empty folder.
+*   **Per-game sounds.** Load each game in turn and confirm the sounds change with it. Every theme, Minecraft
+    included, now has its own sound for every event, so a sound missing anywhere is a bug.
 *   **Minecraft's connect and disconnect cues.** Join a multiplayer server and leave it; both should sound.
     Playing a singleplayer world should produce neither. Quitting the game while still on a server should sound
     the disconnect.
@@ -289,42 +313,54 @@ The full reasoning for each lives in `docs/FUTURE_DEVELOPMENT_PLANS.txt` §6.
 *   **Downloadable language packs** — worth doing only once non-English translations exist. The manager is
     fully localised (about 1,470 keys) but English-only.
 *   **Voice notes on mods** — deferred by earlier decision.
-*   **Cyberpunk 2077 as a sixth game** — wanted, blocked on having the game and its accessibility mod installed
+*   **Cyberpunk 2077 as a seventh game** — wanted, blocked on having the game and its accessibility mod installed
     to develop against. Nexus domain `cyberpunk2077`, game id 3333, Steam app 1091500, sold on GOG too.
 
 ---
 
 ## 4. Release mechanics
 
-From `reference-build-publish-release`. The publish output was verified complete on 2026-08-08.
+From `reference-build-publish-release`. Written for 1.6.0, 2026-11-12.
 
-0.  **Publish your Suggested Mods picks** (see §5 below) — do this *before* the version bump, so the shipped
-    list records the version it went out with.
-1.  **Bump the version in both places** — `<Version>` in `KinetixModManager/KinetixModManager.csproj` and
-    `AppVersion` in `KinetixModManager/setup.iss`. Both currently read **1.4.5**. Suggested: **1.5.0** — two new
-    games (Moonlight Peaks, The Witcher 3), per-copy game installs, and the windows-to-panels conversion is well
-    past a patch release.
-    **In the same step, rename `# Unreleased` in `CHANGELOG.md` to `# Version X.Y.Z`.** If that version already
-    has a section, merge the two under one heading, so F2 shows one entry for it. Refresh any test count it gives.
-2.  **Re-publish after the bump and check the exe's FileVersion.** A Debug build does not pick up a version
-    change, so this is the step that catches a bump that did not take:
+0.  **Commit everything first.** Never `git add -A` in this repository: add the files by name. A new sound event
+    means a new folder in **every** theme, and git does not keep an empty folder, so commit the sounds with the
+    code — `SoundThemesTests.EveryThemeHasAFolderForEveryEvent` fails on a fresh clone otherwise.
+1.  **Publish your Suggested Mods picks** (see §5 below), if any have been marked since the last release. Run the
+    tests and commit `data\suggested-mods.json` afterwards.
+2.  **The version.** Already **1.6.0** in `<Version>` in `KinetixModManager/KinetixModManager.csproj`, in
+    `AppVersion` in `KinetixModManager/setup.iss`, and in the top heading of `CHANGELOG.md`
+    (`# Version 1.6.0`). Nothing to bump. For a later release, change all three together; if the version
+    already has a changelog section, merge the two under one heading so F2 shows one entry for it.
+3.  **Publish, and check the exe's FileVersion.** A Debug build does not pick up a version change or a new
+    commit, so this is the step that proves what is going out:
     `dotnet publish KinetixModManager/KinetixModManager.csproj -c Release -r win-x64 --self-contained true`
-3.  **Confirm the publish folder is complete** at
+    FileVersion should read 1.6.0, and ProductVersion `1.6.0+<the commit being released>`.
+4.  **Confirm the publish folder is complete** at
     `KinetixModManager\bin\Release\net10.0-windows\win-x64\publish\`. It should contain the exe, `MANUAL.md`,
-    `CHANGELOG.md`, and the `lang`, `docs`, `data` and `sounds` folders. `sounds` must hold all six themes,
-    including **The Witcher 3** — that theme was untracked in git until 2026-08-08 and would not have shipped.
-    (`profiles` is legitimately absent; `setup.iss` marks it `skipifsourcedoesntexist`.)
-4.  **Build the installer with Inno Setup** from `KinetixModManager\setup.iss`.
-5.  **Tag and publish the GitHub release**, using `--clobber` when replacing an asset.
-6.  **Push the branch.** It has never been pushed — this release is its first appearance on origin.
+    `CHANGELOG.md`, and the `lang`, `docs`, `data` and `sounds` folders. `sounds` must hold **seven themes**
+    (Default and one per game), each with a `session_switch` sound, and `data\plugins` must hold
+    `MoonlightKeybindExport.dll`. (`profiles` is legitimately absent; `setup.iss` marks it
+    `skipifsourcedoesntexist`.)
+    ⚠️ **Compare every `.ogg` in the publish folder with the repo's by hash.** The build copies a file only when it
+    is newer than the one already published, so a sound put back from a backup or copied in with an older date is
+    silently left out (2026-11-12: five sounds, caught only this way). Give such a file today's date, or clean the
+    publish folder, before publishing.
+5.  **Build the installer with Inno Setup** from `KinetixModManager\setup.iss`. `ISCC.exe` is installed per user,
+    at `%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe`. The output replaces
+    `KinetixModManager\Setup\KinetixModManager_Setup.exe`.
+6.  **Push the branch, then bring `master` up to it** (a fast-forward: `master` has nothing the branch lacks).
+7.  **Tag and publish the GitHub release**: an annotated tag `v1.6.0` on the released commit, then
+    `gh release create` with the installer attached and the 1.6.0 section of `CHANGELOG.md` as the notes. Use
+    `--clobber` when replacing an asset.
 
 ### Also worth knowing
 
 *   The bundled Moonlight Peaks keybind reader (`data\plugins\MoonlightKeybindExport.dll`) is built in a
-    **separate repository**. It is present and current as of 2026-08-02. If it ever changes it has to be rebuilt
-    and copied across by hand — nothing in this build does it for you.
-*   This release is large: **58 commits as of 2026-08-09**, two new games, and a change to how every per-game
-    setting is keyed.
+    **separate repository**. The copy here is from 2026-09-15 and its newest source change is from 2026-08-10, so
+    it is current. If it ever changes it has to be rebuilt and copied across by hand — nothing in this build
+    does it for you.
+*   This release is large: everything since 1.5.1, including the unreleased 1.5.2, Minecraft as a sixth game,
+    and the split into `Kinetix.Core`.
     Existing settings files upgrade in place with nothing to redo, but it is worth keeping a copy of
     `%AppData%\AudiVentureGames\KinetixModManager\settings.json` before the first run of the new build.
 

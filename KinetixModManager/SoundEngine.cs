@@ -23,9 +23,13 @@ public class SoundEngine : ISoundEngine
 	/// Every named sound event, in the order the Sound Demo lists them. What each one means is said from the
 	/// phrase file ("sound.&lt;name&gt;"), so it can be translated. This used to carry its own English descriptions too,
 	/// which nothing read and which had drifted from what the sounds do.
+	///
+	/// <para>
+	/// The same list as <see cref="SoundThemes.EventNames"/>, not a copy of it: a copy had to be kept in step by hand, and a
+	/// sound added to one but not the other would be in the themes and missing from the Sound Demo and the theme manager.
+	/// </para>
 	/// </summary>
-	public static readonly IReadOnlyList<string> SoundNames =
-		new[] { "connect", "disconnect", "enable", "disable", "error", "loading_indicator", "load_complete" };
+	public static IReadOnlyList<string> SoundNames => SoundThemes.EventNames;
 
 	private readonly SoundThemeFolders _themes;
 	private readonly AppSettings _settings;
@@ -94,11 +98,16 @@ public class SoundEngine : ISoundEngine
 
 				using VorbisWaveReader reader = new VorbisWaveReader(file);
 				using WaveOutEvent output = new WaveOutEvent();
+				// Ends the moment playback does. It used to look every 100 ms, so whatever waited on the sound (speech held
+				// for the game switch sound, the exit after the goodbye cue) could start up to a tenth of a second late.
+				// Created on a pool thread, so the event is raised on the playback thread, never posted to a busy window.
+				using ManualResetEventSlim finished = new ManualResetEventSlim();
+				output.PlaybackStopped += (_, _) => finished.Set();
 				output.Volume = (float)_settings.SoundVolume / 100f;
 				output.Init(reader);
 				output.Play();
-				while (output.PlaybackState == PlaybackState.Playing)
-					Thread.Sleep(100);
+				// The sound's own length and a second's grace, so a device that never reports the end can't hold up the exit.
+				finished.Wait(reader.TotalTime + TimeSpan.FromSeconds(1));
 			}
 			catch (Exception ex) { DiagnosticLog.WriteException("Sound", $"playing the \"{name}\" sound", ex); }
 		});

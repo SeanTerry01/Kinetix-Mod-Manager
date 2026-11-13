@@ -363,6 +363,8 @@ public sealed partial class MainWindow
 
 		_game = game;
 		_settings.ActiveGame = game.Id;
+		// The new game's own sound: the theme follows _game, set just above. As on Windows.
+		_sound.Play("session_switch");
 
 		// Every tab holds the old game's rows until told otherwise, and each acts on the current game's folders. So the
 		// old game's backup was unpacked into the new game, its update installed there, and Save on the Settings tab

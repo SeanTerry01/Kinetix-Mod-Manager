@@ -260,6 +260,7 @@ public partial class Form1
 			await Task.WhenAny(connecting, Task.Delay(ConnectionGrace));
 			if (connecting.IsCompleted)
 			{
+				await AfterSessionSoundAsync();
 				SettleConnection(await connecting);
 				connecting = null;
 			}
@@ -413,6 +414,7 @@ public partial class Form1
 		{
 			NexusConnection late = await connecting;
 			connecting = null;
+			await AfterSessionSoundAsync();
 			if (Superseded()) return;
 			SettleConnection(late);
 			// Emptied now, as it would have been, for the check about to fill it.
