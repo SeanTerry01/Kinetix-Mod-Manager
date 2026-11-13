@@ -132,4 +132,9 @@ machine — useful for checking a change has not broken it, though it cannot run
 
 ## License
 
-This project is provided as-is for personal and community use.
+Kinetix Mod Manager is free software, licensed under the [GNU General Public License, version 3](LICENSE). You may
+use, study, change and share it, and any version you share must be licensed under the GPL too, with its source code.
+
+The game sound themes use sounds from the games themselves. They belong to those games' owners and are not covered by
+the GPL; only the Default theme's sounds are the project's own. The libraries the manager uses keep their own licences.
+Both are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
