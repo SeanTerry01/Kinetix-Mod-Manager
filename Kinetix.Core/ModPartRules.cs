@@ -213,6 +213,12 @@ public static class ModPartRules
 	public const string Fallout4ScriptExtenderNexusId = "42147";
 
 	/// <summary>
+	/// WitcherAccess's Nexus page, "WitcherAccess - Accessibility for Blind Players in The Witcher 3" by Pyram, published
+	/// 2026-11-07. Read back from Nexus's own search, not guessed.
+	/// </summary>
+	public const string Witcher3AccessNexusId = "15538";
+
+	/// <summary>
 	/// The Nexus page of the script extender for <paramref name="installKey"/>: SKSE64 for either copy of Skyrim,
 	/// F4SE otherwise. Only meaningful for a Bethesda game, which is the only kind that asks.
 	/// </summary>

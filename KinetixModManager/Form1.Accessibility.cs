@@ -32,13 +32,18 @@ public partial class Form1
 		ShowDocDrilldown(roots, Loc.T("manual.windowTitle"), Loc.T("manual.toc"), Loc.T("manual.topicInfo"));
 	}
 
-	/// <summary>Opens the navigable change log: each version is a top-level entry you open to read its changes.</summary>
-	private void ShowChangeLog()
+	/// <summary>
+	/// Opens the navigable change log: each version is a top-level entry you open to read its changes.
+	/// With <paramref name="whatsNew"/>, it opens already inside the running version's entry, as it does by itself on the
+	/// first run after an update; Left goes back to every version, as if the entry had been opened by hand.
+	/// </summary>
+	private void ShowChangeLog(bool whatsNew = false)
 	{
 		string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CHANGELOG.md");
 		if (!File.Exists(path))
 		{
-			SpeakBox(Loc.T("changelog.notFound"));
+			// Unasked, a missing file is not worth a box in the middle of starting up.
+			if (!whatsNew) SpeakBox(Loc.T("changelog.notFound"));
 			return;
 		}
 		// Each version is its own '#' heading; the "New in Version X" '##' under it is a redundant wrapper that
@@ -46,7 +51,21 @@ public partial class Form1
 		List<DocNode> roots = DocOutline.ParseTree(File.ReadAllLines(path));
 		DocOutline.CollapseRedundantLevels(roots);
 		DocOutline.CleanForReading(roots);
-		ShowDocDrilldown(roots, Loc.T("changelog.windowTitle"), Loc.T("changelog.toc"), Loc.T("changelog.topicInfo"));
+
+		if (!whatsNew)
+		{
+			ShowDocDrilldown(roots, Loc.T("changelog.windowTitle"), Loc.T("changelog.toc"), Loc.T("changelog.topicInfo"));
+			return;
+		}
+
+		// The running version's entry, by its heading ("Version 1.6.0"); the newest, at the top, if none names it.
+		string version = NexusService.AppVersion;
+		int entry = roots.FindIndex(r => Regex.IsMatch(r.Label, $@"(?<![\d.]){Regex.Escape(version)}(?![\d.])"));
+		if (entry < 0) entry = 0;
+		ShowDocDrilldown(roots, Loc.T("changelog.whatsNewTitle", version), Loc.T("changelog.toc"), Loc.T("changelog.topicInfo"),
+			openRoot: entry, hint: ShortcutIsSet("ChangeLog")
+				? Loc.T("changelog.whatsNewHint", version, GetShortcutString("ChangeLog"))
+				: Loc.T("changelog.whatsNewHintNoKey", version));
 	}
 
 	/// <summary>
@@ -57,7 +76,10 @@ public partial class Form1
 	/// on level change, breadcrumb as the list title, position spoken just after the item) so the two navigate
 	/// the same way.
 	/// </summary>
-	private void ShowDocDrilldown(List<DocNode> roots, string windowTitle, string tocName, string contentName)
+	/// <param name="openRoot">A top-level entry to open at once, as if Right had been pressed on it; -1 opens the top level.</param>
+	/// <param name="hint">What is said once the view is up, instead of the usual reminder of the keys.</param>
+	private void ShowDocDrilldown(List<DocNode> roots, string windowTitle, string tocName, string contentName,
+		int openRoot = -1, string? hint = null)
 	{
 		// Shown inside the main window rather than as one of its own — see Form1.InlineView. The window this
 		// used to be hid the main one behind it; there is nothing to hide now, and nothing to restore on the
@@ -358,11 +380,19 @@ public partial class Form1
 		// form-level handler would never see it.
 		AttachViewHelp(container, () => Speak(Loc.T("doc.help")));
 
-		ShowLevel(roots, "", 0);
+		// Opened inside one entry: the way back is laid down first, exactly as DrillIn leaves it, so Left returns to the
+		// top level on the entry that was opened.
+		if (openRoot >= 0 && openRoot < roots.Count && roots[openRoot].Children.Count > 0)
+		{
+			backStack.Push((roots, openRoot, ""));
+			ShowLevel(roots[openRoot].Children, roots[openRoot].Label, 0);
+		}
+		else
+			ShowLevel(roots, "", 0);
 		ApplyScreenReaderPauses(container);
 		return list;
 		},
-		hint: Loc.T("doc.navHint"));
+		hint: hint ?? Loc.T("doc.navHint"));
 	}
 
 	/// <summary>

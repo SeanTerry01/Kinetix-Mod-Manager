@@ -202,13 +202,15 @@ public partial class Form1
 
 	/// <summary>
 	/// Whether the manager can install this update itself, without sending the user to a browser — which is what
-	/// makes the offer on Enter worth making. A Nexus update is left alone here: fetching one needs the NXM handler
-	/// or a Premium account, so its page is still where that row leads.
+	/// makes the offer on Enter worth making. A Nexus update counts with a Premium account, which is handed the file
+	/// directly: Enter on one opened its page regardless, though Update was a key press away (Sean, 2026-11-12).
+	/// Without Premium only the page can fetch it, through Mod Manager Download, so the page is where the row leads.
 	/// </summary>
 	private bool CanUpdateWithoutBrowser(GameMod mod) =>
 		GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true ||
 		!string.IsNullOrEmpty(mod.GitHubRepo) ||
-		!string.IsNullOrEmpty(mod.ModrinthId);
+		!string.IsNullOrEmpty(mod.ModrinthId) ||
+		(_nexusService.IsPremium && !string.IsNullOrEmpty(mod.NexusID));
 
 	/// <summary>
 	/// Whether the manager can fetch this search result itself, rather than sending the user to its page.
@@ -1173,6 +1175,9 @@ public partial class Form1
 		}
 		catch (Exception ex)
 		{
+			// The whole exception as well as the sentence: "a required file or folder was not found" was all the log said of a
+			// failed Bush Bloom Mod update, with nothing naming the file (2026-11-12).
+			LogFailure(spokenName, $"installing {Path.GetFileName(zipPath)}", ex);
 			ReportInstallFailure(Loc.T("install.failed", FriendlyError(ex)), spokenName, silent);
 			return false;
 		}

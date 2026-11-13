@@ -703,10 +703,20 @@ public static class ModScanner
 		if (index == -1) return null;
 
 		string suffix = nameWithoutExt.Substring(index + target.Length);
+		// Nexus names a file "<name>-<mod id>-<version>-<upload time>", the time in Unix seconds — but not always: a file can
+		// arrive as "Better MessageBox Controls v1_2-1428-1-2", with no time. The last part was dropped regardless, so 1.2
+		// was recorded as 1 and the same mod was offered its own version as an update (heard 2026-11-12). Only a part that
+		// is a time goes: ten digits or more, since a version number is never that long.
 		int lastDash = suffix.LastIndexOf('-');
-		string versionPart = lastDash == -1 ? suffix : suffix.Substring(0, lastDash);
+		string versionPart = lastDash != -1 && IsUploadTime(suffix.Substring(lastDash + 1))
+			? suffix.Substring(0, lastDash)
+			: suffix;
+		// Nothing left, or only the time ("<name>-<mod id>-<upload time>"): there is no version in the name.
+		if (versionPart.Length == 0 || IsUploadTime(versionPart)) return null;
 
 		return versionPart.Replace('-', '.');
+
+		static bool IsUploadTime(string part) => part.Length >= 10 && part.All(char.IsAsciiDigit);
 	}
 
 }

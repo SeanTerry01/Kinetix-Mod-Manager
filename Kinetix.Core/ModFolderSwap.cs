@@ -113,6 +113,10 @@ public static class ModFolderSwap
 			.Distinct(StringComparer.OrdinalIgnoreCase)
 			.Where(Directory.Exists)
 			.ToList();
+		// A folder inside another one being moved goes with it. Moved on its own as well, before or after, it was either
+		// not there any more or no longer inside its mod: Bush Bloom Mod keeps three example mods in its own folder, and
+		// every update of it failed with "Could not find a part of the path" (2026-11-12).
+		toMove = toMove.Where(p => !toMove.Any(other => IsInside(p, other))).ToList();
 
 		var parked = new List<(string From, string To)>();
 		try
@@ -149,6 +153,13 @@ public static class ModFolderSwap
 
 		// The new copy's own files are the user's now, whatever flags the archive gave them.
 		if (crossDriveCopy != null) Discard(crossDriveCopy, logError);
+	}
+
+	/// <summary>Whether <paramref name="folder"/> is somewhere below <paramref name="ancestor"/>. Both full paths.</summary>
+	private static bool IsInside(string folder, string ancestor)
+	{
+		string root = ancestor.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+		return folder.Length > root.Length && folder.StartsWith(root, StringComparison.OrdinalIgnoreCase);
 	}
 
 	/// <summary>Where an old copy can wait. On the same drive, so that moving it there and back are both renames.</summary>

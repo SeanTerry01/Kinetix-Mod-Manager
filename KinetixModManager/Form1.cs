@@ -919,6 +919,16 @@ public partial class Form1 : Form, IMessageFilter
 			// Peaks or Minecraft that no supported game was installed.
 			bool anyInstalled = GameProfiles.AllIds.Any(form.IsGameInstalled);
 
+			// The first run of a newer version opens the change log at what is new, once the opening has said where you are.
+			// Decided here, before the first-run flag below is set, because that flag is what tells an update from a first
+			// install. A first install has nothing to compare with, so it only records the version it started on.
+			form._whatsNewPending = WhatsNew.ShouldShow(form._settings!.HasCompletedFirstRun, form._settings.LastRunVersion, NexusService.AppVersion);
+			if (!form._whatsNewPending && form._settings.LastRunVersion != NexusService.AppVersion && !form._settings.HasCompletedFirstRun)
+			{
+				form._settings.LastRunVersion = NexusService.AppVersion;
+				form._settings.Save();
+			}
+
 			// First launch: open Settings (modal) so a brand-new user can set their game folders and Nexus key
 			// right away — the Settings dialog works without a game loaded, and previously you had to pick a game
 			// first before it would appear. Only for a genuinely fresh setup; existing users are marked done
@@ -988,6 +998,10 @@ public partial class Form1 : Form, IMessageFilter
 			// the two lines just spoken. A session's own announcements — "Connecting…", the mod list, the landing
 			// on the first tab — all come from the refresh started above, which runs after this.
 			form._startupSpeechInProgress = false;
+
+			// With no session to land on, the opening ends with the game list, so what is new follows that. A session's
+			// own landing opens it instead, at the end of the refresh started above. See ShowWhatsNewIfPending.
+			if (form._settings.ActiveGame == GameProfiles.NoGame) form.ShowWhatsNewIfPending();
 
 			// If no supported game is installed at all, guide the user to purchase one. This also
 			// covers a saved-but-uninstalled active game with no other game present (in which case

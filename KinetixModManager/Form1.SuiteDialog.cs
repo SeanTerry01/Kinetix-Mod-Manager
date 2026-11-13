@@ -9,22 +9,21 @@ public partial class Form1
 	// -------------------------------------------------------------------------
 	// Moonlight Access — the Moonlight Peaks accessibility mod
 	// -------------------------------------------------------------------------
-	// This is the one suite entry the manager cannot yet fetch on its own, because the mod is not published
-	// anywhere it can download from. Everything else about it is wired up: it appears in the suite list, its
-	// installed state is detected, and the F3 documentation viewer knows about it. Only the source is missing.
+	// Published on Nexus as MoonlightAccess, mod 137 by SeanTerry01, on 2026-08-07, and fetched from there. The source
+	// stayed empty for three months after that, so the suite went on saying it could not download a mod that was on
+	// Nexus (found 2026-11-12, read back from Nexus's own search).
 	//
-	// TO ENABLE DOWNLOADING, set both constants below and nothing else needs to change:
-	//   * published on Nexus     -> Type = "Nexus",        Source = the numeric mod id, e.g. "42"
+	// To move it elsewhere, set both constants below and nothing else needs to change:
+	//   * on Nexus               -> Type = "Nexus",        Source = the numeric mod id
 	//   * GitHub releases        -> Type = "GitHub",       Source = "owner/repo"
 	//   * a fixed release asset  -> Type = "GitHubStatic", Source = the full .zip URL
-	// While Source is empty the entry is shown as unavailable and the installer skips it with a spoken note,
-	// rather than failing partway through installing the rest of the suite.
+	// An empty Source shows the entry as unavailable, and the installer skips it with a spoken note.
 
-	/// <summary>How Moonlight Access should be fetched once it is published. See the note above.</summary>
+	/// <summary>How Moonlight Access is fetched. See the note above.</summary>
 	private const string MoonlightAccessType = "Nexus";
 
-	/// <summary>Where Moonlight Access is fetched from; empty until the mod is published.</summary>
-	private const string MoonlightAccessSource = "";
+	/// <summary>Where Moonlight Access is fetched from: its Nexus mod id.</summary>
+	private const string MoonlightAccessSource = "137";
 
 	/// <summary>The plugin GUID Moonlight Access registers itself under, used to spot it among installed mods.</summary>
 	private const string MoonlightAccessGuid = "com.moonlightaccess.core";
@@ -213,11 +212,10 @@ public partial class Form1
 				File.Exists(Path.Combine(Path.GetDirectoryName(GameProfiles.Require(GameProfiles.Witcher3).GameExePathIn(gameFolder)) ?? "",
 					"WitcherAccess.asi"));
 
-			// No source: WitcherAccess is still in testing and is installed by running its author's installer, so
-			// the manager reports on it and says where it stands rather than pretending it can fetch it. Install
-			// it through Mods, Install Mod From File with the release zip — the manager unpacks it, runs the
-			// installer and picks the mod up afterwards.
-			suiteItems.Add(new SuiteItem("WitcherAccess", accessInstalled, "Manual", ""));
+			// On Nexus since 2026-11-07, as mod 15538 by Pyram; before that it had no source the manager could fetch from.
+			// It is fetched like the other suites' Nexus mods, and its release is still its author's installer: the
+			// manager unpacks the download, asks, runs the installer and picks the mod up afterwards.
+			suiteItems.Add(new SuiteItem("WitcherAccess", accessInstalled, "Nexus", ModPartRules.Witcher3AccessNexusId));
 		}
 		else if (GameProfiles.IsGame(game, GameProfiles.Minecraft))
 		{

@@ -22,10 +22,45 @@ public partial class Form1
 		public bool PreFilterMessage(ref Message m)
 		{
 			if (m.Msg == KeyDown)
+			{
 				form._typedIntoList = null;
+				form.NoteMoveInAOneItemList(m);
+			}
 			else if (m.Msg == Character && char.IsLetterOrDigit((char)(long)m.WParam) && Control.FromHandle(m.HWnd) is ListBox list)
 				form._typedIntoList = (list, list.SelectedIndex);
 			return false;
+		}
+	}
+
+	/// <summary>
+	/// An arrow, Home, End, Page Up or Page Down in a list or drop-down holding one item, already selected: nothing moves, so
+	/// nothing was said, and the item could only be heard again by tabbing away and back (Sean, 2026-11-12). It is said
+	/// again, with "1 of 1". Plain keys only: Ctrl with an arrow moves a mod in Mod Priority, and that says its own result.
+	/// Said once the key has been dealt with, in case the control did make a change of its own.
+	/// </summary>
+	private void NoteMoveInAOneItemList(Message m)
+	{
+		var key = (Keys)(int)(long)m.WParam;
+		if (key is not (Keys.Up or Keys.Down or Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown)) return;
+		if (Control.ModifierKeys != Keys.None) return;
+
+		// From the child handle: a drop-down that can be typed in takes its keys in an edit box inside it.
+		switch (Control.FromChildHandle(m.HWnd))
+		{
+			case ListBox { Items.Count: 1, SelectedIndex: 0 } list:
+				BeginInvoke(new Action(() =>
+				{
+					if (list.Focused && list.Items.Count == 1 && list.SelectedIndex == 0)
+						Speak(RowThenPosition(list.SelectedItem, Loc.T("common.position", 1, 1)));
+				}));
+				break;
+			case ComboBox { Items.Count: 1, SelectedIndex: 0, DroppedDown: false } combo:
+				BeginInvoke(new Action(() =>
+				{
+					if (combo.ContainsFocus && combo.Items.Count == 1 && combo.SelectedIndex == 0)
+						Speak(RowThenPosition(combo.GetItemText(combo.SelectedItem), Loc.T("common.position", 1, 1)));
+				}));
+				break;
 		}
 	}
 

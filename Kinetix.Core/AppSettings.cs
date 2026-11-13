@@ -407,6 +407,12 @@ public class AppSettings : IModScanContext
 	public Dictionary<string, Dictionary<string, string>> InstalledDownloadVersions { get; set; } = new();
 
 	/// <summary>
+	/// The version of the manager whose changes were last shown, as "1.6.0". Empty until a version that keeps it has run,
+	/// which 1.5.1 and earlier did not. See <see cref="WhatsNew"/>.
+	/// </summary>
+	public string LastRunVersion { get; set; } = "";
+
+	/// <summary>
 	/// What the last full check of each Nexus page found, per game: <c>game -> mod id -> record</c>.
 	/// See <see cref="NexusCheckMemory"/>. Only ever saves requests, so losing it just means one slower check.
 	/// </summary>

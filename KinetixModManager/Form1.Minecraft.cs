@@ -287,6 +287,19 @@ public partial class Form1
 			Loc.T("mc.install.noBuildTitle"), MessageBoxButtons.OK);
 	}
 
+	/// <summary>
+	/// A Modrinth download with the progress tones, or spoken figures, that every other download has. None of Minecraft's
+	/// made any (Sean, 2026-11-12). Every Modrinth download in the app goes through this rather than straight to
+	/// <see cref="ModrinthService.DownloadAsync"/>.
+	/// </summary>
+	private async Task<string> DownloadModrinthAsync(ModrinthFile file, string name)
+	{
+		ProgressAnnouncer progress = NewProgress(name, installing: false);
+		string path = await ModrinthService.DownloadAsync(file, downloadsPath, progress);
+		progress.Complete();
+		return path;
+	}
+
 	/// <summary>Fetches a Modrinth project's newest build for the pinned Minecraft version.</summary>
 	private async Task<string> InstallModrinthJarAsync(
 		MinecraftSuiteMod mod, string modsFolder, List<string>? noBuildFor)
@@ -299,7 +312,7 @@ public partial class Form1
 
 		AnnounceSuiteDownload(mod);
 		// Through the installer rather than straight to the folder: a differently named copy of the mod stops the game starting.
-		string downloaded = await ModrinthService.DownloadAsync(file, downloadsPath);
+		string downloaded = await DownloadModrinthAsync(file, mod.DisplayName);
 		await InstallJarAsync(downloaded, modsFolder);
 		RecordDownloadInstalled(downloaded);
 		return downloaded;
@@ -339,7 +352,9 @@ public partial class Form1
 
 		Directory.CreateDirectory(downloadsPath);
 		string path = Path.Combine(downloadsPath, jar.Name);
-		await _nexusService.DownloadFileWithProgressAsync(jar.Url, path, null, jar.Digest);
+		ProgressAnnouncer progress = NewProgress(mod.DisplayName, installing: false);
+		await _nexusService.DownloadFileWithProgressAsync(jar.Url, path, progress, jar.Digest);
+		progress.Complete();
 		// Through the installer rather than straight to the folder: a differently named copy of the mod stops the game starting.
 		await InstallJarAsync(path, modsFolder);
 		RecordDownloadInstalled(path);
@@ -956,7 +971,7 @@ public partial class Form1
 				{
 					SetStatus(Loc.T("updateAll.updatingStatus", i + 1, ready.Count, mod.Name), speak: false);
 					string? downloaded = available.TryGetValue(hashOf[mod], out ModrinthFile? file)
-						? await ModrinthService.DownloadAsync(file, downloadsPath)
+						? await DownloadModrinthAsync(file, mod.Name)
 						: await DownloadNewestMinecraftJarAsync(mod, root, newVersion, mustNameVersion: true);
 					if (downloaded == null || !MinecraftLayout.IsModFile(downloaded, null))
 						throw new IOException($"No Fabric mod jar was downloaded for {mod.Name}.");
@@ -1137,7 +1152,7 @@ public partial class Form1
 				ModrinthFile? file = await FindDependencyBuildAsync(id, gameVersion);
 				if (file == null) { notFound.Add(id); continue; }
 
-				string downloaded = await ModrinthService.DownloadAsync(file, downloadsPath);
+				string downloaded = await DownloadModrinthAsync(file, id);
 				await InstallJarAsync(downloaded, modsFolder);
 				RecordDownloadInstalled(downloaded);
 				installed.Add(id);
@@ -1330,7 +1345,7 @@ public partial class Form1
 				Dictionary<string, ModrinthFile> latest =
 					await ModrinthService.GetLatestForHashesAsync(new[] { hash }, gameVersion);
 				if (latest.TryGetValue(hash, out ModrinthFile? file))
-					return await ModrinthService.DownloadAsync(file, downloadsPath);
+					return await DownloadModrinthAsync(file, mod.Name);
 			}
 		}
 		catch (Exception ex) when (ex is not DownloadCancelledException)
@@ -1445,7 +1460,7 @@ public partial class Form1
 
 			// Into the downloads folder first, exactly like a Nexus download, so the file is kept and the
 			// downloads history has something to show.
-			string downloaded = await ModrinthService.DownloadAsync(file, downloadsPath);
+			string downloaded = await DownloadModrinthAsync(file, result.Name);
 
 			ResetStatus();
 

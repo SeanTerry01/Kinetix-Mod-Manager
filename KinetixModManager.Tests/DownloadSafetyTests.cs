@@ -132,6 +132,49 @@ public sealed class DownloadSafetyTests : IDisposable
 		await server;
 	}
 
+	/// <summary>Collects what a download reports, on the thread that reports it.</summary>
+	private sealed class Reports : IProgress<double>
+	{
+		public List<double> Seen { get; } = new();
+		public void Report(double value) { lock (Seen) Seen.Add(value); }
+	}
+
+	private ModrinthFile ModrinthFileHere => new() { VersionNumber = "1", FileName = "file.zip", Url = Url };
+
+	[Fact]
+	public async Task AModrinthDownloadArrivesWholeAndReportsProgress()
+	{
+		// Fetched in one piece, it reported nothing, so no Minecraft download made the progress tones (2026-11-12).
+		var reports = new Reports();
+		Task server = ServeAsync(holdOpen: false);
+		string path = await ModrinthService.DownloadAsync(ModrinthFileHere, _folder, reports);
+		await server;
+
+		Assert.Equal(Destination, path);
+		Assert.Equal(Body, File.ReadAllBytes(Destination));
+		Assert.False(File.Exists(Partial));
+		Assert.NotEmpty(reports.Seen);
+		Assert.Equal(100.0, reports.Seen[^1], 3);
+	}
+
+	[Fact]
+	public async Task CancellingAModrinthDownloadLeavesNothing()
+	{
+		var halfSent = new TaskCompletionSource();
+		Task server = ServeAsync(holdOpen: true, halfSent);
+
+		Task<string> download = ModrinthService.DownloadAsync(ModrinthFileHere, _folder, new Reports());
+		await halfSent.Task;
+		Assert.True(_service.AnyDownloadRunning);
+
+		_service.CancelDownloads();
+
+		await Assert.ThrowsAsync<DownloadCancelledException>(() => download);
+		Assert.False(File.Exists(Destination));
+		Assert.False(File.Exists(Partial));
+		await server;
+	}
+
 	[Fact]
 	public async Task ADownloadAfterACancelIsNotCancelled()
 	{

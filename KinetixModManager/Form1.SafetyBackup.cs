@@ -95,9 +95,12 @@ public partial class Form1
 			return;
 		}
 
-		// Run once the view has gone. Run from the key handler, its result was said before focus went back and silenced by
-		// it: a failed restore gave its error sound and no reason.
-		SafetyBackupItem? toRestore = null;
+		// The restore runs with the view still open, and its result is said as the view closes, ahead of the list it goes
+		// back to. Run once the view had gone, the list announced itself between "Restoring" and "Restored" (Sean,
+		// 2026-11-12). Said from the key handler with a plain Speak, before that, the result was lost to the focus going
+		// back: a failed restore gave its error sound and no reason. sayOnClosing is what holds it until it has been heard.
+		bool restoring = false;
+		string? sayAfterClosing = null;
 
 		// Shown inside the main window rather than as one of its own — see Form1.InlineView.
 		ShowInlineView(Loc.T("safety.title"), (container, closeView) =>
@@ -115,9 +118,15 @@ public partial class Form1
 
 			WireAccessibleDialogList(list);
 			// Escape is handled by the view itself (see Form1.InlineView).
-			list.KeyDown += (_, e) =>
+			list.KeyDown += async (_, e) =>
 			{
 				if (list.SelectedItem is not SafetyBackupItem item) return;
+				if (restoring && e.KeyCode is Keys.Enter or Keys.Delete)
+				{
+					e.Handled = e.SuppressKeyPress = true;
+					Speak(Loc.T("safety.stillRestoring"));
+					return;
+				}
 
 				if (e.KeyCode == Keys.Enter)
 				{
@@ -125,7 +134,9 @@ public partial class Form1
 					if (SpeakBox(Loc.T("safety.restoreConfirm", item.Summary), Loc.T("safety.restoreTitle"),
 							MessageBoxButtons.YesNo) == DialogResult.Yes)
 					{
-						toRestore = item;
+						restoring = true;
+						try { sayAfterClosing = await RestoreSafetyBackupAsync(item); }
+						finally { restoring = false; }
 						closeView();
 					}
 				}
@@ -155,7 +166,8 @@ public partial class Form1
 		// Through the hint so it follows the title instead of arriving ahead of it, and without the old heading
 		// clause ("Safety backups for <game>."), which said the title's own words a second time.
 		hint: Loc.T(items.Count == 1 ? "safety.countOne" : "safety.count", items.Count) + " " + Loc.T("safety.actionHint"),
-		onClosed: () => { if (toRestore != null) Fire(RestoreSafetyBackupAsync(toRestore), "RestoreSafetyBackupAsync"); });
+		whyEscapeWaits: () => restoring ? Loc.T("safety.stillRestoring") : null,
+		sayOnClosing: () => sayAfterClosing);
 	}
 
 	private List<SafetyBackupItem> LoadSafetyBackups()
@@ -234,18 +246,21 @@ public partial class Form1
 		}
 	}
 
-	/// <summary>Restores a snapshot: copies its files back, reinstates the saved load order, and re-deploys.</summary>
-	private async Task RestoreSafetyBackupAsync(SafetyBackupItem item)
+	/// <summary>
+	/// Restores a snapshot: copies its files back, reinstates the saved load order, and re-deploys. Returns what to say about
+	/// it, which the view says as it closes; null when there is nothing to add.
+	/// </summary>
+	private async Task<string?> RestoreSafetyBackupAsync(SafetyBackupItem item)
 	{
 		string game = _settings.ActiveGame;
-		if (ModOperationRunning) { Speak(Loc.T("session.busy")); return; }
+		if (ModOperationRunning) return Loc.T("session.busy");
 		using IDisposable busy = BeginModOperation();
 		Speak(Loc.T("safety.restoring"));
 		SetStatus(Loc.T("safety.restoring"), speak: false);
 
 		// A refresh rewrites plugins.txt, and this is about to put an old one back.
 		while (Volatile.Read(ref _refreshInFlight) > 0) await Task.Delay(25);
-		if (_settings.ActiveGame != game) { ResetStatus(); return; }
+		if (_settings.ActiveGame != game) { ResetStatus(); return null; }
 
 		try
 		{
@@ -297,14 +312,14 @@ public partial class Form1
 			ResetStatus();
 			_soundEngine.Play("load_complete");
 			// Both of those do nothing without a list to go by, and it still said "restored".
-			Speak(Loc.T(trustworthy ? "safety.restored" : "safety.restoredNotDeployed", item.Summary));
+			return Loc.T(trustworthy ? "safety.restored" : "safety.restoredNotDeployed", item.Summary);
 		}
 		catch (Exception ex)
 		{
 			LogFailure("Safety", $"Restoring safety snapshot failed", ex);
 			ResetStatus();
 			_soundEngine.Play("error");
-			Speak(Loc.T("safety.restoreFailed", FriendlyError(ex)));
+			return Loc.T("safety.restoreFailed", FriendlyError(ex));
 		}
 	}
 }

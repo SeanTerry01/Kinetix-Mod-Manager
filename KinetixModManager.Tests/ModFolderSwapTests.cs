@@ -66,6 +66,27 @@ public sealed class ModFolderSwapTests : IDisposable
 		Assert.False(Directory.Exists(old));
 	}
 
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public void AModWithModsInsideItsOwnFolderIsReplacedWhole(bool parentNamedFirst)
+	{
+		// Bush Bloom Mod keeps three example content packs in its own folder, each with a manifest, so each is a mod as well
+		// and an old copy the update replaces. The folder holding them moved first, and they went with it: moving them next
+		// found nothing there, and every update of the mod failed (2026-11-12).
+		string old = MakeMod(_mods, "BushBloomMod", "old");
+		string example = MakeMod(Path.Combine(old, "examples"), "[CP] Basic Bush Bloom Example", "old example");
+		string incoming = MakeMod(_temp, "built", "new");
+		MakeMod(Path.Combine(incoming, "examples"), "[CP] Basic Bush Bloom Example", "new example");
+
+		string[] oldFolders = parentNamedFirst ? new[] { old, example } : new[] { example, old };
+		ModFolderSwap.Replace(incoming, old, oldFolders, _temp, Log);
+
+		Assert.Equal("new", MarkerIn(old));
+		Assert.Equal("new example", MarkerIn(example));
+		Assert.Empty(_logged);
+	}
+
 	[Fact]
 	public void SomethingAtTheDestinationIsReplacedEvenIfNotNamed()
 	{

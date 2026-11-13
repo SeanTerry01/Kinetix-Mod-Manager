@@ -177,6 +177,99 @@ public class BatchAGuardTests
 	}
 
 	[Fact]
+	public void AnArrowInAOneItemListSaysTheItemAgain()
+	{
+		// Nothing moves, so nothing was said: the item could be heard again only by tabbing away and back (Sean, 2026-11-12).
+		string body = WithoutComments(MethodBody("Form1.Input.cs", "private void NoteMoveInAOneItemList("));
+		Assert.Contains("Control.ModifierKeys != Keys.None", body);   // Ctrl+Up moves a mod, and says so itself
+		Assert.Contains("case ListBox { Items.Count: 1, SelectedIndex: 0 }", body);
+		Assert.Contains("case ComboBox { Items.Count: 1, SelectedIndex: 0, DroppedDown: false }", body);
+		Assert.Contains("form.NoteMoveInAOneItemList(m);", WithoutComments(App("Form1.Input.cs")));
+	}
+
+	[Fact]
+	public void RestoringASafetyBackupIsSaidBeforeTheListIsBack()
+	{
+		// Run once the view had closed, the list announced itself between "Restoring" and "Restored" (Sean, 2026-11-12).
+		string source = WithoutComments(App("Form1.SafetyBackup.cs"));
+		Assert.Contains("sayAfterClosing = await RestoreSafetyBackupAsync(item);", source);
+		Assert.Contains("sayOnClosing: () => sayAfterClosing", source);
+		Assert.DoesNotContain("onClosed:", source);
+	}
+
+	[Fact]
+	public void WhatsNewIsDecidedBeforeTheFirstRunFlagIsSet()
+	{
+		// The flag as loaded is what tells an update from a first install; set first, every first install would count.
+		string source = WithoutComments(App("Form1.cs"));
+		int decided = source.IndexOf("WhatsNew.ShouldShow(form._settings!.HasCompletedFirstRun", StringComparison.Ordinal);
+		int flagSet = source.IndexOf("HasCompletedFirstRun = true", StringComparison.Ordinal);
+		Assert.True(decided > 0 && flagSet > decided);
+		// Opened from both ends of the opening: the game list with no session, the landing with one.
+		Assert.Contains("ShowWhatsNewIfPending();", source);
+		Assert.Contains("ShowWhatsNewIfPending();", WithoutComments(MethodBody("Form1.Helpers.cs", "private void LandOnFirstTab(")));
+	}
+
+	[Fact]
+	public void EnterOnANexusUpdateOffersTheChoiceWithPremium()
+	{
+		// A Premium account is handed the file, so the row can be updated from where it is. Enter opened the page anyway.
+		// An expression-bodied member, so it runs from its signature to the first semicolon.
+		Match rule = Regex.Match(WithoutComments(App("Form1.Install.cs")), @"private bool CanUpdateWithoutBrowser\(GameMod mod\) =>[^;]*;");
+		Assert.True(rule.Success);
+		Assert.Contains("_nexusService.IsPremium && !string.IsNullOrEmpty(mod.NexusID)", rule.Value);
+	}
+
+	[Fact]
+	public void EveryModDocF3OffersIsShippedWithTheManager()
+	{
+		// The bundled copy is what F3 shows offline or signed out. A name in the source list with no file, or a file the
+		// project does not copy, opens to "unavailable" on every machine but the one it was written on.
+		string source = WithoutComments(App("Form1.ModDocs.cs"));
+		string project = File.ReadAllText(Path.Combine(RepositoryRoot(), "KinetixModManager", "KinetixModManager.csproj"));
+		List<string> docs = Regex.Matches(source, @"""docs/([a-z0-9-]+\.md)""").Select(m => m.Groups[1].Value).Distinct().ToList();
+
+		Assert.Contains("witcher-access.md", docs);
+		Assert.Contains("\"Witcher3\" =>", source);
+		foreach (string doc in docs)
+		{
+			Assert.True(File.Exists(Path.Combine(RepositoryRoot(), "docs", doc)), doc);
+			Assert.Contains(@"..\docs\" + doc, project);
+		}
+	}
+
+	[Fact]
+	public void TheWitcher3SuiteFetchesWitcherAccessFromNexus()
+	{
+		// On Nexus since 2026-11-07. It had no source, so the suite could only say so.
+		Assert.Equal("15538", ModPartRules.Witcher3AccessNexusId);
+		Assert.Contains("new SuiteItem(\"WitcherAccess\", accessInstalled, \"Nexus\", ModPartRules.Witcher3AccessNexusId)",
+			WithoutComments(App("Form1.SuiteDialog.cs")));
+	}
+
+	[Fact]
+	public void EverySuitesAccessModHasASource()
+	{
+		// Moonlight Access was on Nexus from August with its source left empty, so the suite said it could not be fetched.
+		string source = WithoutComments(App("Form1.SuiteDialog.cs"));
+		Assert.Contains("private const string MoonlightAccessSource = \"137\";", source);
+		Assert.DoesNotMatch(new Regex(@"new SuiteItem\(""[^""]+"", \w+, ""Manual"", """"\)"), source);
+	}
+
+	[Fact]
+	public void EveryModrinthDownloadReportsProgress()
+	{
+		// None of Minecraft's downloads made the progress tones (Sean, 2026-11-12): Modrinth's were fetched in one piece, and
+		// a GitHub jar was handed no progress. One call site goes straight to ModrinthService, the helper that adds it.
+		string app = Path.Combine(RepositoryRoot(), "KinetixModManager");
+		int direct = TestPaths.SourceFiles(app, "Form1*.cs")
+			.Sum(f => Regex.Matches(WithoutComments(File.ReadAllText(f)), @"ModrinthService\.DownloadAsync\(").Count);
+		Assert.Equal(1, direct);
+		Assert.Contains("ModrinthService.DownloadAsync(file, downloadsPath, progress)", WithoutComments(App("Form1.Minecraft.cs")));
+		Assert.DoesNotMatch(new Regex(@"DownloadFileWithProgressAsync\(jar\.Url, \w+, null"), WithoutComments(App("Form1.Minecraft.cs")));
+	}
+
+	[Fact]
 	public void TheSuiteSaysEachModInsteadOfStoppingForOk()
 	{
 		// Eleven OKs to install the Skyrim suite (Sean, 2026-11-12). Every install the suite and a two-part mod make is said;

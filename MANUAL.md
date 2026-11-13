@@ -14,7 +14,7 @@ You choose which game you're managing from the **Games** menu (press **Alt**, th
 4.  **Closing Settings**: If you aren't ready to configure everything yet, you can press **Escape** or click **Cancel** to close the settings and browse the app. You can reopen this screen at any time by pressing **Ctrl + P**.
 5.  **Getting Help**: 
     *   Press **F1** at any time to open this manual. It opens as a navigable list: arrow **Up / Down** through the sections, press **Right Arrow or Enter** to open a section that has sub-topics, **Left Arrow or Backspace** to go back, and **Tab** to move into the text on the right and read it line by line. Press **Ctrl + F** to search the whole manual for a phrase — see [Searching a Document](#searching-a-document-ctrl--f).
-    *   Press **F2** at any time to open the **Change Log**. It uses the same navigable window — a list of versions you open (with **Right Arrow or Enter**) to read what changed in each one. **Ctrl + F** searches it too.
+    *   Press **F2** at any time to open the **Change Log**. It uses the same navigable window — a list of versions you open (with **Right Arrow or Enter**) to read what changed in each one. **Ctrl + F** searches it too. The first time the manager starts after an update, the change log opens by itself, already inside the new version, once the manager has said where you are; **Left Arrow** goes back to every version.
     *   Press **Shift + F1** while on any tab to hear a context-sensitive list of shortcuts for that specific area.
 6.  **Splash Screen**: On every startup, an audio logo plays. You can press **Enter** to skip it and go straight to the main window.
 7.  **On the game list**: while the "select a game" list is showing — at startup, or after you close a session — **F1** (manual), **F2** (change log), and **Ctrl + P** (Settings) all work, so you can read the manual or set a game folder before loading anything. When you close one of those windows, focus returns to the game list. **Escape** exits the manager.
@@ -746,7 +746,7 @@ For the **Mod Documentation** viewer (**F3**) this means a link now reads as its
 
 ## Mod Documentation Viewer (F3)
 
-Press **F3** at any time (or choose **Help → Mod Documentation**) to open the how-to-play documentation for the accessibility mod that matches your current game — **Stardew Access** for Stardew Valley, **Skyrim Access** for Skyrim Special Edition, **Fallout 4 Access** for Fallout 4, and the matching mod for the other games. This saves you hunting for a README on your computer or searching for it on GitHub.
+Press **F3** at any time (or choose **Help → Mod Documentation**) to open the how-to-play documentation for the accessibility mod that matches your current game — **Stardew Access** for Stardew Valley, **Skyrim Access** for Skyrim Special Edition, **Fallout 4 Access** for Fallout 4, **WitcherAccess** for The Witcher 3, and **United Minecraft** and **Minecraft Access** for Minecraft. For Moonlight Peaks it lists the settings each installed mod's own config file explains. This saves you hunting for a README on your computer or searching for it on GitHub.
 
 It opens in the **same navigable window as the User Manual**:
 
@@ -760,7 +760,7 @@ It opens in the **same navigable window as the User Manual**:
 How it stays current and works offline:
 
 *   A copy of each guide **ships with the manager**, so the viewer opens instantly and works with no internet connection.
-*   In the background it also **refreshes from the source** — the live GitHub documentation for Stardew Access, or (when you are logged in to Nexus) the mod's current Nexus page for Skyrim Access and Fallout 4 Access. The refreshed copy is shown the **next** time you open the viewer.
+*   In the background it also **refreshes from the source** — the live GitHub documentation for Stardew Access, United Minecraft and Minecraft Access, or (when you are logged in to Nexus) the mod's current Nexus page for Skyrim Access, Fallout 4 Access and WitcherAccess. The refreshed copy is shown the **next** time you open the viewer.
 *   For exact, up-to-the-minute keybindings of an installed mod, the **Game and Mod Controls** viewer (**Ctrl + H**) reads the live keys from the mod's config/MCM; the Mod Documentation viewer is the broader "how do I use this mod" guide.
 
 F3 is the default shortcut and can be remapped in **Help → Shortcut Customization**, where it is listed as Mod Documentation.

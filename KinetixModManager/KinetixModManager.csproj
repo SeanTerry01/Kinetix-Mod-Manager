@@ -73,7 +73,7 @@
     </None>
     <!-- Bundled accessibility-mod documentation shown by the Mod Documentation viewer (F3). Listed
          explicitly so internal planning docs that also live in ..\docs are never shipped. -->
-    <None Include="..\docs\stardew-access.md;..\docs\skyrim-access.md;..\docs\fallout4-access.md;..\docs\united-minecraft.md;..\docs\minecraft-access.md">
+    <None Include="..\docs\stardew-access.md;..\docs\skyrim-access.md;..\docs\fallout4-access.md;..\docs\united-minecraft.md;..\docs\minecraft-access.md;..\docs\witcher-access.md">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>docs\%(Filename)%(Extension)</Link>
     </None>

@@ -141,6 +141,27 @@
 *   **It could delete a file the game needs.** Switching a mod off puts back whatever the mod replaced, and deleting the mod then
     deleted that too, so only verifying the game could bring it back.
 
+## ✨ What's new, as soon as you have updated
+
+*   **The first time the manager starts after an update, the change log opens at the new version**, so its changes are
+    there without pressing F2. It opens once the manager has said where you are, already inside the new version's
+    entry: Right Arrow or Enter opens a section, Tab reads it, Left Arrow shows every version, and Escape closes it.
+    It does not open on a first install, after going back to an older version, or over anything you have already moved to.
+
+## ✨ WitcherAccess and Moonlight Access install from Nexus
+
+*   **The Witcher 3's accessibility suite now downloads and installs WitcherAccess**, which went up on Nexus Mods as
+    [mod 15538](https://www.nexusmods.com/witcher3/mods/15538) on 7 November. Before, the suite could only say it was not
+    published anywhere the manager could fetch it from. It installs the way it always has: the manager unpacks the
+    download, asks, and runs the mod's own installer. Enter on its row opens its Nexus page. Without Nexus Premium the
+    page opens for you to use Mod Manager Download, as for every other suite mod.
+*   **The Moonlight Peaks suite installs Moonlight Access from Nexus** ([mod 137](https://www.nexusmods.com/moonlightpeaks/mods/137)).
+    It had been published there since August, and the suite still said it was not published anywhere it could download from.
+*   **F3 has WitcherAccess's documentation**, as it has for every other game's accessibility mod: a summary ships with
+    the manager, and with you signed in to Nexus it loads the mod page's own description.
+*   **A copy installed earlier from a file has no Nexus page linked**, so its updates are not checked. Press Ctrl+K on it
+    and enter 15538.
+
 ## ✨ A sound for switching games
 
 *   **Opening a game, or switching to another one, plays that game's own session sound.** If the manager still has to connect to
@@ -241,7 +262,21 @@ A review of the whole manager before 1.6.0 found these. All are fixed.
     installed, and the summary at the end is the one box. Installing the whole Skyrim suite took eleven OKs. A mod that
     comes in two parts, such as SSE Engine Fixes, also no longer says it was installed twice.
 *   **"Installed SKSE64"**, not "Installed SKSE64 of Skyrim Script Extender (SKSE64)". The same for F4SE.
+*   **Enter on a Nexus update offers to update it, with Nexus Premium**, as it already did for Minecraft and GitHub mods:
+    update it, or open its page. It always opened the page, though Premium lets the manager fetch the file itself.
+    Without Premium it still opens the page, where Mod Manager Download fetches it.
+*   **A list or drop-down with only one item says it again when you press an arrow**, with "1 of 1". Nothing moved, so
+    nothing was said, and the item could only be heard again by tabbing away and back.
+*   **Restoring a safety backup is said in order**: "Restoring the safety backup", then "Restored the safety backup
+    from …", and only then the list you return to. The list used to announce itself between the two.
 *   **"List is empty" is said once** after ignoring or recording the last update in the Updates list, not twice.
+*   **A mod with example mods inside its own folder updates again.** Bush Bloom Mod keeps three example content packs in
+    its folder, each a mod of its own. The update moved the old copies aside one by one, and after its own folder had
+    gone, the three inside it could not be found, so every update of it failed. Nothing was lost: the old copy stayed.
+*   **A mod just installed is no longer offered its own version as an update.** A Nexus file named like
+    "Better MessageBox Controls v1_2-1428-1-2", with no upload time at the end, lost the last part of its version:
+    1.2 was recorded as 1, so the next check offered 1.2. A version recorded wrongly before this stays until the mod is
+    reinstalled, or until you press Ctrl+Shift+Y on its update.
 *   **"1 mods" and "1 files" are gone everywhere**, not only in the messages heard most.
 *   **A value that won't do is explained with the box still open**, so you hear all of it and correct it there. The box
     used to close and open again, which cut the explanation off after a word or two. This is in moving a mod by places,

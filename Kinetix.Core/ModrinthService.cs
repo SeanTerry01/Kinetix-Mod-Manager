@@ -458,24 +458,39 @@ public static class ModrinthService
 			? parsed
 			: null;
 
-	/// <summary>Downloads a file to <paramref name="destinationFolder"/> and returns the path written.</summary>
-	public static async Task<string> DownloadAsync(ModrinthFile file, string destinationFolder)
+	/// <summary>
+	/// Downloads a file to <paramref name="destinationFolder"/> and returns the path written, reporting progress (0–100)
+	/// as it arrives.
+	///
+	/// It was fetched in one piece, so nothing could be reported until it was all there: no Minecraft download made the
+	/// progress tones (Sean, 2026-11-12). Streamed the way Nexus downloads are, with the same stall watchdog, into a
+	/// partial file that becomes the real one only once it is complete.
+	/// </summary>
+	public static async Task<string> DownloadAsync(ModrinthFile file, string destinationFolder, IProgress<double>? progress = null)
 	{
 		Directory.CreateDirectory(destinationFolder);
 		string path = Path.Combine(destinationFolder, file.FileName);
+		string partial = path + ModArchive.PartialDownloadSuffix;
 
 		CancellationToken cancel = RunningDownloads.Token;
 		RunningDownloads.Started();
 		try
 		{
-			byte[] bytes = await KinetixHttp.Downloads.GetByteArrayAsync(file.Url, cancel);
-			string partial = path + ModArchive.PartialDownloadSuffix;
-			File.WriteAllBytes(partial, bytes);
+			using HttpResponseMessage response = await KinetixHttp.Downloads.GetAsync(file.Url, HttpCompletionOption.ResponseHeadersRead, cancel);
+			response.EnsureSuccessStatusCode();
+			await NexusService.SaveResponseAsync(response, partial, progress, cancel);
 			File.Move(partial, path, overwrite: true);
 			return path;
 		}
-		catch (Exception) when (cancel.IsCancellationRequested) { throw new DownloadCancelledException(); }
+		catch (Exception) when (cancel.IsCancellationRequested) { DeletePartial(); throw new DownloadCancelledException(); }
+		catch { DeletePartial(); throw; }
 		finally { RunningDownloads.Finished(); }
+
+		void DeletePartial()
+		{
+			try { if (File.Exists(partial)) File.Delete(partial); }
+			catch (Exception ex) { DiagnosticLog.WriteException("Modrinth", $"removing the unfinished download {partial}", ex); }
+		}
 	}
 
 	private static async Task<string> GetStringAsync(string url)

@@ -33,6 +33,12 @@ public partial class Form1
 			{
 				new ModDocSource("Fallout 4 Access", "docs/fallout4-access.md", Array.Empty<string>(), "100314"),
 			},
+			// On Nexus since 2026-11-07, so it is sourced the way Skyrim Access is: the page's own description when signed in,
+			// the bundled summary otherwise.
+			"Witcher3" => new List<ModDocSource>
+			{
+				new ModDocSource("WitcherAccess", "docs/witcher-access.md", Array.Empty<string>(), ModPartRules.Witcher3AccessNexusId),
+			},
 			"StardewValley" => new List<ModDocSource>
 			{
 				// The README is just an index; the genuinely useful pages (keybindings, features, commands) are

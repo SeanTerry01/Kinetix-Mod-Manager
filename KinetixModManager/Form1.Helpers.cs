@@ -918,6 +918,27 @@ public partial class Form1
 	/// "Connected as …" is very likely still being spoken, and clip it.
 	/// </para>
 	/// </summary>
+	/// <summary>
+	/// Set at startup on the first run of a newer version (see <see cref="WhatsNew"/>), and spent by the end of the opening:
+	/// the change log opens at the new version's entry once the manager has said where you are.
+	/// </summary>
+	private bool _whatsNewPending;
+
+	/// <summary>
+	/// Opens the change log at the new version, once. Posted rather than opened here, because a view runs until it is
+	/// closed, and its caller — the end of startup, or the landing a session's refresh ends with — has more to finish.
+	/// The version is recorded only now, so a run where the change log could not open (focus already somewhere you went)
+	/// leaves it to the next start.
+	/// </summary>
+	private void ShowWhatsNewIfPending()
+	{
+		if (!_whatsNewPending || _shuttingDown) return;
+		_whatsNewPending = false;
+		_settings.LastRunVersion = NexusService.AppVersion;
+		_settings.Save();
+		BeginInvoke(new Action(() => { if (!_shuttingDown && !OverlayIsOpen) ShowChangeLog(whatsNew: true); }));
+	}
+
 	private void LandOnFirstTab()
 	{
 		if (_shuttingDown || mainTabs == null) return;
@@ -929,7 +950,8 @@ public partial class Form1
 		// somebody may already be several keystrokes into moving around — being hauled back to Installed Mods
 		// mid-keystroke is worse than never being told where you began. And a first-run wizard or a Settings
 		// screen opened during startup owns the window; taking focus out from under it would be worse still.
-		if (_userMovedSinceLoadBegan || OverlayIsOpen) return;
+		// The change log is not opened over either of those for the same reason; it waits for the next start.
+		if (_userMovedSinceLoadBegan || OverlayIsOpen) { _whatsNewPending = false; return; }
 
 		// Moved by the key preview's reckoning or not: focus that is neither where it was when the landing was armed nor on
 		// the strip itself is somewhere the user went. See _focusWhenLandingArmed.
@@ -953,6 +975,9 @@ public partial class Form1
 		// already has it raises nothing, so the tab is pointed out the way the strip itself does it.
 		else if (stripHadFocus && !(mainTabs is AccessibleTabControl strip && strip.AnnounceSelectedTab()))
 			Speak(Loc.T("common.tabSuffix", mainTabs.SelectedTab?.Text ?? ""));
+
+		// After the first run of a newer version: once you have been told where you are, the change log opens on what is new.
+		ShowWhatsNewIfPending();
 	}
 
 	/// <summary>
