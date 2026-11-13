@@ -349,10 +349,24 @@ public partial class Form1
 			}
 		}
 
-		// Enter on a list item opens that single mod's download page, so the user can grab missing mods
-		// one at a time at their own pace instead of running the whole bulk install. (The bulk install is
-		// still available on the button below via Tab.)
-		lstStatus.KeyDown += (s, e) =>
+		void OpenItemPage(SuiteItem item)
+		{
+			string url = SuiteItemUrl(item);
+			Speak(item.IsInstalled
+				? Loc.T("suite.openInstalledPage", item.Name)
+				: Loc.T("suite.openDownloadPage", item.Name));
+			LetSpeechFinish();
+			try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
+			catch (Exception ex) { LogFailure(item.Name, "Failed to open download page", ex); }
+		}
+
+		// Installs one entry, or with null every entry not installed; set below, with the button that runs it.
+		Func<SuiteItem?, Task>? runInstall = null;
+
+		// Enter on a mod that is not installed asks whether to install just that one or open its page: it only ever opened
+		// the page, and installing meant the button, which installs every missing entry (Sean, 2026-11-12). An installed one,
+		// or one the manager cannot fetch, opens its page as before. The button below still installs everything missing.
+		lstStatus.KeyDown += async (s, e) =>
 		{
 			if (e.KeyCode != Keys.Enter) return;
 			int idx = lstStatus.SelectedIndex;
@@ -361,13 +375,15 @@ public partial class Form1
 			e.Handled = true;
 			e.SuppressKeyPress = true;
 			var item = suiteItems[idx];
-			string url = SuiteItemUrl(item);
-			Speak(item.IsInstalled
-				? Loc.T("suite.openInstalledPage", item.Name)
-				: Loc.T("suite.openDownloadPage", item.Name));
-			LetSpeechFinish();
-			try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
-			catch (Exception ex) { LogFailure(item.Name, "Failed to open download page", ex); }
+			bool canFetch = !item.IsInstalled && (item.Type == "Loader" || !string.IsNullOrEmpty(item.Source)) && item.Type != "Manual";
+			if (!canFetch || runInstall == null) { OpenItemPage(item); return; }
+
+			string[] actions = { Loc.T("suite.choiceInstall", item.Name), Loc.T("suite.choicePage") };
+			string? chosen = ShowChoiceList(Loc.T("suite.choiceTitle", item.Name), Loc.T("suite.choiceListName"), actions, actions[0],
+				Loc.T("suite.choiceHint", item.Name));
+			if (chosen is null) { Speak(Loc.T("common.changesCancelled")); return; }
+			if (chosen == actions[1]) { OpenItemPage(item); return; }
+			await runInstall(item);
 		};
 
 		layout.Controls.Add(lstStatus, 0, 1);
@@ -375,7 +391,10 @@ public partial class Form1
 
 		bool isInstalling = false;
 		installStillRunning = () => isInstalling;
-		btnInstall.Click += async delegate
+		btnInstall.Click += async delegate { if (runInstall != null) await runInstall(null); };
+		// One entry, from Enter on it, or with null every entry not installed. A mod whose loader is missing gets the loader
+		// first either way, since without it the mod never runs.
+		runInstall = async only =>
 		{
 			if (isInstalling) return;
 			// A second run alongside one left going behind a closed view, or alongside anything else changing mods.
@@ -399,8 +418,8 @@ public partial class Form1
 
 			try
 			{
-				Speak(Loc.T("suite.startInstall"));
-				
+				Speak(only == null ? Loc.T("suite.startInstall") : Loc.T("suite.startInstallOne", only.Name));
+
 				// SMAPI is the Stardew mod loader; install it first (and automatically) so the
 				// accessibility mods below have something to load them. Other games' loaders are
 				// handled inside the loop via the script-extender installer.
@@ -433,7 +452,9 @@ public partial class Form1
 				foreach (var item in suiteItems)
 				{
 					if (item.IsInstalled) continue;
-					if (item.Type == "Loader" && (GameProfiles.IsAnyGame(game, GameProfiles.StardewValley, GameProfiles.MoonlightPeaks, GameProfiles.Minecraft))) continue;
+					// Enter on one entry installs that one, and only its loader besides (above).
+					if (only != null && !ReferenceEquals(item, only)) continue;
+					if (item.Type == "Loader" &&(GameProfiles.IsAnyGame(game, GameProfiles.StardewValley, GameProfiles.MoonlightPeaks, GameProfiles.Minecraft))) continue;
 
 					// Past the skips, so this one is genuinely being tried. Everything attempted that does not
 					// end up in a problem list below is counted as installed by the summary.
@@ -573,7 +594,7 @@ public partial class Form1
 
 				// The box below says what happened when something went wrong, so this can't claim it all went right first.
 				if (noBuildFor.Count + couldNotFetch.Count + failedNames.Count + needManualDownload.Count == 0)
-					Speak(Loc.T("suite.setupComplete"));
+					Speak(only == null ? Loc.T("suite.setupComplete") : Loc.T("suite.oneComplete", only.Name));
 
 				// The sentence above has always ended "Refreshing mod list" and nothing ever refreshed it. Every
 				// game was affected: after installing the whole suite the list was exactly as empty as before,

@@ -38,6 +38,63 @@ public static class BackupStore
 	}
 
 	/// <summary>
+	/// The version of the mod a backup holds, read from the mod's own record inside it, or null when it has none to read.
+	/// Shown on each row of the Backups tab, because two copies of one mod were told apart only by when they were taken
+	/// (Sean, 2026-11-12). Read from what the backup itself holds, so it is right for every backup ever taken.
+	/// <list type="bullet">
+	///   <item>the manager's <c>.manager_manifest.json</c>, written for Skyrim, Fallout 4, The Witcher 3 and BepInEx mods;</item>
+	///   <item>a Stardew mod's <c>manifest.json</c>, the shallowest one when the mod holds others;</item>
+	///   <item>a Minecraft mod's jar, by the <c>fabric.mod.json</c> inside it.</item>
+	/// </list>
+	/// </summary>
+	public static string? VersionInside(string zipPath)
+	{
+		try
+		{
+			using ZipArchive zip = ZipFile.OpenRead(zipPath);
+			string? version = VersionFrom(zip, ".manager_manifest.json", "Version") ?? VersionFrom(zip, "manifest.json", "Version");
+			if (version != null) return version;
+
+			// A Minecraft backup is the one jar, zipped.
+			if (zip.Entries.Count(e => e.Name.Length > 0) == 1 &&
+				zip.Entries.First(e => e.Name.Length > 0) is { } only && only.Name.EndsWith(".jar", StringComparison.OrdinalIgnoreCase))
+			{
+				using var copy = new MemoryStream();
+				using (Stream jar = only.Open()) jar.CopyTo(copy);
+				copy.Position = 0;
+				using var inner = new ZipArchive(copy, ZipArchiveMode.Read);
+				return VersionFrom(inner, "fabric.mod.json", "version");
+			}
+		}
+		catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+		{
+			DiagnosticLog.WriteException("Backup", $"reading the version inside {Path.GetFileName(zipPath)}", ex);
+		}
+		return null;
+	}
+
+	/// <summary>A field of the shallowest file called <paramref name="fileName"/> in the archive, or null.</summary>
+	private static string? VersionFrom(ZipArchive zip, string fileName, string field)
+	{
+		ZipArchiveEntry? entry = zip.Entries
+			.Where(e => e.Name.Equals(fileName, StringComparison.OrdinalIgnoreCase))
+			.OrderBy(e => e.FullName.Count(c => c is '/' or '\\'))
+			.FirstOrDefault();
+		if (entry == null) return null;
+		try
+		{
+			using var reader = new StreamReader(entry.Open());
+			// A Stardew manifest may carry comments and trailing commas, which SMAPI accepts and Newtonsoft reads.
+			string? version = Newtonsoft.Json.Linq.JObject.Parse(reader.ReadToEnd())[field]?.ToString();
+			return string.IsNullOrWhiteSpace(version) ? null : version.Trim();
+		}
+		catch (Newtonsoft.Json.JsonException)
+		{
+			return null;
+		}
+	}
+
+	/// <summary>
 	/// Every backup in the folder, newest first.
 	///
 	/// Newest first because the one a user wants is nearly always the one taken moments ago, by the update

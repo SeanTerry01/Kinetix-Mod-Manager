@@ -230,10 +230,35 @@ public partial class Form1
 		foreach (ModDocSource src in sources)
 			roots.Add(BuildDocSourceNode(src, await ResolveDocForDisplayAsync(src)));
 
+		// WitcherAccess's own player's guide, first, when it can be found: installed with the mod from 1.0, or still inside
+		// its download. It is the whole guide, chapter by chapter, where the summary beneath it is a page (Sean, 2026-11-12).
+		if (GameProfiles.IsGame(_settings.ActiveGame, GameProfiles.Witcher3) && await Task.Run(ReadWitcherAccessGuide) is { Length: > 0 } guide)
+			roots.Insert(0, BuildDocSourceNode(new ModDocSource(Loc.T("moddocs.witcherGuide"), "", Array.Empty<string>(), null), guide));
+
 		// Clear the transient "loading" message so it doesn't linger in the status bar after the docs are shown.
 		ResetStatus();
 
 		ShowDocDrilldown(roots, Loc.T("moddocs.windowTitle"), Loc.T("moddocs.toc"), Loc.T("moddocs.topicInfo"));
+	}
+
+	/// <summary>
+	/// WitcherAccess's guide as Markdown, in English, the manager's language: from the game folder, else from the newest
+	/// downloaded copy of the mod. Empty when neither has it, as with versions before 1.0, which shipped none.
+	/// </summary>
+	private string ReadWitcherAccessGuide()
+	{
+		try
+		{
+			string? html = WitcherAccessGuide.FindInstalled(_settings.CurrentGamePath) is { } installed
+				? File.ReadAllText(installed)
+				: WitcherAccessGuide.ReadFromDownloads(downloadsPath);
+			return html == null ? "" : WitcherAccessGuide.ToMarkdown(html, "en");
+		}
+		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+		{
+			LogFailure("ModDocs", "reading WitcherAccess's player's guide", ex);
+			return "";
+		}
 	}
 
 	/// <summary>Turns one source's Markdown into a chooser node: its parsed sections become children, so opening it

@@ -159,6 +159,12 @@
     It had been published there since August, and the suite still said it was not published anywhere it could download from.
 *   **F3 has WitcherAccess's documentation**, as it has for every other game's accessibility mod: a summary ships with
     the manager, and with you signed in to Nexus it loads the mod page's own description.
+*   **F3 also has WitcherAccess's whole Player's Guide**, first in the list, once WitcherAccess 1.0 is installed: the
+    eighteen chapters of the guide the mod puts in your game folder, from Getting the game to Credits, each opening into
+    its sections. Before you install it, it is read from the downloaded mod instead.
+*   **The accessibility suite can install one mod on its own.** Enter on a mod that is not installed asks whether to
+    install it or open its page. It only ever opened the page, and the Install Missing Suite Mods button installs every
+    missing mod at once. A mod that needs its loader (SMAPI, BepInEx or Fabric) gets the loader too.
 *   **A copy installed earlier from a file has no Nexus page linked**, so its updates are not checked. Press Ctrl+K on it
     and enter 15538.
 
@@ -245,6 +251,27 @@ A review of the whole manager before 1.6.0 found these. All are fixed.
 *   **A connection failing halfway through renewing your Minecraft sign-in no longer signs you out later.** Microsoft hands out
     a new sign-in token as the first step, and the old one stops working. If a later step failed, the new one was lost, and the
     next try was refused. It is now kept the moment Microsoft gives it. Being offline altogether never signed you out.
+
+## ✨ One download, one decision
+
+*   **Ignoring an update ignores it for every mod that came in the same download**, and the question names them first:
+    Bush Bloom Mod and its three examples, or Cape Stardew's five parts. Ignoring one left the others offered.
+    Ctrl+Shift+Y does the same, and so does undoing either in Ignored Updates. Updating already brought the whole
+    download, since it is one file.
+
+## ✨ The Backups tab says each backup's version
+
+*   **Each backup in both lists says the version of the mod it holds**, straight after its name: "Bush Bloom Mod,
+    version 1.2.4, 2 hours ago". Two copies of one mod could be told apart only by when they were taken. The version is
+    read from the mod's own record inside the backup, so it is there for backups taken before this version too. One
+    with no record to read says what it always did.
+
+## ✨ Undo a recorded version
+
+*   **Ignored Updates now also lists the versions you recorded with Ctrl+Shift+Y** (Mark Selected Update As Already
+    Installed), and Enter or Delete forgets one, so the next update check offers its update again. A recorded version
+    hid an update as surely as ignoring it, with no way back. Once the mod is really updated, its record is a known one
+    and leaves the list.
 
 ## ✨ Undo an ignored update
 

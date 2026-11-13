@@ -1,7 +1,7 @@
 namespace KinetixModManager;
 
 /// <summary>One kept backup, and the sentence that describes it.</summary>
-public sealed record BackupRow(string Path, string ModName, DateTime TakenAt, long Bytes)
+public sealed record BackupRow(string Path, string ModName, DateTime TakenAt, long Bytes, string? Version = null)
 {
 	/// <summary>
 	/// What the reader says for this row.
@@ -11,7 +11,11 @@ public sealed record BackupRow(string Path, string ModName, DateTime TakenAt, lo
 	/// name. The size comes last: it decides nothing, and it is the part a listener can stop paying attention
 	/// to once they have heard the date.
 	/// </summary>
-	public string Spoken => Loc.T("backups.row", ModName, Describe(TakenAt), Size(Bytes));
+	/// With its version straight after the name when the backup says which it is: the version is what tells two copies of
+	/// one mod apart before anything else does (Sean, 2026-11-12).
+	public string Spoken => string.IsNullOrEmpty(Version)
+		? Loc.T("backups.row", ModName, Describe(TakenAt), Size(Bytes))
+		: Loc.T("backups.rowWithVersion", ModName, Version, Describe(TakenAt), Size(Bytes));
 
 	/// <summary>A date said the way a person would say it, not an ISO stamp read out digit by digit.</summary>
 	private static string Describe(DateTime when)
@@ -89,7 +93,8 @@ public sealed class BackupsView
 			}
 
 			// The mod's own name, without the marker a backup taken before a delete carries. It is a name people hear.
-			rows.Add(new BackupRow(item.FullPath, BackupRestore.ModNameOf(item.FullPath), taken, bytes));
+			rows.Add(new BackupRow(item.FullPath, BackupRestore.ModNameOf(item.FullPath), taken, bytes,
+				bytes > 0 ? BackupStore.VersionInside(item.FullPath) : null));
 		}
 
 		return new BackupsView(rows.OrderByDescending(r => r.TakenAt).ToList());

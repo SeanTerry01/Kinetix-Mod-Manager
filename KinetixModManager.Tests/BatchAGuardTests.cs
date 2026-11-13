@@ -177,6 +177,16 @@ public class BatchAGuardTests
 	}
 
 	[Fact]
+	public void EnterOnAMissingSuiteModOffersToInstallJustThatOne()
+	{
+		// Enter only opened the page, and the button installs every missing entry (Sean, 2026-11-12).
+		string source = WithoutComments(App("Form1.SuiteDialog.cs"));
+		Assert.Contains("await runInstall(item);", source);
+		Assert.Contains("if (only != null && !ReferenceEquals(item, only)) continue;", source);
+		Assert.Contains("btnInstall.Click += async delegate { if (runInstall != null) await runInstall(null); };", source);
+	}
+
+	[Fact]
 	public void AnArrowInAOneItemListSaysTheItemAgain()
 	{
 		// Nothing moves, so nothing was said: the item could be heard again only by tabbing away and back (Sean, 2026-11-12).

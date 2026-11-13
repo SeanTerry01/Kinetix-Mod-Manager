@@ -407,6 +407,13 @@ public class AppSettings : IModScanContext
 	public Dictionary<string, Dictionary<string, string>> InstalledDownloadVersions { get; set; } = new();
 
 	/// <summary>
+	/// The entries of <see cref="InstalledDownloadVersions"/> that came from Ctrl+Shift+Y (Mark Selected Update As Already
+	/// Installed) rather than from an install, per game: <c>game -> "Nexus:1428" -> the mod's name</c>. Listed in Ignored
+	/// Updates, where one can be forgotten again. An install of the download replaces the record, and drops it from here.
+	/// </summary>
+	public Dictionary<string, Dictionary<string, string>> MarkedInstalledVersions { get; set; } = new();
+
+	/// <summary>
 	/// The version of the manager whose changes were last shown, as "1.6.0". Empty until a version that keeps it has run,
 	/// which 1.5.1 and earlier did not. See <see cref="WhatsNew"/>.
 	/// </summary>
@@ -916,6 +923,7 @@ public class AppSettings : IModScanContext
 		}
 
 		if (InstalledDownloadVersions == null) InstalledDownloadVersions = new Dictionary<string, Dictionary<string, string>>();
+		MarkedInstalledVersions ??= new Dictionary<string, Dictionary<string, string>>();
 		NexusChecks ??= new Dictionary<string, Dictionary<string, NexusCheckRecord>>();
 		DeploymentHeldOff ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		InstalledArchives ??= new Dictionary<string, List<string>>();

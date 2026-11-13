@@ -16,6 +16,13 @@ public partial class Form1
 		public string Key { get; init; } = "";
 		public string Version { get; init; } = "";
 		public string Summary { get; init; } = "";
+		/// <summary>A version recorded with Ctrl+Shift+Y rather than an ignored one. Its key is the download's, "Nexus:1428".</summary>
+		public bool Recorded { get; init; }
+		public string Name { get; init; } = "";
+		/// <summary>The download an ignored mod came from, "Nexus:15792", so the ones ignored together are undone together.</summary>
+		public string DownloadKey { get; init; } = "";
+		/// <summary>For a recorded version, how many other mods came in the same download, and so are settled by it too.</summary>
+		public int Others { get; init; }
 		public override string ToString() => Summary;
 	}
 
@@ -25,10 +32,11 @@ public partial class Form1
 	/// </summary>
 	private List<IgnoredUpdateRow> IgnoredUpdatesForThisGame()
 	{
-		var names = _allInstalledMods
+		var byId = _allInstalledMods
 			.Where(m => !m.IsGroup && !string.IsNullOrEmpty(m.UniqueId))
 			.GroupBy(m => m.UniqueId, StringComparer.Ordinal)
-			.ToDictionary(g => g.Key, g => g.First().Name, StringComparer.Ordinal);
+			.ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+		var names = byId.ToDictionary(p => p.Key, p => p.Value.Name, StringComparer.Ordinal);
 		bool minecraft = GameProfiles.Find(_settings.ActiveGame)?.IsMinecraft == true;
 
 		var rows = new List<IgnoredUpdateRow>();
@@ -44,8 +52,35 @@ public partial class Form1
 					_ => null
 				};
 			if (name == null) continue;
-			rows.Add(new IgnoredUpdateRow { Key = key, Version = version, Summary = Loc.T("ignoredUpdates.row", name, version) });
+			string download = byId.TryGetValue(key, out GameMod? installed) ? DownloadKey(installed) : "";
+			rows.Add(new IgnoredUpdateRow
+			{
+				Key = key, Version = version, Name = name, Summary = Loc.T("ignoredUpdates.row", name, version),
+				DownloadKey = download is "Nexus:" or "GitHub:" ? "" : download
+			});
 		}
+
+		// And the versions recorded with Ctrl+Shift+Y, which hide an update the same way and had no way back either. Only
+		// while the record is still the one Ctrl+Shift+Y made: an install since then replaced it with a known one.
+		// One record covers a whole download, so its row names the others it took off the Updates list with it: Ctrl+Shift+Y
+		// on one of Bush Bloom Mod's examples took all three away, and the row named only the one (Sean, 2026-11-12). The names
+		// are the ones noted when it was pressed (see NoteMarked), so the row says exactly what left the list.
+		if (_settings.MarkedInstalledVersions.TryGetValue(_settings.ActiveGame, out var marks))
+			foreach ((string key, string settled) in marks)
+				if (InstalledDownloadVersion(key) is { } recorded)
+				{
+					string[] settledNames = settled.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+					string modName = settledNames.FirstOrDefault() ?? key;
+					List<string> others = settledNames.Skip(1).ToList();
+					rows.Add(new IgnoredUpdateRow
+					{
+						Key = key, Version = recorded, Recorded = true, Name = modName, Others = others.Count,
+						Summary = others.Count == 0
+							? Loc.T("ignoredUpdates.recordedRow", modName, recorded)
+							: Loc.T("ignoredUpdates.recordedRowWithOthers", modName, recorded, others.Count, string.Join(", ", others))
+					});
+				}
+
 		return rows.OrderBy(r => r.Summary, StringComparer.CurrentCultureIgnoreCase).ToList();
 	}
 
@@ -81,13 +116,35 @@ public partial class Form1
 				if (e.KeyCode is not (Keys.Delete or Keys.Enter) || list.SelectedItem is not IgnoredUpdateRow row) return;
 				e.Handled = e.SuppressKeyPress = true;
 
-				_settings.IgnoredVersions.Remove(row.Key);
-				_settings.Save();
+				string said;
+				// Undone together, as they were ignored: the others from the same download, ignored at the same version.
+				List<IgnoredUpdateRow> together = row.Recorded || row.DownloadKey.Length == 0
+					? new List<IgnoredUpdateRow> { row }
+					: list.Items.OfType<IgnoredUpdateRow>()
+						.Where(r => ReferenceEquals(r, row) || (!r.Recorded && r.Version == row.Version &&
+							r.DownloadKey.Equals(row.DownloadKey, StringComparison.OrdinalIgnoreCase)))
+						.ToList();
+				if (row.Recorded)
+				{
+					// Back to comparing against what the mod says it is, as before Ctrl+Shift+Y was pressed.
+					ForgetInstalledDownloadVersion(row.Key);
+					said = row.Others > 0
+						? Loc.T("ignoredUpdates.recordForgottenWithOthers", row.Name, row.Version, row.Others)
+						: Loc.T("ignoredUpdates.recordForgotten", row.Name, row.Version);
+				}
+				else
+				{
+					foreach (IgnoredUpdateRow r in together) _settings.IgnoredVersions.Remove(r.Key);
+					_settings.Save();
+					said = together.Count > 1
+						? Loc.T("ignoredUpdates.restoredWithOthers", row.Summary, together.Count - 1)
+						: Loc.T("ignoredUpdates.restored", row.Summary);
+				}
 
-				int index = list.SelectedIndex;
+				int above = together.Count(r => list.Items.IndexOf(r) < list.SelectedIndex);
+				int index = list.SelectedIndex - above;
 				_soundEngine.Play("enable");
-				string said = Loc.T("ignoredUpdates.restored", row.Summary);
-				if (list.Items.Count == 1)
+				if (list.Items.Count == together.Count)
 				{
 					Speak(said + " " + Loc.T("ignoredUpdates.restoredLast"));
 					LetSpeechFinish();
@@ -100,10 +157,10 @@ public partial class Form1
 				Speak(said);
 				LetSpeechFinish();
 				_movingListSilently = true;
-				try { list.Items.Remove(row); }
+				try { foreach (IgnoredUpdateRow r in together) list.Items.Remove(r); }
 				finally { _movingListSilently = false; }
 				_announceRowNameOnNextChange = true;
-				list.SelectedIndex = Math.Min(index, list.Items.Count - 1);
+				list.SelectedIndex = Math.Clamp(index, 0, list.Items.Count - 1);
 				AlignListCaretToSelection(list);
 			};
 			return list;

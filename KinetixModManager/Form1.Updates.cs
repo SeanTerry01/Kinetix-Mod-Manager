@@ -35,21 +35,41 @@ public partial class Form1
 	/// </summary>
 	private void ForgetInstalledDownloadVersion(string key)
 	{
-		if (_settings.InstalledDownloadVersions.TryGetValue(_settings.ActiveGame, out var map) && map.Remove(key))
-			_settings.Save();
+		bool marked = ForgetMark(key);
+		bool recorded = _settings.InstalledDownloadVersions.TryGetValue(_settings.ActiveGame, out var map) && map.Remove(key);
+		if (recorded || marked) _settings.Save();
 	}
 
 	/// <summary>
 	/// Records which release of a download is installed, so later checks compare like with like. Called when the
-	/// manager installs a download and therefore knows exactly what went on disk.
+	/// manager installs a download and therefore knows exactly what went on disk. A version recorded by Ctrl+Shift+Y
+	/// stops being one the user can undo here: what is on disk now is known, not just said.
 	/// </summary>
 	private void RecordInstalledDownloadVersion(string key, string? version)
 	{
 		if (string.IsNullOrWhiteSpace(version) || string.IsNullOrEmpty(key) || key == "GitHub:") return;
+		bool unmarked = ForgetMark(key);
 		if (!_settings.InstalledDownloadVersions.TryGetValue(_settings.ActiveGame, out var map))
 			_settings.InstalledDownloadVersions[_settings.ActiveGame] = map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-		if (map.TryGetValue(key, out string? existing) && existing == version) return;
+		if (map.TryGetValue(key, out string? existing) && existing == version) { if (unmarked) _settings.Save(); return; }
 		map[key] = version!;
+		_settings.Save();
+	}
+
+	/// <summary>Takes a Ctrl+Shift+Y record off the list of ones that can be undone. Saved by the caller.</summary>
+	private bool ForgetMark(string key) =>
+		_settings.MarkedInstalledVersions.TryGetValue(_settings.ActiveGame, out var marks) && marks.Remove(key);
+
+	/// <summary>
+	/// Notes that the version just recorded for <paramref name="key"/> came from Ctrl+Shift+Y, so it can be undone, with the
+	/// names of the rows it took off the Updates list, the one it was pressed on first, one per line. Those, and not every mod
+	/// the download holds: Bush Bloom Mod's own row was not offered, and counting it said "3 other mods" of 3 (Sean, 2026-11-12).
+	/// </summary>
+	private void NoteMarked(string key, IEnumerable<string> settledNames)
+	{
+		if (!_settings.MarkedInstalledVersions.TryGetValue(_settings.ActiveGame, out var marks))
+			_settings.MarkedInstalledVersions[_settings.ActiveGame] = marks = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		marks[key] = string.Join("\n", settledNames.Distinct(StringComparer.OrdinalIgnoreCase));
 		_settings.Save();
 	}
 
@@ -73,13 +93,38 @@ public partial class Form1
 	/// </summary>
 	private (string Row, int Index, int Count)? RemoveSettledUpdateRow(GameMod mod)
 	{
+		// The whole download goes, since what settled one settled them all: an ignore is set for each, and a recorded version
+		// is the download's.
+		List<GameMod> rows = UpdateRowsFromTheSameDownload(mod);
 		int oldIndex = listUpdates.SelectedIndex;
-		listUpdates.Items.Remove(mod);
+		int above = rows.Count(r => { int at = listUpdates.Items.IndexOf(r); return at >= 0 && at < oldIndex; });
+		foreach (GameMod row in rows) listUpdates.Items.Remove(row);
 		if (listUpdates.Items.Count == 0) return null;
 
-		listUpdates.SelectedIndex = Math.Min(oldIndex, listUpdates.Items.Count - 1);
+		listUpdates.SelectedIndex = Math.Clamp(oldIndex - above, 0, listUpdates.Items.Count - 1);
 		return (listUpdates.SelectedItem?.ToString() ?? "", listUpdates.SelectedIndex + 1, listUpdates.Items.Count);
 	}
+
+	/// <summary>
+	/// <paramref name="mod"/>'s row and every other on the Updates list from the same download, its Nexus page or GitHub
+	/// repository, <paramref name="mod"/> first. One download can install several mods: Bush Bloom Mod and its three
+	/// examples, Cape Stardew's five parts. Ignoring or recording one of them left the others offered (Sean, 2026-11-12).
+	/// A row with no download to go by is on its own.
+	/// </summary>
+	private List<GameMod> UpdateRowsFromTheSameDownload(GameMod mod)
+	{
+		var rows = new List<GameMod> { mod };
+		string key = DownloadKey(mod);
+		if (key is "Nexus:" or "GitHub:") return rows;
+		foreach (object item in listUpdates.Items)
+			if (item is GameMod other && !other.IsGroup && !ReferenceEquals(other, mod) &&
+				DownloadKey(other).Equals(key, StringComparison.OrdinalIgnoreCase))
+				rows.Add(other);
+		return rows;
+	}
+
+	/// <summary>"Bush Bloom Example, Basic Bush Bloom Example": the others from <paramref name="mod"/>'s download, by name.</summary>
+	private string OthersFromTheSameDownload(List<GameMod> rows) => string.Join(", ", rows.Skip(1).Select(r => r.Name));
 
 	/// <summary>
 	/// Records the version the Updates tab is offering as the one the user already has, for the selected row.
@@ -127,20 +172,31 @@ public partial class Form1
 		}
 
 		// The result is said before the question closes, and the row goes once it has been heard. See ActBeforeReturning.
-		SpeakBox(Loc.T("updates.markConfirm", mod.LatestVersion, mod.Name), Loc.T("updates.markTitle"),
+		// The record is the download's, so it settles every mod that came in it; the question names the others.
+		List<GameMod> fromDownload = UpdateRowsFromTheSameDownload(mod);
+		string question = fromDownload.Count > 1
+			? Loc.T("updates.markConfirmWithOthers", mod.LatestVersion, mod.Name, fromDownload.Count - 1, OthersFromTheSameDownload(fromDownload))
+			: Loc.T("updates.markConfirm", mod.LatestVersion, mod.Name);
+		SpeakBox(question, Loc.T("updates.markTitle"),
 			MessageBoxButtons.YesNo, answer =>
 			{
 				if (answer != DialogResult.Yes) return new ResultBeforeReturning(Loc.T("updates.markCancelled"));
 
 				string version = mod.LatestVersion!;
 				RecordInstalledDownloadVersion(DownloadKey(mod), version);
+				// Said by the user rather than known from an install, so Ignored Updates offers a way back.
+				NoteMarked(DownloadKey(mod), fromDownload.Select(r => r.Name));
 				// The mod's own Version is left alone on purpose: it is what the manifest says, and on exactly the mods
 				// this command exists for the manifest legitimately says something else. Overwriting it here would put a
 				// number in the installed list that no file on disk agrees with, until the next rescan quietly undid it.
 
 				// Not "List is empty." on the last row: the list says that itself once you are back on it, and said it twice
 				// (heard 2026-11-12).
-				return new ResultBeforeReturning(Loc.T("updates.marked", mod.Name, version), () => RemoveSettledUpdateRow(mod));
+				return new ResultBeforeReturning(
+					fromDownload.Count > 1
+						? Loc.T("updates.markedWithOthers", mod.Name, version, fromDownload.Count - 1)
+						: Loc.T("updates.marked", mod.Name, version),
+					() => RemoveSettledUpdateRow(mod));
 			});
 	}
 

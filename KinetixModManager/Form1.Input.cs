@@ -736,15 +736,23 @@ public partial class Form1
 		if (list.Name == "listUpdates" && list.SelectedItem is GameMod modWithUpdate && e.KeyCode == Keys.Delete)
 		{
 			// The result is said before the question closes, and the row goes once it has been heard. See ActBeforeReturning.
-			SpeakBox(Loc.T("modlist.ignoreConfirm", modWithUpdate.LatestVersion ?? "", modWithUpdate.Name), Loc.T("modlist.ignoreTitle"),
+			// Every mod from the same download is ignored with it, and the question names them: one download, one decision.
+			List<GameMod> fromDownload = UpdateRowsFromTheSameDownload(modWithUpdate);
+			string question = fromDownload.Count > 1
+				? Loc.T("modlist.ignoreConfirmWithOthers", modWithUpdate.LatestVersion ?? "", modWithUpdate.Name, fromDownload.Count - 1, OthersFromTheSameDownload(fromDownload))
+				: Loc.T("modlist.ignoreConfirm", modWithUpdate.LatestVersion ?? "", modWithUpdate.Name);
+			SpeakBox(question, Loc.T("modlist.ignoreTitle"),
 				MessageBoxButtons.YesNo, answer =>
 				{
 					if (answer != DialogResult.Yes) return null;
-					_settings.IgnoredVersions[modWithUpdate.UniqueId] = modWithUpdate.LatestVersion ?? "";
+					foreach (GameMod row in fromDownload)
+						_settings.IgnoredVersions[row.UniqueId] = row.LatestVersion ?? "";
 					_settings.Save();
 					// The last row going leaves nothing to land on, and the list says so itself once you are back on it. Saying
 					// "List is empty." here as well had it said twice (heard on Ctrl+Shift+Y, 2026-11-12).
-					return new ResultBeforeReturning(Loc.T("modlist.updateIgnored"), () => RemoveSettledUpdateRow(modWithUpdate));
+					return new ResultBeforeReturning(
+						fromDownload.Count > 1 ? Loc.T("modlist.updateIgnoredWithOthers", fromDownload.Count - 1) : Loc.T("modlist.updateIgnored"),
+						() => RemoveSettledUpdateRow(modWithUpdate));
 				});
 			e.Handled = true;
 			e.SuppressKeyPress = true;

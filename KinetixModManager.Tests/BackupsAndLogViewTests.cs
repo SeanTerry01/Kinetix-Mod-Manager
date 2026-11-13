@@ -19,6 +19,60 @@ public class BackupsAndLogViewTests : IDisposable
 		try { Directory.Delete(_dir, true); } catch { }
 	}
 
+	/// <summary>A real backup zip holding the given files, by path inside it.</summary>
+	private BackupItem ZipBackup(string modName, params (string Path, byte[] Content)[] files)
+	{
+		string path = Path.Combine(_dir, $"{modName}_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+		using (var zip = System.IO.Compression.ZipFile.Open(path, System.IO.Compression.ZipArchiveMode.Create))
+			foreach ((string inside, byte[] content) in files)
+				using (Stream s = zip.CreateEntry(inside).Open()) s.Write(content);
+		return new BackupItem { Name = Path.GetFileName(path), FullPath = path };
+	}
+
+	private static byte[] Text(string s) => System.Text.Encoding.UTF8.GetBytes(s);
+
+	[Fact]
+	public void AStardewBackupSaysItsVersionFromTheModNotItsExamples()
+	{
+		// Bush Bloom Mod keeps example mods with manifests of their own inside its folder. The mod's own is the shallowest.
+		BackupItem backup = ZipBackup("BushBloomMod",
+			("BushBloomMod/examples/[CP] Basic Bush Bloom Example/manifest.json", Text("{ \"Version\": \"9.9.9\" }")),
+			("BushBloomMod/manifest.json", Text("{\n  // SMAPI allows comments\n  \"Name\": \"Bush Bloom Mod\", \"Version\": \"1.2.4\",\n}")));
+		BackupRow row = BackupsView.Of(new[] { backup }).Rows[0];
+		Assert.Equal("1.2.4", row.Version);
+		Assert.StartsWith("BushBloomMod, version 1.2.4, ", row.Spoken);
+	}
+
+	[Fact]
+	public void ABethesdaBackupSaysTheVersionTheManagerRecorded()
+	{
+		BackupItem backup = ZipBackup("SkyUI", (".manager_manifest.json", Text("{ \"Name\": \"SkyUI\", \"Version\": \"5.2\" }")));
+		Assert.Equal("5.2", BackupsView.Of(new[] { backup }).Rows[0].Version);
+	}
+
+	[Fact]
+	public void AMinecraftBackupSaysTheVersionInsideItsJar()
+	{
+		byte[] jar;
+		using (var ms = new MemoryStream())
+		{
+			using (var inner = new System.IO.Compression.ZipArchive(ms, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+				using (Stream s = inner.CreateEntry("fabric.mod.json").Open()) s.Write(Text("{ \"id\": \"fabric-api\", \"version\": \"0.140.0+26.3\" }"));
+			jar = ms.ToArray();
+		}
+		BackupItem backup = ZipBackup("fabric-api", ("fabric-api-0.140.0.jar", jar));
+		Assert.Equal("0.140.0+26.3", BackupsView.Of(new[] { backup }).Rows[0].Version);
+	}
+
+	[Fact]
+	public void ABackupWithNoRecordSaysWhatItAlwaysDid()
+	{
+		BackupItem backup = ZipBackup("Loose", ("readme.txt", Text("hello")));
+		BackupRow row = BackupsView.Of(new[] { backup }).Rows[0];
+		Assert.Null(row.Version);
+		Assert.DoesNotContain("version", row.Spoken);
+	}
+
 	private BackupItem Backup(string modName, DateTime taken, int bytes = 2048)
 	{
 		string path = Path.Combine(_dir, $"{modName}_{taken:yyyyMMdd_HHmmss}.zip");
