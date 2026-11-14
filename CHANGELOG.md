@@ -1,4 +1,32 @@
-﻿# Version 1.6.0
+﻿# Version 1.6.1 (not released yet)
+
+## ✨ Start a game from your desktop
+
+*   **Create Desktop Shortcut**, on the Mods menu, puts a shortcut for the open game on your desktop, such as
+    "Skyrim Special Edition (Kinetix)". In a modpack's session, it is for the modpack. Asked for in GitHub issue #2.
+    It asks before creating it, and once the shortcut is there, the menu item becomes **Remove Desktop Shortcut**, which
+    asks before removing it.
+*   **Opening it starts the game as F5 does, without opening the manager.** You hear "Launching", then the game. The same
+    checks run first: a script extender that doesn't match the game, an Address Library behind it, BepInEx missing, low
+    memory. If one needs your answer, the manager's window opens with the question.
+*   **The manager stays out of sight while you play**, with no taskbar button, and closes after the game does. Open the
+    manager as usual to get to it while you play: the one already running comes forward.
+*   **Opening the manager while it is already open now brings it to the front.** It used to do nothing.
+
+## 🐛 "Game closed" comes promptly
+
+*   **The Witcher 3 took over a minute to be announced as closed.** It starts from its own program rather than through
+    Steam, and after it quit the manager waited a full minute for it to start up again before counting. You now hear
+    "game closed" a few seconds after the game has gone. Starting through Steam, a script extender or SMAPI was not
+    affected.
+
+## 📄 Licence
+
+*   **Kinetix Mod Manager is now licensed under the GNU General Public License, version 3.** The full text is in LICENSE.
+    THIRD-PARTY-NOTICES.md lists the libraries the manager uses and the game sounds in the game themes, which belong to the
+    games' owners and aren't covered by it.
+
+# Version 1.6.0
 
 ## 🐛 What the manager says comes in the right order, and all of it
 

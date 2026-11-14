@@ -10,6 +10,12 @@ internal static class Program
 	[DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
 	private static extern bool SetDllDirectory(string lpPathName);
 
+	[DllImport("user32.dll")]
+	private static extern bool AllowSetForegroundWindow(int dwProcessId);
+
+	/// <summary>ASFW_ANY: any process may take the foreground next.</summary>
+	private const int AsfwAny = -1;
+
 	static Program()
 	{
 		string libPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "lib");
@@ -98,19 +104,27 @@ internal static class Program
 	{
 		MigrateAppData();
 
+		// A desktop shortcut made by "Create Desktop Shortcut": start this game, out of sight. See LaunchShortcut.
+		string? launchKey = LaunchShortcut.GameToLaunch(args);
+
 		using Mutex mutex = new Mutex(initiallyOwned: false, "Global\\" + TestMode.HandlerName);
 		if (!mutex.WaitOne(0, exitContext: false))
 		{
-			if (args.Length == 0 || !args[0].StartsWith("nxm://", StringComparison.OrdinalIgnoreCase))
-			{
-				return;
-			}
+			// The manager is already running, so this copy only passes on what it was asked to do, and goes. A link to
+			// download, a game to start, or, opened with nothing at all, the running one coming to the front. That last
+			// used to do nothing, which was fine while the running manager always had a window; started from a shortcut
+			// it has none, and opening the manager is how you get to it while the game runs.
+			string message = args.Length != 0 && args[0].StartsWith("nxm://", StringComparison.OrdinalIgnoreCase) ? args[0]
+				: launchKey != null ? LaunchShortcut.LaunchRequest(launchKey)
+				: LaunchShortcut.ShowRequest;
 			try
 			{
+				// This copy was started by the user, so it may hand the foreground on; the running one can't take it.
+				AllowSetForegroundWindow(AsfwAny);
 				using NamedPipeClientStream namedPipeClientStream = new NamedPipeClientStream(".", TestMode.HandlerName, PipeDirection.Out);
 				namedPipeClientStream.Connect(1000);
 				using StreamWriter streamWriter = new StreamWriter(namedPipeClientStream);
-				streamWriter.WriteLine(args[0]);
+				streamWriter.WriteLine(message);
 				streamWriter.Flush();
 				return;
 			}
@@ -175,7 +189,8 @@ internal static class Program
 			+ "  culture " + CultureInfo.CurrentUICulture.Name);
 		DiagnosticLog.Note("game      : " + startupSettings.ActiveGame);
 
-		if (startupSettings.ShowSplashScreen)
+		// Not when starting a game from a shortcut: the point is that the manager isn't seen or heard.
+		if (startupSettings.ShowSplashScreen && launchKey == null)
 		{
 			using SplashScreen splashScreen = new SplashScreen();
 			splashScreen.ShowDialog();

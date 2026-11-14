@@ -636,6 +636,9 @@ public partial class Form1
 	/// </summary>
 	private void ForceToForeground()
 	{
+		// Out of sight after a desktop shortcut: brought into view first, which comes back here. See Form1.LaunchShortcut.
+		if (_launchHidden) { RevealFromLaunchOnly(userAsked: false); return; }
+
 		// Stamped before the window moves, not after: the screen reader starts reacting the instant the
 		// foreground changes, and what is being timed is how long that reaction runs for. See ReaderIsReacting.
 		_foregroundTakenAt = Environment.TickCount64;

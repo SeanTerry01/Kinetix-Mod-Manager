@@ -1179,6 +1179,7 @@ public partial class Form1
 
 		DateTime launchedAt = DateTime.UtcNow;
 		bool announcedRunning = false;
+		NoteGameStartedForShortcut();
 
 		void AnnounceRunningOnce()
 		{
@@ -1213,12 +1214,23 @@ public partial class Form1
 				ourProcessLived >= TimeSpan.FromSeconds(GameLauncherLifetimeSeconds) &&
 				!IsGameProcessRunning(gameExeName);
 
-			if (!weHostedTheGame)
+			// The game's own executable, started by us, that ran past the age where a Steam restart happens: its
+			// exit is the user quitting. The Witcher 3 starts this way, and waiting for it to "appear" again made
+			// the manager take over a minute to say it had closed.
+			bool ourGameExeClosed =
+				launched != null &&
+				launchedIsGameExe &&
+				ourProcessLived >= TimeSpan.FromSeconds(GameYoungSessionSeconds) &&
+				!IsGameProcessRunning(gameExeName);
+
+			if (!weHostedTheGame && !ourGameExeClosed)
 			{
 				// Either a launcher that handed off, or the game's own executable — which may restart itself
 				// through Steam. Wait for the game to appear, then follow it by name, tolerating it vanishing
-				// and coming back.
-				DateTime appearDeadline = DateTime.UtcNow.AddSeconds(GameAppearGraceSeconds);
+				// and coming back. When what we started WAS the game, it has already appeared: the young-session
+				// settle below is what covers a restart, so there is nothing to wait for here.
+				bool gameAlreadySeen = launched != null && launchedIsGameExe;
+				DateTime appearDeadline = DateTime.UtcNow.AddSeconds(gameAlreadySeen ? 0 : GameAppearGraceSeconds);
 				while (DateTime.UtcNow < appearDeadline && !IsGameProcessRunning(gameExeName))
 					await Task.Delay(1000);
 
@@ -1261,5 +1273,8 @@ public partial class Form1
 		// Return the title to its resting state silently: "game closed" has already been spoken, and speaking
 		// the Nexus connection on top of it just sounds like something else happened.
 		ResetStatus();
+
+		// Started from a desktop shortcut and never shown: its work is done. See Form1.LaunchShortcut.
+		await CloseIfOnlyLaunchedAsync();
 	}
 }

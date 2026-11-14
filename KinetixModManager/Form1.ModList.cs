@@ -46,7 +46,8 @@ public partial class Form1
 		// not be listed, switched off or deleted until a key was given. The list comes first, then the question.
 		bool needsNexusKey = _nexusService.UsesNexus && string.IsNullOrEmpty(_settings.ApiKey);
 		// Once, because every refresh gets here, and being sent to Settings each time would make the list unusable.
-		bool askForNexusKey = needsNexusKey && !_isSettingsOpen && !_askedForNexusKey;
+		// Not when only starting a game from a shortcut: nobody is there to ask.
+		bool askForNexusKey = needsNexusKey && !_isSettingsOpen && !_askedForNexusKey && !_launchQuiet;
 		if (needsNexusKey) checkUpdates = false;
 		if (askForNexusKey)
 		{
@@ -104,7 +105,11 @@ public partial class Form1
 		// nothing in a Minecraft session — and a FAILED validation returns out of this method entirely, so a
 		// player who has no Nexus key (having never needed one) would open the manager to an empty mod list
 		// with the real explanation nowhere on screen.
-		if (!_nexusService.UsesNexus)
+		if (_launchQuiet)
+		{
+			// Only starting the game, out of sight: no Nexus, no connect sound. See Form1.LaunchShortcut.
+		}
+		else if (!_nexusService.UsesNexus)
 		{
 			// No Nexus connection to report. Minecraft in online play has a Microsoft one instead, checked once a
 			// run, as Nexus is: once proved, its resting title says so quietly, and a failure is not retried on

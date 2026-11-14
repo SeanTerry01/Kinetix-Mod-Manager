@@ -54,6 +54,8 @@ public partial class Form1
 
 		if (FindMenuItem(modsMenu, "menuLaunch") is ToolStripItem launchItem)
 			launchItem.Text = Loc.T("menu.launch", gameName, GetShortcutString("LaunchGame"));
+		if (FindMenuItem(modsMenu, "menuCreateShortcut") is ToolStripItem shortcutItem)
+			shortcutItem.Text = ShortcutMenuText();
 		if (FindMenuItem(modsMenu, "menuSuite") is ToolStripItem suiteItem)
 			suiteItem.Text = Loc.T("menu.installSuite", gameName);
 		// The config editor edits the game's own INIs for Skyrim/Fallout 4 and each mod's BepInEx config file for

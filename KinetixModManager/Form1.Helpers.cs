@@ -1691,6 +1691,10 @@ public partial class Form1
 	/// </summary>
 	private void Speak(string text, bool interrupt)
 	{
+		// A manager started from a desktop shortcut, reading the mods before it starts the game: nothing it would say about
+		// a session nobody sees is worth hearing. A question brings the window up first, which ends this. See Form1.LaunchShortcut.
+		if (_launchQuiet) return;
+
 		// Waiting for the game switch sound to end, when the user has asked for that. Comes back through here on release.
 		if (HeldForSessionSound(text, interrupt)) return;
 

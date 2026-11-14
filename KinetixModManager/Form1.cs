@@ -693,6 +693,9 @@ public partial class Form1 : Form, IMessageFilter
         Application.AddMessageFilter(this);
         _settings = AppSettings.Load();
         _settings.SaveFailed += ReportSettingsSaveFailure;
+		// Started from a desktop shortcut: open on its game, out of sight. Before anything below reads which game is open.
+		// See Form1.LaunchShortcut.
+		PrepareLaunchFromShortcut(args);
 		// Unless the user has opted into manual theme selection, the sound theme follows the
 		// loaded game. A normal launch restores the persisted active game without going through
 		// SwitchActiveGame, so apply the mapping here too.
@@ -829,6 +832,14 @@ public partial class Form1 : Form, IMessageFilter
 		};
 		base.Shown += async delegate
 		{
+			// Started from a desktop shortcut: none of the opening below, since nobody sees this window. It reads the mods
+			// and starts the game instead. See Form1.LaunchShortcut.
+			if (form._launchHidden)
+			{
+				await form.RunLaunchOnlyAsync();
+				return;
+			}
+
 			// The startup order, deliberately: the welcome, then which session is loaded, then everything that
 			// loading a session says for itself. Each step waits for the one before it, so nothing is talked over.
 			// The welcome is toggleable in Settings (Startup tab).
@@ -1011,6 +1022,9 @@ public partial class Form1 : Form, IMessageFilter
 				form.ShowNoGamesInstalledFlow();
 			}
 
+			// A desktop shortcut for a game that isn't there any more opened the manager instead. See Form1.LaunchShortcut.
+			form.TellAboutMissingShortcutGame();
+
 			if (args.Length != 0 && args[0].StartsWith("nxm://", StringComparison.OrdinalIgnoreCase))
 			{
 				await form.HandleNxmUrl(args[0]);
@@ -1116,6 +1130,14 @@ public partial class Form1 : Form, IMessageFilter
 						// blocking the pipe-server loop or silently discarding the Task.
 						BeginInvoke(async () =>
 						{
+							// From a second copy of the manager: come to the front, or start a game. See LaunchShortcut.
+							if (LaunchShortcut.IsManagerMessage(url))
+							{
+								HandleManagerMessage(url);
+								return;
+							}
+							// A download wants the window, which a manager started from a shortcut doesn't show.
+							if (_launchHidden) RevealFromLaunchOnly(userAsked: false);
 							Activate();
 							await HandleNxmUrl(url);
 						});

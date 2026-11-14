@@ -1753,12 +1753,16 @@ public partial class Form1
 				started.ErrorDataReceived += (_, e) => errors.Add(e.Data);
 				started.BeginErrorReadLine();
 				Interlocked.Increment(ref _minecraftGamesRunning);
+				NoteGameStartedForShortcut();
 				Fire(TrackThenCountAsync(), "TrackMinecraftSessionAsync");
 
 				async Task TrackThenCountAsync()
 				{
 					try { await TrackMinecraftSessionAsync(started, log, errors, logPath); }
 					finally { Interlocked.Decrement(ref _minecraftGamesRunning); }
+					// Started from a desktop shortcut and never shown: its work is done. A crash report brought the
+					// window up, and then it stays. See Form1.LaunchShortcut.
+					await CloseIfOnlyLaunchedAsync();
 				}
 			}
 		}

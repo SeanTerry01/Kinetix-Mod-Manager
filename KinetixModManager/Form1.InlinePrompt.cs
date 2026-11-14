@@ -154,6 +154,8 @@ public partial class Form1
 	private DialogResult ShowPrompt(string text, string caption, MessageBoxButtons buttons,
 		Func<DialogResult, ResultBeforeReturning?>? actOnAnswer = null)
 	{
+		// A manager started from a desktop shortcut is out of sight, and a question needs answering. See Form1.LaunchShortcut.
+		RevealFromLaunchOnly(userAsked: false);
 		Form? host = PromptHost();
 		if (host == null || host.InvokeRequired)
 		{
@@ -316,6 +318,9 @@ public partial class Form1
 	private void RunOverlay(Form host, Panel overlay, Control focusFirst,
 		Func<bool> finished, Action onEscape, Action? afterShown = null, Action? beforeRestoring = null)
 	{
+		// As for a prompt: a view opened over a manager nobody can see would wait for an answer forever.
+		RevealFromLaunchOnly(userAsked: false);
+
 		// Remember what to put back: the overlay borrows the window's focus, its Enter/Escape handling, its
 		// name and the enabled state of everything already in it.
 		Control? focusBefore = host.ActiveControl;

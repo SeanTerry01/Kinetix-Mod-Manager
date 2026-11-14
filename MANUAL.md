@@ -250,7 +250,7 @@ You can also press **Shift + F1** on any tab at any time to hear the shortcuts f
 *   **F3**: Open the **Mod Documentation** viewer for the active game's accessibility mod (see "Mod Documentation Viewer" below). Inside any of the three document viewers, F3 instead moves to the next search result.
 *   **Shift + F1**: **Context Help** - Speaks the shortcuts for your current tab.
 *   **Ctrl + F** (inside the F1, F2 or F3 viewer): Search the whole document for a phrase; **F3** / **Shift + F3** then step through the results. See "Searching a Document" below.
-*   **F5**: Launch the active game through its mod loader (SMAPI for Stardew Valley, SKSE for Skyrim Special Edition, F4SE for Fallout 4, BepInEx for Moonlight Peaks, and directly for The Witcher 3 and Minecraft).
+*   **F5**: Launch the active game through its mod loader (SMAPI for Stardew Valley, SKSE for Skyrim Special Edition, F4SE for Fallout 4, BepInEx for Moonlight Peaks, and directly for The Witcher 3 and Minecraft). To do the same from your desktop without opening the manager, see "Starting a Game from the Desktop" below.
 *   **F6**: **Cycle Focus** - Jump between the tab headers and the primary list in each tab (and the web view in the Wiki tab). While your mods are still loading, just after the manager starts or a game is switched, it says "Your mods are still loading." and stays on the tabs.
 *   **Ctrl + Shift + S**: **Cancel Downloads** - Stops whatever is downloading, from any tab and from inside any screen, and stops Update All if it is running. Mods already updated stay updated. A mod already being installed finishes first, and you are told so; nothing after it is updated.
 *   **F9**: **Diagnose Log with AI** - Send the current SMAPI or game log to your chosen AI provider for a plain-language explanation and fixes (opt-in; see "AI Log Diagnosis" below).
@@ -358,9 +358,26 @@ Each row says the mod, when it was backed up and its size: "Chat Commands, backe
 
 ---
 
+## Starting a Game from the Desktop
+
+To play without opening the manager first, load the game, then choose **Create Desktop Shortcut for** *the game* on the **Mods** menu. It asks whether to create it, with **Yes** and **No**. Choose Yes, and a shortcut called after the game, such as **Skyrim Special Edition (Kinetix)**, appears on your desktop. In a modpack's session, the shortcut is for that modpack.
+
+Opening the shortcut starts the game **exactly as F5 does**, without showing the manager:
+
+*   You hear **"Launching Skyrim Special Edition"** (or, for Minecraft, which account it is starting with), then the game.
+*   The manager makes **the same checks as F5** first: a script extender that doesn't match the game, an Address Library that is behind it, BepInEx missing, too little memory. If one of them needs your answer, **the manager's window opens with the question**, and stays open afterwards.
+*   While you play, the manager runs out of sight. It has no taskbar button, and isn't in Alt+Tab. **To get to it, open the manager as you normally would**, and the one already running comes forward.
+*   When you quit the game, you hear "Game closed", and the manager closes too, unless you opened it in the meantime.
+
+If the manager is already open when you use a shortcut, it starts that game, switching to it first if another game is loaded. Using the shortcut again while its game is still running just tells you so.
+
+Once the shortcut is on your desktop, the same menu item becomes **Remove Desktop Shortcut for** *the game*. It asks whether you're sure, with **Yes** and **No**, before taking the shortcut away. It only ever removes the manager's own shortcut, never one made by Steam or by you. If you delete the shortcut yourself, the menu goes back to **Create** the next time you open it.
+
+The shortcut points at the manager's current folder. If you move or reinstall the manager somewhere else, remove the shortcut and create it again. If the game itself can no longer be found, opening the shortcut opens the manager and says so.
+
 ## How the Mods Menu Is Organized
 
-The **Mods** menu (press **Alt**, then arrow to **Mods**) keeps its most common actions — **Install from File**, **Update All Available**, and **Launch** — at the top, and groups everything else into **submenus** so you're not faced with one long list. Arrow to a submenu and press **Right Arrow** or **Enter** to open it. The submenus are:
+The **Mods** menu (press **Alt**, then arrow to **Mods**) keeps its most common actions — **Install from File**, **Update All Available**, **Launch** and **Create Desktop Shortcut** — at the top, and groups everything else into **submenus** so you're not faced with one long list. Arrow to a submenu and press **Right Arrow** or **Enter** to open it. The submenus are:
 
 *   **Selected Mod** — actions on the mod highlighted in your list: edit note, settings, config file, or manifest; view dependencies; resolve missing requirements; view changelog or description; endorse; verify files.
 

@@ -124,6 +124,12 @@ public partial class Form1
 		{
 			LaunchGame();
 		}).Name = "menuLaunch";
+		// Beside Launch, because it is Launch from the desktop. Create, or Remove once the shortcut is there; named per game
+		// in ConfigureModsMenuForGame and as the menu opens. See Form1.LaunchShortcut.
+		menuMods.DropDownItems.Add(ShortcutMenuText(), null, delegate
+		{
+			CreateOrRemoveDesktopShortcut();
+		}).Name = "menuCreateShortcut";
 		menuMods.DropDownItems.Add(new ToolStripSeparator());
 
 		// Submenu: actions on the currently selected mod.
@@ -180,6 +186,11 @@ public partial class Form1
 		// Curation can be switched on from the keyboard without the menu having been opened, so the tick and the
 		// greying are brought up to date as the menu opens rather than only when the switch itself is used.
 		menuMods.DropDownOpening += delegate { UpdateCuratorMenuState(); };
+		// Create or Remove, whichever is true now: the shortcut may have been deleted from the desktop since.
+		menuMods.DropDownOpening += delegate
+		{
+			if (FindMenuItem(menuMods, "menuCreateShortcut") is ToolStripItem shortcutItem) shortcutItem.Text = ShortcutMenuText();
+		};
 
 		// Submenu: profiles and shareable collections.
 		var grpProfiles = new ToolStripMenuItem(Loc.T("menu.groupProfiles")) { Name = "menuGroupProfiles" };
