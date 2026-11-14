@@ -330,14 +330,17 @@ From `reference-build-publish-release`. Written for 1.6.0, 2026-11-12.
     code — `SoundThemesTests.EveryThemeHasAFolderForEveryEvent` fails on a fresh clone otherwise.
 1.  **Publish your Suggested Mods picks** (see §5 below), if any have been marked since the last release. Run the
     tests and commit `data\suggested-mods.json` afterwards.
-2.  **The version.** Already **1.6.0** in `<Version>` in `KinetixModManager/KinetixModManager.csproj`, in
-    `AppVersion` in `KinetixModManager/setup.iss`, and in the top heading of `CHANGELOG.md`
-    (`# Version 1.6.0`). Nothing to bump. For a later release, change all three together; if the version
-    already has a changelog section, merge the two under one heading so F2 shows one entry for it.
-3.  **Publish, and check the exe's FileVersion.** A Debug build does not pick up a version change or a new
-    commit, so this is the step that proves what is going out:
+2.  **The version.** It is set in three places: `<Version>` in **`Directory.Build.props`** at the repository
+    root (the only place any project gets it from), `AppVersion` in `KinetixModManager/setup.iss`, and the
+    top heading of `CHANGELOG.md` (`# Version X.Y.Z`). Change all three together; `VersionConsistencyTests`
+    fails if they disagree or if a project file sets a version of its own. If the version already has a
+    changelog section, merge the two under one heading so F2 shows one entry for it.
+    ⚠️ 1.6.1 first shipped with the version bumped in the app's project file only. The manager reports
+    **Kinetix.Core's** version, which still said 1.6.0, so it kept offering itself as an update.
+3.  **Publish, and check the FileVersion of both `KinetixModManager.exe` and `Kinetix.Core.dll`.** A Debug
+    build does not pick up a version change or a new commit, so this is the step that proves what is going out:
     `dotnet publish KinetixModManager/KinetixModManager.csproj -c Release -r win-x64 --self-contained true`
-    FileVersion should read 1.6.0, and ProductVersion `1.6.0+<the commit being released>`.
+    Both should read the new version, and ProductVersion `X.Y.Z+<the commit being released>`.
 4.  **Confirm the publish folder is complete** at
     `KinetixModManager\bin\Release\net10.0-windows\win-x64\publish\`. It should contain the exe, `MANUAL.md`,
     `CHANGELOG.md`, and the `lang`, `docs`, `data` and `sounds` folders. `sounds` must hold **seven themes**

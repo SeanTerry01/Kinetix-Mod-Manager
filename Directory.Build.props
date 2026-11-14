@@ -1,0 +1,17 @@
+<Project>
+
+  <!--
+    The one place the version number is set. Every project in the solution picks it up.
+
+    It used to be set in each project file. The manager reports the version of Kinetix.Core
+    (NexusService.AppVersion reads the assembly it lives in), and the update check and the About
+    box both go by that, so bumping only KinetixModManager.csproj shipped a 1.6.1 that called
+    itself 1.6.0 and kept offering itself as an update. VersionConsistencyTests keeps this file,
+    setup.iss and the top of CHANGELOG.md in agreement, and checks that no project sets its own.
+  -->
+
+  <PropertyGroup>
+    <Version>1.6.1</Version>
+  </PropertyGroup>
+
+</Project>

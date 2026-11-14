@@ -46,13 +46,19 @@ if (-not (Test-Path $exePath)) { throw "No KinetixModManager.exe in $publishDir.
 $version = (Get-Item $exePath).VersionInfo.FileVersion
 $short   = ($version -split '\.')[0..2] -join '.'
 
-# The version in the project file is the one that was meant; the exe's is the one that was built. A Debug build
+# The version in Directory.Build.props is the one that was meant; the exe's is the one that was built. A Debug build
 # does not pick up a version bump, and neither does a publish that was never re-run - so compare them here rather
-# than discover it after the zip is in someone else's hands.
-$csprojVersion = ([xml](Get-Content (Join-Path $appDir "KinetixModManager.csproj"))).Project.PropertyGroup.Version |
+# than discover it after the zip is in someone else's hands. Kinetix.Core.dll is checked too: the manager reports
+# ITS version, and 1.6.1 first shipped with that one still saying 1.6.0.
+$propsVersion = ([xml](Get-Content (Join-Path $repoRoot "Directory.Build.props"))).Project.PropertyGroup.Version |
     Where-Object { $_ } | Select-Object -First 1
-if ($csprojVersion -and $short -ne $csprojVersion) {
-    throw "The published exe is $short but the project says $csprojVersion. Re-publish before packing."
+if (-not $propsVersion) { throw "Directory.Build.props has no Version." }
+foreach ($built in @($exePath, (Join-Path $publishDir "Kinetix.Core.dll"))) {
+    $builtVersion = (Get-Item $built).VersionInfo.FileVersion
+    $builtShort   = ($builtVersion -split '\.')[0..2] -join '.'
+    if ($builtShort -ne $propsVersion) {
+        throw "$(Split-Path -Leaf $built) is $builtShort but Directory.Build.props says $propsVersion. Re-publish before packing."
+    }
 }
 
 $stageName = "KinetixModManager-$short-portable"

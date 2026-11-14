@@ -13,6 +13,12 @@
     manager as usual to get to it while you play: the one already running comes forward.
 *   **Opening the manager while it is already open now brings it to the front.** It used to do nothing.
 
+## 🐛 1.6.1 no longer calls itself 1.6.0
+
+*   **The first 1.6.1 download said it was 1.6.0**, in the About box and to the update check, so it kept offering
+    1.6.1 as an update after you had installed it. If that happened to you, accept the update once more and it
+    stops.
+
 ## 🐛 "Game closed" comes promptly
 
 *   **The Witcher 3 took over a minute to be announced as closed.** It starts from its own program rather than through
