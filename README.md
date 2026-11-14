@@ -18,6 +18,7 @@ A fully keyboard-driven, screen-reader-compatible mod manager for **Stardew Vall
 - **Integrated Game Wiki** — built-in, screen-reader-friendly wiki browser (Stardew Valley Wiki, UESP for Skyrim, Fallout Wiki, Minecraft Wiki) with category drilling
 - **Walkthroughs** — read community walkthroughs and guides for the active game inside the app
 - **Audio Themes** — feedback sounds are `.ogg` files in swappable theme packs, and the theme **follows the game you load**, so a Skyrim session sounds like Skyrim before anything is read out. Adding a game's sounds is dropping files into a folder. Themes you make yourself are kept in your data folder, which an installed copy can always write to. For Minecraft the connect and disconnect cues follow the game's own log, so they sound when you join and leave a multiplayer server
+- **Desktop Shortcuts** — **Create Desktop Shortcut** on the Mods menu puts a shortcut for the open game, or Minecraft modpack, on your desktop, named like "Skyrim Special Edition (Kinetix)". Opening it starts the game with the same checks as F5 without opening the manager. The manager appears only if one of those checks needs an answer, and closes once the game does. The same menu item then becomes **Remove Desktop Shortcut**
 - **NXM Protocol** — registers as an `nxm://` handler so "Mod Manager Download" buttons on Nexus open the app directly
 - **Secure API Key Storage** — every mod site key, and your AI provider key, are stored encrypted using Windows DPAPI (never plain text on disk)
 
@@ -71,7 +72,7 @@ Press **F1** at any time to open the full User Manual, or **Shift + F1** for con
 |---|---|
 | Open Manual | F1 |
 | Context Help (tab shortcuts) | Shift + F1 |
-| Launch game (via SMAPI for Stardew; via Fabric, without the launcher, for Minecraft) | F5 |
+| Launch game (via SMAPI for Stardew; via Fabric, without the launcher, for Minecraft). To start it from the desktop instead, see Create Desktop Shortcut on the Mods menu | F5 |
 | Cycle focus (tabs ↔ list ↔ web view) | F6 |
 | Settings | Ctrl + P |
 | Install from .zip | Ctrl + I |
@@ -100,7 +101,7 @@ The solution is five projects. The last two are experimental and are not part of
 |---|---|---|
 | `Kinetix.Core` | `net10.0` | The rules, the parsers and the file and HTTP work, with no user interface. Settings (`AppSettings`), the Nexus and Modrinth services, game profiles, mod scanning rules, FOMOD, archive extraction, the mod-source catalogue and search planner, sound-theme resolution, Modrinth, GitHub releases, the Minecraft launcher and Fabric installer, save and INI readers, the localisation catalogue, and the domain models under `Models/`. |
 | `KinetixModManager` | `net10.0-windows` | The WinForms application: the screen it draws, the keys it listens for, and the Windows-only pieces. Speech (Tolk, and NVDA's own controller for knowing when it has finished speaking), DPAPI and the UI-thread dispatcher sit behind interfaces in `Platform/`; WebView2 and the prompts are still to follow. |
-| `KinetixModManager.Tests` | `net10.0` | 2,158 xUnit tests against `Kinetix.Core` and `Kinetix.Platform.Linux`, plus guards that read the app's own source. |
+| `KinetixModManager.Tests` | `net10.0` | 2,314 xUnit tests against `Kinetix.Core` and `Kinetix.Platform.Linux`, plus guards that read the app's own source. |
 | `Kinetix.Platform.Linux` | `net10.0` | The Linux answers to the same platform questions: speech through speech-dispatcher, sounds through GStreamer, secrets through libsecret, and finding an installed game through Steam (four layouts, Flatpak included), its Proton prefixes, and Heroic. No UI toolkit. |
 | `Kinetix.Gtk` | `net10.0` | A GTK4 front end for Linux: games, installed mods, mod search and install, updates, profiles, dependencies, backups, the loader log, an embedded wiki Orca reads, per-game sounds and settings. Eleven tabs against the Windows head's sixty-odd. All six games can be searched and update-checked; only Minecraft mods can be installed from here so far. See `ARCHITECTURE_REVIEW.md` §17 and §28–§36. |
 

@@ -1,4 +1,4 @@
-﻿# Version 1.6.1 (not released yet)
+﻿# Version 1.6.1
 
 ## ✨ Start a game from your desktop
 

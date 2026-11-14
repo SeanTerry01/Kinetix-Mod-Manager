@@ -1,10 +1,13 @@
 # Pre-release checklist
 
-Written 2026-08-08 for the release that followed v1.4.5, and kept up since. **Now for v1.6.0** (brought up to
-date 2026-11-12), on branch `refactor/kinetix-core-split`. The branch is **215 commits ahead of `origin/master`**,
-and **104 of them have never been pushed** at all (origin's copy of the branch stops at `2104ad7`, 2026-09-24).
-Version 1.6.0 is already set in `KinetixModManager.csproj`, `KinetixModManager\setup.iss` and the top heading of
-`CHANGELOG.md`. **2,251 tests**, all passing, and every project builds with no warnings.
+Written 2026-08-08 for the release that followed v1.4.5, and kept up since. **Now for v1.6.1** (2026-11-13), on
+branch `refactor/kinetix-core-split`, which is level with `master`. 1.6.1 is small: the desktop shortcut (GitHub
+issue #2, ear-tested end to end on the real setup), "game closed" for The Witcher 3 coming promptly (ear-tested),
+and the GPL-3.0 licence. Version 1.6.1 is set in `KinetixModManager.csproj`, `KinetixModManager\setup.iss` and the
+top heading of `CHANGELOG.md`. **2,314 tests**, all passing, and every project builds with no warnings.
+
+The rest of this file was written for v1.6.0, which shipped on 2026-11-12. §4 holds for 1.6.1 with the version
+number changed.
 
 ⚠️ **1.5.2 was never released.** The newest tag and GitHub release is v1.5.1. Everything in §1.0a ships as part of
 1.6.0.
