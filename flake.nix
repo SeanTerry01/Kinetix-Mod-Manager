@@ -12,6 +12,21 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
+        # Read version from Directory.Build.props so it can't drift.
+        # Assumes a literal <Version>1.6.1</Version> tag.
+        versionFileContents = builtins.readFile ./Directory.Build.props;
+        versionMatchLine = line:
+            builtins.match ".*<Version>([^<]+)</Version>.*" line;
+        versionLine = pkgs.lib.findFirst
+            (line: versionMatchLine line != null)
+            null
+            (pkgs.lib.splitString "\n" versionFileContents);
+        version =
+            if versionLine == null then
+            "unstable-${self.shortRev or "dirty"}"
+            else
+            pkgs.lib.strings.trim (builtins.head (versionMatchLine versionLine));
+
         # Native libraries shared between build time and runtime.
         # (GTK/GStreamer/etc. need both: headers + pkg-config at build,
         #  .so files on LD_LIBRARY_PATH at runtime.)
@@ -30,7 +45,7 @@
       {
         packages.default = pkgs.buildDotnetModule {
           pname = "kinetix-mod-manager";
-          version = "1.6.1";
+          version = version;
           src = ./.;
 
           # Build the entire solution.
