@@ -48,6 +48,9 @@
           version = version;
           src = ./.;
 
+          # Only expose the GTK binary. The Windows one compiles but cannot run on Linux.
+          executables = [ "Kinetix.Gtk" ];
+
           # Build the entire solution.
           # This file is at the repository root (KinetixModManager.slnx).
           # Omitting projectFile also makes buildDotnetModule auto-detect a .sln,
