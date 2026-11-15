@@ -1,4 +1,15 @@
-﻿# Version 1.6.1
+﻿# Version 1.6.2 (not released yet)
+
+## 📄 Licence
+
+*   **The copyright is now stated: Copyright © 2026 Sean Terry and contributors.** It is in the About box, the README,
+    the installer and each file's properties.
+*   **The licence is the GNU General Public License, version 3 or any later version.** If a newer GPL is published, you
+    may use the manager under that one instead.
+*   **The About box no longer says "for personal and community use".** That wording came from before the licence and
+    didn't match it. The GPL lets anyone use the manager for any purpose.
+
+# Version 1.6.1
 
 ## ✨ Start a game from your desktop
 

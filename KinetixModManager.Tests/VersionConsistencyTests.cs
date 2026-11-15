@@ -48,11 +48,13 @@ public class VersionConsistencyTests
     [Fact]
     public void TheNewestChangeLogEntryIsForThisVersion()
     {
-        // What's New and F2 find the running version's entry by this heading.
+        // What's New and F2 find the running version's entry by this heading. An entry still being written for the
+        // next version is marked "(not released yet)" and sits above it until the release.
         string changelog = File.ReadAllText(Path.Combine(RepositoryRoot(), "CHANGELOG.md"));
-        Match m = Regex.Match(changelog, @"^# Version (\S+)", RegexOptions.Multiline);
-        Assert.True(m.Success, "CHANGELOG.md has no \"# Version\" heading.");
-        Assert.Equal(PropsVersion(), m.Groups[1].Value);
+        Match? released = Regex.Matches(changelog, @"^# Version (\S+)(.*)$", RegexOptions.Multiline)
+            .FirstOrDefault(h => !h.Groups[2].Value.Contains("not released yet", StringComparison.OrdinalIgnoreCase));
+        Assert.True(released != null, "CHANGELOG.md has no released \"# Version\" heading.");
+        Assert.Equal(PropsVersion(), released!.Groups[1].Value);
     }
 
     private static string PropsVersion()

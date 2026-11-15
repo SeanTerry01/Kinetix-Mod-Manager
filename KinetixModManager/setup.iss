@@ -6,6 +6,7 @@ AppId={{D37D0B2E-6D3F-4B1C-BD03-9A1D2E3F4B5C}
 AppName=Kinetix Mod Manager
 AppVersion=1.6.1
 AppPublisher=Audi Venture Games
+AppCopyright=Copyright (C) 2026 Sean Terry and contributors
 AppPublisherURL=https://github.com/SeanTerry01/Kinetix-Mod-Manager
 AppSupportURL=https://github.com/SeanTerry01/Kinetix-Mod-Manager
 AppUpdatesURL=https://github.com/SeanTerry01/Kinetix-Mod-Manager

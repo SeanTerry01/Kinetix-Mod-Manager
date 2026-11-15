@@ -12,6 +12,8 @@
 
   <PropertyGroup>
     <Version>1.6.1</Version>
+    <!-- Shown in each file's Properties > Details in Windows. -->
+    <Copyright>Copyright © 2026 Sean Terry and contributors</Copyright>
   </PropertyGroup>
 
 </Project>

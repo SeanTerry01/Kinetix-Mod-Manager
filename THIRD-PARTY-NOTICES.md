@@ -1,7 +1,7 @@
 # Third-party notices
 
-Kinetix Mod Manager's own code and its Default sound theme are licensed under the GNU General Public License,
-version 3. See [LICENSE](LICENSE). This file lists what is **not** covered by that licence: the libraries the manager
+Kinetix Mod Manager is Copyright © 2026 Sean Terry and contributors. Its own code and its Default sound theme are
+licensed under the GNU General Public License, version 3 or (at your option) any later version. See [LICENSE](LICENSE). This file lists what is **not** covered by that licence: the libraries the manager
 uses, each under its own licence, and the sounds in the game themes.
 
 ## Game sounds
