@@ -354,7 +354,11 @@ public class ModArchiveTests : IDisposable
 		Assert.NotEqual(
 			Path.GetFullPath(Path.GetTempPath()).TrimEnd(Path.DirectorySeparatorChar),
 			Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar));
-		try { Directory.Delete(root, true); } catch { }
+		// ⚠️ Only if empty. This folder is shared: every other test that unpacks something works inside it at the same moment,
+		// and so does a running manager installing anything on this drive. Deleting it with its contents pulled a backup
+		// out from under a restore test halfway through unpacking it (1 run in 60, 2026-11-15).
+		try { Directory.Delete(root, recursive: false); }
+		catch (IOException) { /* in use by someone else: leave it */ }
 	}
 
 	[Fact]

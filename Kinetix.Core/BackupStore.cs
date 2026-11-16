@@ -238,6 +238,7 @@ public static class BackupStore
 		// CreateNew is the whole point: it fails rather than overwrites, so whichever caller wins the race
 		// keeps the name and the others move on to the next one. Bounded, because past a handful in the same
 		// second something else is wrong and looping for ever would be a worse answer than surfacing it.
+		UnauthorizedAccessException? denied = null;
 		for (int attempt = 1; attempt <= 50; attempt++)
 		{
 			string dest = Path.Combine(backupsPath, attempt == 1 ? stamp + ".zip" : $"{stamp}_{attempt}.zip");
@@ -247,14 +248,25 @@ public static class BackupStore
 			try { claimed = new FileStream(partial, FileMode.CreateNew, FileAccess.Write, FileShare.None); }
 			// Either: whoever held it may have finished and moved it to the real name a moment ago.
 			catch (IOException) when (File.Exists(partial) || File.Exists(dest)) { continue; /* somebody else has it; try the next */ }
+			// ⚠️ A name another backup has just given up is "access denied" for a moment, not "exists": Windows keeps a
+			// deleted file's name while anything still has it open, and the virus scanner opens every zip as it closes.
+			// File.Exists says no, so the filter above lets it through. Seen as 3 failures in 60 runs of the whole test
+			// suite (2026-11-15). Move on to the next name; if every name is refused, the folder really is, so say that.
+			catch (UnauthorizedAccessException ex) { denied = ex; continue; }
 
 			// In this order. Another backup finishing moves its file to the real name, so the claim has to be held before
 			// looking there, or both could end up wanting it.
 			if (!File.Exists(dest)) return claimed;
 			claimed.Dispose();
-			File.Delete(partial);
+			// Not fatal if it can't go yet: the scanner may still have it, and the sweep clears it within the hour.
+			try { File.Delete(partial); }
+			catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+			{
+				DiagnosticLog.WriteException("Backup", $"giving up the backup name {partial}", ex);
+			}
 		}
 
+		if (denied != null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(denied).Throw();
 		throw new IOException($"Could not find a free backup name for {modName} in {backupsPath}.");
 	}
 

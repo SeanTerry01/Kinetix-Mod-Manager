@@ -1,5 +1,12 @@
 ﻿# Version 1.6.2 (not released yet)
 
+## 🐛 Backups
+
+*   **Two backups of the same mod made in the same second could fail with "access denied".** Your virus scanner checks
+    each backup as it is finished, and while it does, Windows briefly refuses the backup's file name to anything else.
+    The second backup now picks the next free name instead of failing. A failed backup stops a delete or an update
+    from going ahead, so this could stop a batch partway through.
+
 ## 📄 Licence
 
 *   **The copyright is now stated: Copyright © 2026 Sean Terry and contributors.** It is in the About box, the README,
